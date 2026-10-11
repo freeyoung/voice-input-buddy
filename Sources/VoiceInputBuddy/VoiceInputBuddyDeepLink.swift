@@ -15,7 +15,7 @@ struct VoiceInputBuddyDeepLinkRequest: Equatable {
 
     static func parse(_ url: URL) -> Self? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              components.scheme?.lowercased() == "sayall",
+              components.scheme?.lowercased() == "voice-input-buddy",
               components.host?.lowercased() == "launch",
               components.user == nil,
               components.password == nil,
@@ -64,5 +64,5 @@ enum VokieDeepLink {
 }
 
 extension Notification.Name {
-    static let sayAllDeepLinkReceived = Notification.Name("sayall.deepLink.received")
+    static let voiceInputBuddyDeepLinkReceived = Notification.Name("voiceinputbuddy.deepLink.received")
 }

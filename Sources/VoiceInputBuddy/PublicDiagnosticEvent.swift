@@ -319,7 +319,7 @@ struct PublicDiagnosticEvent: Equatable {
         nil, "unknown", "xiaomi", "apple_remote", "chromecast",
     ]
     private static let approvedAudioDeviceKinds: Set<String?> = [
-        nil, "not_configured", "sayall_virtual", "miremotev_2ch", "blackhole",
+        nil, "not_configured", "buddy_virtual", "miremotev_2ch", "blackhole",
         "blackhole_2ch", "other", "unavailable",
     ]
     private static let approvedVoiceTools: Set<String?> = [

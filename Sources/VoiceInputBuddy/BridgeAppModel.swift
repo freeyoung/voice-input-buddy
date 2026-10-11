@@ -438,17 +438,6 @@ struct BluetoothVoiceTailDiagnostics {
     }
 }
 
-private enum RecordingPlaybackOperationError: Error {
-    case playerRejected
-}
-
-private enum RecordingPlaybackStage: String {
-    case resolveAsset = "resolve_asset"
-    case initializePlayer = "initialize_player"
-    case preparePlayer = "prepare_player"
-    case startPlayback = "start_playback"
-}
-
 private struct LocalTestRemoteSessionResponse: Decodable {
     let relayMode: String
     let sessionID: String
@@ -533,23 +522,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published private(set) var voiceKeyCompatibilityWarning: VoiceKeyCompatibilityWarning?
     @Published private(set) var diagnosticUploadStatus = LocalizedMessage("diagnostics.upload.ready")
     @Published private(set) var isSendingDiagnosticLogs = false
-    @Published private(set) var transcriptRecords: [TranscriptRecord] = []
-    @Published private(set) var recordingAssets: [RecordingAssetManifest] = []
-    @Published private(set) var recordingPlaybackError: RecordingPlaybackFailure?
-
-    private let transcriptArchiveStore: TranscriptArchiveStore
-    private let recordingAssetStore: RecordingAssetStore
-    private let transcriptArchiveOperationQueue = DispatchQueue(
-        label: "VoiceInputBuddy.transcriptArchive.operations",
-        qos: .utility
-    )
-    private let recordingPlaybackDiagnosticQueue = DispatchQueue(
-        label: "VoiceInputBuddy.recordingPlayback.diagnostics",
-        qos: .utility
-    )
     private let audioOutput = VirtualAudioOutput()
     private let diagnosticLogUploader: DiagnosticLogUploader
-    private var recordingPlayback: AVAudioPlayer?
 
     func isOnboardingControlSourceConnected(_ source: OnboardingControlSource) -> Bool {
         switch source {
@@ -627,26 +601,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         },
         logger: { AppLogger.shared.write($0) }
     )
-    private lazy var transcriptCaptureCoordinator = TranscriptCaptureCoordinator(
-        isEnabled: { [weak self] in
-            guard let self else { return false }
-            return false
-        },
-        onCapture: { [weak self] capture in
-            self?.archiveCapturedTranscript(capture)
-        }
-    )
-    private lazy var recordingAssetCoordinator = RecordingAssetCoordinator(
-        store: recordingAssetStore,
-        isEnabled: { [weak self] in
-            false
-        },
-        onCommit: { [weak self] _ in
-            self?.refreshRecordingAssets()
-        }
-    )
-    private var transcriptHistoryToggleCancellable: AnyCancellable?
-    private var recordingToggleCancellable: AnyCancellable?
     private var membershipAccessCancellable: AnyCancellable?
     private var membershipCompanionAccessCancellable: AnyCancellable?
     private var membershipAccountCancellable: AnyCancellable?
@@ -889,11 +843,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         macroFeature: MacroFeatureIntegration = MacroFeatureIntegration(),
         membershipFeature: MembershipFeatureIntegration = MembershipFeatureIntegration(),
         loginItemService: LoginItemService = LoginItemService(),
-        transcriptArchiveStore: TranscriptArchiveStore = TranscriptArchiveStore(),
         rc003VoiceExtensionTestEnabled: Bool =
             ProcessInfo.processInfo.arguments.contains("--rc003-voice-extension-test") ||
             (Bundle.main.object(forInfoDictionaryKey: "RC003VoiceExtensionTestEnabled") as? Bool == true),
-        recordingAssetStore: RecordingAssetStore = RecordingAssetStore(),
         diagnosticLogUploader: DiagnosticLogUploader = .shared
     ) {
         self.settings = settings
@@ -902,9 +854,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         self.macroFeature = macroFeature
         self.membershipFeature = membershipFeature
         self.loginItemService = loginItemService
-        self.transcriptArchiveStore = transcriptArchiveStore
         self.rc003VoiceExtensionTestEnabled = rc003VoiceExtensionTestEnabled
-        self.recordingAssetStore = recordingAssetStore
         self.diagnosticLogUploader = diagnosticLogUploader
         if settings.siriRemoteEnabled, settings.siriRemoteNeedsUserAction {
             siriRemoteAudioStatus = "unavailable:authorization_user_action_required"
@@ -969,102 +919,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         audioOutput.onConfigurationChange = { [weak self] in
             self?.scheduleAudioRecovery(reason: "engine_configuration_change")
         }
-#if SAYALL_SIRI_REMOTE_ENABLED
-        siriRemoteFeature.onConnection = { [weak self] connection in
-            self?.handleAppleRemoteConnection(connection)
-        }
-        siriRemoteFeature.onDeclaredCapabilitiesChange = { [weak self] declared in
-            guard let self, self.siriDeclaredCapabilities != declared else { return }
-            self.siriDeclaredCapabilities = declared
-            // 触摸类设置是否出现取决于设备自报，必须跟着变。
-            AppLogger.shared.write(
-                "SIRI CAPABILITIES declared=\(BridgeAppModel.describeSiri(declared))"
-            )
-        }
-        siriRemoteFeature.onControlEvent = { [weak self] event in
-            self?.handleAppleRemoteControlEvent(event)
-        }
-        siriRemoteFeature.onSamples = { [weak self] samples in
-            self?.receiveAppleRemoteAudio(samples)
-        }
-        siriRemoteFeature.onStatus = { [weak self] status in
-            guard let self, self.settings.siriRemoteEnabled,
-                  !["ipc_ready", "capturing", "stopped"].contains(status) else { return }
-            if status.hasPrefix("unavailable:"), status.contains("authorization_") {
-                self.settings.siriRemoteNeedsUserAction = true
-            }
-            self.siriRemoteAudioStatus = status
-        }
-        siriRemoteFeature.onTouchFeedback = { [weak self] feedback in
-            guard let self else { return }
-            if case .clicked = feedback {
-                _ = siriRemoteCursorFeedback.activateHoveredElementIfAvailable()
-            }
-            siriRemoteCursorFeedback.handle(
-                feedback,
-                scrollArrowReversed: settings.siriRemoteScrollArrowReversed
-            )
-        }
-        siriRemoteFeature.onContextualScroll = { [weak self] pixels in
-            self?.handleAppleRemoteContextualScroll(pixels) ?? false
-        }
-        siriRemoteFeature.onCenterTapConfirmation = { [weak self] _ in
-            guard let self else { return false }
-            if self.appleRemoteAppSwitcherSession.isActive {
-                self.appleRemoteAppSwitcherTouchConfirmationCount += 1
-                let confirmed = self.appleRemoteAppSwitcherSession.confirm()
-                self.finishAppleRemoteAppSwitcher(
-                    reason: confirmed ? "touch_confirmed" : "touch_confirm_failed",
-                    confirmed: confirmed
-                )
-                return confirmed
-            }
-            return self.siriRemoteCursorFeedback.activateHoveredElementIfAvailable()
-        }
-        siriRemoteFeature.onPowerSnapshot = { [weak self] snapshot in
-            self?.handleAppleRemotePowerSnapshot(snapshot)
-        }
-#endif
-#if SAYALL_CHROMECAST_ENABLED
-        // 适配层固定使用主队列，因此这里必须**同步**调用：
-        // 包在发出 startRecognition 意图之后才写 MIC_OPEN，宿主必须在那之前备好音频出口，
-        // 否则最早几帧会落在还没有出口的时刻（首字丢失）。
-        chromecastFeature.onStatusChange = { [weak self] status in
-            self?.handleChromecastStatusChange(status)
-        }
-        chromecastFeature.onDeclaredCapabilitiesChange = { [weak self] declared in
-            guard let self else { return }
-            guard self.chromecastDeclaredCapabilities != declared else { return }
-            self.chromecastDeclaredCapabilities = declared
-            // 能力变化会改变「按一次说话」这类选项的可用性，必须立即同步到运行时与界面。
-            AppLogger.shared.write(
-                "CHROMECAST CAPABILITIES declared=\(Self.describe(declared))"
-            )
-            self.syncChromecastRuntimeState()
-        }
-        chromecastFeature.onVoiceStart = { [weak self] in
-            self?.beginChromecastVoice()
-        }
-        chromecastFeature.onVoiceSustain = { [weak self] in
-            // 远端换流不产生第二次用户可见动作，否则豆包侧识别会被立刻关掉。
-            self?.logChromecastSustain()
-        }
-        chromecastFeature.onVoiceStop = { [weak self] reason in
-            self?.endChromecastVoice(reason: reason)
-        }
-        chromecastFeature.onSamples = { [weak self] samples, _ in
-            self?.receiveChromecastAudio(samples)
-        }
-        chromecastFeature.onControlEvent = { [weak self] event in
-            self?.handleChromecastControlEvent(event)
-        }
-        chromecastFeature.onHIDPresenceChange = { [weak self] isPresent in
-            AppLogger.shared.write("CHROMECAST HID DEVICE present=\(isPresent)")
-        }
-        chromecastFeature.onLog = { message in
-            AppLogger.shared.write(message)
-        }
-#endif
         phoneRemoteServer.isIdentityTrusted = { [weak self] fingerprint in
             guard let self, self.membershipFeature.canStartCompanionConnection else { return false }
             return self.settings.isPhoneIdentityTrusted(fingerprint)
@@ -1312,27 +1166,13 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 self?.receivePhoneAudio(samples, source: .web)
             }
         }
-        transcriptHistoryToggleCancellable = settings.$localTranscriptHistoryEnabled
-            .removeDuplicates()
-            .sink { [weak self] isEnabled in
-                guard let self else { return }
-                if isEnabled || self.settings.localOriginalAudioRecordingEnabled {
-                    refreshTranscriptRecords()
-                } else {
-                    transcriptCaptureCoordinator.cancel()
-                }
-            }
+
     }
 
     func startIfNeeded() {
         guard !started else { return }
         started = true
         startAudioSubsystem()
-#if SAYALL_SIRI_REMOTE_ENABLED
-        if settings.siriRemoteEnabled, !settings.siriRemoteNeedsUserAction {
-            siriRemoteFeature.start()
-        }
-#endif
         applyHIDSettings()
         refreshRemoteDeviceNames(reason: .startup)
         terminationObserver = NotificationCenter.default.addObserver(
@@ -1355,9 +1195,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         privateFeature.stop()
         macroFeature.stop()
         preferredInputSourceMonitor.stop()
-        transcriptCaptureCoordinator.cancel()
-        recordingAssetCoordinator.cancel(reason: "app_stop")
-        stopRecordingPlayback()
         guard started else { return }
         started = false
         cancelHIDMappingRecovery(reason: "app_stop")
@@ -1382,29 +1219,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         voiceFnTapSession.shutdown()
         bluetoothBridges.values.forEach { $0.stop() }
         discoveryBluetoothBridge?.stop()
-#if SAYALL_SIRI_REMOTE_ENABLED
-        appleRemoteVoiceCaptureRetryWorkItem?.cancel()
-        appleRemoteVoiceCaptureRetryWorkItem = nil
-        siriRemoteFeature.stop()
-        siriRemoteCursorFeedback.stop()
-        resetAllAppleRemoteState(reason: "app_stop")
-#endif
-#if SAYALL_CHROMECAST_ENABLED
-        chromecastVoiceStopOperation &+= 1
-        chromecastVoiceActive = false
-        isChromecastVoiceActive = false
-        chromecastVoiceStopping = false
-        pendingChromecastVoiceStart = false
-        pendingChromecastVoiceAudio.cancel()
-        pendingChromecastVoiceStopReason = nil
-        activeChromecastVoiceOperationID = nil
-        activeChromecastVoiceStartedAt = nil
-        // 按键通道必须先清干净再停 HID：否则残留的「按住」状态会拖到下一次启动。
-        resetChromecastButtonState(reason: "app_stop")
-        connectedChromecastProfileIDs.removeAll()
-        chromecastFeature.stop()
-        chromecastStatus = .disabled
-#endif
         bluetoothBridges.removeAll()
         bluetoothBridgeStates.removeAll()
         discoveryBluetoothBridge = nil
@@ -1420,16 +1234,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         isWatchRemoteConnected = false
         webRemoteState = .disabled
         bluetoothVoiceActive = false
-#if SAYALL_SIRI_REMOTE_ENABLED
-        appleRemoteVoiceDevices.removeAll()
-        appleRemoteVoiceStopping = false
-        pendingAppleRemoteVoiceStarts.removeAll()
-        pendingAppleRemoteVoiceAudio.cancel()
-        pendingAppleRemoteVoiceStopRequested = false
-        appleRemoteVoiceStopOperation &+= 1
-        activeAppleRemoteVoiceOperationID = nil
-        activeAppleRemoteVoiceStartedAt = nil
-#endif
         let cancelledPendingRestart = mobileVoiceLifecycle.reset()
         cancelMobileVoiceNoAudioRecoveryTimer()
         mobileVoiceAudioReceivedBatchCount = 0
@@ -1464,184 +1268,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             self.terminationObserver = nil
         }
         AppLogger.shared.write("APP STOP")
-    }
-
-    func refreshTranscriptRecords() {
-        // History, recordings and telemetry are not part of this product.
-    }
-
-    func refreshRecordingAssets() {
-        // History, recordings and telemetry are not part of this product.
-    }
-
-    func playRecording(_ asset: RecordingAssetManifest) {
-        recordingPlaybackError = nil
-        var stage = RecordingPlaybackStage.resolveAsset
-        var prepareResult: Bool?
-        do {
-            let url = try recordingAssetStore.mediaURL(for: asset)
-            recordingPlayback?.stop()
-            recordingPlayback = nil
-            stage = .initializePlayer
-            recordingPlayback = try AVAudioPlayer(contentsOf: url)
-            stage = .preparePlayer
-            prepareResult = recordingPlayback?.prepareToPlay()
-            stage = .startPlayback
-            guard recordingPlayback?.play() == true else {
-                throw RecordingPlaybackOperationError.playerRejected
-            }
-        } catch {
-            let playerDurationMilliseconds = recordingPlayback.map {
-                Int(($0.duration * 1_000).rounded())
-            } ?? -1
-            let playerChannelCount = recordingPlayback?.numberOfChannels ?? -1
-            let playerSampleRate = recordingPlayback.map {
-                Int($0.format.sampleRate.rounded())
-            } ?? -1
-            recordingPlayback?.stop()
-            recordingPlayback = nil
-            let failure: RecordingPlaybackFailure = error is RecordingPlaybackOperationError
-                ? .playerUnavailable
-                : .classify(error)
-            recordingPlaybackError = failure
-            let failureFields = [
-                "RECORDING ASSET playback_failed",
-                "record_id=\(asset.id.uuidString)",
-                "session_id=\(asset.sessionID.uuidString)",
-                "application_key=\(AppLogger.stableToken(asset.applicationKey ?? "__unknown__"))",
-                "date=\(asset.localDateKey)",
-                "reason=\(failure.logReason)",
-                "stage=\(stage.rawValue)",
-                "source=\(asset.source.rawValue)",
-                "manifest_format_supported=\(asset.format == "m4a-aac")",
-                "manifest_bytes=\(asset.byteCount)",
-                "manifest_duration_ms=\(asset.durationMilliseconds)",
-                "prepare_result=\(prepareResult.map { String($0) } ?? "not_attempted")",
-                "player_duration_ms=\(playerDurationMilliseconds)",
-                "player_channels=\(playerChannelCount)",
-                "player_sample_rate_hz=\(playerSampleRate)",
-                AppLogger.errorFields(error)
-            ]
-            AppLogger.shared.write(failureFields.joined(separator: " "))
-            logRecordingPlaybackIntegrity(asset)
-        }
-    }
-
-    private func logRecordingPlaybackIntegrity(_ asset: RecordingAssetManifest) {
-        recordingPlaybackDiagnosticQueue.async { [weak self] in
-            guard let self else { return }
-            do {
-                let diagnostics = try self.recordingAssetStore.integrityDiagnostics(for: asset)
-                AppLogger.shared.write(
-                    "RECORDING ASSET playback_integrity " +
-                        "record_id=\(asset.id.uuidString) " +
-                        "session_id=\(asset.sessionID.uuidString) " +
-                        "actual_bytes=\(diagnostics.actualByteCount) " +
-                        "byte_count_match=\(diagnostics.byteCountMatches) " +
-                        "sha256_match=\(diagnostics.sha256Matches)"
-                )
-            } catch {
-                AppLogger.shared.write(
-                    "RECORDING ASSET playback_integrity_failed " +
-                        "record_id=\(asset.id.uuidString) " +
-                        "session_id=\(asset.sessionID.uuidString) " +
-                        AppLogger.errorFields(error)
-                )
-            }
-        }
-    }
-
-    func clearRecordingPlaybackError() {
-        recordingPlaybackError = nil
-    }
-
-    func stopRecordingPlayback() {
-        recordingPlayback?.stop()
-        recordingPlayback = nil
-    }
-
-    func exportRecording(_ asset: RecordingAssetManifest) {
-        guard let sourceURL = try? recordingAssetStore.mediaURL(for: asset) else { return }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = LocalizedMessage(
-            "statistics.recordings.export_filename", arguments: [asset.localDateKey]
-        ).text(using: LocalizationStore(settings: settings))
-        panel.allowedFileTypes = ["m4a"]
-        panel.begin { response in
-            guard response == .OK, let destinationURL = panel.url else { return }
-            do {
-                if FileManager.default.fileExists(atPath: destinationURL.path) {
-                    try FileManager.default.trashItem(at: destinationURL, resultingItemURL: nil)
-                }
-                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-            } catch {
-                AppLogger.shared.write("RECORDING ASSET export_failed")
-            }
-        }
-    }
-
-    func deleteRecording(_ asset: RecordingAssetManifest) {
-        stopRecordingPlayback()
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self else { return }
-            do {
-                try self.recordingAssetStore.delete(id: asset.id)
-                self.refreshRecordingAssets()
-            } catch {
-                AppLogger.shared.write("RECORDING ASSET delete_failed")
-            }
-        }
-    }
-
-    func deleteRecordingApplication(applicationKey: String) {
-        stopRecordingPlayback()
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self else { return }
-            do {
-                try self.recordingAssetStore.deleteApplication(applicationKey: applicationKey)
-                self.refreshRecordingAssets()
-            } catch {
-                AppLogger.shared.write("RECORDING ASSET delete_application_failed")
-            }
-        }
-    }
-
-    func deleteAllRecordings() {
-        stopRecordingPlayback()
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self else { return }
-            do {
-                try self.recordingAssetStore.deleteAll()
-                self.refreshRecordingAssets()
-            } catch {
-                AppLogger.shared.write("RECORDING ASSET delete_all_failed")
-            }
-        }
-    }
-
-    @discardableResult
-    func copyTranscript(_ record: TranscriptRecord) -> Bool {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        return pasteboard.writeObjects([record.originalTranscript as NSString])
-    }
-
-    func deleteTranscriptRecord(_ record: TranscriptRecord) {
-        updateTranscriptArchive {
-            try self.transcriptArchiveStore.deleteRecord(id: record.id)
-        }
-    }
-
-    func deleteTranscriptApplication(applicationKey: String) {
-        updateTranscriptArchive {
-            try self.transcriptArchiveStore.deleteApplication(applicationKey: applicationKey)
-        }
-    }
-
-    func deleteAllTranscripts() {
-        updateTranscriptArchive {
-            try self.transcriptArchiveStore.deleteAll()
-        }
     }
 
     static func shouldRecoverHIDAfterCompletedUpdate(
@@ -2951,20 +2577,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: false)
         }
         startHIDMonitors(powerKeySuppressed: powerKeySuppressed)
-#if SAYALL_SIRI_REMOTE_ENABLED
-        if started, restartSiriRemote, settings.siriRemoteEnabled {
-            siriRemoteFeature.restart(customMappingEnabled: settings.customMappingEnabled)
-        } else if started, settings.siriRemoteEnabled {
-            AppLogger.shared.write(
-                "SIRI REMOTE SETTINGS phase=completed result=preserved " +
-                    "reason=voice_key_configuration_change"
-            )
-        }
-        refreshAppleRemoteHIDStatus()
-#endif
-#if SAYALL_CHROMECAST_ENABLED
-        syncChromecastRuntimeState()
-#endif
         completeHIDMappingRecoveryIfNeeded()
         refreshVoiceKeyCompatibilityWarning()
     }
@@ -2972,30 +2584,11 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     func setSiriRemoteEnabled(_ enabled: Bool) {
         guard enabled || activePhysicalVoiceControlSource != .siriRemote else { return }
         settings.siriRemoteEnabled = enabled
-#if SAYALL_SIRI_REMOTE_ENABLED
-        if enabled {
-            prepareSiriRemoteFromUserAction()
-        } else {
-            siriRemoteFeature.stop()
-            siriRemoteCursorFeedback.stop()
-            resetAllAppleRemoteState(reason: "feature_disabled")
-            siriRemoteAudioStatus = "disabled"
-        }
-#endif
         AppLogger.shared.write("SIRI REMOTE ACTIVATION phase=changed enabled=\(enabled)")
     }
 
     /// Call only from enable/retry controls, never from startup or device discovery.
     func prepareSiriRemoteFromUserAction() {
-#if SAYALL_SIRI_REMOTE_ENABLED
-        guard settings.siriRemoteEnabled else { return }
-        guard activePhysicalVoiceControlSource != .siriRemote else { return }
-        settings.siriRemoteNeedsUserAction = false
-        if siriRemoteAudioStatus == "disabled" { siriRemoteAudioStatus = "preparing_hci" }
-        AppLogger.shared.write("SIRI REMOTE ACTIVATION phase=requested source=user_action")
-        siriRemoteFeature.start(userInitiated: true)
-        siriRemoteFeature.restart(customMappingEnabled: settings.customMappingEnabled)
-#endif
     }
 
     private func scheduleHIDMappingRecoveryIfNeeded(
@@ -3123,26 +2716,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             resetMobileButtonGestures(source: .nearbyPhone)
             resetMobileButtonGestures(source: .webRemote)
         }
-        #if SAYALL_CHROMECAST_ENABLED
-        if chromecastProfileID == device { resetChromecastButtonState(reason: "mapping_changed") }
-        #endif
-        #if SAYALL_SIRI_REMOTE_ENABLED
-        let devices = appleRemoteProfileIDs.filter { $0.value == device }.map(\.key)
-        if appleRemoteAppSwitcherProfileID == device, appleRemoteAppSwitcherSession.isActive {
-            finishAppleRemoteAppSwitcher(reason: "mapping_changed", confirmed: false)
-        }
-        for siriDevice in devices {
-            let doubleKeys = appleRemoteDoubleClickTimers.keys.filter { $0.device == siriDevice }
-            doubleKeys.forEach { appleRemoteDoubleClickTimers.removeValue(forKey: $0)?.cancel() }
-            let longKeys = appleRemoteLongPressTimers.keys.filter { $0.device == siriDevice }
-            longKeys.forEach { appleRemoteLongPressTimers.removeValue(forKey: $0)?.cancel() }
-            let repeatKeys = appleRemoteRepeatTimers.keys.filter { $0.device == siriDevice }
-            repeatKeys.forEach { cancelAppleRemoteRepeat(for: $0.button, device: siriDevice, reason: "mapping_changed") }
-            appleRemoteGestureRecognizers.removeValue(forKey: siriDevice)
-            appleRemoteActiveButtons.removeValue(forKey: siriDevice)
-        }
-        refreshAppleRemoteActiveButtons()
-        #endif
         AppLogger.shared.write("BUTTON CONFIGURATION phase=completed result=interactions_cancelled")
     }
 
@@ -5132,7 +4705,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             )
             return
         }
-        recordingAssetCoordinator.append(samples: samples)
         publishCurrentVoiceSampleReceiptIfNeeded(sampleCount: samples.count)
         let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
         let accepted = audioOutput.enqueue(
@@ -5752,7 +5324,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         identifier: UUID
     ) {
         guard identifier == activeBluetoothVoiceDeviceIdentifier else { return }
-        recordingAssetCoordinator.append(samples: samples)
         let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
         let handledByFnTapMode = voiceFnTapSession.receive(samples)
         let enqueued: Bool
@@ -7135,7 +6706,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             )
             return
         }
-        recordingAssetCoordinator.append(samples: samples)
         publishCurrentVoiceSampleReceiptIfNeeded(sampleCount: samples.count)
         mobileVoiceAudioBatchCount += 1
         mobileVoiceAudioSignalMetrics.append(samples)
@@ -7271,25 +6841,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         }
     }
 
-    private func archiveCapturedTranscript(_ capture: CapturedTranscript) {
-        // History, recordings and telemetry are not part of this product.
-    }
-
-    private func updateTranscriptArchive(_ operation: @escaping () throws -> Void) {
-        transcriptArchiveOperationQueue.async { [weak self] in
-            guard let self else { return }
-            do {
-                try operation()
-                let records = try transcriptArchiveStore.loadAll()
-                DispatchQueue.main.async { [weak self] in
-                    self?.transcriptRecords = records
-                }
-            } catch {
-                AppLogger.shared.write("TRANSCRIPT ARCHIVE update_failed")
-            }
-        }
-    }
-
     private func beginVoiceSessionIfNeeded() {
         guard !isStreaming else { return }
         privateFeature.startVoiceSession()
@@ -7316,24 +6867,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         voiceSessionStartedAt = startedAt
         voiceSessionID = sessionID
         voiceSessionUsageSource = source
-        let frontmostApplication = FrontmostApplicationMetadata.current(
-            excludingBundleIdentifier: Bundle.main.bundleIdentifier
-        )
-        voiceSessionApplicationName = frontmostApplication?.applicationName
-        recordingAssetCoordinator.start(
-            sessionID: sessionID,
-            startedAt: startedAt,
-            source: source,
-            applicationMetadata: frontmostApplication
-        )
-        if let frontmostApplication {
-            AppLogger.shared.write(
-                "RECORDING ASSET application_fallback " +
-                    "bundle=\(frontmostApplication.bundleIdentifier)"
-            )
-        } else {
-            AppLogger.shared.write("RECORDING ASSET application_fallback unavailable")
-        }
         isStreaming = true
     }
 
@@ -7359,7 +6892,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         }
         voiceSessionUsageSource = nil
         voiceSessionApplicationName = nil
-        let sessionID = voiceSessionID
         voiceSessionID = nil
         voiceAudioDeliveryDiagnostic.sessionEnded = true
         voiceAudioDeliveryDiagnostic.outputAtObservation = audioOutput.diagnosticSnapshot(
@@ -7371,9 +6903,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             audioOutput.endSession()
         }
         privateFeature.finishVoiceSession()
-        if sessionID != nil {
-            recordingAssetCoordinator.finish(endedAt: endedAt)
-        }
         // 会话因别的原因结束（用户关闭语音、切换输入源）时，必须让 Chromecast 包内的
         // latched 状态同步清空；否则下一次点按会被误判成「结束」而不是「开始」。
         chromecastFeature.notifyHostVoiceSessionEnded()
@@ -7581,840 +7110,4 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     // 与 Siri Remote 链路完全隔离：独立 owner（`.chromecast`）、独立会话与排空操作号，
     // 一方结束不会取消另一方。私有包缺失时本段全部不会被编译进来。
 
-    #if SAYALL_CHROMECAST_ENABLED
-    /// 设置页「重新连接」。
-    func reconnectChromecast() {
-        chromecastFeature.reconnect()
-    }
-
-    /// 设置页 Chromecast 面板的改动立即作用于运行时。
-    ///
-    /// 开关决定链路启停、模式决定语音键语义，二者都不能等下次启动才生效：
-    /// 否则界面显示「按住说话」而运行时仍按「点按开关」处理，真机验收会得出错误结论。
-    func applyChromecastSettings() {
-        syncChromecastRuntimeState()
-    }
-
-    /// 按设置页开关启停 Chromecast 运行时。幂等，可安全重复调用。
-    private func syncChromecastRuntimeState() {
-        guard started else { return }
-        chromecastFeature.setVoiceMode(effectiveChromecastVoiceMode)
-        // 映射总开关决定 HID 通道是否独占设备：它必须即时生效，否则界面上「已开启映射」
-        // 而系统仍在消费这些按键，用户会以为映射没生效。
-        chromecastFeature.setControlMappingEnabled(settings.customMappingEnabled)
-        if settings.chromecastEnabled {
-            chromecastFeature.start()
-        } else {
-            chromecastFeature.stop()
-            chromecastStatus = .disabled
-        }
-    }
-
-    private func handleChromecastStatusChange(_ status: ChromecastLinkStatus) {
-        // 用户关闭开关后链路回调仍可能上报 disconnected，此时保持「未启用」。
-        if !settings.chromecastEnabled, !status.isActive {
-            chromecastStatus = .disabled
-            endChromecastVoice(reason: .hostStop)
-            disconnectChromecastProfile(reason: "feature_disabled")
-            return
-        }
-        chromecastStatus = status
-        AppLogger.shared.write("CHROMECAST LINK state=\(status)")
-        if status.isConnected {
-            // 与苹果遥控器一致：链路一可用就注册档案，按键页的设备选择器里立刻能选到它。
-            _ = ensureChromecastProfile()
-            AppLogger.shared.write("CHROMECAST REMOTE phase=completed result=profile_ready")
-            // 音频出口预热：否则首次按键要在「按下」的同时做一轮 REBIND（真机实测 ~30ms），
-            // 更关键的是根因 #4 那种「引擎在 startup 时没起来且无人修复」的竞态会在按键瞬间
-            // 才暴露（enqueue_failures 全量丢弃）。链路就绪即准备好出口，按键时只剩纯音频往返。
-            ensureVirtualAudioOutputReady(reason: "chromecast_link_ready")
-        } else {
-            disconnectChromecastProfile(reason: "link_unavailable")
-        }
-        switch status {
-        case .disconnected, .unauthorized, .unsupported:
-            // 链路在可用之后丢失，或型号被判为不支持：必须结束活动收音并释放 owner。
-            endChromecastVoice(reason: .cancelled("link_unavailable"))
-        default:
-            break
-        }
-    }
-
-    /// 链路不再可用时把档案从「已连接」里摘掉，但保留档案本身（用户的映射不能跟着丢）。
-    private func disconnectChromecastProfile(reason: String) {
-        guard !connectedChromecastProfileIDs.isEmpty else { return }
-        connectedChromecastProfileIDs.removeAll()
-        if let profileID = chromecastProfileID { commonPhrases.reset(source: "chromecast:\(profileID.uuidString)") }
-        resetChromecastButtonState(reason: reason)
-        refreshBluetoothPresentation()
-    }
-
-    private func logChromecastSustain() {
-        AppLogger.shared.write(
-            "CHROMECAST VOICE phase=sustain result=no_visible_change"
-        )
-    }
-
-    // MARK: 语音键驱动（长按式 vs 点按式目标工具）
-    //
-    // 目标工具分两类，语音键的语义必须跟着分（见 `ChromecastFunctionKeyDrive`）：
-    // 长按式（豆包「长按模式」）按住—松开；点按式（豆包「免按模式」、Typeless）只认按下，
-    // 必须「开始一次点按、结束再一次点按」。真机实测见 `Testing/VoiceKeyFnPanelProbe.swift`。
-
-    /// 「开始那次点按」的延迟松开（仅点按式驱动使用）。
-    private var chromecastFunctionKeyTapRelease: DispatchWorkItem?
-    /// 一次点按的按下时长：与小米蓝牙链路的 `VoiceFnTapSessionController` 保持一致。
-    private static let chromecastFunctionKeyTapDuration: TimeInterval = 0.12
-
-    /// 当前应使用的驱动方式：由遥控器自己的语音模式 + 目标工具是否支持长按推导（见能力矩阵）。
-    private var chromecastFunctionKeyDrive: ChromecastFunctionKeyDrive {
-        .resolve(
-            voiceMode: effectiveChromecastVoiceMode,
-            toolSupportsHoldVoiceRecording: settings.onboardingVoiceTool
-                .supportsHoldVoiceRecording
-        )
-    }
-
-    /// 生效的语音模式：设备**自报**不支持「按一次收音」时，即使设置里存着 toggle 也按「按住说话」执行。
-    /// 这样能力不足的型号不会因为一份历史设置而走进它做不到的路径（设置里的原值保留，不静默改写）。
-    var effectiveChromecastVoiceMode: ChromecastVoiceMode {
-        let declared = chromecastDeclaredCapabilities
-        guard !declared.isEmpty, !declared.contains(.toggleVoiceGesture) else {
-            return settings.chromecastVoiceMode
-        }
-        return .hold
-    }
-
-    /// 自报能力的日志标记（真机核对用）。
-    private static func describe(_ declared: ChromecastDeclaredCapabilities) -> String {
-        var names: [String] = []
-        if declared.contains(.controlEdges) { names.append("control_edges") }
-        if declared.contains(.voiceStream) { names.append("voice_stream") }
-        if declared.contains(.touchSurface) { names.append("touch_surface") }
-        if declared.contains(.battery) { names.append("battery") }
-        if declared.contains(.toggleVoiceGesture) { names.append("toggle_voice") }
-        return names.isEmpty ? "none" : names.joined(separator: "+")
-    }
-
-    /// 开始收音时驱动语音键。返回 false 表示按下失败（调用方按既有逻辑报失败）。
-    @discardableResult
-    private func beginChromecastFunctionKeyDrive() -> Bool {
-        let drive = chromecastFunctionKeyDrive
-        if drive.startEvents.contains(.press) {
-            guard updateVoiceKeyState(
-                streaming: true,
-                forceSoftware: true,
-                owner: .chromecast
-            ) else { return false }
-        }
-        guard drive.startEvents.contains(.release) else { return true }
-        // 点按式：延迟一个按下时长后松开，把「长按」变成一次点按。
-        // 不这样做的话 Fn 修饰位会在整个会话期间被按住，用户此时打字会变成 Fn 组合键。
-        AppLogger.shared.write(
-            "CHROMECAST VOICE fn_drive=taps phase=start_tap release_after_ms="
-                + "\(Int(Self.chromecastFunctionKeyTapDuration * 1_000))"
-        )
-        scheduleChromecastFunctionKeyTapRelease()
-        return true
-    }
-
-    /// 结束收音时驱动语音键。点按式工具必须再收到一次**按下 + 松开**才结束（松开对它是空操作）。
-    /// 返回值沿用既有判据：松开是否成功（`phase=completed result=stopped|release_failed`）。
-    @discardableResult
-    private func finishChromecastFunctionKeyDrive() -> Bool {
-        let drive = chromecastFunctionKeyDrive
-        chromecastFunctionKeyTapRelease?.cancel()
-        chromecastFunctionKeyTapRelease = nil
-        if drive.stopEvents.contains(.press) {
-            let pressed = updateVoiceKeyState(
-                streaming: true,
-                forceSoftware: true,
-                owner: .chromecast
-            )
-            AppLogger.shared.write(
-                "CHROMECAST VOICE fn_drive=taps phase=stop_tap pressed=\(pressed)"
-            )
-        }
-        return releaseVoiceKeyIfNeeded(owner: .chromecast, forceSoftware: true)
-    }
-
-    private func scheduleChromecastFunctionKeyTapRelease() {
-        chromecastFunctionKeyTapRelease?.cancel()
-        let work = DispatchWorkItem { [weak self] in
-            guard let self,
-                  self.chromecastVoiceActive || self.chromecastVoiceStopping
-            else { return }
-            self.chromecastFunctionKeyTapRelease = nil
-            _ = self.releaseVoiceKeyIfNeeded(owner: .chromecast, forceSoftware: true)
-            AppLogger.shared.write("CHROMECAST VOICE fn_drive=taps phase=start_released")
-        }
-        chromecastFunctionKeyTapRelease = work
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + Self.chromecastFunctionKeyTapDuration,
-            execute: work
-        )
-    }
-
-    /// 预卷缓冲：会话开头 prerollDelay 秒的音频先攒后灌（见 receiveChromecastAudio 注释）。
-    private var chromecastAudioPrerollOpenedAt: TimeInterval?
-    private var chromecastAudioPrerollBatches: [[Int16]] = []
-    /// 豆包从语音键到打开输入流实测 0~0.7s（TRANSCRIPT target_ready retry=false/true 两例）。
-    /// 0.5s 覆盖中位情形：开读窗口的丢失从最坏 ~0.4s 压到 ~0.1s，代价是识别出字整体晚 0.5s。
-    private static let chromecastAudioPrerollDelay: TimeInterval = 0.5
-
-    private func beginChromecastVoice() {
-        guard ChromecastFeatureIntegration.isPackageIncluded, settings.chromecastEnabled else {
-            return
-        }
-        if chromecastVoiceStopping {
-            // 快速再按：取消排空并续用同一会话，避免尾音被截断。
-            chromecastVoiceStopOperation &+= 1
-            chromecastVoiceStopping = false
-            chromecastVoiceActive = true
-            isChromecastVoiceActive = true
-            audioOutput.cancelPendingDrain()
-            if let operationID = activeChromecastVoiceOperationID {
-                recordPublicDiagnosticEvent(
-                    operationID: operationID,
-                    component: "voice",
-                    action: "session",
-                    phase: "started",
-                    result: "resumed",
-                    reason: "rapid_repress",
-                    source: "chromecast",
-                    remoteModelFamily: "chromecast"
-                )
-            }
-            AppLogger.shared.write(
-                "CHROMECAST VOICE phase=resumed result=continued_session reason=rapid_repress"
-            )
-            return
-        }
-        guard !chromecastVoiceActive else { return }
-        let outputReadyAtStart = audioOutput.isReadyForTestTone
-        var shouldStartConfiguration = false
-        if !outputReadyAtStart {
-            guard !pendingChromecastVoiceStart else { return }
-            shouldStartConfiguration = true
-            pendingChromecastVoiceStart = true
-            pendingChromecastVoiceAudio.begin()
-        }
-        chromecastVoiceOperationCounter &+= 1
-        let operationID = "chromecast_voice_\(chromecastVoiceOperationCounter)"
-        chromecastAudioBatchCount = 0
-        chromecastAudioSampleCount = 0
-        chromecastAudioEnqueueFailureCount = 0
-        loggedChromecastAudioDevice = false
-        chromecastAudioPrerollOpenedAt = ProcessInfo.processInfo.systemUptime
-        chromecastAudioPrerollBatches = []
-        if outputReadyAtStart {
-            guard ensureVirtualAudioOutputReady(reason: "chromecast_voice_start") else {
-                AppLogger.shared.write(
-                    "CHROMECAST VOICE phase=failed result=audio_output_unavailable route=BuddyMic2ch"
-                )
-                recordPublicDiagnosticEvent(
-                    operationID: operationID,
-                    component: "voice",
-                    action: "session",
-                    phase: "failed",
-                    result: "failed",
-                    reason: "audio_output_unavailable",
-                    source: "chromecast",
-                    remoteModelFamily: "chromecast"
-                )
-                return
-            }
-        }
-        guard beginChromecastFunctionKeyDrive() else {
-            if shouldStartConfiguration {
-                pendingChromecastVoiceStart = false
-                pendingChromecastVoiceAudio.cancel()
-            }
-            AppLogger.shared.write(
-                "CHROMECAST VOICE phase=failed result=voice_key_press_failed"
-            )
-            recordPublicDiagnosticEvent(
-                operationID: operationID,
-                component: "voice",
-                action: "session",
-                phase: "failed",
-                result: "failed",
-                reason: "voice_key_press_failed",
-                source: "chromecast",
-                remoteModelFamily: "chromecast"
-            )
-            return
-        }
-        chromecastVoiceActive = true
-        isChromecastVoiceActive = true
-        beginVoiceSessionIfNeeded()
-        activeChromecastVoiceOperationID = operationID
-        activeChromecastVoiceStartedAt = Date()
-        if shouldStartConfiguration {
-            AppLogger.shared.write(
-                "SYSTEM AUDIO voice_start_recovery configured=pending " +
-                    "suspended=\(systemAudioSuspensionState.isSuspended) " +
-                    "reasons=\(systemAudioSuspensionState.diagnostic)"
-            )
-            ensureVirtualAudioOutputReady(reason: "chromecast_voice_start") { [weak self] ready in
-                guard let self, self.pendingChromecastVoiceStart else { return }
-                self.pendingChromecastVoiceStart = false
-                let stopReason = self.pendingChromecastVoiceStopReason
-                self.pendingChromecastVoiceStopReason = nil
-                let bufferedAudio = self.pendingChromecastVoiceAudio.drain()
-                guard ready else {
-                    self.pendingChromecastVoiceAudio.cancel()
-                    if !self.chromecastVoiceActive {
-                        self.chromecastVoiceActive = true
-                        self.isChromecastVoiceActive = true
-                    }
-                    self.endChromecastVoice(reason: .cancelled("audio_output_unavailable"))
-                    return
-                }
-                if !bufferedAudio.isEmpty {
-                    AppLogger.shared.write(
-                        "CHROMECAST AUDIO flush_after_configuration samples=\(bufferedAudio.count)"
-                    )
-                    if !self.chromecastVoiceActive {
-                        self.chromecastVoiceActive = true
-                        self.isChromecastVoiceActive = true
-                    }
-                    self.receiveChromecastAudio(bufferedAudio)
-                }
-                if let stopReason {
-                    if !self.chromecastVoiceActive {
-                        self.chromecastVoiceActive = true
-                        self.isChromecastVoiceActive = true
-                    }
-                    self.endChromecastVoice(reason: stopReason)
-                }
-            }
-        }
-        recordPublicDiagnosticEvent(
-            operationID: operationID,
-            component: "voice",
-            action: "session",
-            phase: "started",
-            result: "accepted",
-            reason: "voice_start",
-            source: "chromecast",
-            remoteModelFamily: "chromecast"
-        )
-        AppLogger.shared.write(
-            "CHROMECAST VOICE phase=started result=triggered " +
-                "audio_source=chromecast_microphone route=BuddyMic2ch " +
-                "mode=\(effectiveChromecastVoiceMode.rawValue)"
-        )
-    }
-
-    private func endChromecastVoice(reason: ChromecastVoiceEndReason) {
-        if pendingChromecastVoiceStart {
-            pendingChromecastVoiceStopReason = reason
-            if chromecastVoiceActive {
-                chromecastVoiceActive = false
-                isChromecastVoiceActive = false
-                AppLogger.shared.write(
-                    "CHROMECAST VOICE phase=deferred result=pending_tail " +
-                        "reason=\(reason.logToken)"
-                )
-            } else {
-                AppLogger.shared.write(
-                    "CHROMECAST VOICE phase=completed result=cancelled_before_audio_ready " +
-                        "reason=\(reason.logToken)"
-                )
-            }
-            return
-        }
-        guard chromecastVoiceActive else { return }
-        chromecastVoiceActive = false
-        isChromecastVoiceActive = false
-        if chromecastVoiceStopping {
-            AppLogger.shared.write(
-                "CHROMECAST VOICE phase=completed result=deferred_session_cancelled " +
-                    "reason=\(reason.logToken)"
-            )
-            return
-        }
-        chromecastVoiceStopping = true
-        chromecastVoiceStopOperation &+= 1
-        // 会话很短时预卷缓冲可能还没到期——先排入播放器，再走自然排空，尾段不丢。
-        flushChromecastAudioPreroll()
-        let stopOperation = chromecastVoiceStopOperation
-        let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
-        let outputBeforeStop = audioOutput.diagnosticSnapshot(
-            deliveryGeneration: deliveryGeneration
-        )
-        AppLogger.shared.write(
-            "CHROMECAST VOICE playback_stop phase=waiting_for_drain reason=\(reason.logToken) " +
-                "completion=\(reason.isNormal ? "normal" : "forced") " +
-                "pending_buffers=\(outputBeforeStop.pendingBuffers) " +
-                "pending_samples=\(outputBeforeStop.pendingSamples)"
-        )
-        // 尾包已经在 MIC_CLOSE 之前全部投递完毕，因此这里只做自然排空，绝不 flush。
-        audioOutput.endSessionAfterDraining(
-            source: "chromecast",
-            operationID: stopOperation,
-            maximumDelay: nil
-        ) { [weak self] outcome in
-            self?.completeChromecastVoiceStop(
-                operation: stopOperation,
-                deliveryGeneration: deliveryGeneration,
-                reason: reason,
-                drainOutcome: outcome
-            )
-        }
-    }
-
-    private func completeChromecastVoiceStop(
-        operation: UInt64,
-        deliveryGeneration: Int,
-        reason: ChromecastVoiceEndReason,
-        drainOutcome: VirtualAudioDrainOutcome
-    ) {
-        guard chromecastVoiceStopping, chromecastVoiceStopOperation == operation else { return }
-        let released = finishChromecastFunctionKeyDrive()
-        chromecastVoiceStopping = false
-        endVoiceSessionIfNeeded(flushAudio: false)
-        let outputAfterStop = audioOutput.diagnosticSnapshot(
-            deliveryGeneration: deliveryGeneration
-        )
-        voiceAudioDeliveryDiagnostic.outputAtObservation = outputAfterStop
-        AppLogger.shared.write(
-            "CHROMECAST AUDIO playback_stop phase=completed result=completed " +
-                "completion=\(drainOutcome.rawValue) reason=\(reason.logToken) " +
-                "pending_before_buffers=\(outputAfterStop.pendingBuffers) " +
-                "played_buffers=\(outputAfterStop.counters.playedBuffers) " +
-                "interrupted_buffers=\(outputAfterStop.counters.interruptedBuffers)"
-        )
-        AppLogger.shared.write(
-            "CHROMECAST VOICE phase=completed result=\(released ? "stopped" : "release_failed") " +
-                "reason=\(reason.logToken) audio_batches=\(chromecastAudioBatchCount) " +
-                "audio_samples=\(chromecastAudioSampleCount) " +
-                "enqueue_failures=\(chromecastAudioEnqueueFailureCount) route=BuddyMic2ch"
-        )
-        if let operationID = activeChromecastVoiceOperationID {
-            recordVoiceSessionCompletion(
-                operationID: operationID,
-                source: "chromecast",
-                remoteModelFamily: "chromecast",
-                startedAt: activeChromecastVoiceStartedAt,
-                receivedSamples: chromecastAudioSampleCount,
-                failureCount: chromecastAudioEnqueueFailureCount + (released ? 0 : 1),
-                stopReason: reason.logToken
-            )
-        }
-        activeChromecastVoiceOperationID = nil
-        activeChromecastVoiceStartedAt = nil
-    }
-
-    // MARK: - Chromecast 普通按键（键位映射）
-    //
-    // 与语音链路是两条独立的通道：语音走 ATVV，按键走 HID。两者各自维护自己的活动状态，
-    // 一方结束不会清除另一方的状态。
-
-    private func handleChromecastControlEvent(_ event: ChromecastRemoteControlEvent) {
-        let controlID = event.control.canvasControlID
-
-        guard event.phase != .cancelled else {
-            resetChromecastButtonState(reason: event.cancellationReason ?? "unknown")
-            return
-        }
-        guard settings.chromecastEnabled else {
-            if event.phase == .began {
-                AppLogger.shared.write(
-                    "CHROMECAST ACTION phase=completed result=feature_disabled control=\(controlID)"
-                )
-            }
-            return
-        }
-        let suppressConfiguredAction = OnboardingControlValidationPolicy
-            .suppressConfiguredActions(
-                at: settings.onboardingStep,
-                source: settings.onboardingControlSource
-            )
-        guard settings.customMappingEnabled || suppressConfiguredAction else {
-            // 与小米/苹果遥控器同一规则：映射总开关关闭时按键由系统消费，宿主不接管。
-            if event.phase == .began {
-                AppLogger.shared.write(
-                    "CHROMECAST ACTION phase=completed result=system_managed control=\(controlID)"
-                )
-            }
-            return
-        }
-
-        let profileID = ensureChromecastProfile()
-        let isPress = event.phase == .began
-
-        if suppressConfiguredAction {
-            if isPress {
-                selectRemoteProfile(profileID)
-                settings.recordButtonPress(
-                    control: .remoteButton(event.control.remoteButton),
-                    source: .bluetoothRemote
-                )
-                lastRemoteButtonPress = event.control.remoteButton
-                AppLogger.shared.write(
-                    "ONBOARDING CONTROLS button=\(event.control.remoteButton.rawValue) " +
-                        "source=chromecast action=suppressed"
-                )
-            }
-            if isPress {
-                chromecastPressedControls.insert(controlID)
-            } else {
-                chromecastPressedControls.remove(controlID)
-            }
-            refreshChromecastActiveControlIDs()
-            return
-        }
-
-        // 使用与画布、键位方案相同的保留策略；当前全部普通键可配置。
-        if ChromecastRemoteControl.isSystemManaged(
-            event.control,
-            allowSystemReservedKeys: settings.chromecastAllowSystemReservedKeys,
-            exceptions: settings.chromecastSystemReservedExceptions
-        ) {
-            if isPress {
-                AppLogger.shared.write(
-                    "CHROMECAST ACTION phase=completed result=system_reserved control=\(controlID)"
-                )
-            }
-            return
-        }
-        // 与小米/苹果链路一致的第二道保险：HID 独占（seize）只挡住 HID 层的报告分发，
-        // 系统仍会把部分 usage 解析成原生事件（实测：静音键产生 systemKey(7) → 系统音量 HUD）。
-        // 必须在每个边沿上武装事件抑制器，把随之到达的原生事件吞掉。
-        if !hidEventSuppressor.isRunning {
-            let ready = hidEventSuppressor.start()
-            AppLogger.shared.write("HID FILTER ready=\(ready) owner=chromecast")
-        }
-        hidEventSuppressor.arm(
-            nativeEvents: chromecastNativeEvents(for: event.control),
-            edge: isPress ? .down : .up
-        )
-        if isPress {
-            selectRemoteProfile(profileID)
-            chromecastPressedControls.insert(controlID)
-            settings.recordButtonPress(
-                control: .remoteButton(event.control.remoteButton),
-                source: .bluetoothRemote
-            )
-            lastRemoteButtonPress = event.control.remoteButton
-        } else {
-            chromecastPressedControls.remove(controlID)
-        }
-        refreshChromecastActiveControlIDs()
-
-        handleChromecastButton(
-            event.control.remoteButton,
-            phase: isPress ? .press : .release,
-            profileID: profileID
-        )
-    }
-
-    /// Chromecast 遥控器在 macOS 上产生的原生事件（2026-09-16 正品真机实测，`HID FILTER miss` 日志为证）。
-    ///
-    /// 与小米 RC003 的通用表存在差异：**静音键在系统侧是 `systemKey(7)`**（通用表按 RC003 记录为 3），
-    /// 沿用通用表时抑制必然 miss、系统音量 HUD 照常出现。其余按键实测与通用表一致：
-    /// 音量 = sys0/sys1（抑制命中）、方向/确认键系统侧不产生事件（tap 零记录，无副作用）。
-    private func chromecastNativeEvents(for control: ChromecastRemoteControl) -> Set<RemoteNativeEvent> {
-        switch control {
-        case .mute: return [.systemKey(type: 7)]
-        default: return control.remoteButton.nativeEvents
-        }
-    }
-
-    /// 注册并连接 Chromecast 设备档案。档案按型号识别，不存设备标识。
-    private func ensureChromecastProfile() -> UUID {
-        // 断链时 disconnectChromecastProfile 会把档案从「已连接」集合里摘掉；重连后这里必须
-        // 重新加入——否则设备选择器一直走空态、头部回落到小米的「正在查找小米遥控器」
-        //（真机 2026-09-19：一次蓝牙断连后按键一切正常，页面却始终显示查找中）。
-        // 所以「档案已存在」不能提前 return：成员资格与选中态每次都要确保。
-        let profileID: UUID
-        if let existing = chromecastProfileID {
-            profileID = existing
-        } else {
-            profileID = settings.registerChromecastRemote()
-            chromecastProfileID = profileID
-        }
-        connectedChromecastProfileIDs.insert(profileID)
-        // 连接即选中（与小米链路的 activateRemoteProfile 对齐）：否则按键页停留在上一次
-        // 选中的档案（用户看到的是小米遥控器画布），要等「按键映射开启且按下普通键」才会切换。
-        if settings.selectedRemoteProfileID != profileID {
-            selectRemoteProfile(profileID)
-        } else {
-            refreshBluetoothPresentation()
-        }
-        return profileID
-    }
-
-    private func refreshChromecastActiveControlIDs() {
-        activeChromecastControlIDs = chromecastPressedControls
-    }
-
-    private func resetChromecastButtonState(reason: String) {
-        guard !chromecastPressedControls.isEmpty
-            || !chromecastDoubleClickTimers.isEmpty
-            || !chromecastLongPressTimers.isEmpty
-        else { return }
-        chromecastPressedControls.removeAll()
-        chromecastDoubleClickTimers.values.forEach { $0.cancel() }
-        chromecastDoubleClickTimers.removeAll()
-        chromecastLongPressTimers.values.forEach { $0.cancel() }
-        chromecastLongPressTimers.removeAll()
-        chromecastButtonGestureRecognizer.reset()
-        activeChromecastControlIDs = []
-        AppLogger.shared.write(
-            "CHROMECAST CONTROL phase=completed result=state_reset reason=\(reason)"
-        )
-    }
-
-    private func handleChromecastButton(
-        _ button: RemoteButton,
-        phase: RemoteButtonPhase,
-        profileID: UUID
-    ) {
-        if macroFeature.isEditorActive {
-            if phase == .press { macroFeature.noteButtonInteraction(button: button) }
-            AppLogger.shared.write(
-                "CHROMECAST BUTTON button=\(button.rawValue) phase=\(phase.rawValue) " +
-                    "path=binding_editor_capture"
-            )
-            return
-        }
-
-        if commonPhrases.handle(button, phase: phase, source: "chromecast:\(profileID.uuidString)") { return }
-
-        let recognizesDoubleClick = settings.configuredAction(
-            for: button,
-            trigger: .doubleClick,
-            profileID: profileID
-        ).action != .disabled || macroFeature.hasActiveBinding(
-            profileID: profileID,
-            button: button,
-            trigger: .doubleClick
-        )
-        let recognizesLongPress = settings.configuredAction(
-            for: button,
-            trigger: .longPress,
-            profileID: profileID
-        ).action != .disabled || macroFeature.hasActiveBinding(
-            profileID: profileID,
-            button: button,
-            trigger: .longPress
-        )
-
-        if phase == .press,
-           !recognizesDoubleClick,
-           !recognizesLongPress,
-           !chromecastButtonGestureRecognizer.isTracking(button) {
-            _ = performChromecastConfiguredAction(
-                for: button,
-                trigger: .singleClick,
-                profileID: profileID
-            )
-            return
-        }
-
-        let commands = chromecastButtonGestureRecognizer.handle(
-            phase,
-            button: button,
-            recognizesDoubleClick: recognizesDoubleClick,
-            recognizesLongPress: recognizesLongPress
-        )
-        _ = processChromecastGestureCommands(commands, profileID: profileID)
-    }
-
-    private func processChromecastGestureCommands(
-        _ commands: [RemoteButtonGestureRecognizer.Command],
-        profileID: UUID
-    ) -> Bool {
-        for command in commands {
-            switch command {
-            case let .scheduleDoubleClickTimeout(button):
-                scheduleChromecastDoubleClickTimeout(for: button, profileID: profileID)
-            case let .cancelDoubleClickTimeout(button):
-                chromecastDoubleClickTimers.removeValue(forKey: button)?.cancel()
-            case let .scheduleLongPressTimeout(button):
-                scheduleChromecastLongPressTimeout(for: button, profileID: profileID)
-            case let .cancelLongPressTimeout(button):
-                chromecastLongPressTimers.removeValue(forKey: button)?.cancel()
-            case let .trigger(button, trigger):
-                guard performChromecastConfiguredAction(
-                    for: button,
-                    trigger: trigger,
-                    profileID: profileID
-                ) else { return false }
-            }
-        }
-        return true
-    }
-
-    private func scheduleChromecastDoubleClickTimeout(
-        for button: RemoteButton,
-        profileID: UUID
-    ) {
-        chromecastDoubleClickTimers.removeValue(forKey: button)?.cancel()
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + .milliseconds(300))
-        timer.setEventHandler { [weak self] in
-            guard let self else { return }
-            chromecastDoubleClickTimers.removeValue(forKey: button)
-            let commands = chromecastButtonGestureRecognizer.doubleClickTimedOut(button)
-            _ = processChromecastGestureCommands(commands, profileID: profileID)
-        }
-        chromecastDoubleClickTimers[button] = timer
-        timer.resume()
-    }
-
-    private func scheduleChromecastLongPressTimeout(
-        for button: RemoteButton,
-        profileID: UUID
-    ) {
-        chromecastLongPressTimers.removeValue(forKey: button)?.cancel()
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + .milliseconds(550))
-        timer.setEventHandler { [weak self] in
-            guard let self else { return }
-            chromecastLongPressTimers.removeValue(forKey: button)
-            let commands = chromecastButtonGestureRecognizer.longPressTimedOut(button)
-            _ = processChromecastGestureCommands(commands, profileID: profileID)
-        }
-        chromecastLongPressTimers[button] = timer
-        timer.resume()
-    }
-
-    private func performChromecastConfiguredAction(
-        for button: RemoteButton,
-        trigger: ButtonTrigger,
-        profileID: UUID
-    ) -> Bool {
-        if performButtonProfileBoundAction(
-            profileID: profileID,
-            button: button,
-            trigger: trigger,
-            source: "chromecast:\(profileID.uuidString)"
-        ) {
-            AppLogger.shared.write(
-                "CHROMECAST ACTION button=\(button.rawValue) trigger=\(trigger.rawValue) " +
-                    "action=private_feature"
-            )
-            return true
-        }
-        let configured = settings.configuredAction(for: button, trigger: trigger, profileID: profileID)
-        if configured.action.isAppInternal {
-            let handled = performInternalAction(configured.action, source: "chromecast:\(profileID.uuidString)")
-            AppLogger.shared.write(
-                "CHROMECAST ACTION button=\(button.rawValue) trigger=\(trigger.rawValue) " +
-                    "action=\(configured.action.rawValue) handled=\(handled)"
-            )
-            return handled
-        }
-        guard KeyboardInjector.isAccessibilityTrusted else {
-            _ = KeyboardInjector.requestAccessibilityAccess()
-            AppLogger.shared.write(
-                "CHROMECAST ACTION phase=failed result=accessibility_required " +
-                    "button=\(button.rawValue) trigger=\(trigger.rawValue)"
-            )
-            return false
-        }
-        guard performExternalConfiguredAction(configured) else {
-            AppLogger.shared.write(
-                "CHROMECAST ACTION phase=failed result=submission_failed " +
-                    "button=\(button.rawValue) trigger=\(trigger.rawValue) " +
-                    "action=\(configured.action.rawValue)"
-            )
-            return false
-        }
-        AppLogger.shared.write(
-            "CHROMECAST ACTION phase=completed result=dispatched " +
-                "button=\(button.rawValue) trigger=\(trigger.rawValue) " +
-                "action=\(configured.action.rawValue)"
-        )
-        return true
-    }
-
-    private func receiveChromecastAudio(_ samples: [Int16]) {
-        guard chromecastVoiceActive || chromecastVoiceStopping || pendingChromecastVoiceStart,
-              !samples.isEmpty
-        else { return }
-        if pendingChromecastVoiceStart,
-           pendingChromecastVoiceAudio.appendIfWaiting(samples) {
-            AppLogger.shared.write(
-                "CHROMECAST AUDIO buffered_during_configuration samples=\(samples.count) " +
-                    "total=\(pendingChromecastVoiceAudio.bufferedSampleCount)"
-            )
-            return
-        }
-        recordingAssetCoordinator.append(samples: samples)
-        publishCurrentVoiceSampleReceiptIfNeeded(sampleCount: samples.count)
-
-        // 预卷门控：会话开头 prerollDelay 秒的音频先攒在内存，到期再一次性排入播放器。
-        // 背景：写入端（宿主写 BuddyMic2ch 输出端）比读取端（豆包打开该设备输入流）先启动，
-        // BlackHole 型环回没有回放缓冲——读端开流之前写入的数据直接消失，表现为「按下即说
-        // 时前几个字丢失」。排入 AVAudioPlayerNode 的 buffer 按实时消费，不会倾倒覆盖，
-        // 豆包开读时恰好从人声开头读到。
-        let uptime = ProcessInfo.processInfo.systemUptime
-        if chromecastAudioPrerollOpenedAt == nil {
-            chromecastAudioPrerollOpenedAt = uptime
-        }
-        if chromecastVoiceActive,
-           uptime - chromecastAudioPrerollOpenedAt! < Self.chromecastAudioPrerollDelay {
-            chromecastAudioPrerollBatches.append(samples)
-            return
-        }
-        flushChromecastAudioPreroll()
-
-        let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
-        let accepted = audioOutput.enqueue(
-            samples: samples,
-            deliveryGeneration: deliveryGeneration
-        )
-        recordVoiceAudioReceipt(samples: samples, route: .virtualAudioDirect)
-        recordVoiceAudioEnqueueOutcome(
-            accepted: accepted,
-            deliveryGeneration: deliveryGeneration
-        )
-        chromecastAudioBatchCount += 1
-        chromecastAudioSampleCount += samples.count
-        if !accepted { chromecastAudioEnqueueFailureCount += 1 }
-        if !loggedChromecastAudioDevice {
-            loggedChromecastAudioDevice = true
-            AppLogger.shared.write(
-                "CHROMECAST AUDIO routed source=chromecast_microphone " +
-                    "route=virtual_audio device=BuddyMic2ch accepted=\(accepted) " +
-                    "first_batch_samples=\(samples.count)"
-            )
-        }
-    }
-
-    /// 把预卷缓冲一次性排入播放器。AVAudioPlayerNode 按实时消费排队的 buffer，
-    /// 因此一次排入不会覆盖环回 ring，豆包读到的是连续实时流。
-    private func flushChromecastAudioPreroll() {
-        guard !chromecastAudioPrerollBatches.isEmpty else { return }
-        let batches = chromecastAudioPrerollBatches
-        chromecastAudioPrerollBatches = []
-        let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
-        var failures = 0
-        for batch in batches {
-            if !audioOutput.enqueue(samples: batch, deliveryGeneration: deliveryGeneration) {
-                failures += 1
-            }
-            chromecastAudioBatchCount += 1
-            chromecastAudioSampleCount += batch.count
-        }
-        chromecastAudioEnqueueFailureCount += failures
-        if !loggedChromecastAudioDevice, let first = batches.first {
-            loggedChromecastAudioDevice = true
-            AppLogger.shared.write(
-                "CHROMECAST AUDIO routed source=chromecast_microphone " +
-                    "route=virtual_audio device=BuddyMic2ch accepted=\(failures == 0) " +
-                    "first_batch_samples=\(first.count)"
-            )
-        }
-        AppLogger.shared.write(
-            "CHROMECAST AUDIO preroll flushed batches=\(batches.count) " +
-                "samples=\(batches.reduce(0) { $0 + $1.count }) failures=\(failures)"
-        )
-    }
-    #endif
 }

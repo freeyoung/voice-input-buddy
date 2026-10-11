@@ -480,16 +480,7 @@ enum OnboardingAppleRemoteGeneration: String, Codable, CaseIterable, Identifiabl
 
 enum OnboardingBuildCapabilities {
     static var availableControlSources: [OnboardingControlSource] {
-        var sources: [OnboardingControlSource] = [.xiaomiRemote]
-        #if SAYALL_SIRI_REMOTE_ENABLED
-        sources.append(.siriRemote)
-        #endif
-        #if SAYALL_CHROMECAST_ENABLED
-        sources.append(.chromecastRemote)
-        #endif
-        #if SAYALL_MAC_REMOTE_ENABLED
-        sources.append(contentsOf: [.appleCompanion, .webRemote])
-        #endif
+        let sources: [OnboardingControlSource] = [.xiaomiRemote]
         return sources
     }
 }

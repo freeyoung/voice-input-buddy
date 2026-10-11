@@ -93,7 +93,7 @@ struct AppEnvironmentSnapshot: Equatable {
     static func audioDeviceKind(for deviceUID: String) -> String {
         guard !deviceUID.isEmpty else { return "not_configured" }
         if deviceUID == DoubaoAudioDevicePolicy.deviceUID {
-            return "sayall_virtual"
+            return "buddy_virtual"
         }
         if deviceUID.localizedCaseInsensitiveContains("blackhole") {
             return "blackhole"

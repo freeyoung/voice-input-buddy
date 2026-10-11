@@ -276,9 +276,19 @@ final class HIDRemoteMonitor {
         AppLogger.shared.write("HID START mode=adaptive")
     }
 
+    deinit { stop() }
+
     func stop() {
         permissionPollSubscription?.cancel()
         permissionPollSubscription = nil
+        if let manager {
+            IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)
+            IOHIDManagerRegisterDeviceRemovalCallback(manager, nil, nil)
+            IOHIDManagerRegisterInputReportCallback(manager, nil, nil)
+            IOHIDManagerUnscheduleFromRunLoop(
+                manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue
+            )
+        }
         resetInputState()
         if ownsEventSuppressor { eventSuppressor.stop() }
         probedDevices.forEach {

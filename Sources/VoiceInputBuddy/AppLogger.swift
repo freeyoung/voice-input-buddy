@@ -51,6 +51,8 @@ final class AppLogger: PublicDiagnosticEventSink {
     private let now: () -> Date
     private let reportFailure: (String) -> Void
     private let sessionID: Data
+    private var sessionDescriptor: Int32 = -1
+    private var fileLoggingStopped = false
     private var fileKey: SymmetricKey?
     private var nextSequence: UInt64 = 0
     private var publicEvents: [PublicDiagnosticEvent] = []
@@ -67,7 +69,7 @@ final class AppLogger: PublicDiagnosticEventSink {
         let loggingEnabled = Self.shouldEnableSharedLogging()
         self.init(
             logURL: base.appendingPathComponent(
-                "sayall.app-\(day)-session-\(sessionName).rmlog"
+                "voiceinputbuddy.app-\(day)-session-\(sessionName).rmlog"
             ),
             metadata: .current(),
             fileManager: fileManager,
@@ -84,9 +86,9 @@ final class AppLogger: PublicDiagnosticEventSink {
         logURL: URL,
         metadata: Metadata = .current(),
         maximumFileSize: UInt64 = AppLogger.defaultMaximumFileSize,
-        archiveCount _: Int = 0,
+        archiveCount: Int = 5,
         fileManager: FileManager = .default,
-        retirementHandler _: RetirementHandler? = nil,
+        retirementHandler: RetirementHandler? = nil,
         now: @escaping () -> Date = Date.init,
         reportFailure: ((String) -> Void)? = nil,
         publicKeyDataProvider: @escaping () -> Data? = {
@@ -129,6 +131,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             )
 
             guard let publicKeyData = publicKeyDataProvider() else {
+                fileLoggingStopped = true
                 diagnose("encryption_public_key_missing")
                 return
             }
@@ -136,14 +139,57 @@ final class AppLogger: PublicDiagnosticEventSink {
                 publicKeyData: publicKeyData,
                 sessionID: sessionID
             )
-            try session.header.write(to: logURL, options: .atomic)
-            try fileManager.setAttributes(
-                [.posixPermissions: 0o600],
-                ofItemAtPath: logURL.path
-            )
-            self.fileKey = session.fileKey
+            try withExclusiveLogLock {
+                try session.header.write(to: logURL, options: .atomic)
+                try fileManager.setAttributes(
+                    [.posixPermissions: 0o600], ofItemAtPath: logURL.path
+                )
+                // A lifetime shared lock lets retention skip sessions still in use.
+                let descriptor = Darwin.open(logURL.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+                guard descriptor >= 0 else { throw POSIXError(.EIO) }
+                guard flock(descriptor, LOCK_SH | LOCK_NB) == 0 else {
+                    _ = Darwin.close(descriptor)
+                    throw POSIXError(.EIO)
+                }
+                sessionDescriptor = descriptor
+                self.fileKey = session.fileKey
+                do { try retireOldSessions(archiveCount: max(0, archiveCount), handler: retirementHandler) }
+                catch { diagnose("session_retirement_failed", error: error) }
+            }
         } catch {
+            fileLoggingStopped = fileKey == nil
             diagnose("session_file_create_failed", error: error)
+        }
+    }
+
+    deinit {
+        if sessionDescriptor >= 0 { _ = Darwin.close(sessionDescriptor) }
+    }
+
+    private func retireOldSessions(archiveCount: Int, handler: RetirementHandler?) throws {
+        let candidates = try fileManager.contentsOfDirectory(
+            at: logDirectoryURL, includingPropertiesForKeys: [.contentModificationDateKey]
+        ).filter { url in
+            url.lastPathComponent != logURL.lastPathComponent && url.pathExtension == "rmlog" &&
+                (url.lastPathComponent.hasPrefix("voiceinputbuddy.app-") ||
+                 url.lastPathComponent.hasPrefix("sayall.app-"))
+        }.sorted {
+            let left = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            let right = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            return left == right ? $0.lastPathComponent > $1.lastPathComponent : left > right
+        }
+        for url in candidates.dropFirst(archiveCount) {
+            let descriptor = Darwin.open(url.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+            guard descriptor >= 0 else { continue }
+            defer { _ = Darwin.close(descriptor) }
+            var status = stat()
+            guard fstat(descriptor, &status) == 0,
+                  status.st_mode & S_IFMT == S_IFREG,
+                  flock(descriptor, LOCK_EX | LOCK_NB) == 0 else { continue }
+            // Only files belonging to this logger are eligible; symlinks and active
+            // sessions are skipped. A custom retirement handler can move an archive.
+            if let handler { try handler(url) }
+            else { try fileManager.removeItem(at: url) }
         }
     }
 
@@ -284,6 +330,7 @@ final class AppLogger: PublicDiagnosticEventSink {
     }
 
     private func appendRecord(message: String, date: Date) {
+        guard !fileLoggingStopped else { return }
         do {
             guard let fileKey else { throw DiagnosticLogEnvelope.Error.invalidRecord }
             let sequence = nextSequence
@@ -308,6 +355,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             let appended = try withExclusiveLogLock {
                 let existingSize = fileSize(at: logURL)
                 guard existingSize + UInt64(record.count) <= maximumFileSize else {
+                    fileLoggingStopped = true
                     reportFailure("encrypted_log_size_limit_reached")
                     return false
                 }
@@ -355,7 +403,7 @@ final class AppLogger: PublicDiagnosticEventSink {
 
     private func withExclusiveLogLock<T>(_ operation: () throws -> T) throws -> T {
         let lockURL = logURL.deletingLastPathComponent()
-            .appendingPathComponent(".sayall-diagnostic-log.lock")
+            .appendingPathComponent(".voiceinputbuddy-diagnostic-log.lock")
         let descriptor = Darwin.open(
             lockURL.path,
             O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW,

@@ -158,7 +158,7 @@ struct ATVVProtocolTests {
         #expect(source.contains("start_pending_audio_configuration"))
     }
 
-    @Test func everyVoiceInputPathStartsBeforeAudioConfigurationAndPreservesPendingTail() throws {
+    @Test func retainedVoiceInputPathsStartBeforeAudioConfigurationAndPreservePendingTail() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -180,25 +180,6 @@ struct ATVVProtocolTests {
         #expect(source.contains("pendingAppleRemoteVoiceAudio.appendIfWaiting(samples)"))
         #expect(apple.contains("flush_after_configuration"))
         #expect(source.contains("APPLE REMOTE VOICE phase=deferred result=pending_tail"))
-
-        let chromecastStart = try #require(source.range(of: "private func beginChromecastVoice"))
-        let chromecastStop = try #require(source.range(
-            of: "private func endChromecastVoice",
-            range: chromecastStart.upperBound..<source.endIndex
-        ))
-        let chromecast = source[chromecastStart.lowerBound..<chromecastStop.lowerBound]
-        let chromecastKey = try #require(chromecast.range(of: "beginChromecastFunctionKeyDrive()"))
-        let chromecastConfigure = try #require(chromecast.range(
-            of: "ensureVirtualAudioOutputReady(reason: \"chromecast_voice_start\")",
-            range: chromecastKey.upperBound..<chromecast.endIndex
-        ))
-        #expect(chromecastKey.lowerBound < chromecastConfigure.lowerBound)
-        #expect(source.contains("pendingChromecastVoiceAudio.appendIfWaiting(samples)"))
-        #expect(chromecast.contains("flush_after_configuration"))
-        #expect(source.contains("CHROMECAST VOICE phase=deferred result=pending_tail"))
-        #expect(source.contains(
-            "chromecastVoiceActive || chromecastVoiceStopping || pendingChromecastVoiceStart"
-        ))
 
         let mobileStart = try #require(source.range(of: "private func startPhoneVoiceAfterAudioReady"))
         let mobileStop = try #require(source.range(

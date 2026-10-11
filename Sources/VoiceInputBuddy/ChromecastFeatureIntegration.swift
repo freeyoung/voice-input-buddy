@@ -1,8 +1,5 @@
 import Foundation
 
-#if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-import VoiceInputBuddyChromecast
-#endif
 
 /// Chromecast 链路状态。宿主只依赖这个平台无关的枚举，不接触 CoreBluetooth 或 ATVV 字节。
 enum ChromecastLinkStatus: Equatable {
@@ -200,11 +197,7 @@ struct ChromecastRemoteControlEvent: Equatable {
 final class ChromecastFeatureIntegration {
     /// 本次构建是否编入了私有包。
     static var isPackageIncluded: Bool {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        return true
-        #else
         return false
-        #endif
     }
 
     /// 链路状态变化。宿主据此刷新设置页与日志。
@@ -226,169 +219,36 @@ final class ChromecastFeatureIntegration {
     /// 诊断日志。
     var onLog: ((String) -> Void)?
 
-    #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-    private let feature: VoiceInputBuddyChromecastFeature
-    #endif
 
     init() {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature = VoiceInputBuddyChromecastFeature()
-        feature.onConnection = { [weak self] connection in
-            self?.handle(connection)
-        }
-        feature.onVoiceIntent = { [weak self] intent in
-            self?.handle(intent)
-        }
-        feature.onSamples = { [weak self] samples, generation in
-            self?.onSamples?(samples, generation)
-        }
-        feature.onStatus = { [weak self] status in
-            // 包内文案只进日志：界面文案一律由宿主本地化，避免中英混排。
-            self?.onLog?("CHROMECAST STATUS \(status)")
-        }
-        feature.onLog = { [weak self] message in
-            self?.onLog?(message)
-        }
-        feature.onControlEvent = { [weak self] event in
-            guard let control = ChromecastRemoteControl(rawValue: event.control.rawValue),
-                  let phase = ChromecastRemoteControlPhase(rawValue: event.phase.rawValue)
-            else { return }
-            self?.onControlEvent?(ChromecastRemoteControlEvent(
-                control: control,
-                phase: phase,
-                sequence: event.sequence,
-                cancellationReason: event.cancellationReason?.logToken
-            ))
-        }
-        #endif
     }
 
     func start() {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature.start()
-        #endif
     }
 
     func stop() {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature.stop()
-        #endif
     }
 
     /// 用户在设置页点「重新连接」。
     func reconnect() {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature.reconnect()
-        #endif
     }
 
     func setVoiceMode(_ mode: ChromecastVoiceMode) {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature.setVoiceGestureMode(mode == .hold ? .hold : .toggle)
-        #endif
     }
 
     /// 宿主「按键映射」总开关。开启后私有包独占该遥控器的 HID 设备，关闭时只观察。
     ///
     /// 缺包时 no-op。幂等，可安全重复调用。
     func setControlMappingEnabled(_ enabled: Bool) {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature.setControlMappingEnabled(enabled)
-        #endif
     }
 
     /// HID 侧是否已看到本遥控器。缺包时恒为 false。
     var isHIDRemotePresent: Bool {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        return feature.isHIDRemotePresent
-        #else
         return false
-        #endif
     }
 
     /// 宿主侧语音会话被关闭（用户关闭语音、切换输入源）。包内 latched 状态必须同步清空。
     func notifyHostVoiceSessionEnded() {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        feature.notifyHostVoiceSessionEnded()
-        #endif
     }
 
-    #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-    private func handle(_ connection: ChromecastConnection) {
-        // `instanceKey` 只用于进程内路由，按合同不得写日志或上传。
-        onLog?(
-            "CHROMECAST CONNECTION state=\(Self.logToken(connection.state)) "
-                + "model=\(connection.modelID) sequence=\(connection.sequence) "
-                + "capabilities=\(Self.capabilityLogToken(connection.capabilities))"
-        )
-        // 自报能力只在链路可用时有意义；其余状态一律清零，避免「断开后界面还留着上一个型号的能力」。
-        onDeclaredCapabilitiesChange?(
-            connection.state.isUsable
-                ? ChromecastDeclaredCapabilities(rawValue: connection.capabilities.rawValue)
-                : []
-        )
-        switch connection.state {
-        case .available:
-            onStatusChange?(.connected(displayName: connection.displayName))
-        case .discovering:
-            onStatusChange?(.searching)
-        case .connecting:
-            onStatusChange?(.connecting)
-        case .unauthorized:
-            onStatusChange?(.unauthorized)
-        case .unavailable(let reason):
-            // 型号不支持时包在扫描阶段就会拒绝连接，这里必须如实展示原因。
-            onStatusChange?(.unsupported(reason: reason))
-        case .disconnected:
-            onStatusChange?(.disconnected)
-        }
-    }
-
-    private func handle(_ intent: ChromecastVoiceIntent) {
-        switch intent {
-        case .startRecognition:
-            onVoiceStart?()
-        case .sustainRecognition:
-            // 远端换流不产生第二次用户可见动作，否则识别会被立刻关掉。
-            onVoiceSustain?()
-        case .latchStream:
-            onVoiceSustain?()
-        case .stopRecognition(let end, _):
-            onVoiceStop?(Self.hostReason(end))
-        }
-    }
-
-    private static func hostReason(_ end: ChromecastVoiceEnd) -> ChromecastVoiceEndReason {
-        switch end {
-        case .holdRelease: return .holdRelease
-        case .toggleSecondTap: return .toggleSecondTap
-        case .hostStop: return .hostStop
-        case .cancelled(let reason): return .cancelled(reason.logToken)
-        }
-    }
-
-    /// 合同要求异常原因必须出现在日志里，因此这里输出稳定 token 而不是反射结果。
-    private static func logToken(_ state: ChromecastConnectionState) -> String {
-        switch state {
-        case .discovering: return "discovering"
-        case .connecting: return "connecting"
-        case .available: return "available"
-        case .unauthorized: return "unauthorized"
-        case .unavailable: return "unavailable"
-        case .disconnected(let reason): return "disconnected.\(reason.logToken)"
-        }
-    }
-
-    /// 把自报能力位写成可读的日志标记，便于真机核对「设备到底报了什么」。
-    private static func capabilityLogToken(_ capabilities: ChromecastCapabilityFlags) -> String {
-        let declared = ChromecastDeclaredCapabilities(rawValue: capabilities.rawValue)
-        var names: [String] = []
-        if declared.contains(.controlEdges) { names.append("control_edges") }
-        if declared.contains(.voiceStream) { names.append("voice_stream") }
-        if declared.contains(.touchSurface) { names.append("touch_surface") }
-        if declared.contains(.battery) { names.append("battery") }
-        if declared.contains(.toggleVoiceGesture) { names.append("toggle_voice") }
-        return names.isEmpty ? "none" : names.joined(separator: "+")
-    }
-    #endif
 }

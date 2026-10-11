@@ -356,12 +356,12 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             return
         }
         AppLogger.shared.write(
-            "DEEPLINK SAYALL source=\(request.source ?? "unknown") " +
+            "DEEPLINK BUDDY source=\(request.source ?? "unknown") " +
                 "status=\(request.status?.rawValue ?? "none") " +
                 "reason=\(request.reason ?? "none")"
         )
         NotificationCenter.default.post(
-            name: .sayAllDeepLinkReceived,
+            name: .voiceInputBuddyDeepLinkReceived,
             object: request
         )
         showSettings()

@@ -4,12 +4,6 @@ import Combine
 import CoreBluetooth
 import BuddyRemoteCore
 import BuddyRemoteUI
-#if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-import VoiceInputBuddyChromecast
-#endif
-#if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-import VoiceInputBuddySiriRemote
-#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -22,7 +16,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case membership
     case mapping
     case statistics
-    case transcripts
     case commonPhrases
     case permissions
     case about
@@ -40,7 +33,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .mapping: return "settings.section.buttons"
         case .statistics: return "settings.section.statistics"
         case .commonPhrases: return "common_phrases.title"
-        case .transcripts: return "settings.section.transcripts"
         case .permissions: return "settings.section.permissions"
         case .about: return "settings.section.settings"
         }
@@ -57,7 +49,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .mapping: return "keyboard"
         case .statistics: return "person.crop.circle"
         case .commonPhrases: return "text.quote"
-        case .transcripts: return "text.bubble.fill"
         case .permissions: return "shield.lefthalf.filled"
         case .about: return "gearshape"
         }
@@ -574,7 +565,7 @@ struct SettingsView: View {
             macroFeature.setEditorActive(false)
             membershipFeature.refreshIfNeeded()
         }
-        .onChange(of: selectedSection) { section in
+        .onChange(of: selectedSection) { _, section in
             if section == .mapping {
                 if preservesMappingContextOnNavigation { preservesMappingContextOnNavigation = false }
                 else { model.selectDefaultMappingRemoteIfAvailable() }
@@ -839,17 +830,9 @@ struct SettingsView: View {
             }
         case .mapping:
             if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
-                #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-                siriRemoteMappingPage
-                #else
                 mappingPage
-                #endif
             } else if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
-                #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-                chromecastMappingPage
-                #else
                 mappingPage
-                #endif
             } else {
                 mappingPage
             }
@@ -859,8 +842,6 @@ struct SettingsView: View {
             CommonPhraseSettingsView(store: model.commonPhraseStore) {
                 selectedSection = .mapping
             }
-        case .transcripts:
-            aboutPage
         case .permissions:
             permissionsPage
         case .about:
@@ -937,44 +918,6 @@ struct SettingsView: View {
         }
     }
 
-    #if SAYALL_CHROMECAST_ENABLED
-    /// 语音键模式选择器。挂在按键页靠下的位置（仅 Chromecast 档案的按键页显示）；
-    /// 从连接设置页迁移过来，避免同一控件出现在两处。
-    private var chromecastVoiceModeSection: some View {
-        // 选项只列设备**自报**支持的模式：自报不支持「按一次说话」时，这个选项根本不出现。
-        let capabilities = model.selectedRemoteVoiceCapabilities
-        let offeredModes = ChromecastVoiceMode.allCases.filter { mode in
-            mode != .toggle || capabilities.supportsToggleVoiceRecording
-        }
-        return VStack(alignment: .leading, spacing: 10) {
-            Divider()
-
-            Text("chromecast.mode.title")
-                .font(.system(size: 13, weight: .medium))
-
-            Picker("", selection: Binding(
-                get: { model.effectiveChromecastVoiceMode },
-                set: { newValue in
-                    settings.chromecastVoiceMode = newValue
-                    model.applyChromecastSettings()
-                }
-            )) {
-                ForEach(offeredModes) { mode in
-                    Text(LocalizedStringKey(mode.localizationKey)).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .disabled(!settings.chromecastEnabled)
-
-            Text(LocalizedStringKey(model.effectiveChromecastVoiceMode.detailLocalizationKey))
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    #endif
 
     private var connectionMembershipRequiredView: some View {
         membershipFeature.membershipRequiredView {
@@ -1218,19 +1161,11 @@ struct SettingsView: View {
     @ViewBuilder
     private var connectionRemotePhoto: some View {
         if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
-            #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-            SiriRemoteConnectionPhoto()
-            #else
             UnrecognizedRemotePhoto()
                 .frame(width: 82, height: 166)
-            #endif
         } else if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
-            #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-            ChromecastConnectionPhoto()
-            #else
             UnrecognizedRemotePhoto()
                 .frame(width: 82, height: 166)
-            #endif
         } else if let model = settings.selectedRemoteProfile?.model,
                   let resource = VoiceRemoteCatalog.photoResource(for: model) {
             // 型号在目录里 → 用目录指定的那张真机图。
@@ -1368,147 +1303,10 @@ struct SettingsView: View {
         }
     }
 
-    #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-    private var siriRemoteMappingPage: some View {
-        hardwareMappingPage(includeSiriScrollArrow: true) {
-            SiriRemoteMappingCanvas(
-                selectedControlID: $selectedSiriRemoteControlID,
-                activeControlIDs: model.activeAppleRemoteControlIDs,
-                voiceActive: model.activeAppleRemoteControlIDs.contains("siri"),
-                labels: SiriRemoteMappingCanvas.Labels(
-                    voiceTitle: localization.text("siri_remote.mapping.voice.title"),
-                    voiceFixed: localization.text("siri_remote.mapping.voice.fixed"),
-                    voiceDetail: localization.text("siri_remote.mapping.voice.detail"),
-                    missingPhoto: localization.text("siri_remote.mapping.photo.missing")
-                ),
-                buttonTitle: { controlID in
-                    siriRemoteButton(for: controlID)?.displayName(using: localization)
-                        ?? controlID
-                },
-                triggerTitle: { triggerID in
-                    ButtonTrigger(rawValue: triggerID)?.displayName(using: localization)
-                        ?? triggerID
-                },
-                actionSummary: { controlID, triggerID in
-                    guard let button = siriRemoteButton(for: controlID),
-                          let trigger = ButtonTrigger(rawValue: triggerID)
-                    else { return localization.text("action.disabled") }
-                    return mappingActionSummary(for: button, trigger: trigger)
-                },
-                onEdit: { controlID, triggerID in
-                    guard let button = siriRemoteButton(for: controlID),
-                          let trigger = ButtonTrigger(rawValue: triggerID)
-                    else { return }
-                    selectedSiriRemoteControlID = controlID
-                    selectedRemoteButton = button
-                    mappingActionFilter = .all
-                    mappingEditingTarget = ShortcutEditingTarget(
-                        button: button,
-                        trigger: trigger
-                    )
-                },
-                onVoiceSettings: { selectedSection = .integration }
-            )
-        }
-    }
 
-    private func siriRemoteButton(for controlID: String) -> RemoteButton? {
-        switch controlID {
-        case "power": return .power
-        case "up": return .up
-        case "left": return .left
-        case "select": return .ok
-        case "right": return .right
-        case "down": return .down
-        case "back": return .back
-        case "tv": return .tv
-        case "play_pause": return .playPause
-        case "volume_up": return .volumeUp
-        case "mute": return .mute
-        case "volume_down": return .volumeDown
-        default: return nil
-        }
-    }
-    #endif
-
-    #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-    /// Chromecast 按键页。
-    ///
-    /// 与小米/苹果按键页共用同一个页面框架（页头、设备选择器、动作编辑器、页脚），
-    /// 只有中间的遥控器画布由私有包提供，因此三种遥控器的页面功能完全一致。
-    private var chromecastMappingPage: some View {
-        hardwareMappingPage {
-            ChromecastMappingCanvas(
-                selectedControlID: $selectedChromecastControlID,
-                activeControlIDs: model.activeChromecastControlIDs,
-                voiceActive: model.isChromecastVoiceActive,
-                labels: ChromecastMappingCanvas.Labels(
-                    voiceTitle: localization.text("chromecast.mapping.voice.title"),
-                    voiceFixed: localization.text("chromecast.mapping.voice.fixed"),
-                    voiceDetail: localization.text("chromecast.mapping.voice.detail"),
-                    missingPhoto: localization.text("chromecast.mapping.photo.missing")
-                ),
-                buttonTitle: { controlID in
-                    chromecastButton(for: controlID)?.displayName(using: localization)
-                        ?? controlID
-                },
-                triggerTitle: { triggerID in
-                    ButtonTrigger(rawValue: triggerID)?.displayName(using: localization)
-                        ?? triggerID
-                },
-                actionSummary: { controlID, triggerID in
-                    guard let button = chromecastButton(for: controlID),
-                          let trigger = ButtonTrigger(rawValue: triggerID)
-                    else { return localization.text("action.disabled") }
-                    // 系统占用键（left/right/select）不在本 App 的映射范围内：单击槽位展示该键
-                    // 在系统侧的实际行为，其余槽位无动作。行为由 macOS 配件服务（BT-AACP）产生，
-                    // 详见 Testing/ChromecastVoicePitfalls.md。
-                    if let control = ChromecastRemoteControl(rawValue: controlID),
-                       ChromecastRemoteControl.isSystemManaged(
-                           control,
-                           allowSystemReservedKeys: settings.chromecastAllowSystemReservedKeys,
-                           exceptions: settings.chromecastSystemReservedExceptions
-                       ) {
-                        guard trigger == .singleClick else { return "—" }
-                        return localization.text("chromecast.mapping.system.\(controlID)")
-                    }
-                    return mappingActionSummary(for: button, trigger: trigger)
-                },
-                onEdit: { controlID, triggerID in
-                    guard let button = chromecastButton(for: controlID),
-                          let trigger = ButtonTrigger(rawValue: triggerID)
-                    else { return }
-                    selectedChromecastControlID = controlID
-                    selectedRemoteButton = button
-                    mappingActionFilter = .all
-                    mappingEditingTarget = ShortcutEditingTarget(
-                        button: button,
-                        trigger: trigger
-                    )
-                },
-                // 置灰表 = 默认表去掉已放开的键（主开关全放开 / 按键级豁免）。
-                systemReservedControlIDs: ChromecastRemoteControl.canvasReservedControlIDs(
-                    allowSystemReservedKeys: settings.chromecastAllowSystemReservedKeys,
-                    exceptions: settings.chromecastSystemReservedExceptions
-                ),
-                onVoiceSettings: { selectedSection = .integration }
-            )
-        }
-    }
-
-    private func chromecastButton(for controlID: String) -> RemoteButton? {
-        ChromecastRemoteControl(rawValue: controlID)?.remoteButton
-    }
-    #endif
 
     private var buttonProfilesChromecastReservedControls: Set<String> {
-        #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-        ChromecastRemoteControl.canvasReservedControlIDs(
-            allowSystemReservedKeys: settings.chromecastAllowSystemReservedKeys,
-            exceptions: settings.chromecastSystemReservedExceptions)
-        #else
         ["left", "right", "select"]
-        #endif
     }
 
     private func mappingConfiguration(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction {
@@ -1583,13 +1381,13 @@ struct SettingsView: View {
             }
         }
         .onAppear { macroFeature.prepareMappingDevice(settings.selectedRemoteProfileID) }
-        .onChange(of: macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).map(\.id)) { ids in
+        .onChange(of: macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).map(\.id)) { _, ids in
             if let profile = editingMappingProfileID, !ids.contains(profile) {
                 editingMappingProfileID = nil
                 shortcutCaptureTarget = nil
             }
         }
-        .onChange(of: settings.selectedRemoteProfileID) { _ in
+        .onChange(of: settings.selectedRemoteProfileID) { _, _ in
             macroFeature.prepareMappingDevice(settings.selectedRemoteProfileID)
             if let profile = editingMappingProfileID,
                !macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).contains(where: { $0.id == profile }) {
@@ -1748,13 +1546,6 @@ struct SettingsView: View {
                                     .id("mapping-action-editor")
                             }
 
-                            #if SAYALL_CHROMECAST_ENABLED
-                            // 语音键模式仅 Chromecast 遥控器有（该遥控器是唯一支持「按一次说话」的），
-                            // 放在按键页靠下的位置，方便随时切换手感。
-                            if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
-                                chromecastVoiceModeSection
-                            }
-                            #endif
 
                             mappingFooter(includeSiriScrollArrow: includeSiriScrollArrow)
                             Color.clear.frame(height: 1).id("mapping-page-bottom")
@@ -1765,7 +1556,7 @@ struct SettingsView: View {
                     .id(settings.selectedRemoteProfileID)
                     .compatibilityScrollEdgeEffect()
                 }
-                .onChange(of: settings.selectedRemoteProfileID) { _ in
+                .onChange(of: settings.selectedRemoteProfileID) { _, _ in
                     // 编辑器属于上一只遥控器；切换设备后不得把旧编辑区带到新页面。
                     mappingEditingTarget = nil
                     shortcutCaptureTarget = nil
@@ -1780,7 +1571,7 @@ struct SettingsView: View {
                         proxy.scrollTo("mapping-action-editor", anchor: .top)
                     }
                 }
-                .onChange(of: mappingEditingTarget?.id) { targetID in
+                .onChange(of: mappingEditingTarget?.id) { _, targetID in
                     guard targetID != nil else { return }
                     DispatchQueue.main.async {
                         withAnimation(.easeInOut(duration: 0.25)) {
@@ -2088,12 +1879,7 @@ struct SettingsView: View {
     private func remoteDeviceSelector(vertical: Bool = false) -> some View {
         let visibleProfiles = RemoteDeviceNamePolicy.sortedForCards(
             settings.remoteDeviceProfiles.filter { profile in
-                #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-                // Keep the activation entry available while the Apple adapter is stopped.
-                model.isRemoteConnected(profile.id) || profile.model.isAppleSiriRemote
-                #else
                 model.isRemoteConnected(profile.id)
-                #endif
             },
             modelName: remoteModelName,
             systemName: { model.systemDeviceName(for: $0) }
@@ -2194,12 +1980,6 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("\(modelName), \(systemName)"))
             .accessibilityAddTraits(selected ? .isSelected : [])
-            #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-            if profile.model.isAppleSiriRemote {
-                siriRemoteCardActions(profile)
-                    .fixedSize()
-            }
-            #endif
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -2222,31 +2002,6 @@ struct SettingsView: View {
         }
     }
 
-    #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-    private func siriRemoteCardActions(_ profile: RemoteDeviceProfile) -> some View {
-        VStack(spacing: 4) {
-            if !settings.siriRemoteEnabled {
-                Button(localization.text("siri_remote.activation.enable")) {
-                    model.selectRemoteProfile(profile.id)
-                    model.setSiriRemoteEnabled(true)
-                }
-            } else {
-                if model.siriRemoteAudioStatus.hasPrefix("unavailable:") {
-                    Button(localization.text("siri_remote.activation.retry")) {
-                        model.selectRemoteProfile(profile.id)
-                        model.prepareSiriRemoteFromUserAction()
-                    }
-                } else if model.siriRemoteAudioStatus != "ready" {
-                    Button(localization.text("siri_remote.activation.preparing")) {}
-                        .disabled(true)
-                }
-            }
-        }
-        .font(.system(size: 12))
-        .buttonStyle(.bordered)
-        .disabled(model.isStreaming || model.activePhysicalVoiceControlSource == .siriRemote)
-    }
-    #endif
 
     private func remoteConnectionLabel(connected: Bool) -> some View {
         Label(
@@ -3247,317 +3002,6 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private var statisticsPage: some View {
-        settingsPage {
-            HStack(spacing: 14) {
-                PageHeader(title: localization.text("statistics.page.title"))
-                Spacer(minLength: 20)
-                Label(localization.text("about.privacy.local_only"), systemImage: "lock")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-        } content: {
-            VStack(spacing: 14) {
-                sharePanel(for: .statistics)
-                statisticsSummaryGrid
-                StatisticsColumnsLayout {
-                    statisticsRankingPanel
-                    VStack(spacing: 14) {
-                        statisticsCalendarPanel
-                        statisticsVoiceSessionRankingPanel
-                    }
-                }
-            }
-        }
-    }
-
-    private var statisticsSummaryGrid: some View {
-        // Keep the approved layout as one row at the default width; only the narrowest windows wrap.
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                ForEach(statisticsMetrics) { metric in
-                    ProfileMetricCard(metric: metric)
-                        .frame(minWidth: 170, maxWidth: .infinity)
-                }
-            }
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: 12
-            ) {
-                ForEach(statisticsMetrics) { metric in
-                    ProfileMetricCard(metric: metric)
-                }
-            }
-        }
-    }
-
-    private var statisticsMetrics: [ProfileMetric] {
-        [
-            ProfileMetric(
-                id: "total-buttons",
-                systemImage: "keyboard",
-                title: localization.text("statistics.metric.total_button_count"),
-                value: localizedNumber(settings.usageStatistics(for: .total).buttonPressCount),
-                unit: localization.text("statistics.metric.count_unit")
-            ),
-            ProfileMetric(
-                id: "total-voice",
-                systemImage: "waveform",
-                title: localization.text("statistics.metric.total_voice_duration"),
-                value: voiceDurationText(for: .total),
-                unit: nil
-            ),
-            ProfileMetric(
-                id: "week-buttons",
-                systemImage: "chart.line.uptrend.xyaxis",
-                title: localization.text("statistics.metric.week_button_count"),
-                value: localizedNumber(settings.usageStatistics(for: .thisWeek).buttonPressCount),
-                unit: localization.text("statistics.metric.count_unit")
-            ),
-            ProfileMetric(
-                id: "longest-voice",
-                systemImage: "clock",
-                title: localization.text("statistics.metric.longest_voice"),
-                value: chartDurationText(
-                    seconds: UsageStatisticsPresentation.wholeSeconds(
-                        settings.usageMetadata(for: .total).longestVoiceSessionDuration
-                    )
-                ),
-                unit: nil
-            ),
-        ]
-    }
-
-    private var statisticsRankingPanel: some View {
-        ProfilePanel {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("statistics.ranking.title")
-                    .font(.title3.weight(.semibold))
-
-                statisticsRankingSection(
-                    title: localization.text("statistics.ranking.actions"),
-                    systemImage: "keyboard",
-                    entries: statisticsActionRanking
-                ) { entry in
-                    HStack(spacing: 8) {
-                        Text(entry.title).lineLimit(1)
-                        Spacer(minLength: 4)
-                        Text(localizedNumber(entry.count))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        Text(localization.text("statistics.metric.count_unit"))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                statisticsRankingSection(
-                    title: localization.text("statistics.ranking.buttons"),
-                    systemImage: "rectangle.grid.1x2",
-                    entries: statisticsButtonRanking
-                ) { entry in
-                    HStack(spacing: 8) {
-                        Text(entry.title)
-                        Spacer(minLength: 4)
-                        Text(localizedNumber(entry.count))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        Text(localization.text("statistics.metric.count_unit"))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-            }
-        }
-    }
-
-    private func statisticsRankingSection<Row: View>(
-        title: String,
-        systemImage: String,
-        entries: [StatisticsRankingEntry],
-        @ViewBuilder row: @escaping (StatisticsRankingEntry) -> Row
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Label(title, systemImage: systemImage)
-                .font(.subheadline.weight(.semibold))
-            if entries.isEmpty {
-                Text("statistics.ranking.empty")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(entries.prefix(10).enumerated()), id: \.element.id) { index, entry in
-                    HStack(spacing: 7) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(index < 3 ? Color.accentColor : Color.secondary)
-                            .frame(width: 18, alignment: .leading)
-                        row(entry)
-                    }
-                    .padding(.vertical, 3)
-                    if index < min(entries.count, 10) - 1 { Divider() }
-                }
-            }
-        }
-    }
-
-    private var statisticsCalendarPanel: some View {
-        ProfilePanel {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("statistics.calendar.title")
-                        .font(.title3.weight(.semibold))
-                    Spacer(minLength: 8)
-                    Text("statistics.calendar.hint")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
-                        .lineLimit(2)
-                        .frame(maxWidth: 160, alignment: .trailing)
-                }
-
-                StatisticsHeatmap(
-                    days: statisticsCalendarDays,
-                    selectedDate: $selectedStatisticsDate,
-                    localization: localization
-                )
-
-                if let selectedStatisticsDate {
-                    HStack {
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 7) {
-                            Text(calendarDateText(selectedStatisticsDate))
-                                .font(.subheadline.weight(.semibold))
-                            Button {
-                                selectedSection = .transcripts
-                            } label: {
-                                Label(
-                                    "statistics.calendar.open_reflections",
-                                    systemImage: "arrow.up.right"
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Color.accentColor)
-                        }
-                        .padding(10)
-                        .background(
-                            Color(nsColor: .controlBackgroundColor),
-                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        )
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .top)
-        }
-    }
-
-    private var statisticsVoiceSessionRankingPanel: some View {
-        ProfilePanel {
-            VStack(alignment: .leading, spacing: 7) {
-                Label(
-                    localization.text("statistics.ranking.voice_sessions"),
-                    systemImage: "waveform"
-                )
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.orange)
-
-                if settings.voiceSessionRanking.isEmpty {
-                    Text("statistics.voice_ranking.empty")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(Array(settings.voiceSessionRanking.prefix(10).enumerated()), id: \.element.id) {
-                        index, record in
-                        Button {
-                            selectedSection = .transcripts
-                        } label: {
-                            HStack(spacing: 7) {
-                                Text("\(index + 1)")
-                                    .foregroundStyle(.orange)
-                                    .frame(width: 18, alignment: .leading)
-                                Text(chartDurationText(
-                                    seconds: UsageStatisticsPresentation.wholeSeconds(record.duration)
-                                ))
-                                .monospacedDigit()
-                                Text("·").foregroundStyle(.secondary)
-                                Text(record.applicationName ?? localization.text(
-                                    "statistics.ranking.unknown_app"
-                                )).lineLimit(1)
-                                Spacer(minLength: 3)
-                                Text(voiceSessionDateText(record.endedAt))
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.vertical, 5)
-                        if index < min(settings.voiceSessionRanking.count, 10) - 1 {
-                            Divider()
-                        }
-                    }
-                }
-
-                Button {
-                    selectedSection = .transcripts
-                } label: {
-                    HStack(spacing: 4) {
-                        Spacer()
-                        Text("statistics.ranking.view_all")
-                        Image(systemName: "chevron.right")
-                    }
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 2)
-            }
-        }
-    }
-
-    private var transcriptHistoryPage: some View {
-        settingsPage {
-            HStack(alignment: .center, spacing: 14) {
-                PageHeader(title: localization.text("statistics.transcripts.title"))
-                    .fixedSize(horizontal: true, vertical: false)
-                    .layoutPriority(2)
-                Text(localization.text("statistics.transcripts.privacy"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
-                Spacer(minLength: 16)
-                Toggle(
-                    "statistics.transcripts.enable",
-                    isOn: $settings.localTranscriptHistoryEnabled
-                )
-                .toggleStyle(.switch)
-                .font(.system(size: 13, weight: .medium))
-                .fixedSize()
-                Toggle(
-                    "statistics.transcripts.recording_enable",
-                    isOn: $settings.localOriginalAudioRecordingEnabled
-                )
-                .toggleStyle(.switch)
-                .font(.system(size: 13, weight: .medium))
-                .fixedSize()
-            }
-        } content: {
-            CompatibilityGlassContainer(spacing: 14) {
-                TranscriptHistorySection(model: model, settings: settings)
-            }
-        }
-    }
-
-    // Kept as a source boundary for existing regression checks; the ranking now lives inline above.
-    private var voiceSessionRankingCard: some View {
-        EmptyView()
     }
 
     private var inlinePermissionsSection: some View {

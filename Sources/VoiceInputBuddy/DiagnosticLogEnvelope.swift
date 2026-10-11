@@ -74,7 +74,7 @@ struct DiagnosticLogEnvelope {
 }
 
 enum DiagnosticLogPublicKeyConfiguration {
-    static let environmentVariable = "SAYALL_DIAGNOSTIC_PUBLIC_KEY_BASE64"
+    static let environmentVariable = "BUDDY_DIAGNOSTIC_PUBLIC_KEY_BASE64"
     static let infoPlistKey = "VoiceInputBuddyDiagnosticPublicKey"
 
     static func current(

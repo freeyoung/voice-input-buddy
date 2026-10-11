@@ -248,13 +248,13 @@ private final class HCIConfigurationStore {
         let token = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
         var destination = trashURL.appendingPathComponent(
-            "com.apple.MobileBluetooth.debug.sayall-\(token).plist"
+            "com.apple.MobileBluetooth.debug.voiceinputbuddy-\(token).plist"
         )
         var counter = 0
         while fileManager.fileExists(atPath: destination.path) {
             counter += 1
             destination = trashURL.appendingPathComponent(
-                "com.apple.MobileBluetooth.debug.sayall-\(token)-\(counter).plist"
+                "com.apple.MobileBluetooth.debug.voiceinputbuddy-\(token)-\(counter).plist"
             )
         }
         try fileManager.moveItem(at: preferencesURL, to: destination)

@@ -1,8 +1,5 @@
 import Foundation
 
-#if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-import VoiceInputBuddySiriRemote
-#endif
 
 struct SiriRemoteDeviceIdentity: Hashable {
     let adapterID: String
@@ -148,155 +145,39 @@ final class SiriRemoteFeatureIntegration {
     var onContextualScroll: ((Double) -> Bool)?
     var onCenterTapConfirmation: ((SiriRemoteDeviceIdentity) -> Bool)?
 
-    #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-    private let feature: VoiceInputBuddySiriRemoteFeature
-    #endif
 
     init(logger: @escaping (String) -> Void = { _ in }) {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        feature = VoiceInputBuddySiriRemoteFeature(logger: logger)
-        feature.onConnection = { [weak self] connection in
-            guard let model = Self.hostModel(connection.model) else { return }
-            self?.onConnection?(SiriRemoteConnection(
-                device: Self.hostDevice(connection.device),
-                model: model,
-                fingerprint: connection.fingerprint,
-                isConnected: connection.isConnected
-            ))
-            // 当前私有包版本尚未公开能力集合；清空自报值后由宿主按型号默认能力回退。
-            self?.onDeclaredCapabilitiesChange?([])
-        }
-        feature.onControlEvent = { [weak self] event in
-            guard let control = SiriRemoteControl(rawValue: event.control.rawValue),
-                  let phase = SiriRemoteControlPhase(rawValue: event.phase.rawValue)
-            else { return }
-            self?.onControlEvent?(SiriRemoteControlEvent(
-                device: Self.hostDevice(event.device),
-                control: control,
-                phase: phase,
-                sequence: event.sequence,
-                cancellationReason: event.cancellationReason
-            ))
-        }
-        feature.onSamples = { [weak self] samples in self?.onSamples?(samples) }
-        feature.onStatus = { [weak self] status in self?.onStatus?(status) }
-        feature.onTouchFeedback = { [weak self] feedback in
-            switch feedback {
-            case let .pointerMoved(deltaX, deltaY, speed):
-                self?.onTouchFeedback?(.pointerMoved(
-                    deltaX: deltaX,
-                    deltaY: deltaY,
-                    speed: speed
-                ))
-            case let .scrolled(pixels, speed):
-                self?.onTouchFeedback?(.scrolled(
-                    pixels: pixels,
-                    speed: speed
-                ))
-            case .clicked:
-                self?.onTouchFeedback?(.clicked)
-            }
-        }
-        feature.onContextualScroll = { [weak self] pixels in
-            self?.onContextualScroll?(pixels) ?? false
-        }
-        feature.onCenterTapConfirmation = { [weak self] device in
-            self?.onCenterTapConfirmation?(Self.hostDevice(device)) ?? false
-        }
-        feature.onPowerSnapshot = { [weak self] snapshot in
-            guard let model = Self.hostModel(snapshot.model),
-                  let availability = SiriRemotePowerSnapshot.Availability(
-                      rawValue: snapshot.availability.rawValue
-                  )
-            else { return }
-            let powerState = RemotePowerState(rawSiriRemoteValue: snapshot.powerState.rawValue)
-            self?.onPowerSnapshot?(SiriRemotePowerSnapshot(
-                device: Self.hostDevice(snapshot.device),
-                model: model,
-                level: snapshot.level,
-                powerState: powerState,
-                observedAtUptime: snapshot.observedAtUptime,
-                availability: availability,
-                source: snapshot.source
-            ))
-        }
-        #endif
     }
 
     func start(userInitiated: Bool = false) {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        feature.start(userInitiated: userInitiated)
-        #endif
     }
 
     func restart(customMappingEnabled: Bool) {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        feature.restart(customMappingEnabled: customMappingEnabled)
-        #endif
     }
 
     func stop() {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        feature.stop()
-        #endif
     }
 
     @discardableResult
     func beginCapture() -> Bool {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        return feature.beginCapture()
-        #else
         return false
-        #endif
     }
 
     @discardableResult
     func resumeCaptureIfStopping() -> Bool {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        return feature.resumeCaptureIfStopping()
-        #else
         return false
-        #endif
     }
 
     func stopCapture(completion: @escaping () -> Void) {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        feature.stopCapture(completion: completion)
-        #else
         completion()
-        #endif
     }
 
     func setVoiceTouchSuppressed(_ suppressed: Bool) {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        feature.setVoiceTouchSuppressed(suppressed)
-        #endif
     }
 
     func setTouchRoutingMode(_ mode: SiriRemoteTouchRoutingMode) {
-        #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-        guard let privateMode = VoiceInputBuddySiriRemoteTouchRoutingMode(rawValue: mode.rawValue) else {
-            return
-        }
-        feature.setTouchRoutingMode(privateMode)
-        #endif
     }
 
-    #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-    private static func hostDevice(_ device: VoiceInputBuddySiriRemoteDeviceID) -> SiriRemoteDeviceIdentity {
-        SiriRemoteDeviceIdentity(
-            adapterID: device.adapterID,
-            instanceToken: device.instanceToken
-        )
-    }
-
-    private static func hostModel(_ model: VoiceInputBuddySiriRemoteModel) -> XiaomiRemoteModel? {
-        switch model {
-        case .a2854: .appleSiriRemoteA2854
-        case .a2540: .appleSiriRemoteA2540
-        }
-    }
-    #endif
 }
 
 private extension RemotePowerState {

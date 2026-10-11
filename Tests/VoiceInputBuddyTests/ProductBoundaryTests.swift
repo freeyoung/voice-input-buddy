@@ -71,7 +71,7 @@ struct ProductBoundaryTests {
         #expect(sections.contains(.mapping))
         #expect(sections.contains(.connection))
         #expect(!sections.contains(.statistics))
-        #expect(!sections.contains(.transcripts))
+        #expect(!SettingsSection.allCases.map(\.rawValue).contains("transcripts"))
         #expect(!sections.contains(.membership))
     }
 
