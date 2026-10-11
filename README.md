@@ -88,5 +88,3 @@ The tool must accept the virtual microphone and expose a usable voice shortcut. 
 | [Opus](https://www.opus-codec.org/) | Codec referenced by historical Apple remote compatibility code; its dynamic library is not included in the current installer |
 
 Historical references do not imply current Apple remote support. See the [module inventory](docs/modules.md) for internal modules and macOS frameworks, and [third-party notices](THIRD_PARTY_NOTICES.md) for versions, copyrights, and licenses.
-
-An independent open-source project with no official affiliation or endorsement from Xiaomi, SayAll, or third-party input tools.
