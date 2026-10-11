@@ -37,15 +37,14 @@ struct UpdateFeedSelection {
         guard let stableFeedURLString,
               let components = URLComponents(string: stableFeedURLString),
               components.scheme == "https",
-              components.host == "updates.voice-input-buddy.invalid",
+              components.host == "voice.zfdang.com",
               components.port == nil,
               components.user == nil,
               components.password == nil,
               components.query == nil,
               components.fragment == nil,
               let url = components.url,
-              ["appcast.xml", "appcast-intel.xml"].contains(url.lastPathComponent),
-              components.path == "/mac/channels/stable/\(url.lastPathComponent)"
+              components.path == "/appcast.xml"
         else { return nil }
         return url
     }
@@ -54,7 +53,7 @@ struct UpdateFeedSelection {
         guard let stableFeedURL,
               var components = URLComponents(url: stableFeedURL, resolvingAgainstBaseURL: false)
         else { return nil }
-        components.path = "/mac/channels/preview/\(stableFeedURL.lastPathComponent)"
+        components.path = "/preview/appcast.xml"
         return components.url
     }
 }

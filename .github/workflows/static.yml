@@ -10,6 +10,11 @@ on:
       - ".github/workflows/static.yml"
 
   # Allows you to run this workflow manually from the Actions tab
+  workflow_run:
+    workflows: ["macOS installer and release"]
+    types: [completed]
+    branches: [main]
+
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -27,6 +32,7 @@ concurrency:
 jobs:
   # Single deploy job since we're just deploying
   deploy:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -34,6 +40,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Include latest published update feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          # Pull only a published release feed; website-only deploys preserve it.
+          gh release view --json assets > "$RUNNER_TEMP/latest-release.json"
+          if python3 - "$RUNNER_TEMP/latest-release.json" <<'PYTHON'
+          import json, sys
+          sys.exit(0 if any(a['name'] == 'appcast.xml' for a in json.load(open(sys.argv[1]))['assets']) else 1)
+          PYTHON
+          then
+            gh release download --pattern appcast.xml --dir pages
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo 'Successful release is missing its update feed.' >&2
+            exit 1
+          fi
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

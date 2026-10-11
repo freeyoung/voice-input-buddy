@@ -141,7 +141,9 @@ enum UpdateFeedResolver {
 
 enum UpdateVersion {
     static func normalized(_ rawValue: String) -> String? {
-        let value = rawValue.hasPrefix("v") ? String(rawValue.dropFirst()) : rawValue
+        let stripped = rawValue.hasPrefix("v") ? String(rawValue.dropFirst()) : rawValue
+        let value = stripped.range(of: #"^\d{2}-\d{2}-\d{2}\.\d{3}$"#, options: .regularExpression) != nil
+            ? stripped.replacingOccurrences(of: "-", with: ".") : stripped
         guard value.range(of: #"^\d+(?:\.\d+){1,3}$"#, options: .regularExpression) != nil else {
             return nil
         }

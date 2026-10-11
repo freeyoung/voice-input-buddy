@@ -81,7 +81,7 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 | [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | 小米 ATVV 协议、ADPCM 解码和 HID 映射参考 |
 | [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | 虚拟麦克风驱动 |
 | [MiRemoteVoice](https://github.com/VincentKingHsu/MiRemoteVoice) | USB transport 回环音频设备的兼容设计参考 |
-| [Sparkle](https://github.com/sparkle-project/Sparkle) 2.9.4 | macOS 更新框架；当前尚未配置更新源 |
+| [Sparkle](https://github.com/sparkle-project/Sparkle) 2.9.4 | macOS 应用内更新，验证一体安装包的签名 |
 | [codex-siri-remote](https://github.com/luobosibing2/codex-siri-remote) | Apple 遥控器 HID 与触摸行为的历史参考 |
 | [SiriRemoteForge](https://github.com/HOLODATA-COM/SiriRemoteForge) | Apple 遥控器音频与 PacketLogger 格式的历史参考 |
 | [iRemote A2854](https://github.com/DaviBaum/iRemote-A2854) | Apple 遥控器诊断与授权流程的历史参考 |
