@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -17,7 +18,8 @@ class ReleaseSourcesTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / 'scripts').mkdir()
         shutil.copy2(SCRIPT, self.root / 'scripts/build-release-sources.sh')
-        (self.root / '.gitignore').write_text('.build/\ndist/\n')
+        shutil.copy2(SCRIPT.parent.parent / '.gitignore', self.root / '.gitignore')
+        shutil.copy2(SCRIPT.with_name('generate-appcast.py'), self.root / 'scripts/generate-appcast.py')
         (self.root / 'source.swift').write_text('release source\n')
         self.git('init', '-q')
         self.git('add', '.')
@@ -51,6 +53,21 @@ class ReleaseSourcesTests(unittest.TestCase):
             for dep in ['BlackHole', 'Sparkle']:
                 self.assertEqual(files.extractfile(base + f'vendor/{dep}/LICENSE').read(), b'dependency license\n')
                 self.assertEqual(len(files.extractfile(base + f'vendor/{dep}.revision').read().strip()), 40)
+
+    def test_imported_python_cache_does_not_block_source_archive(self):
+        # Apple's local Python redirects caches to ~/Library/Caches; runners
+        # use sibling __pycache__ directories. Exercise the runner layout.
+        loader = "import sys, importlib.util; sys.pycache_prefix = None; sys.dont_write_bytecode = False; " + \
+                 "spec = importlib.util.spec_from_file_location('appcast', 'scripts/generate-appcast.py'); " + \
+                 "module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)"
+        subprocess.run([sys.executable, '-c', loader], cwd=self.root, check=True)
+        self.assertTrue(list((self.root / 'scripts/__pycache__').glob('*.pyc')))
+        result = self.package()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        archive = self.root / 'dist/release/Voice_Input_Buddy_v26-10-11.001_sources.tar.gz'
+        with tarfile.open(archive) as files:
+            self.assertFalse(any('__pycache__' in name or name.endswith('.pyc')
+                                 for name in files.getnames()))
 
     def test_rejects_unstaged_source(self):
         (self.root / 'source.swift').write_text('uncommitted source\n')
