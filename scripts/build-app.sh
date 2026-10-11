@@ -20,7 +20,11 @@ for arch in ${BUILD_ARCHS:-$(uname -m)}; do
     bin="$(swift build --disable-keychain --scratch-path "$scratch" -c "$configuration" --arch "$arch" --show-bin-path)"
     binaries+=("$bin/VoiceInputBuddy")
 done
-app="$root/dist/Voice Input Buddy.app"
+destination="$root/dist/Voice Input Buddy.app"
+mkdir -p "$root/dist"
+staging="$(mktemp -d "$root/dist/.app-build.XXXXXX")"
+trap 'rm -rf "$staging"' EXIT
+app="$staging/Voice Input Buddy.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$app/Contents/Frameworks"
 lipo -create "${binaries[@]}" -output "$app/Contents/MacOS/VoiceInputBuddy"
 cp Resources/Info.plist "$app/Contents/Info.plist"
@@ -37,4 +41,8 @@ if [[ -n "${RELEASE_BUNDLE_VERSION:-}" ]]; then
 fi
 python3 scripts/verify-onboarding-resources.py "$app/Contents/Resources"
 codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$app"
-printf 'Built %s\n' "$app"
+# Publish only after the fresh bundle passes resource validation and signing.
+# Failed builds leave the previous usable app untouched.
+rm -rf "$destination"
+mv "$app" "$destination"
+printf 'Built %s\n' "$destination"

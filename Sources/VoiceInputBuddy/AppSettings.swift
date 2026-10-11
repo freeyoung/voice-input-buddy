@@ -43,6 +43,7 @@ private struct PersonalizedConfiguration: Codable {
     let buttonBindings: [String: ButtonAction]
     let buttonShortcuts: [String: CustomKeyboardShortcut]
     let unifiedBaseBindings: [UnifiedButtonBinding]?
+    let selectedMappingProfileID: UUID?
     let buttonApplicationProfileIDs: [String: UUID]?
     let secondaryButtonBindings: [String: [String: ConfiguredButtonAction]]
     let buttonRapidPressEnabled: [String: Bool]?
@@ -1959,6 +1960,7 @@ final class AppSettings: ObservableObject {
                 uniqueKeysWithValues: buttonShortcuts.map { ($0.key.rawValue, $0.value) }
             ),
             unifiedBaseBindings: unifiedBaseBindings,
+            selectedMappingProfileID: selectedRemoteProfileID,
             buttonApplicationProfileIDs: Dictionary(
                 uniqueKeysWithValues: buttonApplicationProfileIDs.map { ($0.key.rawValue, $0.value) }
             ),
@@ -2193,14 +2195,7 @@ final class AppSettings: ObservableObject {
         customMappingEnabled = configuration.customMappingEnabled
         buttonBindings = Self.defaultBindings.merging(importedBindings) { _, imported in imported }
         buttonShortcuts = importedShortcuts
-        unifiedBaseBindings = (configuration.unifiedBaseBindings ?? []).map { binding in
-            let configured = Self.validatedConfiguredAction(binding.configured)
-            if configured == nil { rejected.insert("unifiedBaseBindings") }
-            var result = binding
-            // Invalid explicit entries must not expose an older binding underneath.
-            result.configured = configured ?? .disabled
-            return result
-        }
+        unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected)
         buttonApplicationProfileIDs = importedApplicationProfileIDs
         secondaryButtonBindings = importedSecondaryBindings
         buttonRapidPressEnabled = importedRapidPressEnabled
@@ -2247,6 +2242,46 @@ final class AppSettings: ObservableObject {
     /// macOS virtual key codes are 7-bit; this app's own label table stops at 126 and
     /// `RemoteButton.nativeEvent` never exceeds it. A larger code is not a key.
     private static let maximumImportedKeyCode: UInt16 = 127
+
+    /// Device profile UUIDs are local to each Mac. Keep scopes known here, and
+    /// map the exported selection to this Mac's selection (or global defaults
+    /// before pairing). Other unknown scopes are reported rather than ignored.
+    private func importedUnifiedBindings(
+        from configuration: PersonalizedConfiguration,
+        rejected: inout Set<String>
+    ) -> [UnifiedButtonBinding] {
+        let bindings = configuration.unifiedBaseBindings ?? []
+        let localIDs = Set(remoteDeviceProfiles.map(\.id))
+        let scopedIDs = Set(bindings.compactMap(\.remoteProfileID))
+        // Older version-2 exports did not record their selection. A single
+        // device scope is unambiguous; never guess among several device scopes.
+        let sourceSelection = configuration.selectedMappingProfileID ??
+            (scopedIDs.count == 1 ? scopedIDs.first : nil)
+        let globals = bindings.filter { $0.remoteProfileID == nil }
+        let scoped = bindings.filter { $0.remoteProfileID != nil }
+        var imported: [UnifiedButtonBinding] = []
+        for binding in globals + scoped {
+            var result = binding
+            if let id = binding.remoteProfileID, !localIDs.contains(id) {
+                guard id == sourceSelection else {
+                    rejected.insert("unifiedBaseBindings")
+                    continue
+                }
+                result.remoteProfileID = selectedRemoteProfileID
+            }
+            let configured = Self.validatedConfiguredAction(binding.configured)
+            if configured == nil { rejected.insert("unifiedBaseBindings") }
+            result.configured = configured ?? .disabled
+            // A selected-device override beats a global default when imported
+            // before pairing, where both now have the same destination scope.
+            imported.removeAll {
+                $0.remoteProfileID == result.remoteProfileID &&
+                    $0.button == result.button && $0.trigger == result.trigger
+            }
+            imported.append(result)
+        }
+        return imported
+    }
 
     /// `nil` when the shortcut is outside what the app can record or inject. A shortcut that
     /// passes is rebuilt through the normal initializer, which applies exactly the mask a freshly

@@ -128,3 +128,133 @@ struct ProductDeepLinkTests {
         }
     }
 }
+
+@Suite("Scheduled voice task lifetime")
+@MainActor
+struct ScheduledVoiceTaskLifetimeTests {
+    private final class Probe {}
+
+    @Test func completedTaskReleasesCapturedObjects() async throws {
+        var probe: Probe? = Probe()
+        weak var observed = probe
+        var calls = 0
+        let task = VoiceFnTapScheduledTask.mainQueue(after: 0) { [retained = probe!] in
+            withExtendedLifetime(retained) { calls += 1 }
+        }
+        probe = nil
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(calls == 1)
+        #expect(observed == nil)
+        withExtendedLifetime(task) {}
+    }
+
+    @Test func cancellationReleasesCapturedObjectsBeforeDeadline() async throws {
+        var probe: Probe? = Probe()
+        weak var observed = probe
+        var calls = 0
+        let task = VoiceFnTapScheduledTask.mainQueue(after: 0.05) { [retained = probe!] in
+            withExtendedLifetime(retained) { calls += 1 }
+        }
+        probe = nil
+        task.cancel()
+        task.cancel()
+        #expect(observed == nil)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(calls == 0)
+        #expect(observed == nil)
+    }
+}
+
+@Suite("Portable device mappings")
+struct PortableDeviceMappingTests {
+    private func settings(_ suites: inout [String]) throws -> AppSettings {
+        let suite = "mapping-review-" + UUID().uuidString
+        suites.append(suite)
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        return AppSettings(defaults: defaults)
+    }
+
+    @Test func importedSelectedDeviceBindingsWorkOnAnotherMac() throws {
+        var suites: [String] = []
+        defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
+        let source = try settings(&suites)
+        let sourceID = source.registerBluetoothRemote(identifier: UUID())
+        source.selectRemoteProfile(sourceID)
+        source.setBaseBinding(.init(action: .commandCopy, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: sourceID)
+        let destination = try settings(&suites)
+        let destinationID = destination.registerBluetoothRemote(identifier: UUID())
+        destination.selectRemoteProfile(destinationID)
+        try destination.importConfiguration(from: source.exportedConfigurationData())
+        #expect(destination.configuredBaseAction(for: .ok, trigger: .singleClick,
+                                                 profileID: destinationID).action == .commandCopy)
+        #expect(destination.configurationImportNotice == nil)
+    }
+
+    @Test func importBeforePairingKeepsSelectedDeviceOverride() throws {
+        var suites: [String] = []
+        defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
+        let source = try settings(&suites)
+        source.setBaseBinding(.init(action: .escape, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: nil)
+        let sourceID = source.registerBluetoothRemote(identifier: UUID())
+        source.selectRemoteProfile(sourceID)
+        source.setBaseBinding(.init(action: .commandCopy, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: sourceID)
+        let destination = try settings(&suites)
+        try destination.importConfiguration(from: source.exportedConfigurationData())
+        let destinationID = destination.registerBluetoothRemote(identifier: UUID())
+        destination.selectRemoteProfile(destinationID)
+        #expect(destination.configuredBaseAction(for: .ok, trigger: .singleClick,
+                                                 profileID: destinationID).action == .commandCopy)
+    }
+
+    @Test func legacySingleDeviceExportStillWorks() throws {
+        var suites: [String] = []
+        defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
+        let source = try settings(&suites)
+        let sourceID = source.registerBluetoothRemote(identifier: UUID())
+        source.selectRemoteProfile(sourceID)
+        source.setBaseBinding(.init(action: .commandCopy, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: sourceID)
+        var payload = try #require(JSONSerialization.jsonObject(with: source.exportedConfigurationData()) as? [String: Any])
+        payload.removeValue(forKey: "selectedMappingProfileID")
+        let destination = try settings(&suites)
+        try destination.importConfiguration(from: JSONSerialization.data(withJSONObject: payload))
+        #expect(destination.configuredBaseAction(for: .ok, trigger: .singleClick).action == .commandCopy)
+        #expect(destination.configurationImportNotice == nil)
+    }
+
+    @Test func unrelatedUnknownDeviceScopesAreReported() throws {
+        var suites: [String] = []
+        defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
+        let source = try settings(&suites)
+        let first = source.registerBluetoothRemote(identifier: UUID())
+        let second = source.registerBluetoothRemote(identifier: UUID())
+        source.selectRemoteProfile(first)
+        source.setBaseBinding(.init(action: .commandCopy, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: first)
+        source.setBaseBinding(.init(action: .escape, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: second)
+        let destination = try settings(&suites)
+        try destination.importConfiguration(from: source.exportedConfigurationData())
+        #expect(destination.configuredBaseAction(for: .ok, trigger: .singleClick).action == .commandCopy)
+        #expect(destination.configurationImportNotice?.rejectedEntryStorageKeys == ["unifiedBaseBindings"])
+    }
+
+    @Test func sameMacRoundTripPreservesDeviceScopes() throws {
+        var suites: [String] = []
+        defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
+        let source = try settings(&suites)
+        let first = source.registerBluetoothRemote(identifier: UUID())
+        let second = source.registerBluetoothRemote(identifier: UUID())
+        source.selectRemoteProfile(first)
+        source.setBaseBinding(.init(action: .commandCopy, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: first)
+        source.setBaseBinding(.init(action: .escape, shortcut: nil),
+                              for: .ok, trigger: .singleClick, profileID: second)
+        try source.importConfiguration(from: source.exportedConfigurationData())
+        #expect(source.configuredBaseAction(for: .ok, trigger: .singleClick, profileID: first).action == .commandCopy)
+        #expect(source.configuredBaseAction(for: .ok, trigger: .singleClick, profileID: second).action == .escape)
+    }
+}

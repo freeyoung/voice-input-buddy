@@ -15,14 +15,40 @@ struct VoiceFnTapScheduledTask {
         after delay: TimeInterval,
         operation: @escaping () -> Void
     ) -> VoiceFnTapScheduledTask {
-        var workItem: DispatchWorkItem?
-        let item = DispatchWorkItem {
-            guard workItem?.isCancelled == false else { return }
-            operation()
-        }
-        workItem = item
+        let pending = PendingOperation(operation)
+        let item = DispatchWorkItem { pending.perform() }
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
-        return VoiceFnTapScheduledTask { item.cancel() }
+        return VoiceFnTapScheduledTask {
+            pending.cancel()
+            item.cancel()
+        }
+    }
+}
+
+/// Owns the callback without capturing its DispatchWorkItem. Clearing it on both
+/// terminal paths also releases captured objects when the task handle is retained.
+private final class PendingOperation {
+    private let lock = NSLock()
+    private var operation: (() -> Void)?
+
+    init(_ operation: @escaping () -> Void) {
+        self.operation = operation
+    }
+
+    func perform() {
+        lock.lock()
+        let operation = self.operation
+        self.operation = nil
+        lock.unlock()
+        operation?()
+    }
+
+    func cancel() {
+        lock.lock()
+        let cancelledOperation = operation
+        operation = nil
+        lock.unlock()
+        withExtendedLifetime(cancelledOperation) {}
     }
 }
 
