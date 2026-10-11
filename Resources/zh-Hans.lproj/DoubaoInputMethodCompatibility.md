@@ -4,7 +4,7 @@ Voice Input Buddy 使用基于 BlackHole 的独立双声道回环驱动，设备
 
 首次移植提供本地开发构建。运行 `scripts/build-driver.sh` 构建驱动，再运行 `scripts/build-driver-package.sh` 生成 `dist/VoiceInputBuddy-Microphone.pkg`。目前没有公开签名安装包或 DMG。
 
-自行安装本地 PKG 时，macOS 安装器需要管理员授权。安装包只安装 `/Library/Audio/Plug-Ins/HAL/BuddyMic2ch.driver`，不会自动启动 App 或重启 Core Audio。安装后重启相关音频应用或 Mac。
+自行安装本地 PKG 时，macOS 安装器需要管理员授权。安装包只安装 `/Library/Audio/Plug-Ins/HAL/BuddyMic2ch.driver`，不会自动启动 App；安装后会重启 Core Audio 以加载设备，会短暂中断播放和录音。如果刷新失败，请重启 Mac。
 
 在 wizard 中刷新音频设备，选择 Voice Input Buddy 作为输出；在目标语音工具中选择 Voice Input Buddy 作为麦克风，并配置匹配的语音快捷键。已有 BlackHole 2ch 也可选择。
 

@@ -4,7 +4,7 @@ Voice Input Buddy uses a separate two-channel BlackHole-based loopback driver, n
 
 This initial port provides local development builds. Build the driver using `scripts/build-driver.sh`, then create `dist/VoiceInputBuddy-Microphone.pkg` with `scripts/build-driver-package.sh`. No DMG or public signed installer is provided yet.
 
-When you choose to install the local PKG, macOS Installer requires administrator authorization. The package installs only `/Library/Audio/Plug-Ins/HAL/BuddyMic2ch.driver`; it does not launch the app or automatically restart Core Audio. Restart audio applications or your Mac afterward.
+When you choose to install the local PKG, macOS Installer requires administrator authorization. The package installs only `/Library/Audio/Plug-Ins/HAL/BuddyMic2ch.driver`; it does not launch the app. After installation it restarts Core Audio to load the device; this briefly interrupts playback and recording. If restart fails, restart your Mac.
 
 In the setup wizard, refresh audio devices and select Voice Input Buddy as the output. In your dictation application, select Voice Input Buddy as the microphone and configure the matching voice shortcut. BlackHole 2ch can also be selected if already installed.
 

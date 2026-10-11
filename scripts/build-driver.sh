@@ -20,13 +20,23 @@ for arch in arm64 x86_64; do
     xcrun clang -arch "$arch" -mmacosx-version-min=14.0 -bundle -O2 \
         -framework CoreFoundation -framework CoreAudio -framework Accelerate \
         '-DkDriver_Name="BuddyMic2ch"' '-DkPlugIn_BundleID="com.zfdang.voice-input-buddy.mic"' \
-        '-DkDevice_Name="Voice Input Buddy"' -DkNumber_Of_Channels=2 \
+        '-DkDevice_Name="Voice Input Buddy"' -DkNumber_Of_Channels=2 -DkHas_Driver_Name_Format=0 \
         "$source/BlackHole/BlackHole.c" -o "$work/BuddyMic2ch-$arch"
 done
 lipo -create "$work/BuddyMic2ch-arm64" "$work/BuddyMic2ch-x86_64" -output "$driver/Contents/MacOS/BuddyMic2ch"
 cp "$source/BlackHole/BlackHole.plist" "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable BuddyMic2ch' "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.zfdang.voice-input-buddy.mic' "$driver/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleName Voice Input Buddy Microphone' "$driver/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 0.1.1' "$driver/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 2' "$driver/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleIconFile BlackHole.icns' "$driver/Contents/Info.plist"
+# Check the effective identity, not only compiler command-line arguments.
+strings "$driver/Contents/MacOS/BuddyMic2ch" | grep -Fx 'BuddyMic2ch_UID' > /dev/null
+if strings "$driver/Contents/MacOS/BuddyMic2ch" | grep -F '%ich_UID' > /dev/null; then
+    echo 'Driver UID still includes channel formatting' >&2
+    exit 1
+fi
 cp "$root/Resources/AppIcon.icns" "$driver/Contents/Resources/BlackHole.icns"
 cp "$source/LICENSE" "$driver/Contents/Resources/BlackHole-LICENSE"
 

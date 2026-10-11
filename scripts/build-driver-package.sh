@@ -5,8 +5,9 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 test -s "$root/dist/BuddyMic2ch.driver/Contents/MacOS/BuddyMic2ch"
 codesign --verify --deep --strict "$root/dist/BuddyMic2ch.driver"
 work="$(mktemp -d "$root/.build/driver-package.XXXXXX")"
-mkdir -p "$work/payload/Library/Audio/Plug-Ins/HAL"
+mkdir -p "$work/payload/Library/Audio/Plug-Ins/HAL" "$work/scripts"
+cp "$root/scripts/driver-package/postinstall" "$work/scripts/postinstall"
 cp -R "$root/dist/BuddyMic2ch.driver" "$work/payload/Library/Audio/Plug-Ins/HAL/"
 pkgbuild --root "$work/payload" --identifier com.zfdang.voice-input-buddy.mic.installer \
-    --version 0.1.0 --install-location / "$root/dist/VoiceInputBuddy-Microphone.pkg"
+    --version 0.1.1 --scripts "$work/scripts" --install-location / "$root/dist/VoiceInputBuddy-Microphone.pkg"
 echo 'Unsigned local installer. Public releases require Developer ID Installer signing and notarization.'

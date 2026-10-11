@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+# HAL plug-ins are enumerated by Core Audio, not by the app process.
+# Installation may briefly interrupt active playback/recording.
+if /usr/bin/pgrep -x coreaudiod > /dev/null; then
+    if ! /usr/bin/killall coreaudiod; then
+        echo 'Microphone installed. Restart your Mac to load the driver.' >&2
+    fi
+fi
+exit 0
