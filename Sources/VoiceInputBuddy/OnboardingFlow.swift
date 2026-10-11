@@ -127,6 +127,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
     case weixin
     case typeless
     case vokie
+    case voicecursor
     case other
 
     var id: String { rawValue }
@@ -145,7 +146,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
             return "com.bytedance.inputmethod.doubaoime.pinyin"
         case .weixin:
             return "com.tencent.inputmethod.wetype.pinyin"
-        case .unselected, .typeless, .vokie, .other:
+        case .unselected, .typeless, .vokie, .voicecursor, .other:
             return nil
         }
     }
@@ -154,7 +155,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .vokie:
             return URL(string: "vokie://launch")
-        case .unselected, .doubao, .weixin, .typeless, .other:
+        case .unselected, .doubao, .weixin, .typeless, .voicecursor, .other:
             return nil
         }
     }
@@ -163,7 +164,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .typeless:
             return "now.typeless.desktop"
-        case .unselected, .doubao, .weixin, .vokie, .other:
+        case .unselected, .doubao, .weixin, .vokie, .voicecursor, .other:
             return nil
         }
     }
@@ -311,7 +312,7 @@ struct VoiceToolAdapterProfile: Equatable {
                 installationProbe: .publicURLScheme,
                 evidenceState: .pending
             )
-        case .other:
+        case .voicecursor, .other:
             return Self(
                 tool: tool,
                 supportedModes: [.hold, .toggle],
@@ -667,6 +668,7 @@ enum OnboardingVoiceToolVisibilityPolicy {
         if availability[.typeless] == .available {
             tools.append(.typeless)
         }
+        tools.append(.voicecursor)
         tools.append(.other)
         return tools
     }

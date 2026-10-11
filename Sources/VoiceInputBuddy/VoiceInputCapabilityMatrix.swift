@@ -45,7 +45,7 @@ extension OnboardingVoiceTool {
     var supportsHoldVoiceRecording: Bool {
         switch self {
         case .typeless: return false
-        case .doubao, .weixin, .vokie, .unselected, .other: return true
+        case .doubao, .weixin, .vokie, .voicecursor, .unselected, .other: return true
         }
     }
 }

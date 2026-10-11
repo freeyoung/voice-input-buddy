@@ -381,9 +381,12 @@ private struct MappingRemotePhoto: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(.quaternary)
                     .overlay {
-                        Text("remote.photo.missing")
-                            .font(.caption)
+                        Image(systemName: "appletvremote")
+                            .resizable()
+                            .scaledToFit()
                             .foregroundStyle(.secondary)
+                            .padding(20)
+                            .accessibilityLabel(Text("remote.device.illustration"))
                     }
             }
         }

@@ -1715,7 +1715,7 @@ struct SettingsView: View {
             HStack(alignment: .center, spacing: 14) {
                 mappingPageHeader
                     .fixedSize(horizontal: true, vertical: false)
-                remoteDeviceSelector()
+                mappingDevicePicker
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, 22)
@@ -2064,6 +2064,28 @@ struct SettingsView: View {
             selectedRemoteButton = .ok
         }
         .compatibilityButtonStyle(.standard)
+    }
+
+    private var mappingDevicePicker: some View {
+        let profiles = RemoteDeviceNamePolicy.sortedForCards(
+            settings.remoteDeviceProfiles,
+            modelName: remoteModelName,
+            systemName: { model.systemDeviceName(for: $0) }
+        )
+        return Picker("remote.device.selector", selection: Binding<UUID?>(
+            get: { settings.selectedRemoteProfileID },
+            set: { if let id = $0 { model.selectRemoteProfile(id) } }
+        )) {
+            if profiles.isEmpty || settings.selectedRemoteProfileID == nil {
+                Text("remote.device.select_placeholder").tag(Optional<UUID>.none)
+            }
+            ForEach(profiles) { profile in
+                Text(remoteModelName(profile)).tag(Optional(profile.id))
+            }
+        }
+        .pickerStyle(.menu)
+        .frame(maxWidth: 310)
+        .disabled(profiles.isEmpty)
     }
 
     @ViewBuilder
@@ -3212,7 +3234,7 @@ struct SettingsView: View {
         GlassPanel {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(localization.text(tool == .other ? "settings.integration.other_title" : tool.titleKey))
+                    Text(localization.text(tool.titleKey))
                         .font(.headline)
                     Spacer()
                     if settings.onboardingVoiceTool == tool {

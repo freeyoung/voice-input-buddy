@@ -369,19 +369,27 @@ struct OnboardingView: View {
 
     private var phaseHeader: some View {
         VStack(spacing: 14) {
-            HStack(spacing: 22) {
-                ForEach(Array(OnboardingPhase.allCases.enumerated()), id: \.element.rawValue) { index, phase in
-                    if index > 0 {
-                        Image(systemName: "chevron.right")
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(Array(OnboardingStep.visibleCases.enumerated()), id: \.element.rawValue) { index, step in
+                    let current = step == settings.onboardingStep.normalized
+                    let completed = step.progress < settings.onboardingStep.progress
+                    VStack(spacing: 7) {
+                        Text(completed ? "✓" : "\(index + 1)")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(current ? Color.white : Color.secondary)
+                            .frame(width: 25, height: 25)
+                            .background(current ? Color.accentColor : Color.primary.opacity(0.07), in: Circle())
+                        Text(localization.text("onboarding.step.\(step.rawValue)"))
+                            .font(.system(size: 11, weight: current ? .semibold : .regular))
+                            .foregroundStyle(current ? Color.primary : Color.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(localization.text(phase.localizationKey))
-                        .font(.system(size: 14, weight: phase == currentPhase ? .semibold : .regular))
-                        .foregroundStyle(phase == currentPhase ? Color.primary : Color.secondary)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .combine)
                 }
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 22)
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
@@ -395,7 +403,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28)
         }
         .padding(.top, 12)
-        .frame(height: 76)
+        .frame(height: 105)
     }
 
     private var leftPane: some View {
@@ -489,6 +497,17 @@ struct OnboardingView: View {
     private var welcomeContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             onboardingTitle("onboarding.welcome.title")
+            Picker("about.preferences.language", selection: Binding(
+                get: { localization.language },
+                set: { localization.select($0) }
+            )) {
+                Text(localization.text("language.system")).tag(AppLanguage.system)
+                Text("简体中文").tag(AppLanguage.simplifiedChinese)
+                Text("English").tag(AppLanguage.english)
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 380)
+            .accessibilityIdentifier("onboarding.language")
             Text(verbatim: localization.text("onboarding.welcome.detail"))
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
@@ -555,7 +574,7 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
-            if settings.onboardingVoiceTool == .other {
+            if settings.onboardingVoiceTool == .other || settings.onboardingVoiceTool == .voicecursor {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "mic.badge.xmark")
                         .font(.system(size: 16, weight: .medium))
@@ -2914,7 +2933,7 @@ struct OnboardingView: View {
         switch settings.onboardingVoiceTool {
         case .unselected:
             return false
-        case .other:
+        case .voicecursor, .other:
             return true
         case .vokie:
             return true
@@ -3254,6 +3273,7 @@ struct OnboardingView: View {
         case .weixin: return "message.fill"
         case .typeless: return "waveform.badge.mic"
         case .vokie: return "sparkles.rectangle.stack.fill"
+        case .voicecursor: return "mic.badge.plus"
         case .other: return "ellipsis.circle.fill"
         case .unselected: return "circle"
         }
@@ -3354,7 +3374,7 @@ struct OnboardingView: View {
                     )
                 ),
             ]
-        case .other:
+        case .voicecursor, .other:
             toolSteps = [
                 OnboardingInputMethodGuideStep(
                     id: 1,
@@ -3469,7 +3489,7 @@ struct OnboardingView: View {
         -> [OnboardingVoiceTool: OnboardingVoiceToolAvailability] {
         var availability: [OnboardingVoiceTool: OnboardingVoiceToolAvailability] = [:]
         for tool in [
-            OnboardingVoiceTool.doubao, .weixin, .typeless, .vokie, .other,
+            OnboardingVoiceTool.doubao, .weixin, .typeless, .vokie, .voicecursor, .other,
         ] {
             availability[tool] = OnboardingInputSourceSwitcher.availability(for: tool)
         }

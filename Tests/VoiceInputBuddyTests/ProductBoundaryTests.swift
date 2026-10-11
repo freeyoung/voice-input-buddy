@@ -56,14 +56,32 @@ struct ProductBoundaryTests {
         settings.gainDB = 6
         settings.customMappingEnabled = true
         settings.completeOnboarding()
-        SettingsPageBehavior.beginIntegrationSetup(tool: .other, settings: settings)
+        SettingsPageBehavior.beginIntegrationSetup(tool: .voicecursor, settings: settings)
         #expect(settings.selectedAudioDeviceUID == "BuddyMic2ch_UID")
         #expect(settings.gainDB == 6)
         #expect(settings.customMappingEnabled)
-        #expect(settings.onboardingVoiceTool == .other)
+        #expect(settings.onboardingVoiceTool == .voicecursor)
         #expect(settings.onboardingControlSource == .xiaomiRemote)
         #expect(settings.onboardingStep == .voiceTool)
         #expect(!settings.isOnboardingComplete)
+        let restored = AppSettings(defaults: defaults)
+        #expect(restored.onboardingVoiceTool == .voicecursor)
+        let tools = OnboardingVoiceToolVisibilityPolicy.visibleTools(availability: [:])
+        #expect(tools.contains(.voicecursor))
+        #expect(tools.contains(.other))
+    }
+
+    @Test @MainActor func firstRunLanguageFollowsSystemAndExplicitChoicePersists() throws {
+        let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.applicationLanguage == .system)
+        let localization = LocalizationStore(settings: settings)
+        localization.select(.english)
+        #expect(AppSettings(defaults: defaults).applicationLanguage == .english)
+        localization.select(.simplifiedChinese)
+        #expect(AppSettings(defaults: defaults).applicationLanguage == .simplifiedChinese)
     }
 
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {

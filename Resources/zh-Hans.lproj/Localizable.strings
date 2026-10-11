@@ -1261,9 +1261,24 @@
 "settings.integration.introduction" = "在这里配置接收遥控器音频与语音快捷键的工具。通过向导验证完整输入流程，避免设备已连接却仍无法输入。";
 "settings.integration.current" = "当前集成";
 "settings.integration.microphone_help" = "在输入工具中选择相同的虚拟麦克风，并让语音快捷键、按下与松开行为和下方设置保持一致。";
-"settings.integration.other_title" = "VoiceCursor / 其他工具";
+"settings.integration.other_title" = "其他工具";
 "settings.integration.configure" = "通过向导配置并测试";
 "settings.integration.shortcut_title" = "语音触发方式";
 "settings.integration.shortcut_help" = "这些选项只调整语音触发方式。普通遥控器按键在“按键映射”中配置；识别与文本整理由所选输入工具完成。";
 
 "remote.device.illustration" = "遥控器示意图";
+
+"remote.device.select_placeholder" = "请选择遥控器";
+
+"onboarding.voice_tool.voicecursor.title" = "VoiceCursor";
+"onboarding.voice_tool.voicecursor.detail" = "通过虚拟麦克风与配置的语音快捷键连接 VoiceCursor。";
+
+"onboarding.step.welcome" = "欢迎";
+"onboarding.step.remoteAvailability" = "准备设备";
+"onboarding.step.permissions" = "系统权限";
+"onboarding.step.remote" = "连接遥控器";
+"onboarding.step.audio" = "虚拟麦克风";
+"onboarding.step.voiceTool" = "输入工具";
+"onboarding.step.voiceTest" = "语音测试";
+"onboarding.step.controls" = "按键测试";
+"onboarding.step.complete" = "完成";

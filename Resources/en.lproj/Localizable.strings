@@ -1261,9 +1261,24 @@
 "settings.integration.introduction" = "Configure the tool that receives your remote audio and voice shortcut. Use the setup guide to verify the complete path, rather than assuming a detected device is ready for dictation.";
 "settings.integration.current" = "Current integration";
 "settings.integration.microphone_help" = "Choose the same virtual microphone inside the input tool. Its voice shortcut and press/release behavior must match the settings below.";
-"settings.integration.other_title" = "VoiceCursor / Other Tools";
+"settings.integration.other_title" = "Other Tools";
 "settings.integration.configure" = "Configure & Test with Guide";
 "settings.integration.shortcut_title" = "Voice trigger";
 "settings.integration.shortcut_help" = "These controls affect the voice trigger. Configure ordinary remote buttons in Buttons. The selected input tool performs recognition and text cleanup.";
 
 "remote.device.illustration" = "Remote control illustration";
+
+"remote.device.select_placeholder" = "Select a remote";
+
+"onboarding.voice_tool.voicecursor.title" = "VoiceCursor";
+"onboarding.voice_tool.voicecursor.detail" = "Use VoiceCursor with the virtual microphone and your configured voice shortcut.";
+
+"onboarding.step.welcome" = "Welcome";
+"onboarding.step.remoteAvailability" = "Your device";
+"onboarding.step.permissions" = "Permissions";
+"onboarding.step.remote" = "Connect remote";
+"onboarding.step.audio" = "Microphone";
+"onboarding.step.voiceTool" = "Input tool";
+"onboarding.step.voiceTest" = "Voice test";
+"onboarding.step.controls" = "Button test";
+"onboarding.step.complete" = "Done";
