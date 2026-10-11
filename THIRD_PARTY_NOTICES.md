@@ -1,5 +1,17 @@
 # Third-party notices
 
+## Current distribution
+
+Voice Input Buddy bundles its app and the independently named BuddyMic2ch driver in one PKG. Driver sources are BlackHole v0.7.1 with third_party/blackhole/device-usb.patch. The complete source archive includes the actual patched driver and Sparkle sources. RC003 product photos, upstream proprietary artwork, libopus binaries and private extensions are not distributed. The historical descriptions below do not imply they are bundled or supported.
+
+## Sparkle
+
+- Source: <https://github.com/sparkle-project/Sparkle>
+- Version: 2.9.4 / `b6496a74a087257ef5e6da1c5b29a447a60f5bd7`
+- License: MIT and the framework's included third-party notices
+
+The complete framework and its license resources are preserved in the app; matching source is included with releases. No update feed or upstream signing key is reused.
+
 ## remote-mic-app
 
 - Source: <https://github.com/HD838A/remote-mic-app>

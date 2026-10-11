@@ -1,42 +1,92 @@
 # Voice Input Buddy
 
-Voice Input Buddy（语音搭子）把遥控器等硬件的按键和麦克风连接到语音输入法与听写工具。当前首次移植聚焦 **macOS 14 及以上**；Windows 属于后续平台计划，尚未提供实现或安装包。
+**English** | [简体中文](README.zh-CN.md)
 
-这是基于 [remote-mic-app](https://github.com/HD838A/remote-mic-app) 的独立 GPL-3.0-only 衍生项目，与 SayAll 原产品、小米和第三方输入软件不存在官方合作或背书关系。
+Turn a remote control into a voice-input button for your computer. Press to talk, release to finish, and let your preferred input method or dictation tool enter text into the current field.
 
-## 保留的能力
+[Website](https://voice.zfdang.com) · [Downloads](https://github.com/zfdang/voice-input-buddy/releases)
 
-- 小米遥控器 BLE 连接、ATVV 音频协议与 ADPCM 解码。
-- 音频设备选择和虚拟麦克风路由。
-- 按下开始、松开结束的语音键，以及普通按键映射。
-- 蓝牙、输入监控、辅助功能权限检查和首次设置 wizard。
-- 自定义应用快捷键、常用语和本机设置导入导出。
-- 基于 BlackHole 固定源码构建的独立 `BuddyMic2ch.driver`。
+Supports **macOS 14 and later**, on Apple Silicon and Intel Macs. Windows support is planned.
 
-本项目不提供使用统计、回眸文本采集、录音归档或日志上传，也不包含上游私有会员、AI、手机或 Web 服务。部分内部历史数据类型暂时保留，以便完成主体移植；采集执行路径已禁用，相关页面不进入导航，MCP 可执行程序不构建。
+## What can it do?
 
-## 本地开发
+- Use a remote's microphone for voice input, without reaching for the keyboard.
+- Map remote buttons to keyboard shortcuts, application actions, or common phrases.
+- Configure hold-to-talk or press-to-start/stop behavior for your input tool.
+- Set up permissions, the microphone driver, device connection, and input integration in one guide.
 
-需要 Xcode 和 Swift 6.2。运行测试需选择完整 Xcode 开发环境；若当前选择 Command Line Tools，可在命令前加 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`。首次构建会下载 Sparkle 2.9.4。
+Voice Input Buddy does not collect usage statistics, save recordings or transcript history, or upload logs. Recognition and text cleanup are handled by your selected input tool, with that tool's own network and privacy settings.
 
-```bash
-swift build --disable-keychain
-swift test --disable-keychain
-./scripts/build-app.sh
-./scripts/build-driver.sh
-./scripts/build-driver-package.sh
+## How does it work?
+
+```text
+Remote microphone → Bluetooth audio → Voice Input Buddy → Virtual microphone → Input tool
+Remote voice button → Voice Input Buddy → Voice shortcut → Text in the current field
 ```
 
-`dist/Voice Input Buddy.app` 和驱动 PKG 目前是本地开发产物，未经发布公证，不能视为正式发行版本。首次运行请按 wizard 授权并选择回环设备；在目标输入法或 VoiceCursor 中选择同一设备，并配置相匹配的语音快捷键。第三方语音工具的识别、整理与延迟由第三方控制。
+The app decodes remote audio and sends it to a virtual microphone while triggering the selected tool's voice shortcut. It connects hardware to input software; it does not run its own speech-recognition model. Live transcription, recognition speed, and corrections depend on the input tool.
 
-## 文档
+## How do I use it?
 
-- [产品范围和架构](docs/architecture.md)
-- [界面与使用流程](docs/interface.md)
-- [macOS 开发与驱动](docs/development.md)
-- [移植来源和许可](docs/provenance.md)
-- [隐私边界与验证](docs/privacy-and-testing.md)
+Download `Voice_Input_Buddy_*.pkg` from [Releases](https://github.com/zfdang/voice-input-buddy/releases). One installer includes both the app and its virtual microphone driver.
 
-## 许可
+1. Install and open `/Applications/Voice Input Buddy.app`.
+2. Follow the guide to grant Bluetooth, Input Monitoring, and Accessibility permissions, and check that the driver is detected. The app follows your system language by default; you can choose English or Chinese on the first screen.
+3. Connect your remote. Select the **Voice Input Buddy** microphone in your input tool.
+4. Configure the tool's voice shortcut under **Integration**, then test it with the guide.
+5. Focus a text field, press the voice button to speak, and release to finish. Adjust the trigger behavior for tools that use separate start/stop taps.
 
-软件代码和本项目原创图标采用 **GPL-3.0-only**，见 [LICENSE](LICENSE)。保留上游和其他贡献者版权；第三方组件按其各自许可证使用，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。原产品的专有 Logo 和来源不明确的产品照片未迁入。
+Configure other buttons under **Buttons**. To check the setup again, use **Run Setup Guide Again** at the top of Settings.
+
+Driver installation requires administrator authorization and briefly interrupts audio. Current installers are not Apple-notarized and may be blocked by macOS; updates can require renewed permissions. See [installation and release notes](docs/releases.md).
+
+## Which devices are supported?
+
+| Device | Status |
+| --- | --- |
+| Xiaomi Bluetooth Remote 2 Pro | Connection and buttons tested locally; audio operation confirmed by the user |
+| Compatible Xiaomi RC001 / RC003 series remotes | ATVV audio and button protocol support is included; individual models and firmware need testing |
+| Apple Siri Remote, generic Bluetooth/USB buttons, foot pedals | Not currently offered as supported devices |
+
+Bluetooth pairing alone does not establish compatibility: the remote must use a supported button and audio protocol.
+
+## Which input methods and tools can I use?
+
+| Tool | Integration |
+| --- | --- |
+| WeType / WeChat Input Method | Dedicated setup entry with virtual microphone and voice shortcut |
+| Doubao Input Method | Dedicated setup entry with hold and tap behavior |
+| Typeless | Configure its voice shortcut and start/stop behavior |
+| Vokie | Dedicated setup entry |
+| VoiceCursor | Separate entry using the virtual microphone and a custom voice shortcut |
+| Other voice-input tools | Configure a custom shortcut under Other Tools |
+
+The tool must accept the virtual microphone and expose a usable voice shortcut. Versions and settings vary: verify the actual behavior with the guide. A configuration entry does not mean every version has been tested.
+
+## More information
+
+- [Interface and troubleshooting](docs/interface.md)
+- [Website and deployment](docs/website.md)
+- [Development and builds](docs/development.md)
+- [Releases and installers](docs/releases.md)
+- [Architecture and scope](docs/architecture.md)
+- [Privacy and testing](docs/privacy-and-testing.md)
+- [Source provenance](docs/provenance.md), [GPL-3.0-only license](LICENSE), [third-party notices](THIRD_PARTY_NOTICES.md)
+
+## References
+
+| Project / module | Role |
+| --- | --- |
+| [remote-mic-app](https://github.com/HD838A/remote-mic-app) | Code foundation for remote connectivity, audio bridging, button mappings, and interface |
+| [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | Xiaomi ATVV protocol, ADPCM decoding, and HID mapping reference |
+| [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | Virtual microphone driver |
+| [MiRemoteVoice](https://github.com/VincentKingHsu/MiRemoteVoice) | USB-transport loopback compatibility design reference |
+| [Sparkle](https://github.com/sparkle-project/Sparkle) 2.9.4 | macOS update framework; no update feed is configured yet |
+| [codex-siri-remote](https://github.com/luobosibing2/codex-siri-remote) | Historical reference for Apple remote HID and touch behavior |
+| [SiriRemoteForge](https://github.com/HOLODATA-COM/SiriRemoteForge) | Historical reference for Apple remote audio and PacketLogger formats |
+| [iRemote A2854](https://github.com/DaviBaum/iRemote-A2854) | Historical reference for Apple remote diagnostics and authorization |
+| [Opus](https://www.opus-codec.org/) | Codec referenced by historical Apple remote compatibility code; its dynamic library is not included in the current installer |
+
+Historical references do not imply current Apple remote support. See the [module inventory](docs/modules.md) for internal modules and macOS frameworks, and [third-party notices](THIRD_PARTY_NOTICES.md) for versions, copyrights, and licenses.
+
+An independent open-source project with no official affiliation or endorsement from Xiaomi, SayAll, or third-party input tools.
