@@ -295,7 +295,6 @@ final class AppSettings: ObservableObject {
     private enum Keys {
         static let gainDB = "gainDB"
         static let selectedAudioDeviceUID = "selectedAudioDeviceUID"
-        static let lastUserSelectedInputDeviceUID = "lastUserSelectedInputDeviceUID"
         static let lastKnownAudioDeviceUID = "lastKnownAudioDeviceUID"
         static let customMappingEnabled = "customMappingEnabled"
         static let legacyExclusiveHID = "exclusiveHID"
@@ -369,10 +368,6 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    var lastUserSelectedInputDeviceUID: String? {
-        get { defaults.string(forKey: Keys.lastUserSelectedInputDeviceUID) }
-        set { defaults.set(newValue, forKey: Keys.lastUserSelectedInputDeviceUID) }
-    }
     private(set) var lastKnownAudioDeviceUID: String
 
     @Published var customMappingEnabled: Bool {

@@ -268,11 +268,6 @@ struct MobileRemoteButtonObservation: Equatable {
     let button: RemoteButton
 }
 
-private struct ManagedDefaultInputTransition {
-    let virtualUID: String
-    let fallbackUID: String
-}
-
 enum BluetoothVoiceStopPolicy {
     /// Remote stop ends capture but must not discard PCM already scheduled for playback.
     static func shouldFlushAudio(handledByFnTapMode _: Bool) -> Bool {
@@ -825,7 +820,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var virtualAudioReleaseGeneration: UInt64 = 0
     private var pendingVirtualAudioRelease: (generation: UInt64, reason: String)?
     private var systemAudioSuspensionState = SystemAudioSuspensionState()
-    private var managedDefaultInputTransition: ManagedDefaultInputTransition?
     private lazy var audioHardwareListener: AudioObjectPropertyListenerBlock = { [weak self] count, addresses in
         let properties = Self.audioHardwarePropertyNames(count: count, addresses: addresses)
         self?.scheduleAudioRecovery(reason: "hardware_change", details: "properties=\(properties)")
@@ -1254,7 +1248,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         isAudioOutputReady = false
         virtualAudioReleaseGeneration &+= 1
         pendingVirtualAudioRelease = nil
-        managedDefaultInputTransition = nil
         if shouldStopAudioOnPreparationQueue {
             audioPreparationQueue.async { [weak self] in
                 self?.audioOutput.stop()
@@ -2128,9 +2121,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                     reason: publicReason,
                     source: "app"
                 )
-                if configured {
-                    self.restoreManagedDefaultInputIfAppropriate(reason: reason)
-                }
                 completion(configured)
             }
         }
@@ -2169,7 +2159,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func startObservingAudioHardware() {
         guard observedAudioHardwareAddresses.isEmpty else { return }
-        rememberCurrentUserInputDeviceIfNeeded(reason: "audio_monitor_start")
         for selector in [
             kAudioHardwarePropertyDevices,
             kAudioHardwarePropertyDefaultInputDevice,
@@ -2217,9 +2206,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private func scheduleAudioRecovery(reason: String, details: String = "") {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.started else { return }
-            if details == "properties=default_input" {
-                self.rememberCurrentUserInputDeviceIfNeeded(reason: "hardware_change")
-            }
             guard !self.settings.selectedAudioDeviceUID.isEmpty else {
                 AppLogger.shared.write("AUDIO RECOVERY ignored reason=\(reason) detail=\(details) no_selected_device")
                 return
@@ -6512,7 +6498,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             return
         }
         guard pendingVirtualAudioRelease == nil else { return }
-        switchDefaultInputToFallbackIfNeeded(reason: reason)
         let pendingVoiceBufferCount = audioOutput.pendingVoiceBufferCountForDiagnostics
         guard VirtualAudioConnectionLifecyclePolicy.shouldScheduleRelease(
             hasPendingRelease: pendingVirtualAudioRelease != nil,
@@ -6580,104 +6565,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 "bluetooth_voice=\(bluetoothVoiceActive) " +
                 "mobile_voice=\(activeMobileVoiceSource != nil) test_tone=\(isPlayingTestTone)"
         )
-    }
-
-    private func switchDefaultInputToFallbackIfNeeded(reason: String) {
-        guard managedDefaultInputTransition == nil else { return }
-        let selectedUID = settings.selectedAudioDeviceUID
-        guard !selectedUID.isEmpty,
-              CoreAudioDeviceCatalog.defaultInputDevice()?.uid == selectedUID
-        else { return }
-        guard let fallback = preferredFallbackInput(excludingUID: selectedUID) else {
-            AppLogger.shared.write("AUDIO DEFAULT_INPUT fallback_failed reason=\(reason) no_candidate")
-            return
-        }
-        let result = CoreAudioDeviceCatalog.setDefaultInputDevice(fallback)
-        guard result == noErr else {
-            AppLogger.shared.write(
-                "AUDIO DEFAULT_INPUT fallback_failed reason=\(reason) " +
-                    "target={\(CoreAudioDeviceCatalog.deviceDiagnostic(fallback))} " +
-                    AppLogger.errorFields(domain: "os_status", code: Int(result))
-            )
-            return
-        }
-        managedDefaultInputTransition = ManagedDefaultInputTransition(
-            virtualUID: selectedUID,
-            fallbackUID: fallback.uid
-        )
-        AppLogger.shared.write(
-            "AUDIO DEFAULT_INPUT fallback_applied reason=\(reason) " +
-                "target={\(CoreAudioDeviceCatalog.deviceDiagnostic(fallback))}"
-        )
-    }
-
-    private func preferredFallbackInput(excludingUID: String) -> AudioDeviceInfo? {
-        CoreAudioDeviceCatalog.preferredFallbackInput(
-            excludingUID: excludingUID,
-            preferredUID: settings.lastUserSelectedInputDeviceUID
-        )
-    }
-
-    private func rememberCurrentUserInputDeviceIfNeeded(reason: String) {
-        let current = CoreAudioDeviceCatalog.defaultInputDevice()
-        let decision = DefaultInputFallbackPolicy.observationDecision(
-            currentUID: current?.uid,
-            selectedVirtualUID: settings.selectedAudioDeviceUID,
-            managedFallbackUID: managedDefaultInputTransition?.fallbackUID,
-            lastRememberedUID: settings.lastUserSelectedInputDeviceUID
-        )
-        switch decision {
-        case .ignore:
-            return
-        case .clearManagedTransition:
-            managedDefaultInputTransition = nil
-            return
-        case let .remember(uid, clearManagedTransition):
-            if clearManagedTransition {
-                managedDefaultInputTransition = nil
-            }
-            settings.lastUserSelectedInputDeviceUID = uid
-        }
-        AppLogger.shared.write(
-            "AUDIO DEFAULT_INPUT remembered reason=\(reason) target={\(CoreAudioDeviceCatalog.deviceDiagnostic(current))}"
-        )
-    }
-
-    private func restoreManagedDefaultInputIfAppropriate(reason: String) {
-        guard let transition = managedDefaultInputTransition else { return }
-        let currentDefault = CoreAudioDeviceCatalog.defaultInputDevice()
-        guard DefaultInputFallbackPolicy.shouldRestoreVirtualInput(
-            managedVirtualUID: transition.virtualUID,
-            selectedVirtualUID: settings.selectedAudioDeviceUID,
-            managedFallbackUID: transition.fallbackUID,
-            currentDefaultUID: currentDefault?.uid
-        ) else {
-            managedDefaultInputTransition = nil
-            AppLogger.shared.write(
-                "AUDIO DEFAULT_INPUT restore_skipped reason=\(reason) current={\(CoreAudioDeviceCatalog.deviceDiagnostic(currentDefault))}"
-            )
-            return
-        }
-        guard let virtualInput = CoreAudioDeviceCatalog.inputDevices().first(where: {
-            $0.uid == transition.virtualUID
-        }) else {
-            AppLogger.shared.write("AUDIO DEFAULT_INPUT restore_failed reason=\(reason) virtual_unavailable")
-            return
-        }
-        let result = CoreAudioDeviceCatalog.setDefaultInputDevice(virtualInput)
-        if result == noErr {
-            managedDefaultInputTransition = nil
-            AppLogger.shared.write(
-                "AUDIO DEFAULT_INPUT restore_applied reason=\(reason) " +
-                    "target={\(CoreAudioDeviceCatalog.deviceDiagnostic(virtualInput))}"
-            )
-        } else {
-            AppLogger.shared.write(
-                "AUDIO DEFAULT_INPUT restore_failed reason=\(reason) " +
-                    "target={\(CoreAudioDeviceCatalog.deviceDiagnostic(virtualInput))} " +
-                    AppLogger.errorFields(domain: "os_status", code: Int(result))
-            )
-        }
     }
 
     private func receivePhoneAudio(_ samples: [Int16], source: MobileVoiceSource) {
