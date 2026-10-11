@@ -292,47 +292,6 @@ enum CoreAudioDeviceCatalog {
         }
     }
 
-    static func defaultInputDevice() -> AudioDeviceInfo? {
-        withPropertyLock {
-            defaultDevice(selector: kAudioHardwarePropertyDefaultInputDevice)
-        }
-    }
-
-    static func setDefaultInputDevice(_ device: AudioDeviceInfo) -> OSStatus {
-        withPropertyLock {
-            var address = AudioObjectPropertyAddress(
-                mSelector: kAudioHardwarePropertyDefaultInputDevice,
-                mScope: kAudioObjectPropertyScopeGlobal,
-                mElement: kAudioObjectPropertyElementMain
-            )
-            var deviceID = device.id
-            return AudioObjectSetPropertyData(
-                AudioObjectID(kAudioObjectSystemObject),
-                &address,
-                0,
-                nil,
-                UInt32(MemoryLayout<AudioDeviceID>.size),
-                &deviceID
-            )
-        }
-    }
-
-    static func preferredFallbackInput(
-        excludingUID excludedUID: String,
-        preferredUID: String? = nil
-    ) -> AudioDeviceInfo? {
-        let devices = inputDevices()
-        let builtInDeviceIDs = Set(devices.compactMap { device in
-            transportType(for: device.id) == kAudioDeviceTransportTypeBuiltIn ? device.id : nil
-        })
-        return DefaultInputFallbackPolicy.preferredFallback(
-            in: devices,
-            excludingUID: excludedUID,
-            builtInDeviceIDs: builtInDeviceIDs,
-            preferredUID: preferredUID
-        )
-    }
-
     static func outputDevicesDiagnostic(_ devices: [AudioDeviceInfo]) -> String {
         devices.map(deviceDiagnostic).joined(separator: " | ")
     }
@@ -723,56 +682,6 @@ enum VirtualAudioHealthPolicy {
             engineRunning: engineRunning,
             playerPlaying: playerPlaying
         ) && boundToSelectedDevice
-    }
-}
-
-enum DefaultInputFallbackPolicy {
-    enum ObservationDecision: Equatable {
-        case ignore
-        case clearManagedTransition
-        case remember(uid: String, clearManagedTransition: Bool)
-    }
-
-    static func preferredFallback(
-        in devices: [AudioDeviceInfo],
-        excludingUID excludedUID: String,
-        builtInDeviceIDs: Set<AudioDeviceID>,
-        preferredUID: String? = nil
-    ) -> AudioDeviceInfo? {
-        let candidates = devices.filter { $0.uid != excludedUID }
-        if let preferredUID,
-           let preferred = candidates.first(where: { $0.uid == preferredUID }) {
-            return preferred
-        }
-        return candidates.first { builtInDeviceIDs.contains($0.id) } ?? candidates.first
-    }
-
-    static func shouldRestoreVirtualInput(
-        managedVirtualUID: String,
-        selectedVirtualUID: String,
-        managedFallbackUID: String,
-        currentDefaultUID: String?
-    ) -> Bool {
-        managedVirtualUID == selectedVirtualUID && currentDefaultUID == managedFallbackUID
-    }
-
-    static func observationDecision(
-        currentUID: String?,
-        selectedVirtualUID: String,
-        managedFallbackUID: String?,
-        lastRememberedUID: String?
-    ) -> ObservationDecision {
-        guard let currentUID,
-              currentUID != selectedVirtualUID,
-              currentUID != managedFallbackUID
-        else { return .ignore }
-        if currentUID == lastRememberedUID {
-            return managedFallbackUID == nil ? .ignore : .clearManagedTransition
-        }
-        return .remember(
-            uid: currentUID,
-            clearManagedTransition: managedFallbackUID != nil
-        )
     }
 }
 

@@ -384,7 +384,7 @@
 "audio.action.refresh_devices" = "Refresh Devices";
 "audio.action.learn_virtual_microphones" = "Get BlackHole";
 "audio.action.send_test_tone" = "Play Test Sound";
-"audio.output.privacy_help" = "Remote audio is sent only to the selected device. When the last remote disconnects, macOS switches its default microphone to a physical microphone if it was using this virtual device. On reconnect, Voice Input Buddy restores the virtual microphone only if you have not changed that setting. The default speakers are never changed.";
+"audio.output.privacy_help" = "Remote audio is sent only to the selected device. Disconnecting, stopping, quitting or reconfiguring Voice Input Buddy does not change the system default microphone or speakers. Select the same virtual microphone in your voice input tool.";
 "audio.compatibility.title" = "Compatible Audio Device";
 "audio.compatibility.section_title" = "Voice Input & Compatibility";
 "audio.compatibility.microphone_label" = "Compatible virtual microphone";
