@@ -35,6 +35,7 @@ jobs:
         run: |
           python3 scripts/test-release-metadata.py
           python3 scripts/test-release-sources.py
+          python3 scripts/test-app-bundle.py
           python3 scripts/test-appcast.py
           python3 scripts/test-update-signature.py
           swift test --disable-keychain
