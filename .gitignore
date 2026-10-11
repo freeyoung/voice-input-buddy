@@ -3,3 +3,7 @@
 dist/
 .DS_Store
 *.xcuserstate
+
+# Python release tests import helpers and generate bytecode beside them in CI.
+__pycache__/
+*.py[cod]
