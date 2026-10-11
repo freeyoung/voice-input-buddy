@@ -876,7 +876,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             header()
                 .padding(.horizontal, 22)
-                .padding(.top, 18)
+                .padding(.top, 12)
                 .padding(.bottom, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -1715,7 +1715,7 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, 22)
-            .padding(.top, 18)
+            .padding(.top, 12)
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -4993,7 +4993,7 @@ private struct PageHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 25, weight: .semibold))
+            .font(.system(size: 22, weight: .semibold))
     }
 }
 
