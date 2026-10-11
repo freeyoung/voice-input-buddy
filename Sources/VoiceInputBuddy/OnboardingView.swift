@@ -440,6 +440,22 @@ struct OnboardingView: View {
             .scrollIndicators(.visible)
 
             HStack(alignment: .center, spacing: 16) {
+                if settings.onboardingStep == .permissions {
+                    Picker(selection: Binding(
+                        get: { localization.language },
+                        set: { localization.select($0) }
+                    )) {
+                        Text(localization.text("language.system")).tag(AppLanguage.system)
+                        Text("简体中文").tag(AppLanguage.simplifiedChinese)
+                        Text("English").tag(AppLanguage.english)
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: 190)
+                    .accessibilityLabel(localization.text("about.preferences.language"))
+                    .accessibilityIdentifier("onboarding.language")
+                }
                 if settings.onboardingStep == .voiceTool && !canContinue {
                     Text(verbatim: localization.text("onboarding.voice_tool.guide.continue_hint"))
                         .font(.system(size: 12))
@@ -472,7 +488,7 @@ struct OnboardingView: View {
     private var stepContent: some View {
         switch settings.onboardingStep {
         case .welcome:
-            welcomeContent
+            permissionsContent
         case .voiceTool:
             voiceToolContent
         case .remoteAvailability:
@@ -497,17 +513,6 @@ struct OnboardingView: View {
     private var welcomeContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             onboardingTitle("onboarding.welcome.title")
-            Picker("about.preferences.language", selection: Binding(
-                get: { localization.language },
-                set: { localization.select($0) }
-            )) {
-                Text(localization.text("language.system")).tag(AppLanguage.system)
-                Text("简体中文").tag(AppLanguage.simplifiedChinese)
-                Text("English").tag(AppLanguage.english)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 380)
-            .accessibilityIdentifier("onboarding.language")
             Text(verbatim: localization.text("onboarding.welcome.detail"))
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
@@ -1342,7 +1347,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 10) {
-                if settings.onboardingControlMethod.requiresBluetoothPermission {
+                if settings.onboardingControlMethod.requiresBluetoothPermission || settings.onboardingStep == .permissions {
                     permissionRow(
                         id: "permission.bluetooth",
                         icon: "antenna.radiowaves.left.and.right",
@@ -1352,7 +1357,7 @@ struct OnboardingView: View {
                         action: requestBluetoothPermission
                     )
                 }
-                if settings.onboardingControlMethod.requiresInputMonitoringPermission {
+                if settings.onboardingControlMethod.requiresInputMonitoringPermission || settings.onboardingStep == .permissions {
                     permissionRow(
                         id: "permission.input-monitoring",
                         icon: "keyboard",
@@ -1371,6 +1376,26 @@ struct OnboardingView: View {
                     action: requestAccessibilityPermission
                 )
             }
+
+            statusCard(
+                icon: "mic.fill",
+                title: localization.text("settings.driver.title"),
+                detail: localization.text(microphoneDriverInstalled
+                    ? "settings.driver.installed" : "settings.driver.missing"),
+                isComplete: microphoneDriverInstalled
+            )
+            HStack {
+                Button(localization.text("audio.action.refresh_devices")) {
+                    model.refreshAudioDevices()
+                }
+                Button(localization.text("audio.compatibility.open_install_guide")) {
+                    model.openDoubaoDriverInstructions(using: localization)
+                }
+            }
+            .buttonStyle(.bordered)
+            Text(verbatim: localization.text("settings.driver.reload_help"))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
 
             if settings.onboardingControlMethod.usesOnDemandAudioOutput {
                 statusCard(
@@ -2622,13 +2647,13 @@ struct OnboardingView: View {
         switch settings.onboardingStep {
         case .permissions:
             sidePanel(titleKey: "onboarding.side.permissions") {
-                if settings.onboardingControlMethod.requiresBluetoothPermission {
+                if settings.onboardingControlMethod.requiresBluetoothPermission || settings.onboardingStep == .permissions {
                     sideCheck(
                         "permission.bluetooth.title",
                         isComplete: bluetoothAuthorization == .allowedAlways
                     )
                 }
-                if settings.onboardingControlMethod.requiresInputMonitoringPermission {
+                if settings.onboardingControlMethod.requiresInputMonitoringPermission || settings.onboardingStep == .permissions {
                     sideCheck(
                         "permission.input_monitoring.title",
                         isComplete: inputMonitoringGranted
@@ -2865,6 +2890,12 @@ struct OnboardingView: View {
         OnboardingPhase.phase(for: settings.onboardingStep)
     }
 
+    private var microphoneDriverInstalled: Bool {
+        model.audioDevices.contains {
+            OnboardingAudioSelectionPolicy.isSupportedDevice(uid: $0.uid, name: $0.name)
+        }
+    }
+
     private var capabilities: OnboardingCapabilities {
         OnboardingCapabilities(
             systemFunctionKeyAvailable: systemFunctionKeyAvailable,
@@ -2873,6 +2904,7 @@ struct OnboardingView: View {
             accessibilityGranted: accessibilityGranted,
             remoteConnected: selectedControlConnected,
             remoteButtonObserved: !observedRemoteButtons.isEmpty,
+            microphoneDriverInstalled: microphoneDriverInstalled,
             audioReady: model.isAudioOutputReady,
             audioOutputSelected: audioOutputSelected,
             voiceSessionStarted: voiceSessionStarted,
@@ -3735,7 +3767,7 @@ struct OnboardingView: View {
             requestedRemoteConnectionRecovery = false
             secureInputWaitStartedAtUptime = nil
             prepareSelectedControlConnection()
-        case .audio:
+        case .permissions, .audio:
             model.refreshAudioDevices()
         case .voiceTest:
             refreshSelectedVoiceToolRuntimeState()
@@ -4392,9 +4424,9 @@ struct OnboardingView: View {
         if settings.onboardingStep != .voiceTest {
             settings.recordFirstUseEvent(.passed, step: settings.onboardingStep)
         }
-        if settings.onboardingStep == .remoteAvailability {
-            settings.setOnboardingStep(.permissions)
-            return
+        if settings.onboardingStep == .remoteAvailability,
+           settings.onboardingControlMethod == .physicalRemote {
+            settings.customMappingEnabled = true
         }
         if settings.onboardingStep == .permissions {
             if settings.onboardingControlMethod == .physicalRemote {

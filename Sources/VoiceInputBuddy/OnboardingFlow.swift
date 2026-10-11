@@ -12,15 +12,19 @@ enum OnboardingStep: String, CaseIterable, Codable {
     case controls
     case complete
 
-    /// The public flow keeps the control-device decision immediately after the welcome page.
-    /// The legacy control-method case remains decodable so an interrupted older flow can resume.
+    /// Match the main navigation: environment, connection, buttons, then integration.
+    /// Legacy pages remain decodable for interrupted setup sessions.
     static let visibleCases: [Self] = [
-        .welcome, .remoteAvailability, .permissions, .remote, .audio, .voiceTool,
-        .voiceTest, .controls, .complete,
+        .permissions, .remoteAvailability, .remote, .audio, .controls, .voiceTool,
+        .voiceTest, .complete,
     ]
 
     var normalized: Self {
-        self == .controlMethod ? .remoteAvailability : self
+        switch self {
+        case .welcome: return .permissions
+        case .controlMethod: return .remoteAvailability
+        default: return self
+        }
     }
 
     var requiresRuntime: Bool {
@@ -700,6 +704,7 @@ struct OnboardingCapabilities: Equatable {
     var accessibilityGranted = false
     var remoteConnected = false
     var remoteButtonObserved = false
+    var microphoneDriverInstalled = false
     var audioReady = false
     var audioOutputSelected = false
     var voiceSessionStarted = false
@@ -795,14 +800,11 @@ enum OnboardingFlowPolicy {
             return remoteAvailability == .noRemote &&
                 (controlMethod == .iPhoneApp || controlMethod == .webRemote)
         case .permissions:
-            return isControlSelectionValid(
-                remoteAvailability: remoteAvailability,
-                controlMethod: controlMethod
-            ) &&
-                (!controlMethod.requiresBluetoothPermission || capabilities.bluetoothGranted) &&
-                (!controlMethod.requiresInputMonitoringPermission ||
-                    capabilities.inputMonitoringGranted) &&
-                capabilities.accessibilityGranted
+            // Environment setup must work before a control device is selected.
+            return capabilities.bluetoothGranted &&
+                capabilities.inputMonitoringGranted &&
+                capabilities.accessibilityGranted &&
+                capabilities.microphoneDriverInstalled
         case .remote:
             return capabilities.remoteConnected && capabilities.remoteButtonObserved
         case .audio:

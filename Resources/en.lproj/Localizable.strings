@@ -845,8 +845,8 @@
 "onboarding.control_method.recommended" = "Recommended";
 "onboarding.control_method.no_iphone" = "Without an iPhone";
 "onboarding.control_method.illustration" = "Choose the control method you can use now";
-"onboarding.permissions.title" = "Allow Voice Input Buddy to connect and control your Mac";
-"onboarding.permissions.detail" = "Enable all three permissions so every control method, custom button, and input-source switch remains available.";
+"onboarding.permissions.title" = "Prepare permissions and the microphone driver";
+"onboarding.permissions.detail" = "Enable all three permissions and check the virtual microphone before choosing a device.";
 "onboarding.permissions.bluetooth.detail" = "Discover and connect to your paired Bluetooth remote";
 "onboarding.permissions.input.detail" = "Read physical button events and support voice input";
 "onboarding.permissions.accessibility.detail" = "Run voice shortcuts and custom button actions";
@@ -1275,9 +1275,9 @@
 
 "onboarding.step.welcome" = "Welcome";
 "onboarding.step.remoteAvailability" = "Your device";
-"onboarding.step.permissions" = "Permissions";
+"onboarding.step.permissions" = "Environment";
 "onboarding.step.remote" = "Connect remote";
-"onboarding.step.audio" = "Microphone";
+"onboarding.step.audio" = "Audio routing";
 "onboarding.step.voiceTool" = "Input tool";
 "onboarding.step.voiceTest" = "Voice test";
 "onboarding.step.controls" = "Button test";

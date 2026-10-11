@@ -375,11 +375,10 @@ struct FirstUseDiagnosticContext: Equatable {
         case .controlMethod:
             if controlMethod == .unselected { return nil }
         case .permissions:
-            if controlMethod.requiresBluetoothPermission && !capabilities.bluetoothGranted {
+            if !capabilities.bluetoothGranted {
                 return .bluetoothPermissionDenied
             }
-            if controlMethod.requiresInputMonitoringPermission &&
-                !capabilities.inputMonitoringGranted {
+            if !capabilities.inputMonitoringGranted {
                 return .inputMonitoringPermissionDenied
             }
             if !capabilities.accessibilityGranted { return .accessibilityPermissionDenied }

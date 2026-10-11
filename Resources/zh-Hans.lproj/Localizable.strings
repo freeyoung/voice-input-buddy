@@ -845,8 +845,8 @@
 "onboarding.control_method.recommended" = "推荐";
 "onboarding.control_method.no_iphone" = "没有 iPhone 时";
 "onboarding.control_method.illustration" = "选择现在就能使用的控制方式";
-"onboarding.permissions.title" = "允许语音搭子连接和控制 Mac";
-"onboarding.permissions.detail" = "为确保所有控制方式、自定义按键和输入法切换都能正常使用，请开启以下三项权限。";
+"onboarding.permissions.title" = "检查权限与麦克风驱动";
+"onboarding.permissions.detail" = "先开启三项权限并检查虚拟麦克风驱动，再选择和连接设备。";
 "onboarding.permissions.bluetooth.detail" = "发现并连接已配对的蓝牙遥控器";
 "onboarding.permissions.input.detail" = "读取实体按键并支持语音输入";
 "onboarding.permissions.accessibility.detail" = "执行语音快捷键和自定义按键";
@@ -1275,9 +1275,9 @@
 
 "onboarding.step.welcome" = "欢迎";
 "onboarding.step.remoteAvailability" = "准备设备";
-"onboarding.step.permissions" = "系统权限";
+"onboarding.step.permissions" = "权限与环境";
 "onboarding.step.remote" = "连接遥控器";
-"onboarding.step.audio" = "虚拟麦克风";
+"onboarding.step.audio" = "音频路由";
 "onboarding.step.voiceTool" = "输入工具";
 "onboarding.step.voiceTest" = "语音测试";
 "onboarding.step.controls" = "按键测试";

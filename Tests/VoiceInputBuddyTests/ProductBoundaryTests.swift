@@ -89,15 +89,18 @@ struct ProductBoundaryTests {
         let ready = OnboardingCapabilities(
             bluetoothGranted: true,
             inputMonitoringGranted: true,
-            accessibilityGranted: true
+            accessibilityGranted: true,
+            microphoneDriverInstalled: true
         )
         #expect(OnboardingFlowPolicy.canContinue(
-            from: .permissions, voiceTool: .unselected, capabilities: ready
+            from: .permissions, voiceTool: .unselected, remoteAvailability: .unselected,
+            controlMethod: .unselected, capabilities: ready
         ))
         for keyPath in [
             \OnboardingCapabilities.bluetoothGranted,
             \OnboardingCapabilities.inputMonitoringGranted,
-            \OnboardingCapabilities.accessibilityGranted
+            \OnboardingCapabilities.accessibilityGranted,
+            \OnboardingCapabilities.microphoneDriverInstalled
         ] {
             var missing = ready
             missing[keyPath: keyPath] = false
@@ -105,6 +108,26 @@ struct ProductBoundaryTests {
                 from: .permissions, voiceTool: .unselected, capabilities: missing
             ))
         }
+    }
+
+    @Test @MainActor func wizardStartsWithEnvironmentAndMigratesLegacyWelcome() throws {
+        let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.onboardingStep == .permissions)
+        #expect(settings.onboardingControlMethod == .unselected)
+        #expect(OnboardingStep.permissions.previous == nil)
+        #expect(OnboardingStep.permissions.next == .remoteAvailability)
+        #expect(OnboardingStep.remoteAvailability.next == .remote)
+        #expect(OnboardingStep.audio.next == .controls)
+        #expect(OnboardingStep.controls.next == .voiceTool)
+        defaults.set("welcome", forKey: "onboarding.step")
+        #expect(AppSettings(defaults: defaults).onboardingStep == .permissions)
+        settings.completeOnboarding()
+        settings.restartOnboarding()
+        #expect(settings.onboardingStep == .permissions)
+        #expect(settings.onboardingControlMethod == .unselected)
     }
 
     @Test func independentMicrophoneIsAcceptedByWizard() {
