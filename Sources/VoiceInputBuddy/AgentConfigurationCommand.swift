@@ -280,7 +280,7 @@ enum AgentConfigurationCommand {
     private static func isAvailable(_ tool: OnboardingVoiceTool) -> Bool {
         guard tool != .unselected else { return false }
         switch tool {
-        case .other:
+        case .voicecursor, .other:
             return true
         case .doubao, .weixin, .vokie, .typeless:
             return OnboardingInputSourceSwitcher.availability(for: tool) == .available

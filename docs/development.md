@@ -11,3 +11,18 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 构建脚本默认仅做开发签名。正式发行前需要本项目自己的 Developer ID Application / Installer 签名、公证、驱动安装卸载回归与独立更新方案。不会沿用原作者更新密钥、会员后端或发布服务。
 
 当前迁入仍包含上游禁用 Apple 扩展的辅助代码与历史兼容类型；不启用私有协议设备支持。不应将本次构建成功等同于 Mac App Store 审核通过。
+
+## 本地开发
+
+需要完整 Xcode 和 Swift 6.2 或更新版本。首次构建会下载 Sparkle 2.9.4。若当前选择 Command Line Tools，可使用 `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`。
+
+```bash
+swift build --disable-keychain
+swift test --disable-keychain
+./scripts/build-app.sh
+./scripts/build-driver.sh
+```
+
+开发 App 位于 `dist/Voice Input Buddy.app`，驱动位于 `dist/BuddyMic2ch.driver`。App 构建按架构使用独立的 `.build/app-arm64` 与 `.build/app-x86_64` 目录，避免 SwiftPM 缓存混用。Release 与一体安装包的复现步骤见 [发布流程](releases.md)。
+
+本地 `scripts/build-app.sh` 与发布 workflow 共用 Git 版本计算：最近提交在 Asia/Singapore 的日期与完整历史提交数生成 `vYY-MM-DD.NNN`。设置页显示该标记；macOS 的数字版本及构建号分别写入 `CFBundleShortVersionString` 与 `CFBundleVersion`。本地源码有未提交修改时，版本仍对应当前 HEAD，不能把它当作正式发布源码标识。

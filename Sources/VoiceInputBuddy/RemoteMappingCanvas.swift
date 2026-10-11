@@ -363,7 +363,7 @@ struct RemoteMappingCanvas: View {
 private enum MappingRemoteImageResource {
     static let image: NSImage? = {
         guard let url = Bundle.main.url(
-            forResource: "RC003-remote-photo",
+            forResource: "BuddyRemoteIllustration",
             withExtension: "png"
         ) else { return nil }
         return NSImage(contentsOf: url)
@@ -381,9 +381,12 @@ private struct MappingRemotePhoto: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(.quaternary)
                     .overlay {
-                        Text("remote.photo.missing")
-                            .font(.caption)
+                        Image(systemName: "appletvremote.gen4.fill")
+                            .resizable()
+                            .scaledToFit()
                             .foregroundStyle(.secondary)
+                            .padding(20)
+                            .accessibilityLabel(Text("remote.device.illustration"))
                     }
             }
         }

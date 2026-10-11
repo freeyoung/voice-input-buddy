@@ -369,19 +369,27 @@ struct OnboardingView: View {
 
     private var phaseHeader: some View {
         VStack(spacing: 14) {
-            HStack(spacing: 22) {
-                ForEach(Array(OnboardingPhase.allCases.enumerated()), id: \.element.rawValue) { index, phase in
-                    if index > 0 {
-                        Image(systemName: "chevron.right")
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(Array(OnboardingStep.visibleCases.enumerated()), id: \.element.rawValue) { index, step in
+                    let current = step == settings.onboardingStep.normalized
+                    let completed = step.progress < settings.onboardingStep.progress
+                    VStack(spacing: 7) {
+                        Text(completed ? "✓" : "\(index + 1)")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(current ? Color.white : Color.secondary)
+                            .frame(width: 25, height: 25)
+                            .background(current ? Color.accentColor : Color.primary.opacity(0.07), in: Circle())
+                        Text(localization.text("onboarding.step.\(step.rawValue)"))
+                            .font(.system(size: 11, weight: current ? .semibold : .regular))
+                            .foregroundStyle(current ? Color.primary : Color.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(localization.text(phase.localizationKey))
-                        .font(.system(size: 14, weight: phase == currentPhase ? .semibold : .regular))
-                        .foregroundStyle(phase == currentPhase ? Color.primary : Color.secondary)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .combine)
                 }
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 22)
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
@@ -395,7 +403,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 28)
         }
         .padding(.top, 12)
-        .frame(height: 76)
+        .frame(height: 105)
     }
 
     private var leftPane: some View {
@@ -415,8 +423,6 @@ struct OnboardingView: View {
                 .onboardingFocusEffectDisabled()
                 .accessibilityIdentifier("onboarding.back")
                 .padding(.bottom, 24)
-            } else {
-                Color.clear.frame(height: 40)
             }
 
             ScrollView(.vertical) {
@@ -432,6 +438,22 @@ struct OnboardingView: View {
             .scrollIndicators(.visible)
 
             HStack(alignment: .center, spacing: 16) {
+                if settings.onboardingStep == .permissions {
+                    Picker(selection: Binding(
+                        get: { localization.language },
+                        set: { localization.select($0) }
+                    )) {
+                        Text(localization.text("language.system")).tag(AppLanguage.system)
+                        Text("简体中文").tag(AppLanguage.simplifiedChinese)
+                        Text("English").tag(AppLanguage.english)
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: 190)
+                    .accessibilityLabel(localization.text("about.preferences.language"))
+                    .accessibilityIdentifier("onboarding.language")
+                }
                 if settings.onboardingStep == .voiceTool && !canContinue {
                     Text(verbatim: localization.text("onboarding.voice_tool.guide.continue_hint"))
                         .font(.system(size: 12))
@@ -454,7 +476,7 @@ struct OnboardingView: View {
             }
             .padding(.top, 14)
         }
-        .padding(.top, 28)
+        .padding(.top, settings.onboardingStep == .permissions ? 12 : 28)
         .padding(.horizontal, 48)
         .padding(.bottom, 28)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -464,7 +486,7 @@ struct OnboardingView: View {
     private var stepContent: some View {
         switch settings.onboardingStep {
         case .welcome:
-            welcomeContent
+            permissionsContent
         case .voiceTool:
             voiceToolContent
         case .remoteAvailability:
@@ -555,7 +577,7 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
-            if settings.onboardingVoiceTool == .other {
+            if settings.onboardingVoiceTool == .other || settings.onboardingVoiceTool == .voicecursor {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "mic.badge.xmark")
                         .font(.system(size: 16, weight: .medium))
@@ -699,6 +721,19 @@ struct OnboardingView: View {
                 }
             }
 
+            VStack(spacing: 8) {
+                if !availablePhysicalControlSources.contains(.siriRemote) {
+                    unsupportedControlSourceCard(
+                        titleKey: "onboarding.control_source.siri_unavailable.title",
+                        icon: "appletvremote.gen4.fill"
+                    )
+                }
+                unsupportedControlSourceCard(
+                    titleKey: "onboarding.control_source.bluetooth_unavailable.title",
+                    icon: "antenna.radiowaves.left.and.right"
+                )
+            }
+
             if !availableAlternativeControlSources.isEmpty {
                 onboardingActionButton(id: "control-source.more") {
                     withAnimation(.easeInOut(duration: 0.18)) {
@@ -731,6 +766,31 @@ struct OnboardingView: View {
             }
 
         }
+    }
+
+    private func unsupportedControlSourceCard(titleKey: String, icon: String) -> some View {
+        Button {} label: {
+            HStack(spacing: 11) {
+                Image(systemName: icon)
+                    .font(.system(size: 21))
+                    .frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localization.text(titleKey))
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(localization.text("onboarding.control_source.unsupported"))
+                        .font(.system(size: 12))
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "circle")
+            }
+            .foregroundStyle(.secondary)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(true)
+        .accessibilityIdentifier(titleKey)
     }
 
     private var availablePhysicalControlSources: [OnboardingControlSource] {
@@ -784,7 +844,7 @@ struct OnboardingView: View {
                 }
                 Spacer(minLength: 4)
                 Image(systemName: isSelected
-                    ? "checkmark.circle.fill"
+                    ? "largecircle.fill.circle"
                     : "circle")
                     .foregroundStyle(isSelected
                         ? Color.accentColor
@@ -824,7 +884,7 @@ struct OnboardingView: View {
     ) -> some View {
         switch source {
         case .xiaomiRemote:
-            if let image = bundledRemoteImage(resourceName: "RC003-remote-photo") {
+            if let image = bundledRemoteImage(resourceName: "BuddyRemoteIllustration") {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
@@ -1323,7 +1383,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 10) {
-                if settings.onboardingControlMethod.requiresBluetoothPermission {
+                if settings.onboardingControlMethod.requiresBluetoothPermission || settings.onboardingStep == .permissions {
                     permissionRow(
                         id: "permission.bluetooth",
                         icon: "antenna.radiowaves.left.and.right",
@@ -1333,7 +1393,7 @@ struct OnboardingView: View {
                         action: requestBluetoothPermission
                     )
                 }
-                if settings.onboardingControlMethod.requiresInputMonitoringPermission {
+                if settings.onboardingControlMethod.requiresInputMonitoringPermission || settings.onboardingStep == .permissions {
                     permissionRow(
                         id: "permission.input-monitoring",
                         icon: "keyboard",
@@ -1707,6 +1767,26 @@ struct OnboardingView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            statusCard(
+                icon: "mic.fill",
+                title: localization.text("settings.driver.title"),
+                detail: localization.text(microphoneDriverInstalled
+                    ? "settings.driver.installed" : "settings.driver.missing"),
+                isComplete: microphoneDriverInstalled
+            )
+            HStack {
+                Button(localization.text("audio.action.refresh_devices")) {
+                    model.refreshAudioDevices()
+                }
+                Button(localization.text("audio.compatibility.open_install_guide")) {
+                    model.openDoubaoDriverInstructions(using: localization)
+                }
+            }
+            .buttonStyle(.bordered)
+            Text(verbatim: localization.text("settings.driver.reload_help"))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
 
             if supportedAudioDevices.isEmpty {
                 statusCard(
@@ -2603,13 +2683,13 @@ struct OnboardingView: View {
         switch settings.onboardingStep {
         case .permissions:
             sidePanel(titleKey: "onboarding.side.permissions") {
-                if settings.onboardingControlMethod.requiresBluetoothPermission {
+                if settings.onboardingControlMethod.requiresBluetoothPermission || settings.onboardingStep == .permissions {
                     sideCheck(
                         "permission.bluetooth.title",
                         isComplete: bluetoothAuthorization == .allowedAlways
                     )
                 }
-                if settings.onboardingControlMethod.requiresInputMonitoringPermission {
+                if settings.onboardingControlMethod.requiresInputMonitoringPermission || settings.onboardingStep == .permissions {
                     sideCheck(
                         "permission.input_monitoring.title",
                         isComplete: inputMonitoringGranted
@@ -2846,6 +2926,12 @@ struct OnboardingView: View {
         OnboardingPhase.phase(for: settings.onboardingStep)
     }
 
+    private var microphoneDriverInstalled: Bool {
+        model.audioDevices.contains {
+            OnboardingAudioSelectionPolicy.isSupportedDevice(uid: $0.uid, name: $0.name)
+        }
+    }
+
     private var capabilities: OnboardingCapabilities {
         OnboardingCapabilities(
             systemFunctionKeyAvailable: systemFunctionKeyAvailable,
@@ -2854,6 +2940,7 @@ struct OnboardingView: View {
             accessibilityGranted: accessibilityGranted,
             remoteConnected: selectedControlConnected,
             remoteButtonObserved: !observedRemoteButtons.isEmpty,
+            microphoneDriverInstalled: microphoneDriverInstalled,
             audioReady: model.isAudioOutputReady,
             audioOutputSelected: audioOutputSelected,
             voiceSessionStarted: voiceSessionStarted,
@@ -2914,7 +3001,7 @@ struct OnboardingView: View {
         switch settings.onboardingVoiceTool {
         case .unselected:
             return false
-        case .other:
+        case .voicecursor, .other:
             return true
         case .vokie:
             return true
@@ -3254,6 +3341,7 @@ struct OnboardingView: View {
         case .weixin: return "message.fill"
         case .typeless: return "waveform.badge.mic"
         case .vokie: return "sparkles.rectangle.stack.fill"
+        case .voicecursor: return "mic.badge.plus"
         case .other: return "ellipsis.circle.fill"
         case .unselected: return "circle"
         }
@@ -3354,7 +3442,7 @@ struct OnboardingView: View {
                     )
                 ),
             ]
-        case .other:
+        case .voicecursor, .other:
             toolSteps = [
                 OnboardingInputMethodGuideStep(
                     id: 1,
@@ -3469,7 +3557,7 @@ struct OnboardingView: View {
         -> [OnboardingVoiceTool: OnboardingVoiceToolAvailability] {
         var availability: [OnboardingVoiceTool: OnboardingVoiceToolAvailability] = [:]
         for tool in [
-            OnboardingVoiceTool.doubao, .weixin, .typeless, .vokie, .other,
+            OnboardingVoiceTool.doubao, .weixin, .typeless, .vokie, .voicecursor, .other,
         ] {
             availability[tool] = OnboardingInputSourceSwitcher.availability(for: tool)
         }
@@ -3715,7 +3803,7 @@ struct OnboardingView: View {
             requestedRemoteConnectionRecovery = false
             secureInputWaitStartedAtUptime = nil
             prepareSelectedControlConnection()
-        case .audio:
+        case .permissions, .audio:
             model.refreshAudioDevices()
         case .voiceTest:
             refreshSelectedVoiceToolRuntimeState()
@@ -4372,9 +4460,9 @@ struct OnboardingView: View {
         if settings.onboardingStep != .voiceTest {
             settings.recordFirstUseEvent(.passed, step: settings.onboardingStep)
         }
-        if settings.onboardingStep == .remoteAvailability {
-            settings.setOnboardingStep(.permissions)
-            return
+        if settings.onboardingStep == .remoteAvailability,
+           settings.onboardingControlMethod == .physicalRemote {
+            settings.customMappingEnabled = true
         }
         if settings.onboardingStep == .permissions {
             if settings.onboardingControlMethod == .physicalRemote {

@@ -107,13 +107,13 @@ enum VoiceRemoteCatalog {
         // 共用是显式声明，不是默认行为。
         VoiceRemoteCatalogEntry(
             model: .rc001,
-            photoResource: "RC003-remote-photo",
+            photoResource: "BuddyRemoteIllustration",
             // 真机证实（2026-09-19）：小米蓝牙遥控器 2 的 DIS 报 RC001。
             disModelNumbers: ["RC001"]
         ),
         VoiceRemoteCatalogEntry(
             model: .rc003,
-            photoResource: "RC003-remote-photo",
+            photoResource: "BuddyRemoteIllustration",
             // 真机证实（2026-09-19）：小米蓝牙遥控器 2 Pro 的 DIS 报 RC003。
             //
             // ARN9 **不**列入型号目录：两台真机（2 与 2 Pro）的 DIS 都不是 ARN9，

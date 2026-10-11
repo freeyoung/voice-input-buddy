@@ -127,7 +127,6 @@ enum SettingsPageBehavior {
     static let sidebarTopDragHeight: CGFloat = 5
 
     static let sidebarSectionOrder: [SettingsSection] = [
-        .permissions,
         .connection,
         .mapping,
         .integration,
@@ -135,6 +134,7 @@ enum SettingsPageBehavior {
         .buttonProfiles,
         .membership,
         .privateFeature,
+        .permissions,
         .about,
     ]
 
@@ -668,13 +668,9 @@ struct SettingsView: View {
                 .frame(height: SettingsPageBehavior.sidebarTopDragHeight)
                 .accessibilityHidden(true)
             VStack(spacing: 4) {
-                Text(verbatim: "Voice Input\nBuddy")
+                Text(verbatim: localization.text("app.name"))
                     .multilineTextAlignment(.center)
                     .font(.system(size: 16, weight: .semibold))
-                Text(currentVersion)
-                    .font(.system(size: 12))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
@@ -880,7 +876,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             header()
                 .padding(.horizontal, 22)
-                .padding(.top, 18)
+                .padding(.top, 12)
                 .padding(.bottom, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -1715,11 +1711,11 @@ struct SettingsView: View {
             HStack(alignment: .center, spacing: 14) {
                 mappingPageHeader
                     .fixedSize(horizontal: true, vertical: false)
-                remoteDeviceSelector()
+                mappingDevicePicker
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, 22)
-            .padding(.top, 18)
+            .padding(.top, 12)
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -2064,6 +2060,28 @@ struct SettingsView: View {
             selectedRemoteButton = .ok
         }
         .compatibilityButtonStyle(.standard)
+    }
+
+    private var mappingDevicePicker: some View {
+        let profiles = RemoteDeviceNamePolicy.sortedForCards(
+            settings.remoteDeviceProfiles,
+            modelName: remoteModelName,
+            systemName: { model.systemDeviceName(for: $0) }
+        )
+        return Picker("remote.device.selector", selection: Binding<UUID?>(
+            get: { settings.selectedRemoteProfileID },
+            set: { if let id = $0 { model.selectRemoteProfile(id) } }
+        )) {
+            if profiles.isEmpty || settings.selectedRemoteProfileID == nil {
+                Text("remote.device.select_placeholder").tag(Optional<UUID>.none)
+            }
+            ForEach(profiles) { profile in
+                Text(remoteModelName(profile)).tag(Optional(profile.id))
+            }
+        }
+        .pickerStyle(.menu)
+        .frame(maxWidth: 310)
+        .disabled(profiles.isEmpty)
     }
 
     @ViewBuilder
@@ -3212,7 +3230,7 @@ struct SettingsView: View {
         GlassPanel {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(localization.text(tool == .other ? "settings.integration.other_title" : tool.titleKey))
+                    Text(localization.text(tool.titleKey))
                         .font(.headline)
                     Spacer()
                     if settings.onboardingVoiceTool == tool {
@@ -4246,9 +4264,9 @@ struct SettingsView: View {
     }
 
     private var currentVersion: String {
-        Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? localization.text("common.value.unknown")
+        (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String) ??
+            (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ??
+            localization.text("common.value.unknown")
     }
 
     private func revealPrivateEnrollmentIfNeeded() {
@@ -4975,7 +4993,7 @@ private struct PageHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 25, weight: .semibold))
+            .font(.system(size: 22, weight: .semibold))
     }
 }
 

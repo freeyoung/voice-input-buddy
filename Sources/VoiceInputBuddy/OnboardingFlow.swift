@@ -12,15 +12,19 @@ enum OnboardingStep: String, CaseIterable, Codable {
     case controls
     case complete
 
-    /// The public flow keeps the control-device decision immediately after the welcome page.
-    /// The legacy control-method case remains decodable so an interrupted older flow can resume.
+    /// Match the main navigation: environment, connection, buttons, then integration.
+    /// Legacy pages remain decodable for interrupted setup sessions.
     static let visibleCases: [Self] = [
-        .welcome, .remoteAvailability, .permissions, .remote, .audio, .voiceTool,
-        .voiceTest, .controls, .complete,
+        .permissions, .remoteAvailability, .remote, .audio, .controls, .voiceTool,
+        .voiceTest, .complete,
     ]
 
     var normalized: Self {
-        self == .controlMethod ? .remoteAvailability : self
+        switch self {
+        case .welcome: return .permissions
+        case .controlMethod: return .remoteAvailability
+        default: return self
+        }
     }
 
     var requiresRuntime: Bool {
@@ -127,6 +131,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
     case weixin
     case typeless
     case vokie
+    case voicecursor
     case other
 
     var id: String { rawValue }
@@ -145,7 +150,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
             return "com.bytedance.inputmethod.doubaoime.pinyin"
         case .weixin:
             return "com.tencent.inputmethod.wetype.pinyin"
-        case .unselected, .typeless, .vokie, .other:
+        case .unselected, .typeless, .vokie, .voicecursor, .other:
             return nil
         }
     }
@@ -154,7 +159,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .vokie:
             return URL(string: "vokie://launch")
-        case .unselected, .doubao, .weixin, .typeless, .other:
+        case .unselected, .doubao, .weixin, .typeless, .voicecursor, .other:
             return nil
         }
     }
@@ -163,7 +168,7 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .typeless:
             return "now.typeless.desktop"
-        case .unselected, .doubao, .weixin, .vokie, .other:
+        case .unselected, .doubao, .weixin, .vokie, .voicecursor, .other:
             return nil
         }
     }
@@ -311,7 +316,7 @@ struct VoiceToolAdapterProfile: Equatable {
                 installationProbe: .publicURLScheme,
                 evidenceState: .pending
             )
-        case .other:
+        case .voicecursor, .other:
             return Self(
                 tool: tool,
                 supportedModes: [.hold, .toggle],
@@ -667,6 +672,7 @@ enum OnboardingVoiceToolVisibilityPolicy {
         if availability[.typeless] == .available {
             tools.append(.typeless)
         }
+        tools.append(.voicecursor)
         tools.append(.other)
         return tools
     }
@@ -698,6 +704,7 @@ struct OnboardingCapabilities: Equatable {
     var accessibilityGranted = false
     var remoteConnected = false
     var remoteButtonObserved = false
+    var microphoneDriverInstalled = false
     var audioReady = false
     var audioOutputSelected = false
     var voiceSessionStarted = false
@@ -793,18 +800,15 @@ enum OnboardingFlowPolicy {
             return remoteAvailability == .noRemote &&
                 (controlMethod == .iPhoneApp || controlMethod == .webRemote)
         case .permissions:
-            return isControlSelectionValid(
-                remoteAvailability: remoteAvailability,
-                controlMethod: controlMethod
-            ) &&
-                (!controlMethod.requiresBluetoothPermission || capabilities.bluetoothGranted) &&
-                (!controlMethod.requiresInputMonitoringPermission ||
-                    capabilities.inputMonitoringGranted) &&
+            // Environment setup must work before a control device is selected.
+            return capabilities.bluetoothGranted &&
+                capabilities.inputMonitoringGranted &&
                 capabilities.accessibilityGranted
         case .remote:
             return capabilities.remoteConnected && capabilities.remoteButtonObserved
         case .audio:
-            return capabilities.audioOutputSelected &&
+            return capabilities.microphoneDriverInstalled &&
+                capabilities.audioOutputSelected &&
                 (controlMethod.usesOnDemandAudioOutput || capabilities.audioReady)
         case .voiceTest:
             return capabilities.voiceSessionStarted &&

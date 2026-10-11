@@ -1303,7 +1303,7 @@ final class AppSettings: ObservableObject {
         onboardingAppleRemoteGeneration = nil
         onboardingVoiceBindingPreference = .documentedDefault
         onboardingPreferredGesture = nil
-        onboardingStep = .welcome
+        onboardingStep = .permissions
         onboardingCompletedVersion = 0
         defaults.removeObject(forKey: Keys.firstUseStepStartedAt)
         defaults.removeObject(forKey: Keys.firstUseLastSignature)
