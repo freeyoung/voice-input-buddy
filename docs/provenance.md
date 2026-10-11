@@ -1,0 +1,15 @@
+# 移植来源和许可
+
+迁入日期：2026年10月11日。
+
+上游： https://github.com/HD838A/remote-mic-app
+
+本地迁入基线：`cae2a23804506538c31003d14ec3239379da66c1`。本次读取其已提交的 Sources 和 Resources；未复制 `.git`、未提交的 `.omc`、私有包、发布凭据或原产品受限图标及遥控器照片。
+
+代码保留原作者及第三方版权。本次修改包括独立产品命名与 Bundle ID、移除原品牌资产、切断统计与回眸执行路径、停用日志上传和上游服务接入、简化公开构建、独立驱动身份与原创图标。原始声明保存在 upstream-copyright.md 和 upstream-logo-license.md；其中原仓库相对链接仅作为历史来源记录，不是本仓库的链接。
+
+源码按 GPL-3.0-only 发布。第三方清单保留原始来源信息，应结合实际发行内容阅读。未构建的 Apple 扩展与私有适配器不代表本产品已经支持相关设备。
+
+每个发行版必须同时提供对应 App 源码、构建和安装脚本，以及实际分发驱动的 BlackHole v0.7.1 源码、device-usb.patch 和必要许可文本，不能只发布此仓库的链接而遗漏驱动源码。Sparkle 采用 MIT；其打包组件还包括单独许可，需随完整框架保留许可。BlackHole 与其他 GPL 来源按相应要求处理。
+
+本项目新图标由 scripts/generate-icon.swift 绘制，菜单栏图标由 scripts/generate-status-icons.swift 绘制，表达麦克风与硬件按钮，未使用原品牌图形。
