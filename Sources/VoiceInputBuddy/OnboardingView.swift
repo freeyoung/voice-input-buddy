@@ -423,8 +423,6 @@ struct OnboardingView: View {
                 .onboardingFocusEffectDisabled()
                 .accessibilityIdentifier("onboarding.back")
                 .padding(.bottom, 24)
-            } else {
-                Color.clear.frame(height: 40)
             }
 
             ScrollView(.vertical) {
@@ -478,7 +476,7 @@ struct OnboardingView: View {
             }
             .padding(.top, 14)
         }
-        .padding(.top, 28)
+        .padding(.top, settings.onboardingStep == .permissions ? 12 : 28)
         .padding(.horizontal, 48)
         .padding(.bottom, 28)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -723,6 +721,19 @@ struct OnboardingView: View {
                 }
             }
 
+            VStack(spacing: 8) {
+                if !availablePhysicalControlSources.contains(.siriRemote) {
+                    unsupportedControlSourceCard(
+                        titleKey: "onboarding.control_source.siri_unavailable.title",
+                        icon: "appletvremote"
+                    )
+                }
+                unsupportedControlSourceCard(
+                    titleKey: "onboarding.control_source.bluetooth_unavailable.title",
+                    icon: "antenna.radiowaves.left.and.right"
+                )
+            }
+
             if !availableAlternativeControlSources.isEmpty {
                 onboardingActionButton(id: "control-source.more") {
                     withAnimation(.easeInOut(duration: 0.18)) {
@@ -755,6 +766,31 @@ struct OnboardingView: View {
             }
 
         }
+    }
+
+    private func unsupportedControlSourceCard(titleKey: String, icon: String) -> some View {
+        Button {} label: {
+            HStack(spacing: 11) {
+                Image(systemName: icon)
+                    .font(.system(size: 21))
+                    .frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localization.text(titleKey))
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(localization.text("onboarding.control_source.unsupported"))
+                        .font(.system(size: 12))
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "circle")
+            }
+            .foregroundStyle(.secondary)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(true)
+        .accessibilityIdentifier(titleKey)
     }
 
     private var availablePhysicalControlSources: [OnboardingControlSource] {
@@ -808,7 +844,7 @@ struct OnboardingView: View {
                 }
                 Spacer(minLength: 4)
                 Image(systemName: isSelected
-                    ? "checkmark.circle.fill"
+                    ? "largecircle.fill.circle"
                     : "circle")
                     .foregroundStyle(isSelected
                         ? Color.accentColor
@@ -1377,26 +1413,6 @@ struct OnboardingView: View {
                 )
             }
 
-            statusCard(
-                icon: "mic.fill",
-                title: localization.text("settings.driver.title"),
-                detail: localization.text(microphoneDriverInstalled
-                    ? "settings.driver.installed" : "settings.driver.missing"),
-                isComplete: microphoneDriverInstalled
-            )
-            HStack {
-                Button(localization.text("audio.action.refresh_devices")) {
-                    model.refreshAudioDevices()
-                }
-                Button(localization.text("audio.compatibility.open_install_guide")) {
-                    model.openDoubaoDriverInstructions(using: localization)
-                }
-            }
-            .buttonStyle(.bordered)
-            Text(verbatim: localization.text("settings.driver.reload_help"))
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-
             if settings.onboardingControlMethod.usesOnDemandAudioOutput {
                 statusCard(
                     icon: "network",
@@ -1751,6 +1767,26 @@ struct OnboardingView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            statusCard(
+                icon: "mic.fill",
+                title: localization.text("settings.driver.title"),
+                detail: localization.text(microphoneDriverInstalled
+                    ? "settings.driver.installed" : "settings.driver.missing"),
+                isComplete: microphoneDriverInstalled
+            )
+            HStack {
+                Button(localization.text("audio.action.refresh_devices")) {
+                    model.refreshAudioDevices()
+                }
+                Button(localization.text("audio.compatibility.open_install_guide")) {
+                    model.openDoubaoDriverInstructions(using: localization)
+                }
+            }
+            .buttonStyle(.bordered)
+            Text(verbatim: localization.text("settings.driver.reload_help"))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
 
             if supportedAudioDevices.isEmpty {
                 statusCard(

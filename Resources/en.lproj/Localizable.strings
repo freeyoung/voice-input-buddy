@@ -774,7 +774,7 @@
 "onboarding.voice_tool.binding.evidence_verified" = "Recommended";
 "onboarding.voice_tool.binding.evidence_pending" = "Saved after testing";
 "onboarding.control_source.title" = "Choose How to Control Your Mac";
-"onboarding.control_source.detail" = "A physical remote is recommended. This page shows the control methods supported by your installation.";
+"onboarding.control_source.detail" = "Choose a supported physical remote. Devices marked “Not supported yet” cannot be selected.";
 "onboarding.control_source.hardware" = "Physical remotes";
 "onboarding.control_source.alternatives" = "Alternatives";
 "onboarding.control_source.more" = "More control methods";
@@ -845,8 +845,8 @@
 "onboarding.control_method.recommended" = "Recommended";
 "onboarding.control_method.no_iphone" = "Without an iPhone";
 "onboarding.control_method.illustration" = "Choose the control method you can use now";
-"onboarding.permissions.title" = "Prepare permissions and the microphone driver";
-"onboarding.permissions.detail" = "Enable all three permissions and check the virtual microphone before choosing a device.";
+"onboarding.permissions.title" = "Allow Voice Input Buddy to connect and control your Mac";
+"onboarding.permissions.detail" = "Enable all three permissions before choosing a device. The microphone driver is checked in step 4.";
 "onboarding.permissions.bluetooth.detail" = "Discover and connect to your paired Bluetooth remote";
 "onboarding.permissions.input.detail" = "Read physical button events and support voice input";
 "onboarding.permissions.accessibility.detail" = "Run voice shortcuts and custom button actions";
@@ -1275,10 +1275,16 @@
 
 "onboarding.step.welcome" = "Welcome";
 "onboarding.step.remoteAvailability" = "Your device";
-"onboarding.step.permissions" = "Environment";
+"onboarding.step.permissions" = "Permissions";
 "onboarding.step.remote" = "Connect remote";
 "onboarding.step.audio" = "Audio routing";
 "onboarding.step.voiceTool" = "Input tool";
 "onboarding.step.voiceTest" = "Voice test";
 "onboarding.step.controls" = "Button test";
 "onboarding.step.complete" = "Done";
+
+"onboarding.control_source.siri_unavailable.title" = "Apple Siri Remote";
+
+"onboarding.control_source.bluetooth_unavailable.title" = "Other Bluetooth voice devices";
+
+"onboarding.control_source.unsupported" = "Not supported yet";

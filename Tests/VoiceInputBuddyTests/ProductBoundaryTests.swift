@@ -89,8 +89,7 @@ struct ProductBoundaryTests {
         let ready = OnboardingCapabilities(
             bluetoothGranted: true,
             inputMonitoringGranted: true,
-            accessibilityGranted: true,
-            microphoneDriverInstalled: true
+            accessibilityGranted: true
         )
         #expect(OnboardingFlowPolicy.canContinue(
             from: .permissions, voiceTool: .unselected, remoteAvailability: .unselected,
@@ -99,8 +98,7 @@ struct ProductBoundaryTests {
         for keyPath in [
             \OnboardingCapabilities.bluetoothGranted,
             \OnboardingCapabilities.inputMonitoringGranted,
-            \OnboardingCapabilities.accessibilityGranted,
-            \OnboardingCapabilities.microphoneDriverInstalled
+            \OnboardingCapabilities.accessibilityGranted
         ] {
             var missing = ready
             missing[keyPath: keyPath] = false
@@ -108,6 +106,24 @@ struct ProductBoundaryTests {
                 from: .permissions, voiceTool: .unselected, capabilities: missing
             ))
         }
+    }
+
+    @Test func driverIsRequiredAtAudioSetupRatherThanPermissions() {
+        var ready = OnboardingCapabilities(
+            bluetoothGranted: true, inputMonitoringGranted: true,
+            accessibilityGranted: true, audioReady: true, audioOutputSelected: true
+        )
+        #expect(OnboardingFlowPolicy.canContinue(
+            from: .permissions, voiceTool: .unselected, remoteAvailability: .unselected,
+            controlMethod: .unselected, capabilities: ready
+        ))
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .audio, voiceTool: .unselected, capabilities: ready
+        ))
+        ready.microphoneDriverInstalled = true
+        #expect(OnboardingFlowPolicy.canContinue(
+            from: .audio, voiceTool: .unselected, capabilities: ready
+        ))
     }
 
     @Test @MainActor func wizardStartsWithEnvironmentAndMigratesLegacyWelcome() throws {

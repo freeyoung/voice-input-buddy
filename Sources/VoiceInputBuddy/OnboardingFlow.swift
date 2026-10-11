@@ -803,12 +803,12 @@ enum OnboardingFlowPolicy {
             // Environment setup must work before a control device is selected.
             return capabilities.bluetoothGranted &&
                 capabilities.inputMonitoringGranted &&
-                capabilities.accessibilityGranted &&
-                capabilities.microphoneDriverInstalled
+                capabilities.accessibilityGranted
         case .remote:
             return capabilities.remoteConnected && capabilities.remoteButtonObserved
         case .audio:
-            return capabilities.audioOutputSelected &&
+            return capabilities.microphoneDriverInstalled &&
+                capabilities.audioOutputSelected &&
                 (controlMethod.usesOnDemandAudioOutput || capabilities.audioReady)
         case .voiceTest:
             return capabilities.voiceSessionStarted &&
