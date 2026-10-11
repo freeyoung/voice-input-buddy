@@ -1,0 +1,3 @@
+"CFBundleDisplayName" = "Voice Input Buddy";
+"CFBundleName" = "Voice Input Buddy";
+"NSBluetoothAlwaysUsageDescription" = "连接兼容蓝牙遥控器，接收按键与麦克风音频。";
