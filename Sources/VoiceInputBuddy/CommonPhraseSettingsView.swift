@@ -176,13 +176,13 @@ struct CommonPhraseSettingsView: View {
         .onDrag {
             draggedPhraseID = phrase.id
             let provider = NSItemProvider()
-            provider.registerDataRepresentation(forTypeIdentifier: "app.sayall.common-phrase", visibility: .ownProcess) { completion in
+            provider.registerDataRepresentation(forTypeIdentifier: "com.zfdang.voice-input-buddy.common-phrase", visibility: .ownProcess) { completion in
                 completion(Data(phrase.id.utf8), nil)
                 return nil
             }
             return provider
         }
-        .onDrop(of: ["app.sayall.common-phrase"], isTargeted: nil) { _ in
+        .onDrop(of: ["com.zfdang.voice-input-buddy.common-phrase"], isTargeted: nil) { _ in
             defer { draggedPhraseID = nil }
             guard let draggedPhraseID,
                   let source = store.archive.entries.firstIndex(where: { $0.id == draggedPhraseID }),

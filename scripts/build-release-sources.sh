@@ -3,6 +3,11 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 : "${RELEASE_TAG:?Run release-metadata.sh first}"
+# Binaries built from local edits cannot be paired with a HEAD-only archive.
+if ! git diff --quiet HEAD -- || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+    echo "Refusing to package release sources from a dirty working tree. Commit source changes first." >&2
+    exit 1
+fi
 work="$(mktemp -d "$root/.build/release-sources.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 source_root="$work/Voice_Input_Buddy_$RELEASE_TAG"

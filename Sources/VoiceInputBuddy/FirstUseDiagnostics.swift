@@ -225,7 +225,7 @@ enum FirstUseVoiceAttemptResult: String, Codable, Equatable {
     var diagnosticBoundary: String {
         self == .externalToolNoCommit
             ? "external_tool_internal_state_unavailable"
-            : "sayall_observable_state"
+            : "buddy_observable_state"
     }
 }
 

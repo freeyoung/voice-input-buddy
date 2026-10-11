@@ -324,8 +324,6 @@ final class AppSettings: ObservableObject {
         static let siriRemoteNeedsUserAction = "siriRemote.needsUserAction"
         static let chromecastEnabled = "chromecast.enabled"
         static let chromecastVoiceMode = "chromecast.voiceMode"
-        static let localTranscriptHistoryEnabled = "localTranscriptHistoryEnabled"
-        static let localOriginalAudioRecordingEnabled = "localOriginalAudioRecordingEnabled"
         static let continuousRecordingPowerBindingBackup = "continuousRecordingPowerBindingBackup"
         static let lastLaunchedBuild = "launch.lastLaunchedBuild"
         static let totalButtonPressCount = "usage.totalButtonPressCount"
@@ -568,24 +566,6 @@ final class AppSettings: ObservableObject {
 
     /// One-session notice for an existing Command mode normalized to Fn by Onboarding.
     @Published private(set) var pendingOnboardingVoiceKeyMigration: VoiceKeyMode? = nil
-
-    @Published var localTranscriptHistoryEnabled: Bool {
-        didSet {
-            defaults.set(
-                localTranscriptHistoryEnabled,
-                forKey: Keys.localTranscriptHistoryEnabled
-            )
-        }
-    }
-
-    @Published var localOriginalAudioRecordingEnabled: Bool {
-        didSet {
-            defaults.set(
-                localOriginalAudioRecordingEnabled,
-                forKey: Keys.localOriginalAudioRecordingEnabled
-            )
-        }
-    }
 
     private var continuousRecordingPowerBindingBackup: ConfiguredButtonAction? {
         didSet { saveContinuousRecordingPowerBindingBackup() }
@@ -923,12 +903,6 @@ final class AppSettings: ObservableObject {
         chromecastVoiceMode = ChromecastVoiceMode(
             rawValue: defaults.string(forKey: Keys.chromecastVoiceMode) ?? ""
         ) ?? .productDefault
-        localTranscriptHistoryEnabled = defaults.bool(
-            forKey: Keys.localTranscriptHistoryEnabled
-        )
-        localOriginalAudioRecordingEnabled = defaults.bool(
-            forKey: Keys.localOriginalAudioRecordingEnabled
-        )
         continuousRecordingPowerBindingBackup = Self.decodeSetting(
             ConfiguredButtonAction.self,
             forKey: Keys.continuousRecordingPowerBindingBackup,
@@ -1556,11 +1530,6 @@ final class AppSettings: ObservableObject {
         fingerprint: String,
         model: XiaomiRemoteModel = .appleSiriRemoteA2854
     ) -> UUID {
-#if !SAYALL_SIRI_REMOTE_ENABLED
-        // Community builds keep this compatibility entry point so old persisted
-        // state can be decoded, but never create or expose a Siri Remote profile.
-        return registerHIDRemote(fingerprint: fingerprint)
-#else
         if let existing = remoteDeviceProfiles.first(where: { $0.hidFingerprint == fingerprint }) {
             return existing.id
         }
@@ -1578,7 +1547,6 @@ final class AppSettings: ObservableObject {
         )
         remoteDeviceProfiles.append(profile)
         return profile.id
-#endif
     }
 
     /// 注册 Chromecast 遥控器的设备档案。

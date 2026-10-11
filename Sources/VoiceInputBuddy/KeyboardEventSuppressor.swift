@@ -73,10 +73,13 @@ final class KeyboardEventSuppressor {
         return true
     }
 
+    deinit { stop() }
+
     func stop() {
         lock.lock()
         pendingEvents.removeAll()
         heldEventCounts.removeAll()
+        recentArmed.removeAll()
         lock.unlock()
         EventTapPort.release(port: eventTap, source: runLoopSource)
         runLoopSource = nil
@@ -151,6 +154,7 @@ final class KeyboardEventSuppressor {
         let now = ProcessInfo.processInfo.systemUptime
         lock.lock()
         pendingEvents.removeAll { $0.expiresAt <= now }
+        recentArmed.removeAll { $0.until <= now }
         if let matchIndex = pendingEvents.firstIndex(where: {
             $0.event == descriptor.event && $0.edge == descriptor.edge
         }) {
@@ -169,8 +173,8 @@ final class KeyboardEventSuppressor {
                 heldEventCounts.removeValue(forKey: descriptor.event)
                 lock.unlock()
                 AppLogger.shared.write(
-                    "HID FILTER suppressed event=\(Self.logToken(descriptor.event)) "
-                        + "edge=down type=\(type.rawValue) via=held"
+                    "HID FILTER passed event=\(Self.logToken(descriptor.event)) "
+                        + "edge=down type=\(type.rawValue) reason=fresh_key_down"
                 )
                 return false
             }

@@ -5,13 +5,7 @@ import BuddyRemoteUI
 import BuddyRemoteCore
 import SwiftUI
 
-#if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-import VoiceInputBuddySiriRemote
-#endif
 
-#if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-import VoiceInputBuddyChromecast
-#endif
 
 private struct OnboardingInputMethodGuideStep: Identifiable {
     enum Content {
@@ -174,7 +168,7 @@ struct OnboardingView: View {
         )
     }
 
-    var body: some View {
+    private var lifecycleContent: some View {
         VStack(spacing: 0) {
             phaseHeader
             GeometryReader { proxy in
@@ -232,7 +226,7 @@ struct OnboardingView: View {
                 break
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .sayAllDeepLinkReceived)) { notification in
+        .onReceive(NotificationCenter.default.publisher(for: .voiceInputBuddyDeepLinkReceived)) { notification in
             guard let request = notification.object as? VoiceInputBuddyDeepLinkRequest,
                   request.source == "vokie" else { return }
             vokieDeepLinkStatus = request.status
@@ -242,6 +236,10 @@ struct OnboardingView: View {
             guard isConnected else { return }
             routeConnectedPhysicalRemoteIfNeeded()
         }
+    }
+
+    private var remoteObservedContent: some View {
+        lifecycleContent
         .onReceive(model.$activeRemoteButtons) { buttons in
             guard settings.onboardingControlMethod == .physicalRemote,
                   selectedPhysicalRemoteProfileMatchesSource,
@@ -299,40 +297,40 @@ struct OnboardingView: View {
                 )
             }
         }
-        .onChange(of: settings.onboardingStep) { step in
+    }
+
+    private var toolObservedContent: some View {
+        remoteObservedContent
+        .onChange(of: settings.onboardingStep) { _, step in
             prepareForStep(step)
         }
-        .onChange(of: settings.onboardingVoiceTool) { _ in
+        .onChange(of: settings.onboardingVoiceTool) { _, _ in
             resetExternalToolVoiceKeyConfirmation(reason: "voice_tool_changed")
             resetExternalToolGlobalVoiceConfirmation(reason: "voice_tool_changed")
             resetExternalToolMicrophoneConfirmation(reason: "voice_tool_changed")
             refreshSelectedVoiceToolRuntimeState()
         }
-        .onChange(of: settings.selectedAudioDeviceUID) { _ in
+        .onChange(of: settings.selectedAudioDeviceUID) { _, _ in
             resetExternalToolMicrophoneConfirmation(reason: "audio_device_changed")
         }
-        .onChange(of: externalToolMicrophoneConfirmed) { confirmed in
-            AppLogger.shared.write(
-                "ONBOARDING EXTERNAL_MICROPHONE_CONFIRMATION source=user " +
-                    "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
-                    "expected_device=\(selectedAudioDeviceDiagnosticKind.rawValue)"
-            )
+    }
+
+    private var confirmationObservedContent: some View {
+        toolObservedContent
+        .onChange(of: externalToolMicrophoneConfirmed) { _, confirmed in
+            logExternalToolMicrophoneConfirmation(confirmed)
         }
-        .onChange(of: externalToolVoiceKeyConfirmed) { confirmed in
-            AppLogger.shared.write(
-                "ONBOARDING EXTERNAL_VOICE_KEY_CONFIRMATION source=user " +
-                    "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
-                    "expected=\(externalToolExpectedVoiceKeyDiagnosticValue)"
-            )
+        .onChange(of: externalToolVoiceKeyConfirmed) { _, confirmed in
+            logExternalToolVoiceKeyConfirmation(confirmed)
         }
-        .onChange(of: externalToolGlobalVoiceConfirmed) { confirmed in
-            AppLogger.shared.write(
-                "ONBOARDING EXTERNAL_GLOBAL_VOICE_CONFIRMATION source=user " +
-                    "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
-                    "applicable=\(externalToolGlobalVoiceConfirmationRequired)"
-            )
+        .onChange(of: externalToolGlobalVoiceConfirmed) { _, confirmed in
+            logExternalToolGlobalVoiceConfirmation(confirmed)
         }
-        .onChange(of: transcript) { updatedText in
+    }
+
+    var body: some View {
+        confirmationObservedContent
+        .onChange(of: transcript) { _, updatedText in
             captureVoiceTranscriptCandidate(updatedText)
             guard settings.onboardingStep == .voiceTest,
                   !updatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -351,7 +349,7 @@ struct OnboardingView: View {
             AppLogger.shared.write("ONBOARDING TRANSCRIPT manual_keyboard_input=true")
             finishVoiceAttempt(result: .manualInput)
         }
-        .onChange(of: transcriptionAppeared) { appeared in
+        .onChange(of: transcriptionAppeared) { _, appeared in
             guard appeared,
                   voiceSessionEnded,
                   !manualTranscriptInputObserved else { return }
@@ -362,9 +360,33 @@ struct OnboardingView: View {
                 scheduleVoiceCompletionEvaluation(attemptID: voiceAttempt.attemptID)
             }
         }
-        .onChange(of: failureReason) { failure in
+        .onChange(of: failureReason) { _, failure in
             recordFailureTransition(failure)
         }
+    }
+
+    private func logExternalToolMicrophoneConfirmation(_ confirmed: Bool) {
+        AppLogger.shared.write(
+            "ONBOARDING EXTERNAL_MICROPHONE_CONFIRMATION source=user " +
+                "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
+                "expected_device=\(selectedAudioDeviceDiagnosticKind.rawValue)"
+        )
+    }
+
+    private func logExternalToolVoiceKeyConfirmation(_ confirmed: Bool) {
+        AppLogger.shared.write(
+            "ONBOARDING EXTERNAL_VOICE_KEY_CONFIRMATION source=user " +
+                "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
+                "expected=\(externalToolExpectedVoiceKeyDiagnosticValue)"
+        )
+    }
+
+    private func logExternalToolGlobalVoiceConfirmation(_ confirmed: Bool) {
+        AppLogger.shared.write(
+            "ONBOARDING EXTERNAL_GLOBAL_VOICE_CONFIRMATION source=user " +
+                "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
+                "applicable=\(externalToolGlobalVoiceConfirmationRequired)"
+        )
     }
 
     private var phaseHeader: some View {
@@ -898,18 +920,11 @@ struct OnboardingView: View {
                     .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
             }
         case .siriRemote:
-            #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-            SiriRemoteConnectionPhoto()
-                .scaleEffect(emphasized ? 0.38 : 0.28)
-                .frame(width: emphasized ? 42 : 34, height: emphasized ? 72 : 52)
-                .clipped()
-            #else
             Image(systemName: controlSourceIcon(source))
                 .font(.system(size: emphasized ? 21 : 17, weight: .medium))
                 .foregroundStyle(Color.accentColor)
                 .frame(width: emphasized ? 40 : 34, height: emphasized ? 40 : 34)
                 .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-            #endif
         default:
             Image(systemName: controlSourceIcon(source))
                 .font(.system(size: emphasized ? 21 : 17, weight: .medium))
@@ -2012,8 +2027,8 @@ struct OnboardingView: View {
             .fixedSize(horizontal: false, vertical: true)
 
             configurationStatusRow(
-                label: localization.text("onboarding.voice_test.configuration.sayall_audio_output"),
-                value: sayAllAudioOutputConfigurationText,
+                label: localization.text("onboarding.voice_test.configuration.buddy_audio_output"),
+                value: buddyAudioOutputConfigurationText,
                 isComplete: onboardingAudioReady
             )
 
@@ -2518,21 +2533,9 @@ struct OnboardingView: View {
                 remotePhotoPlaceholder
             }
         case .siriRemote:
-            #if SAYALL_SIRI_REMOTE_ENABLED && canImport(VoiceInputBuddySiriRemote)
-            SiriRemoteConnectionPhoto()
-                .scaleEffect(1.8)
-                .frame(width: 190, height: 360)
-            #else
             remotePhotoPlaceholder
-            #endif
         case .chromecastRemote:
-            #if SAYALL_CHROMECAST_ENABLED && canImport(VoiceInputBuddyChromecast)
-            ChromecastConnectionPhoto()
-                .scaleEffect(1.8)
-                .frame(width: 190, height: 360)
-            #else
             remotePhotoPlaceholder
-            #endif
         case .placeholder:
             remotePhotoPlaceholder
         }
@@ -3201,7 +3204,7 @@ struct OnboardingView: View {
         return "\(plan.binding.shortcut.rawValue)_\(plan.binding.gestureMode.rawValue)"
     }
 
-    private var sayAllVoiceKeyConfigurationReady: Bool {
+    private var buddyVoiceKeyConfigurationReady: Bool {
         guard let plan = proposedPairingPlan else { return false }
         return settings.voiceKeyMode == plan.binding.shortcut &&
             settings.voiceFnTapModeEnabled == plan.fnTapModeEnabled
@@ -3217,7 +3220,7 @@ struct OnboardingView: View {
         )
     }
 
-    private var sayAllAudioOutputConfigurationText: String {
+    private var buddyAudioOutputConfigurationText: String {
         guard let selectedAudioDevice else {
             return localization.text("onboarding.audio.select_required")
         }
@@ -3237,7 +3240,7 @@ struct OnboardingView: View {
     }
 
     private var externalToolConfigurationConfirmed: Bool {
-        sayAllVoiceKeyConfigurationReady &&
+        buddyVoiceKeyConfigurationReady &&
             onboardingAudioReady &&
             externalToolVoiceKeyConfirmed &&
             (!externalToolGlobalVoiceConfirmationRequired || externalToolGlobalVoiceConfirmed) &&
@@ -4377,10 +4380,7 @@ struct OnboardingView: View {
         case .siriRemote:
             model.applyHIDSettings()
         case .chromecastRemote:
-            #if SAYALL_CHROMECAST_ENABLED
-            model.applyChromecastSettings()
-            model.reconnectChromecast()
-            #endif
+            break // Not supported by this build.
         case .appleCompanion:
             model.enablePhoneRemoteConnection()
         case .webRemote:
@@ -4496,9 +4496,6 @@ struct OnboardingView: View {
 
     private func applyChromecastModeIfNeeded(_ plan: OnboardingVoicePairingPlan) {
         guard plan.chromecastVoiceMode != nil else { return }
-        #if SAYALL_CHROMECAST_ENABLED
-        model.applyChromecastSettings()
-        #endif
     }
 
     private func requestBluetoothPermission() {

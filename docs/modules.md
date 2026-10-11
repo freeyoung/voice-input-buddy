@@ -14,7 +14,6 @@
 | AppleRemoteAudioCore | 历史 Apple 遥控器音频处理代码 |
 | AppleRemoteHCIProtocol | 历史 HCI 辅助协议与消息类型 |
 | AppleRemotePacketLogger | 历史 PacketLogger 客户端 |
-| BuddyMCPKit | 保留的本地协议类型；不构建 MCP 服务程序，不开放历史采集 |
 | AppleRemoteHCIService | 单独声明的辅助执行目标，不随当前 PKG 分发 |
 | AppleRemoteAudioCapture | 单独声明的音频捕获目标，不随当前 PKG 分发 |
 | VoiceInputBuddyTests | 协议、生命周期与产品边界测试 |
@@ -29,3 +28,5 @@ BuddyMic2ch.driver 基于固定版本 BlackHole 源码构建，使用独立 Bund
 ## macOS 系统模块
 
 使用 AppKit、SwiftUI、Foundation、Combine、CoreBluetooth、IOBluetooth、CoreAudio、AudioToolbox、AVFoundation、CoreFoundation、CoreGraphics、CoreImage、ApplicationServices、Carbon、IOKit、Network、Security、CryptoKit、OSLog、ServiceManagement、UniformTypeIdentifiers、Charts、Accelerate 及 Darwin 系统接口。系统框架由 macOS 提供，不作为第三方二进制随 PKG 重新分发。
+
+历史记录存储、录音归档、MCP 授权与客户端配置代码已移除；应用不会读写 AI 工具的 MCP 配置。上游私有扩展的条件编译分支已移除，公开兼容接口与未支持设备的 UI 类型仍保留。

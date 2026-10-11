@@ -176,7 +176,7 @@ final class AppleSiriRemoteAdapter {
     }
 
     /// 本文件是**开放仓库的骨架**，不会被实例化：真正驱动苹果遥控器的是私有包
-    /// `VoiceInputBuddySiriRemote`（`SAYALL_SIRI_REMOTE_ENABLED` 时启用），能力位是那里上报的。
+    /// 未来的公开设备实现；当前 App 不支持 Apple Siri Remote。
     ///
     /// 能力只有一个来源——型号自己的代码 `VoiceInputBuddySiriRemoteModel.capabilities`。
     /// **不要把这里那份清单当成事实依据去改**：它与宿主界面无关（宿主从不读它），

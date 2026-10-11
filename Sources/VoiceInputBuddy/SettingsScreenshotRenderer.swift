@@ -27,15 +27,7 @@ enum SettingsScreenshotRenderer {
     }
 
     private static let sections: [SettingsSection] = [
-        .mapping,
-        .commonPhrases,
-        .macros,
-        .buttonProfiles,
-        .membership,
-        .statistics,
-        .transcripts,
-        .connection,
-        .about,
+        .connection, .mapping, .integration, .permissions, .about, .commonPhrases,
     ]
 
     static func renderAll(
@@ -93,6 +85,7 @@ enum SettingsScreenshotRenderer {
         var remoteCardSystemNames: [UUID: String] = [:]
         var remoteCardBatteryLevels: [UUID: Int] = [:]
         var remoteCardPowerStates: [UUID: RemotePowerState] = [:]
+        let model = BridgeAppModel(settings: settings)
         if showsRemoteCards {
             let xiaomiID = settings.registerBluetoothRemote(
                 identifier: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!
@@ -117,30 +110,8 @@ enum SettingsScreenshotRenderer {
                 chromecastID: .onBattery,
             ]
         }
-#if SAYALL_SIRI_REMOTE_ENABLED
-        if usesSiriRemote {
-            let profileID = settings.registerAppleSiriRemote(
-                fingerprint: "settings-screenshot-siri-remote"
-            )
-            settings.selectRemoteProfile(profileID)
-            if ProcessInfo.processInfo.environment[
-                "REMOTE_MIC_SETTINGS_SCREENSHOT_SIRI_REMOTE_STATE"
-            ] == "retry" {
-                settings.siriRemoteEnabled = true
-                settings.siriRemoteNeedsUserAction = true
-            }
-        }
-#else
         _ = usesSiriRemote
-#endif
-#if SAYALL_CHROMECAST_ENABLED
-        if usesChromecast {
-            let profileID = settings.registerChromecastRemote()
-            settings.selectRemoteProfile(profileID)
-        }
-#else
         _ = usesChromecast
-#endif
         if opensShortcutEditor {
             settings.customMappingEnabled = true
             settings.setAction(.customShortcut, for: .ok, trigger: .singleClick)
@@ -150,31 +121,6 @@ enum SettingsScreenshotRenderer {
                 trigger: .singleClick
             )
         }
-        seedStatisticsForScreenshot(settings)
-        let historyDirectory = outputDirectory.appendingPathComponent(UUID().uuidString)
-        let transcriptStore = TranscriptArchiveStore(
-            rootDirectoryURL: historyDirectory.appendingPathComponent("transcripts")
-        )
-        let recordingStore = RecordingAssetStore(
-            rootDirectoryURL: historyDirectory.appendingPathComponent("recordings")
-        )
-        if ProcessInfo.processInfo.environment["REMOTE_MIC_SETTINGS_SCREENSHOT_MIXED_HISTORY"] == "1" {
-            try seedMixedHistory(transcriptStore: transcriptStore, recordingStore: recordingStore)
-        }
-        if interactive && onlySection == SettingsSection.transcripts.rawValue {
-            // Give interactive review a disposable record without accessing user history.
-            try transcriptStore.append(TranscriptRecord(
-                sessionID: UUID(), startedAt: Date().addingTimeInterval(-2), endedAt: Date(),
-                applicationName: "VoiceInputBuddy", bundleIdentifier: "com.zfdang.voice-input-buddy.screenshot",
-                source: .unknown, originalTranscript: "VoiceInputBuddy UI review"
-            ))
-        }
-        let model = BridgeAppModel(
-            settings: settings,
-            commonPhraseStore: CommonPhraseStore(defaults: defaults),
-            transcriptArchiveStore: transcriptStore,
-            recordingAssetStore: recordingStore
-        )
         if showsRemoteCards {
             model.configureRemoteCardsForSettingsScreenshot(
                 profileIDs: Set(remoteCardSystemNames.keys),
@@ -321,42 +267,6 @@ enum SettingsScreenshotRenderer {
         phrasePanel.contentView = nil
     }
 
-    private static func seedMixedHistory(
-        transcriptStore: TranscriptArchiveStore,
-        recordingStore: RecordingAssetStore
-    ) throws {
-        let calendar = Calendar.current
-        let now = Date()
-        for day in 0..<4 {
-            guard let date = calendar.date(byAdding: .day, value: -day, to: now) else { continue }
-            let sessionID = UUID()
-            if day != 2 {
-                try transcriptStore.append(TranscriptRecord(
-                    sessionID: sessionID,
-                    startedAt: date.addingTimeInterval(-120),
-                    endedAt: date.addingTimeInterval(-60),
-                    applicationName: "Notes", bundleIdentifier: "com.apple.Notes",
-                    source: .bluetoothRemote, originalTranscript: "日期排序测试 / Date order fixture",
-                    calendar: calendar
-                ))
-            }
-            for audioSessionID in day == 0 ? [sessionID, UUID()] : [UUID()] {
-                let draft = try recordingStore.begin(sessionID: audioSessionID,
-                    startedAt: date.addingTimeInterval(-30), source: .bluetoothRemote, calendar: calendar)
-                let writer = try VoiceRecordingWriter(url: draft.temporaryMediaURL)
-                writer.append(samples: Array(repeating: Int16(0), count: 16_000))
-                let finished = DispatchSemaphore(value: 0)
-                writer.finish { _ in finished.signal() }
-                guard finished.wait(timeout: .now() + 3) == .success else {
-                    throw RecordingAssetStoreError.invalidAsset
-                }
-                _ = try recordingStore.commit(draft: draft, endedAt: date.addingTimeInterval(-29),
-                    mediaURL: draft.temporaryMediaURL,
-                    applicationName: "Notes", bundleIdentifier: "com.apple.Notes")
-            }
-        }
-    }
-
     private static func seedAvailableUpdate(
         _ updateInformation: UpdateInformationStore,
         language: AppLanguage
@@ -375,50 +285,6 @@ enum SettingsScreenshotRenderer {
             fallbackDescription: notes,
             localeIdentifier: language.rawValue
         )
-    }
-
-    private static func seedStatisticsForScreenshot(_ settings: AppSettings) {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "Asia/Shanghai") ?? .current
-        let today = calendar.startOfDay(for: Date())
-        for offset in 0..<364 {
-            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
-            let buttonCount = (offset % 17 == 0) ? 9 : (offset % 5 == 0 ? 4 : (offset % 3 == 0 ? 1 : 0))
-            for index in 0..<buttonCount {
-                let button = RemoteButton.allCases[(offset + index) % RemoteButton.allCases.count]
-                settings.recordButtonPress(
-                    control: .remoteButton(button),
-                    source: .bluetoothRemote,
-                    at: date.addingTimeInterval(Double(index) * 11),
-                    calendar: calendar
-                )
-            }
-            if offset % 11 == 0 {
-                settings.recordVoiceDuration(
-                    TimeInterval(18 + (offset * 13) % 95),
-                    startedAt: date.addingTimeInterval(3600),
-                    source: .bluetoothRemote,
-                    applicationName: ["Codex", "Claude", "Notion", "Zoom", "Slack"][(offset / 11) % 5],
-                    at: date.addingTimeInterval(3660),
-                    calendar: calendar
-                )
-            }
-        }
-        let topSessions: [(TimeInterval, String)] = [
-            (85, "Codex"), (38, "Claude"), (38, "Notion"), (37, "Zoom"),
-            (37, "Slack"), (29, "Figma"), (28, "VS Code"),
-        ]
-        for (index, session) in topSessions.enumerated() {
-            let date = today.addingTimeInterval(-Double(index * 86_400 + 2_000))
-            settings.recordVoiceDuration(
-                session.0,
-                startedAt: date.addingTimeInterval(-session.0),
-                source: .bluetoothRemote,
-                applicationName: session.1,
-                at: date,
-                calendar: calendar
-            )
-        }
     }
 
     private static func screenshotSize(from value: String?) throws -> NSSize {

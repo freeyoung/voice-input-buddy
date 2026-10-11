@@ -32,23 +32,11 @@ enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
         case .rc001: return "remote.device.model.rc001"
         case .rc003: return "remote.device.model.rc003"
         case .appleSiriRemoteA2854:
-#if SAYALL_SIRI_REMOTE_ENABLED
-            return "remote.device.model.apple_siri_remote_a2854"
-#else
             return "remote.device.model.unknown"
-#endif
         case .appleSiriRemoteA2540:
-#if SAYALL_SIRI_REMOTE_ENABLED
-            return "remote.device.model.apple_siri_remote_a2540"
-#else
             return "remote.device.model.unknown"
-#endif
         case .chromecastVoiceRemote:
-#if SAYALL_CHROMECAST_ENABLED
-            return "remote.device.model.chromecast_voice_remote"
-#else
             return "remote.device.model.unknown"
-#endif
         case .unknown: return "remote.device.model.unknown"
         }
     }

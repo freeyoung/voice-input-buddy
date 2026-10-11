@@ -36,7 +36,7 @@ The Xiaomi RC003 ATVV UUIDs, microphone command behavior, IMA/DVI ADPCM decoding
 - Reference revision: `3da8bc74cc840c3e048448de203586cd24108f6a`
 - License: GNU General Public License v3.0 or later (`GPL-3.0-or-later`)
 
-The Apple Siri Remote A2854 vendor/product identifiers, HID usage table, dynamically loaded `MultitouchSupport` ABI, small external touch-surface selection rule, and initial circular-scroll tuning were informed by this project. SayAll reimplements the adapter and lifecycle routing in this repository; it does not include the upstream DriverKit components or virtual audio implementation.
+The Apple Siri Remote A2854 vendor/product identifiers, HID usage table, dynamically loaded `MultitouchSupport` ABI, small external touch-surface selection rule, and initial circular-scroll tuning were informed by this project. The upstream remote-mic-app implementation reimplements the adapter and lifecycle routing; it does not include the upstream DriverKit components or virtual audio implementation.
 
 ## SiriRemoteForge
 
@@ -45,7 +45,7 @@ The Apple Siri Remote A2854 vendor/product identifiers, HID usage table, dynamic
 - Reference revision: `10581a960f0738e36516defb79db24b18df214d3`
 - License: GNU General Public License v3.0 or later (`GPL-3.0-or-later`)
 
-The lossless PacketLogger file-tail capture shape, binary `.pklg` record layout, ACL/L2CAP fragmentation handling, A2854 voice notification framing, Opus packet handling, and packet-loss concealment strategy were informed by this project. SayAll uses its existing `MiRemoteV 2ch` output instead of including SiriRemoteForge's HAL driver, root LaunchDaemon, shared-memory ring, application UI, or built-in microphone fallback.
+The lossless PacketLogger file-tail capture shape, binary `.pklg` record layout, ACL/L2CAP fragmentation handling, A2854 voice notification framing, Opus packet handling, and packet-loss concealment strategy were informed by this project. The upstream remote-mic-app implementation uses its `MiRemoteV 2ch` output instead of including SiriRemoteForge's HAL driver, root LaunchDaemon, shared-memory ring, application UI, or built-in microphone fallback.
 
 ## iRemote A2854
 
@@ -54,16 +54,16 @@ The lossless PacketLogger file-tail capture shape, binary `.pklg` record layout,
 - Reference revision: `3f6fd807a6b11df12789df3fdd5874ad9336a684`
 - License: MIT
 
-The direct `com.apple.bluetooth.BTPacketLogger` XPC connection, `RequiresAuth` / `Authentication` handshake, `com.apple.PacketLogger.HCI` Authorization Services flow, profile-required diagnostic recognition, and bounded in-memory traffic handling were informed by this project. SayAll implements its own narrowly scoped client and does not include iRemote's Whisper transcription, text insertion, pointer control, UI, model management, or user data handling.
+The direct `com.apple.bluetooth.BTPacketLogger` XPC connection, `RequiresAuth` / `Authentication` handshake, `com.apple.PacketLogger.HCI` Authorization Services flow, profile-required diagnostic recognition, and bounded in-memory traffic handling were informed by this project. The upstream remote-mic-app implementation provides a narrowly scoped client and does not include iRemote's Whisper transcription, text insertion, pointer control, UI, model management, or user data handling.
 
 ## Opus
 
 - Project: Opus Interactive Audio Codec
 - Source: <https://www.opus-codec.org/>
-- Bundled version in this local build: 1.6.1
+- Historical upstream version: 1.6.1; no libopus binary is bundled in this distribution
 - License: BSD 3-Clause (`BSD-3-Clause`)
 
-The local Apple Remote audio helper dynamically loads the bundled `libopus.0.dylib` to decode remote voice packets. Apple PacketLogger is not included or redistributed by SayAll.
+The retained experimental Apple Remote audio helper can dynamically load an externally installed libopus to decode remote voice packets. This product does not bundle libopus or Apple PacketLogger; Apple Siri Remote remains unsupported in the app.
 
 Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic, Jean-Marc Valin, Timothy B. Terriberry, CSIRO, Gregory Maxwell, Mark Borgerding, Erik de Castro Lopo, Mozilla, Amazon
 
@@ -82,7 +82,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 - Pinned source revision: `v0.7.1` / `e2b22aaaba4e507a097131704bf96dabc004d9cf`
 - License: GNU General Public License v3.0 (`GPL-3.0`)
 
-BlackHole remains an optional loopback-device choice. This fork includes `scripts/build-doubao-driver.sh` and `third_party/blackhole/blackhole-device-usb.patch`, which build a distinct `MiRemoteV2ch.driver` from the pinned BlackHole source. The patch changes only the actual Audio Device transport type to USB and assigns a separate CFPlugIn factory UUID; it does not modify an installed `BlackHole2ch.driver`. The release build embeds the derived driver in a dedicated macOS Installer package. End users install that package from the DMG and do not need the source build tools.
+BlackHole remains an optional loopback-device choice. `scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `BuddyMic2ch.driver` from pinned BlackHole source. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and BuddyMic2ch; matching patched driver source is included in the release source archive.
 
 ## MiRemoteVoice
 
@@ -95,7 +95,7 @@ The Doubao compatibility design is informed by MiRemoteVoice: a side-by-side Bla
 
 ## RC003 product photo
 
-The RC003 product photo bundled as `RC003-remote-photo.png` was supplied by the user on 2026-07-17 for the physical-button mapping interface. It is preserved at its original 508 x 1030 aspect ratio. Copyright and trademark rights in the photo and depicted products remain with their respective owners; the GPL-3.0-only license for the program does not grant additional rights to this image or the Xiaomi marks.
+The upstream project included an RC003 product photo. That photo and upstream proprietary app artwork are not included in Voice Input Buddy. The button mapping interface uses the original `BuddyRemoteIllustration.png` schematic.
 
 ## Setup guide screenshots
 

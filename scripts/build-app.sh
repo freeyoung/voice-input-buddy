@@ -37,4 +37,4 @@ if [[ -n "${RELEASE_BUNDLE_VERSION:-}" ]]; then
 fi
 python3 scripts/verify-onboarding-resources.py "$app/Contents/Resources"
 codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$app"
-printf 'Built %s\nLocal development build; Developer ID signing and notarization are required for public distribution.\n' "$app"
+printf 'Built %s\n' "$app"

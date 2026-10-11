@@ -158,7 +158,7 @@ public final class AppleRemoteOpusDecoder {
     public let sampleRate: Int32
 
     public init?(sampleRate: Int32 = 16_000, libraryPath: String? = nil) {
-        let candidates = [libraryPath, ProcessInfo.processInfo.environment["SAYALL_OPUS_LIBRARY"],
+        let candidates = [libraryPath, ProcessInfo.processInfo.environment["BUDDY_OPUS_LIBRARY"],
                           Self.bundleRelativePath(), "/opt/homebrew/opt/opus/lib/libopus.0.dylib",
                           "/usr/local/opt/opus/lib/libopus.0.dylib"].compactMap { $0 }
         guard let path = candidates.first(where: { FileManager.default.isReadableFile(atPath: $0) }),

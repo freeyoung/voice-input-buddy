@@ -400,7 +400,7 @@ struct KeyboardShortcutPicker: View {
             }
         }
         .onAppear(perform: synchronizeModifiers)
-        .onChange(of: shortcut) { _ in
+        .onChange(of: shortcut) { _, _ in
             synchronizeModifiers()
         }
     }
