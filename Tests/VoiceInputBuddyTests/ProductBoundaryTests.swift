@@ -51,15 +51,20 @@ struct ProductBoundaryTests {
         #expect(!sections.contains(.membership))
     }
 
-    @Test func permissionNavigationIsIndependentAndFollowsSetupOrder() {
+    @Test func dailyNavigationKeepsPermissionRepairBeforeSettings() {
         let sections = SettingsPageBehavior.sidebarSections(
             privateFeatureVisible: false, macroFeatureVisible: false,
             buttonProfilesVisible: false, membershipVisible: false
         )
-        #expect(sections == [.permissions, .connection, .mapping, .integration, .about])
+        #expect(sections == [.connection, .mapping, .integration, .permissions, .about])
         #expect(SettingsPageBehavior.visibleSection(for: .permissions) == .permissions)
         #expect(SettingsPageBehavior.initialSection(
             requestedSection: nil, privateFeatureVisible: false,
+            macroFeatureVisible: false, buttonProfilesVisible: false,
+            membershipVisible: false
+        ) == .connection)
+        #expect(SettingsPageBehavior.initialSection(
+            requestedSection: .permissions, privateFeatureVisible: false,
             macroFeatureVisible: false, buttonProfilesVisible: false,
             membershipVisible: false
         ) == .permissions)
