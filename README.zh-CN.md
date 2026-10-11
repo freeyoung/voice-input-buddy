@@ -88,5 +88,3 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 | [Opus](https://www.opus-codec.org/) | Apple 遥控器音频兼容代码涉及的编解码器；当前安装包不包含其动态库 |
 
 历史兼容代码的引用不代表当前支持 Apple 遥控器。系统框架和内部模块详见 [模块清单](docs/modules.md)，各模块版本、版权及许可见 [第三方声明](THIRD_PARTY_NOTICES.md)。
-
-本项目是独立项目，与 SayAll、小米及第三方输入软件不存在官方合作或背书关系。
