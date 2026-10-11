@@ -128,3 +128,39 @@ struct ProductDeepLinkTests {
         }
     }
 }
+
+@Suite("Scheduled voice task lifetime")
+@MainActor
+struct ScheduledVoiceTaskLifetimeTests {
+    private final class Probe {}
+
+    @Test func completedTaskReleasesCapturedObjects() async throws {
+        var probe: Probe? = Probe()
+        weak var observed = probe
+        var calls = 0
+        let task = VoiceFnTapScheduledTask.mainQueue(after: 0) { [retained = probe!] in
+            withExtendedLifetime(retained) { calls += 1 }
+        }
+        probe = nil
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(calls == 1)
+        #expect(observed == nil)
+        withExtendedLifetime(task) {}
+    }
+
+    @Test func cancellationReleasesCapturedObjectsBeforeDeadline() async throws {
+        var probe: Probe? = Probe()
+        weak var observed = probe
+        var calls = 0
+        let task = VoiceFnTapScheduledTask.mainQueue(after: 0.05) { [retained = probe!] in
+            withExtendedLifetime(retained) { calls += 1 }
+        }
+        probe = nil
+        task.cancel()
+        task.cancel()
+        #expect(observed == nil)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(calls == 0)
+        #expect(observed == nil)
+    }
+}
