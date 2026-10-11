@@ -749,7 +749,7 @@
 "onboarding.voice_tool.guide.select_microphone.detail" = "在语音工具中选择与语音搭子音频页相同的麦克风。";
 "onboarding.voice_tool.guide.release_system_fn" = "去除系统 Fn 占用";
 "onboarding.voice_tool.guide.release_wechat_fn" = "清空微信 App 的 Fn 快捷键";
-"onboarding.voice_tool.guide.image_missing" = "设置截图暂时无法显示，请重新打开语音搭子。";
+"onboarding.voice_tool.guide.image_missing" = "当前安装包缺少设置图片，请安装最新的完整安装包。";
 "onboarding.voice_tool.switch.selected" = "当前已经选择 %1$@。";
 "onboarding.voice_tool.switch.not_selected" = "%1$@ 已安装，但当前不是 macOS 输入法。这里不会因为你选择了它就自动切换。";
 "onboarding.voice_tool.switch.unavailable" = "未检测到 %1$@，请先安装并在系统输入法中启用。";

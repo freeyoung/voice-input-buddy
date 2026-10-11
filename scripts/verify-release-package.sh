@@ -11,6 +11,7 @@ test -s "$app/Contents/MacOS/VoiceInputBuddy"
 test -s "$driver/Contents/MacOS/BuddyMic2ch"
 test -x "$work/expanded/Scripts/postinstall"
 cmp "$root/scripts/driver-package/postinstall" "$work/expanded/Scripts/postinstall"
+python3 "$root/scripts/verify-onboarding-resources.py" "$app/Contents/Resources"
 codesign --verify --deep --strict "$app"
 codesign --verify --deep --strict "$driver"
 lipo "$app/Contents/MacOS/VoiceInputBuddy" -verify_arch arm64 x86_64

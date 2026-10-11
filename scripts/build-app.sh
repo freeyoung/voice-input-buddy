@@ -25,5 +25,6 @@ if [[ -n "${RELEASE_BUNDLE_VERSION:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $RELEASE_BUNDLE_VERSION" "$app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $RELEASE_COMMIT_COUNT" "$app/Contents/Info.plist"
 fi
+python3 scripts/verify-onboarding-resources.py "$app/Contents/Resources"
 codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$app"
 printf 'Built %s\nLocal development build; Developer ID signing and notarization are required for public distribution.\n' "$app"

@@ -725,7 +725,7 @@ struct OnboardingView: View {
                 if !availablePhysicalControlSources.contains(.siriRemote) {
                     unsupportedControlSourceCard(
                         titleKey: "onboarding.control_source.siri_unavailable.title",
-                        icon: "appletvremote"
+                        icon: "appletvremote.gen4.fill"
                     )
                 }
                 unsupportedControlSourceCard(
@@ -884,7 +884,7 @@ struct OnboardingView: View {
     ) -> some View {
         switch source {
         case .xiaomiRemote:
-            if let image = bundledRemoteImage(resourceName: "RC003-remote-photo") {
+            if let image = bundledRemoteImage(resourceName: "BuddyRemoteIllustration") {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()

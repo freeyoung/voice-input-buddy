@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Testing
 @testable import VoiceInputBuddy
 
@@ -17,6 +18,23 @@ struct ProductBoundaryTests {
         #expect(settings.totalVoiceDuration == duration)
         #expect(defaults.object(forKey: "usage.totalButtonPressCount") == nil)
         #expect(defaults.object(forKey: "usage.totalVoiceDuration") == nil)
+    }
+
+    @Test @MainActor func everySetupScreenshotAndRemoteIllustrationDecodes() throws {
+        let bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment
+        for name in ["doubao-menu", "doubao-settings", "system-fn", "vokie-step-1",
+                     "vokie-step-2", "weixin-app-shortcuts", "weixin-input-menu",
+                     "weixin-input-settings"] {
+            for theme in ["light", "dark"] {
+                let url = try #require(bundle.url(forResource: "\(name)-\(theme)",
+                    withExtension: "png", subdirectory: "Onboarding"))
+                let image = try #require(NSImage(contentsOf: url))
+                #expect(image.isValid)
+            }
+        }
+        let remote = try #require(bundle.url(forResource: "BuddyRemoteIllustration",
+                                            withExtension: "png"))
+        #expect(try #require(NSImage(contentsOf: remote)).isValid)
     }
 
     @Test func unavailableFeaturesStayOutOfNavigation() {
