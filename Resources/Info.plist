@@ -45,5 +45,11 @@
 	<string>Copyright © 2026 Voice Input Buddy contributors; includes GPL-3.0-only upstream code.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>https://voice.zfdang.com/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>8aHZRXuY+Q0F0FsWNyQTx0wIYXi4MoCCSzAWs0j+uR4=</string>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

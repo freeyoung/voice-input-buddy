@@ -37,3 +37,30 @@ scripts/build-release-sources.sh
 ```
 
 本地 App 构建默认仅构建宿主架构；Release workflow 明确构建两种架构并验证。GitHub runner 固定 macos-15 和 Xcode 26.2。构建/测试任务仅有读取权限；只有 main 的发布任务拥有创建 Release 所需的 contents: write。
+
+## 应用内更新
+
+Sparkle 从 `https://voice.zfdang.com/appcast.xml` 检查正式版本。应用内置
+`SUPublicEDKey`，下载的 PKG 必须通过对应 Ed25519 公钥验证，才会开始安装。
+通过菜单或设置中的“检查更新”可以手动触发；默认也进行后台检查。
+版本比较使用递增的 CFBundleVersion（完整 Git 提交计数），显示采用完整发布标签。
+
+main 的发布构建从仓库 Actions Secret `SPARKLE_PRIVATE_KEY` 读取签名私钥，
+仓库 Variable `SPARKLE_PUBLIC_KEY` 必须与内置公钥完全一致。私钥只通过标准输入
+传递给 Sparkle sign_update；不会写入源码、日志、发布资产或 PR 构建。
+签名后使用 CryptoKit 与应用公钥独立验证，再生成并发布 appcast.xml。
+PR 构建只测试和打包，不接触签名私钥、不部署更新源。
+
+Release 成功后 Pages workflow 自动部署最新已发布 appcast.xml。单独更新网页时
+也读取最新 Release 的更新源，避免网站发布把更新源覆盖掉。PKG 地址指向
+GitHub Releases；安装同时更新 App 和驱动，需要管理员授权，并可能短暂重启音频。
+这不是静默安装，也不代替 Apple Developer ID 签名和公证。
+
+已有未配置更新源的版本需手动安装一次带更新源与公钥的新 PKG。
+开发目录中的 ad-hoc App 无法代表完整安装流程，验收应从 `/Applications` 中
+通过 PKG 安装的版本升级到后续版本。发布前必须实测管理员授权、升级后重启、
+驱动可用性和系统权限；不得仅凭构建通过宣称完整升级已验证。
+
+尚未发布预览通道；启用预览检查时，缺失预览源会回退到正式更新源。
+不要随意更换密钥。PKG 更新无法通过普通更新自动轮换遗失的签名密钥，
+必须安全备份，并在确需更换时安排用户重新安装。

@@ -81,7 +81,7 @@ The tool must accept the virtual microphone and expose a usable voice shortcut. 
 | [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | Xiaomi ATVV protocol, ADPCM decoding, and HID mapping reference |
 | [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | Virtual microphone driver |
 | [MiRemoteVoice](https://github.com/VincentKingHsu/MiRemoteVoice) | USB-transport loopback compatibility design reference |
-| [Sparkle](https://github.com/sparkle-project/Sparkle) 2.9.4 | macOS update framework; no update feed is configured yet |
+| [Sparkle](https://github.com/sparkle-project/Sparkle) 2.9.4 | macOS in-app updates with signed combined installers |
 | [codex-siri-remote](https://github.com/luobosibing2/codex-siri-remote) | Historical reference for Apple remote HID and touch behavior |
 | [SiriRemoteForge](https://github.com/HOLODATA-COM/SiriRemoteForge) | Historical reference for Apple remote audio and PacketLogger formats |
 | [iRemote A2854](https://github.com/DaviBaum/iRemote-A2854) | Historical reference for Apple remote diagnostics and authorization |
