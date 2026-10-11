@@ -668,13 +668,9 @@ struct SettingsView: View {
                 .frame(height: SettingsPageBehavior.sidebarTopDragHeight)
                 .accessibilityHidden(true)
             VStack(spacing: 4) {
-                Text(verbatim: "Voice Input\nBuddy")
+                Text(verbatim: localization.text("app.name"))
                     .multilineTextAlignment(.center)
                     .font(.system(size: 16, weight: .semibold))
-                Text(currentVersion)
-                    .font(.system(size: 12))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
@@ -4268,9 +4264,9 @@ struct SettingsView: View {
     }
 
     private var currentVersion: String {
-        Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? localization.text("common.value.unknown")
+        (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String) ??
+            (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ??
+            localization.text("common.value.unknown")
     }
 
     private func revealPrivateEnrollmentIfNeeded() {

@@ -2,6 +2,15 @@
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
+# Local and CI builds derive display and bundle versions from the same Git metadata.
+release_metadata="$(scripts/release-metadata.sh)"
+while IFS='=' read -r key value; do
+    case "$key" in
+        RELEASE_TAG|RELEASE_BUNDLE_VERSION|RELEASE_COMMIT_COUNT|RELEASE_PACKAGE_VERSION)
+            export "$key=$value" ;;
+    esac
+done <<< "$release_metadata"
+: "${RELEASE_TAG:?Release metadata is required}"
 configuration="${CONFIGURATION:-release}"
 binaries=()
 # Release builds include both Mac architectures; local builds default to the host.
@@ -24,6 +33,7 @@ fi
 if [[ -n "${RELEASE_BUNDLE_VERSION:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $RELEASE_BUNDLE_VERSION" "$app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $RELEASE_COMMIT_COUNT" "$app/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Add :BuddyReleaseVersion string $RELEASE_TAG" "$app/Contents/Info.plist"
 fi
 python3 scripts/verify-onboarding-resources.py "$app/Contents/Resources"
 codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$app"

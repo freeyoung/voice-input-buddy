@@ -17,4 +17,5 @@ codesign --verify --deep --strict "$driver"
 lipo "$app/Contents/MacOS/VoiceInputBuddy" -verify_arch arm64 x86_64
 lipo "$driver/Contents/MacOS/BuddyMic2ch" -verify_arch arm64 x86_64
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" == "$RELEASE_COMMIT_COUNT" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :BuddyReleaseVersion' "$app/Contents/Info.plist")" == "$RELEASE_TAG" ]]
 echo 'Verified combined PKG: universal app, universal HAL driver, version and postinstall script.'
