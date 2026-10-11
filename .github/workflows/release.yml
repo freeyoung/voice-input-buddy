@@ -1,0 +1,98 @@
+name: macOS installer and release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    outputs:
+      tag: ${{ steps.version.outputs.RELEASE_TAG }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute deterministic release version
+        id: version
+        run: |
+          scripts/release-metadata.sh | tee "$RUNNER_TEMP/release-version"
+          cat "$RUNNER_TEMP/release-version" >> "$GITHUB_ENV"
+          cat "$RUNNER_TEMP/release-version" >> "$GITHUB_OUTPUT"
+      - name: Test
+        run: |
+          python3 scripts/test-release-metadata.py
+          swift test --disable-keychain
+      - name: Build universal app and driver
+        env:
+          BUILD_ARCHS: arm64 x86_64
+        run: |
+          scripts/build-app.sh
+          scripts/build-driver.sh
+          lipo "dist/Voice Input Buddy.app/Contents/MacOS/VoiceInputBuddy" -verify_arch arm64 x86_64
+          lipo dist/BuddyMic2ch.driver/Contents/MacOS/BuddyMic2ch -verify_arch arm64 x86_64
+      - name: Package app, driver, and matching complete source
+        run: |
+          scripts/build-release-package.sh
+          scripts/verify-release-package.sh
+          scripts/build-release-sources.sh
+          cd dist/release
+          shasum -a 256 ./*.pkg ./*.tar.gz > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-release
+          path: dist/release/*
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.build.outputs.tag }}
+      RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-release
+          path: release
+      - name: Publish release
+        shell: bash
+        run: |
+          cat > release-notes.md <<'NOTES'
+          macOS 14 or later, Apple Silicon and Intel.
+
+          Download the single `Voice_Input_Buddy_*.pkg` installer. It installs both
+          `/Applications/Voice Input Buddy.app` and the virtual microphone driver.
+          Administrator authorization is required. Installing the driver briefly
+          restarts Core Audio and may interrupt playback or recording.
+
+          This build uses ad-hoc application signatures. The PKG is unsigned and
+          not notarized by Apple; it may be blocked by Gatekeeper and application
+          updates may require renewed Input Monitoring / Accessibility permissions.
+          Matching complete source (including patched BlackHole and Sparkle) and
+          SHA-256 checksums are attached.
+          NOTES
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            # A completed release is immutable on rerun; do not replace its files.
+            echo "Release $RELEASE_TAG already exists."
+          else
+            gh release create "$RELEASE_TAG" release/* --target "$RELEASE_COMMIT" \
+              --title "$RELEASE_TAG" --notes-file release-notes.md --latest
+          fi
