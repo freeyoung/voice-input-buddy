@@ -33,6 +33,39 @@ struct ProductBoundaryTests {
         #expect(!sections.contains(.membership))
     }
 
+    @Test func permissionNavigationIsIndependentAndFollowsSetupOrder() {
+        let sections = SettingsPageBehavior.sidebarSections(
+            privateFeatureVisible: false, macroFeatureVisible: false,
+            buttonProfilesVisible: false, membershipVisible: false
+        )
+        #expect(sections == [.permissions, .connection, .mapping, .integration, .about])
+        #expect(SettingsPageBehavior.visibleSection(for: .permissions) == .permissions)
+        #expect(SettingsPageBehavior.initialSection(
+            requestedSection: nil, privateFeatureVisible: false,
+            macroFeatureVisible: false, buttonProfilesVisible: false,
+            membershipVisible: false
+        ) == .permissions)
+    }
+
+    @Test @MainActor func changingIntegrationKeepsHardwareAudioAndMappings() throws {
+        let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.selectedAudioDeviceUID = "BuddyMic2ch_UID"
+        settings.gainDB = 6
+        settings.customMappingEnabled = true
+        settings.completeOnboarding()
+        SettingsPageBehavior.beginIntegrationSetup(tool: .other, settings: settings)
+        #expect(settings.selectedAudioDeviceUID == "BuddyMic2ch_UID")
+        #expect(settings.gainDB == 6)
+        #expect(settings.customMappingEnabled)
+        #expect(settings.onboardingVoiceTool == .other)
+        #expect(settings.onboardingControlSource == .xiaomiRemote)
+        #expect(settings.onboardingStep == .voiceTool)
+        #expect(!settings.isOnboardingComplete)
+    }
+
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {
         #expect(OnboardingBuildCapabilities.availableControlSources == [.xiaomiRemote])
         let ready = OnboardingCapabilities(

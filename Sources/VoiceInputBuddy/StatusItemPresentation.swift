@@ -50,7 +50,7 @@ enum StatusItemPresentation: String, Equatable {
     @MainActor
     func apply(to button: NSStatusBarButton, description: String) {
         let resourceName = self == .streaming ? "StatusIconActiveTemplate" : "StatusIconTemplate"
-        let fallbackSymbol = self == .streaming ? "mic.fill" : "dot.radiowaves.left.and.right"
+        let fallbackSymbol = self == .streaming ? "mic.fill" : "mic"
         // Named images are shared. Keep localized descriptions local to this status item.
         let image = (NSImage(named: NSImage.Name(resourceName))?.copy() as? NSImage)
             ?? NSImage(systemSymbolName: fallbackSymbol, accessibilityDescription: description)

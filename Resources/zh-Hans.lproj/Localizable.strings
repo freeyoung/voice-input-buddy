@@ -240,13 +240,13 @@
 "custom_application.error.title" = "无法配置 APP";
 "custom_application.error.not_installed" = "目标 APP 已移动或卸载，请重新添加。";
 "custom_application.error.open_failed" = "无法打开目标 APP。";
-"settings.section.connection" = "连接";
-"settings.section.buttons" = "按键";
-"settings.section.permissions" = "权限";
+"settings.section.connection" = "设备连接";
+"settings.section.buttons" = "按键映射";
+"settings.section.permissions" = "权限与环境";
 "permission.status.enabled" = "已开启";
 "permission.status.pending" = "待授权";
-"connection.page.title" = "连接与语音";
-"connection.page.subtitle" = "连接小米蓝牙遥控器 2 Pro，并配置语音输出与触发方式";
+"connection.page.title" = "设备连接";
+"connection.page.subtitle" = "连接遥控器，并选择语音输出设备";
 "connection.device.name" = "小米蓝牙遥控器 2 / 2 Pro";
 "remote.device.selector" = "遥控器";
 "remote.device.model" = "型号";
@@ -446,12 +446,12 @@
 "permissions.upgrade_identity_help" = "如果升级后权限没有延续，请把这个 Developer ID 签名版本保留在“应用程序”中，并补授权一次；后续同身份签名更新将继续复用该系统权限。";
 "diagnostics.title" = "诊断";
 "diagnostics.logs.title" = "应用日志";
-"diagnostics.logs.privacy" = "日志加密后供支持排查，平时不会自动上传；只有你主动发送时才会发送安全诊断事件。";
+"diagnostics.logs.privacy" = "诊断日志仅存于本机，日志上传已停用。";
 "diagnostics.logs.last_entry" = "打开加密支持日志，或复制脱敏诊断摘要。";
 "diagnostics.logs.show_in_finder" = "在 Finder 中显示日志";
 "diagnostics.logs.copy_summary" = "复制诊断摘要";
 "diagnostics.logs.send" = "发送诊断信息";
-"diagnostics.upload.ready" = "除非你主动发送诊断信息，否则不会上传。";
+"diagnostics.upload.ready" = "诊断摘要仅在本机复制，不会上传。";
 "diagnostics.upload.sending" = "正在发送安全诊断事件…";
 "diagnostics.upload.success" = "已提交 %1$@ 条安全诊断事件。";
 "diagnostics.upload.not_configured" = "此版本尚未配置诊断服务。";
@@ -547,7 +547,7 @@
 "settings.section.settings" = "设置";
 "settings.update_badge.accessibility_value" = "有新版本可用";
 "settings.page.title" = "设置";
-"settings.permissions.title" = "权限与隐私";
+"settings.permissions.title" = "系统权限";
 "settings.general.title" = "通用";
 "settings.general.launch_behavior" = "启动行为";
 "settings.general.launch_behavior_help" = "设置登录后自动启动和应用启动时是否打开主窗口。";
@@ -566,7 +566,7 @@
 "about.preferences.show_status_bar_icon_help" = "如果 Dock 和菜单栏图标都已关闭，可再次启动语音搭子来打开设置。";
 "about.preferences.app_icon" = "应用图标";
 "about.preferences.app_icon_help" = "选择在 Dock、应用切换器和设置窗口中显示的图标。";
-"about.preferences.app_icon_standard" = "经典鸭";
+"about.preferences.app_icon_standard" = "Voice Input Buddy";
 "about.preferences.app_icon_faceted_duck" = "几何鸭";
 "about.preferences.language" = "应用语言";
 "about.page.hero_subtitle" = "集中查看无线语音工作台的版本、偏好与支持信息";
@@ -1245,3 +1245,25 @@
 "siri_remote.activation.disable" = "停用";
 "siri_remote.activation.retry" = "重试";
 "siri_remote.activation.preparing" = "准备中…";
+
+// Independent setup sections.
+"settings.section.integration" = "输入法集成";
+"settings.permissions.page_title" = "权限与环境";
+"settings.permissions.introduction" = "先确认权限和麦克风驱动，再连接设备、配置输入工具。";
+"settings.permissions.privacy_title" = "隐私与数据处理";
+"settings.permissions.privacy_detail" = "Voice Input Buddy 不采集使用统计，不保存回眸文本和录音，不上传日志。蓝牙用于接收遥控器音频，输入监控用于读取遥控器按键，辅助功能用于触发所配置的动作。语音识别由所选输入工具提供，请同时检查该工具的隐私设置。";
+"settings.driver.title" = "虚拟麦克风驱动";
+"settings.driver.detail" = "回环设备将遥控器音频传递给输入工具。";
+"settings.driver.installed" = "已检测到兼容麦克风";
+"settings.driver.missing" = "未检测到兼容麦克风";
+"settings.driver.reload_help" = "安装驱动后在此刷新设备；如果仍未出现，请重启 Mac。具体音频输出在“设备连接”中选择。";
+"settings.integration.title" = "输入法与语音工具集成";
+"settings.integration.introduction" = "在这里配置接收遥控器音频与语音快捷键的工具。通过向导验证完整输入流程，避免设备已连接却仍无法输入。";
+"settings.integration.current" = "当前集成";
+"settings.integration.microphone_help" = "在输入工具中选择相同的虚拟麦克风，并让语音快捷键、按下与松开行为和下方设置保持一致。";
+"settings.integration.other_title" = "VoiceCursor / 其他工具";
+"settings.integration.configure" = "通过向导配置并测试";
+"settings.integration.shortcut_title" = "语音触发方式";
+"settings.integration.shortcut_help" = "这些选项只调整语音触发方式。普通遥控器按键在“按键映射”中配置；识别与文本整理由所选输入工具完成。";
+
+"remote.device.illustration" = "遥控器示意图";

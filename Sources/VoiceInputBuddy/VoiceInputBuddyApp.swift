@@ -497,7 +497,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         menu.addItem(.separator())
         menu.addItem(menuItem("menu.about", action: #selector(showAbout)))
         menu.addItem(versionMenuItem())
-        menu.addItem(menuItem("menu.check_for_updates", action: #selector(checkForUpdates)))
+        if updateFeedSelection.validatedStableFeedURL != nil {
+            menu.addItem(menuItem("menu.check_for_updates", action: #selector(checkForUpdates)))
+        }
         menu.addItem(menuItem("about.support.github", action: #selector(openGitHub)))
         menu.addItem(menuItem("about.support.website", action: #selector(openWebsite)))
         menu.addItem(.separator())
@@ -812,7 +814,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     private func startUpdaterIfNeeded() {
-        guard !updaterStarted else { return }
+        guard !updaterStarted, updateFeedSelection.validatedStableFeedURL != nil else { return }
         updaterController.updater.automaticallyChecksForUpdates =
             UpdateCheckPolicy(
                 checksForPreReleaseUpdates: model.settings.checksForPreReleaseUpdates

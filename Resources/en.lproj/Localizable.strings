@@ -240,13 +240,13 @@
 "custom_application.error.title" = "Unable to Configure App";
 "custom_application.error.not_installed" = "The target app was moved or uninstalled. Add it again.";
 "custom_application.error.open_failed" = "The target app could not be opened.";
-"settings.section.connection" = "Connection";
+"settings.section.connection" = "Devices";
 "settings.section.buttons" = "Buttons";
 "settings.section.permissions" = "Permissions";
 "permission.status.enabled" = "Enabled";
 "permission.status.pending" = "Needs Permission";
-"connection.page.title" = "Connection & Voice";
-"connection.page.subtitle" = "Connect a remote or phone and set up voice input";
+"connection.page.title" = "Device Connection";
+"connection.page.subtitle" = "Connect your remote and choose its audio output";
 "connection.device.name" = "Xiaomi Bluetooth Remote 2 / 2 Pro";
 "remote.device.selector" = "Remote";
 "remote.device.model" = "Model";
@@ -446,12 +446,12 @@
 "permissions.upgrade_identity_help" = "If access was lost after an update, keep Voice Input Buddy in Applications and grant the missing permission again.";
 "diagnostics.title" = "Diagnostics";
 "diagnostics.logs.title" = "App Logs";
-"diagnostics.logs.privacy" = "Support logs are encrypted and are never uploaded automatically. Diagnostic information is sent only when you choose to send it.";
+"diagnostics.logs.privacy" = "Diagnostic logs stay on this Mac. Log upload is disabled.";
 "diagnostics.logs.last_entry" = "Open encrypted support logs or copy a redacted diagnostic summary.";
 "diagnostics.logs.show_in_finder" = "Show Logs in Finder";
 "diagnostics.logs.copy_summary" = "Copy Diagnostic Summary";
 "diagnostics.logs.send" = "Send Diagnostics";
-"diagnostics.upload.ready" = "Nothing is sent unless you choose to send diagnostics.";
+"diagnostics.upload.ready" = "Diagnostic summaries are copied locally; nothing is uploaded.";
 "diagnostics.upload.sending" = "Sending diagnostic information…";
 "diagnostics.upload.success" = "Diagnostic events submitted: %1$@.";
 "diagnostics.upload.not_configured" = "Diagnostic service is not configured in this build.";
@@ -547,7 +547,7 @@
 "settings.section.settings" = "Settings";
 "settings.update_badge.accessibility_value" = "New version available";
 "settings.page.title" = "Settings";
-"settings.permissions.title" = "Permissions & Privacy";
+"settings.permissions.title" = "System Permissions";
 "settings.general.title" = "General";
 "settings.general.launch_behavior" = "Launch Behavior";
 "settings.general.launch_behavior_help" = "Choose whether to launch at login and open the main window when the app starts.";
@@ -566,7 +566,7 @@
 "about.preferences.show_status_bar_icon_help" = "If both Dock and menu bar icons are hidden, launch Voice Input Buddy again to open Settings.";
 "about.preferences.app_icon" = "App Icon";
 "about.preferences.app_icon_help" = "Choose the icon shown in the Dock, app switcher, and Settings.";
-"about.preferences.app_icon_standard" = "Classic Duck";
+"about.preferences.app_icon_standard" = "Voice Input Buddy";
 "about.preferences.app_icon_faceted_duck" = "Faceted Duck";
 "about.preferences.language" = "App Language";
 "about.page.hero_subtitle" = "Version, preferences, and support for your wireless voice workspace";
@@ -1245,3 +1245,25 @@
 "siri_remote.activation.disable" = "Disable";
 "siri_remote.activation.retry" = "Retry";
 "siri_remote.activation.preparing" = "Preparing…";
+
+// Independent setup sections.
+"settings.section.integration" = "Integration";
+"settings.permissions.page_title" = "Permissions & Environment";
+"settings.permissions.introduction" = "Check these requirements before connecting a device or configuring input tools.";
+"settings.permissions.privacy_title" = "Privacy and data handling";
+"settings.permissions.privacy_detail" = "Voice Input Buddy does not collect usage statistics, save transcript history or audio recordings, or upload logs. Bluetooth receives remote audio; Input Monitoring reads remote buttons; Accessibility triggers configured actions. Speech recognition is provided by the selected input tool and follows its own privacy settings.";
+"settings.driver.title" = "Virtual microphone driver";
+"settings.driver.detail" = "A loopback device carries remote audio to your input tool.";
+"settings.driver.installed" = "Compatible microphone detected";
+"settings.driver.missing" = "Compatible microphone not detected";
+"settings.driver.reload_help" = "After installing the driver, refresh the devices here. If it is still missing, restart your Mac. Select the audio output in Devices.";
+"settings.integration.title" = "Input Method & Voice Tool Integration";
+"settings.integration.introduction" = "Configure the tool that receives your remote audio and voice shortcut. Use the setup guide to verify the complete path, rather than assuming a detected device is ready for dictation.";
+"settings.integration.current" = "Current integration";
+"settings.integration.microphone_help" = "Choose the same virtual microphone inside the input tool. Its voice shortcut and press/release behavior must match the settings below.";
+"settings.integration.other_title" = "VoiceCursor / Other Tools";
+"settings.integration.configure" = "Configure & Test with Guide";
+"settings.integration.shortcut_title" = "Voice trigger";
+"settings.integration.shortcut_help" = "These controls affect the voice trigger. Configure ordinary remote buttons in Buttons. The selected input tool performs recognition and text cleanup.";
+
+"remote.device.illustration" = "Remote control illustration";

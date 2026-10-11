@@ -15,6 +15,7 @@ import UniformTypeIdentifiers
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case connection
+    case integration
     case privateFeature
     case macros
     case buttonProfiles
@@ -31,6 +32,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: LocalizedStringKey {
         switch self {
         case .connection: return "settings.section.connection"
+        case .integration: return "settings.section.integration"
         case .privateFeature: return ""
         case .macros: return ""
         case .buttonProfiles: return ""
@@ -47,6 +49,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .connection: return "link"
+        case .integration: return "text.bubble"
         case .privateFeature: return "sparkles"
         case .macros: return "command.square"
         case .buttonProfiles: return "rectangle.3.group"
@@ -124,11 +127,13 @@ enum SettingsPageBehavior {
     static let sidebarTopDragHeight: CGFloat = 5
 
     static let sidebarSectionOrder: [SettingsSection] = [
+        .permissions,
+        .connection,
         .mapping,
+        .integration,
         .macros,
         .buttonProfiles,
         .membership,
-        .connection,
         .privateFeature,
         .about,
     ]
@@ -165,8 +170,15 @@ enum SettingsPageBehavior {
         ).first ?? .about
     }
 
+    static func beginIntegrationSetup(tool: OnboardingVoiceTool, settings: AppSettings) {
+        settings.restartOnboarding()
+        settings.setOnboardingVoiceTool(tool)
+        settings.setOnboardingControlSource(.xiaomiRemote)
+        settings.setOnboardingStep(.voiceTool)
+    }
+
     static func visibleSection(for requestedSection: SettingsSection) -> SettingsSection {
-        requestedSection == .permissions ? .about : requestedSection
+        requestedSection
     }
 
     static func showsUpdateBadge(
@@ -186,7 +198,7 @@ enum SettingsPageBehavior {
     ) -> SettingsPermissionAction {
         switch permission {
         case .bluetooth:
-            .openSystemSettings("x-apple.systempreferences:com.apple.BluetoothSettings")
+            .openSystemSettings("x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth")
         case .inputMonitoring:
             isGranted
                 ? .openSystemSettings(
@@ -439,7 +451,6 @@ struct SettingsView: View {
     @State private var preservesMappingContextOnNavigation = false
     @State private var editingMappingProfileID: UUID?
     @State private var mappingMacroSearch = ""
-    @State private var mappingVoiceSettingsRequest = 0
 
     @ObservedObject private var macroFeature: MacroFeatureIntegration
     @ObservedObject private var membershipFeature: MembershipFeatureIntegration
@@ -657,7 +668,8 @@ struct SettingsView: View {
                 .frame(height: SettingsPageBehavior.sidebarTopDragHeight)
                 .accessibilityHidden(true)
             VStack(spacing: 4) {
-                Text(verbatim: "VoiceInputBuddy")
+                Text(verbatim: "Voice Input\nBuddy")
+                    .multilineTextAlignment(.center)
                     .font(.system(size: 16, weight: .semibold))
                 Text(currentVersion)
                     .font(.system(size: 12))
@@ -761,6 +773,8 @@ struct SettingsView: View {
         switch SettingsPageBehavior.visibleSection(for: selectedSection) {
         case .connection:
             connectionPage
+        case .integration:
+            integrationPage
         case .privateFeature:
             if privateFeature.isFeatureVisible {
                 privateFeature.settingsView()
@@ -852,7 +866,7 @@ struct SettingsView: View {
         case .transcripts:
             aboutPage
         case .permissions:
-            aboutPage
+            permissionsPage
         case .about:
             aboutPage
         }
@@ -885,19 +899,12 @@ struct SettingsView: View {
         settingsPage {
             PageHeader(title: localization.text("connection.page.title"))
         } content: {
-            if let warning = model.voiceKeyCompatibilityWarning {
-                voiceKeyCompatibilityWarningPanel(warning)
-            }
             CompatibilityGlassContainer(spacing: 14) {
                 HStack(alignment: .top, spacing: 14) {
                     connectionDevicePanel
                         .frame(width: 230)
                     VStack(spacing: 14) {
-                        phoneConnectionsPanel
                         audioSettingsPanel
-                        audioCompatibilityPanel
-                        // Chromecast 连接卡片已按产品要求移除：启用开关默认常开，
-                        // 语音键模式在按键页底部，状态见侧边栏「连接」的设备列表。
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
@@ -1404,7 +1411,7 @@ struct SettingsView: View {
                         trigger: trigger
                     )
                 },
-                onVoiceSettings: { mappingVoiceSettingsRequest += 1 }
+                onVoiceSettings: { selectedSection = .integration }
             )
         }
     }
@@ -1488,7 +1495,7 @@ struct SettingsView: View {
                     allowSystemReservedKeys: settings.chromecastAllowSystemReservedKeys,
                     exceptions: settings.chromecastSystemReservedExceptions
                 ),
-                onVoiceSettings: { mappingVoiceSettingsRequest += 1 }
+                onVoiceSettings: { selectedSection = .integration }
             )
         }
     }
@@ -1688,7 +1695,7 @@ struct SettingsView: View {
                         trigger: trigger
                     )
                 },
-                onVoiceSettings: { mappingVoiceSettingsRequest += 1 }
+                onVoiceSettings: { selectedSection = .integration }
             )
             .onReceive(model.$activeRemoteButtons) { buttons in
                 selectedRemoteButton = MappingSelectionPolicy.selection(
@@ -1783,11 +1790,6 @@ struct SettingsView: View {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             proxy.scrollTo("mapping-action-editor", anchor: .top)
                         }
-                    }
-                }
-                .onChange(of: mappingVoiceSettingsRequest) { _ in
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        proxy.scrollTo("mapping-page-bottom", anchor: .bottom)
                     }
                 }
             }
@@ -1948,14 +1950,6 @@ struct SettingsView: View {
                 Divider()
                 mappingSelectionLockControl
                 Divider()
-                mappingVoiceKeyModeControl
-                // 「语音键模拟 Fn 点按」只对「不会按一次收音」的遥控器有意义：
-                // 它把按住模拟成点按，用来驱动只认点按的工具。Chromecast 自己能按一次收音，
-                // 驱动方式由语音模式直接决定，页面不出现该开关（见能力矩阵文档）。
-                if VoiceFunctionKeyTapApplicability.isApplicable(capabilities: capabilities) {
-                    Divider()
-                    mappingVoiceFnTapControl
-                }
                 // 触摸面（滑动箭头/光标）只有具备触摸面的遥控器才显示，页面请求之外再加一道能力门禁。
                 if TouchSurfaceControlApplicability.isApplicable(
                     capabilities: capabilities,
@@ -3113,10 +3107,128 @@ struct SettingsView: View {
         }
     }
 
-    // Legacy entry point retained for callers that still ask for the old route.
-    // The visible navigation now renders permissions and diagnostics inline in Settings.
     private var permissionsPage: some View {
-        aboutPage
+        settingsPage {
+            PageHeader(title: localization.text("settings.permissions.page_title"))
+        } content: {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("settings.permissions.introduction")
+                    .foregroundStyle(.secondary)
+                GlassPanel { inlinePermissionsSection }
+                microphoneDriverPanel
+                GlassPanel {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("settings.permissions.privacy_title", systemImage: "lock.shield")
+                            .font(.headline)
+                        Text("settings.permissions.privacy_detail")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            refreshPermissionStates()
+            model.refreshAudioDevices()
+        }
+    }
+
+    private var microphoneDriverPanel: some View {
+        let installed = model.audioDevices.contains {
+            OnboardingAudioSelectionPolicy.isSupportedDevice(uid: $0.uid, name: $0.name)
+        }
+        return GlassPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                permissionRow(
+                    symbol: "mic.fill",
+                    title: localization.text("settings.driver.title"),
+                    detail: localization.text("settings.driver.detail"),
+                    state: installed ? .granted : .pending,
+                    actionTitle: localization.text("audio.action.refresh_devices")
+                ) { model.refreshAudioDevices() }
+                HStack {
+                    Label(installed ? "settings.driver.installed" : "settings.driver.missing",
+                          systemImage: installed ? "checkmark.circle.fill" : "exclamationmark.triangle")
+                        .foregroundStyle(installed ? Color.green : Color.orange)
+                    Spacer()
+                    Button("audio.compatibility.open_install_guide") {
+                        model.openDoubaoDriverInstructions(using: localization)
+                    }
+                    .compatibilityButtonStyle(.standard)
+                }
+                Text("settings.driver.reload_help")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var integrationPage: some View {
+        settingsPage {
+            PageHeader(title: localization.text("settings.integration.title"))
+        } content: {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("settings.integration.introduction")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                GlassPanel {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("settings.integration.current").font(.headline)
+                        Text(localization.text(settings.onboardingVoiceTool.titleKey))
+                            .font(.title3.weight(.medium))
+                        Label(model.voiceShortcutStatus.text(using: localization), systemImage: "keyboard")
+                        Label(model.audioStatus.text(using: localization), systemImage: "mic")
+                        Text("settings.integration.microphone_help")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                    ForEach(OnboardingVoiceTool.allCases.filter { $0 != .unselected }) { tool in
+                        integrationToolCard(tool)
+                    }
+                }
+                GlassPanel {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("settings.integration.shortcut_title").font(.headline)
+                        mappingVoiceKeyModeControl
+                        if VoiceFunctionKeyTapApplicability.isApplicable(capabilities: model.selectedRemoteVoiceCapabilities) {
+                            mappingVoiceFnTapControl
+                        }
+                        Text("settings.integration.shortcut_help")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if let warning = model.voiceKeyCompatibilityWarning {
+                    voiceKeyCompatibilityWarningPanel(warning)
+                }
+            }
+        }
+        .onAppear { model.refreshVoiceKeyCompatibilityWarning() }
+    }
+
+    private func integrationToolCard(_ tool: OnboardingVoiceTool) -> some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(localization.text(tool == .other ? "settings.integration.other_title" : tool.titleKey))
+                        .font(.headline)
+                    Spacer()
+                    if settings.onboardingVoiceTool == tool {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor)
+                    }
+                }
+                Text(localization.text(tool.detailKey))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("settings.integration.configure") {
+                    SettingsPageBehavior.beginIntegrationSetup(tool: tool, settings: settings)
+                }
+                .compatibilityButtonStyle(.standard)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var statisticsPage: some View {
@@ -3607,6 +3719,24 @@ struct SettingsView: View {
         settingsPage(contentPadding: 28) {
             PageHeader(title: localization.text("settings.page.title"))
         } content: {
+            GlassPanel {
+                HStack(spacing: 18) {
+                    Image(systemName: "wand.and.stars").font(.title2)
+                        .foregroundStyle(Color.accentColor)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("about.preferences.restart_onboarding").font(.headline)
+                        Text("about.preferences.restart_onboarding_help")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("about.preferences.restart_onboarding_action") {
+                        settings.restartOnboarding()
+                    }
+                    .compatibilityButtonStyle(.prominent)
+                    .controlSize(.large)
+                }
+            }
+            .padding(.bottom, 16)
             CompatibilityGlassContainer(spacing: 0) {
                 VStack(spacing: 0) {
                     Group {
@@ -3650,40 +3780,42 @@ struct SettingsView: View {
                                     Spacer(minLength: 8)
                                 }
 
-                                HStack(spacing: 12) {
-                                    Button(action: checkForUpdates) {
-                                        Label(
-                                            "menu.check_for_updates",
-                                            systemImage: "arrow.triangle.2.circlepath"
-                                        )
-                                    }
-                                    .compatibilityButtonStyle(.standard)
-                                    .fixedSize(horizontal: true, vertical: false)
-
-                                    Spacer(minLength: 12)
-
-                                    Toggle(
-                                        "about.version.check_prerelease",
-                                        isOn: $settings.checksForPreReleaseUpdates
-                                    )
-                                    .toggleStyle(.switch)
-                                    .font(.system(size: 12))
-                                }
-
-                                Divider()
-
-                                updateInformationContent
-                                if case let .available(update) = updateInformation.state {
-                                    HStack {
-                                        Spacer()
+                                if Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") != nil {
+                                    HStack(spacing: 12) {
                                         Button(action: checkForUpdates) {
-                                            Text(String(
-                                                format: localization.text("about.version.update_to"),
-                                                locale: localization.locale,
-                                                arguments: [update.displayVersion]
-                                            ))
+                                            Label(
+                                                "menu.check_for_updates",
+                                                systemImage: "arrow.triangle.2.circlepath"
+                                            )
                                         }
-                                        .compatibilityButtonStyle(.prominent)
+                                        .compatibilityButtonStyle(.standard)
+                                        .fixedSize(horizontal: true, vertical: false)
+
+                                        Spacer(minLength: 12)
+
+                                        Toggle(
+                                            "about.version.check_prerelease",
+                                            isOn: $settings.checksForPreReleaseUpdates
+                                        )
+                                        .toggleStyle(.switch)
+                                        .font(.system(size: 12))
+                                    }
+
+                                    Divider()
+
+                                    updateInformationContent
+                                    if case let .available(update) = updateInformation.state {
+                                        HStack {
+                                            Spacer()
+                                            Button(action: checkForUpdates) {
+                                                Text(String(
+                                                    format: localization.text("about.version.update_to"),
+                                                    locale: localization.locale,
+                                                    arguments: [update.displayVersion]
+                                                ))
+                                            }
+                                            .compatibilityButtonStyle(.prominent)
+                                        }
                                     }
                                 }
                             }
@@ -3695,8 +3827,6 @@ struct SettingsView: View {
                     }
 
                     hardwareAnnouncementPanel
-
-                    inlinePermissionsSection
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("settings.general.title")
@@ -3725,10 +3855,12 @@ struct SettingsView: View {
                                 Spacer(minLength: 16)
                                 Button("about.configuration.export", action: exportConfiguration)
                                     .compatibilityButtonStyle(.standard)
-                                    .frame(width: 92)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .frame(width: 150)
                                 Button("about.configuration.import", action: importConfiguration)
                                     .compatibilityButtonStyle(.standard)
-                                    .frame(width: 92)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .frame(width: 150)
                             }
                             .padding(.vertical, 8)
                             if macroFeature.isFeatureVisible {
@@ -3776,9 +3908,10 @@ struct SettingsView: View {
 
                             Divider()
 
-                            appIconPreferenceRow
-
-                            Divider()
+                            if appIconCatalog.options.count > 1 {
+                                appIconPreferenceRow
+                                Divider()
+                            }
 
                             HStack(spacing: 14) {
                                 Image(systemName: "menubar.rectangle")
@@ -3895,29 +4028,6 @@ struct SettingsView: View {
                                 .frame(width: 300)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 8)
-
-                            Divider()
-
-                            HStack(spacing: 14) {
-                                Image(systemName: "arrow.counterclockwise.circle")
-                                    .font(.title3)
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: 34)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.preferences.restart_onboarding")
-                                        .font(.subheadline.weight(.semibold))
-                                    Text("about.preferences.restart_onboarding_help")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                Spacer(minLength: 20)
-                                Button("about.preferences.restart_onboarding_action") {
-                                    settings.restartOnboarding()
-                                }
-                                .compatibilityButtonStyle(.standard)
-                            }
                             .padding(.vertical, 8)
                             }
                         }
@@ -4443,11 +4553,14 @@ struct SettingsView: View {
                 Text(state.title(using: localization))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(width: 78, alignment: .leading)
+            .frame(width: 132, alignment: .leading)
             Button(actionTitle, action: action)
                 .compatibilityButtonStyle(.standard)
-                .frame(width: 126)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(width: 180)
         }
         .padding(.vertical, 8)
     }
@@ -5430,9 +5543,12 @@ private struct RemoteCatalogPhoto: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(.quaternary)
                     .overlay {
-                        Text("remote.photo.missing")
-                            .font(.caption)
+                        Image(systemName: "appletvremote")
+                            .resizable()
+                            .scaledToFit()
                             .foregroundStyle(.secondary)
+                            .padding(20)
+                            .accessibilityLabel(Text("remote.device.illustration"))
                     }
             }
         }

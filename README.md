@@ -32,6 +32,7 @@ swift test --disable-keychain
 ## 文档
 
 - [产品范围和架构](docs/architecture.md)
+- [界面与使用流程](docs/interface.md)
 - [macOS 开发与驱动](docs/development.md)
 - [移植来源和许可](docs/provenance.md)
 - [隐私边界与验证](docs/privacy-and-testing.md)

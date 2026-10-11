@@ -12,4 +12,4 @@
 
 每个发行版必须同时提供对应 App 源码、构建和安装脚本，以及实际分发驱动的 BlackHole v0.7.1 源码、device-usb.patch 和必要许可文本，不能只发布此仓库的链接而遗漏驱动源码。Sparkle 采用 MIT；其打包组件还包括单独许可，需随完整框架保留许可。BlackHole 与其他 GPL 来源按相应要求处理。
 
-本项目新图标由 scripts/generate-icon.swift 绘制，表达麦克风与硬件按钮，未使用原品牌图形。
+本项目新图标由 scripts/generate-icon.swift 绘制，菜单栏图标由 scripts/generate-status-icons.swift 绘制，表达麦克风与硬件按钮，未使用原品牌图形。
