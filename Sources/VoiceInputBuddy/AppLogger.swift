@@ -1,4 +1,3 @@
-import CryptoKit
 import Darwin
 import Foundation
 import OSLog
@@ -50,10 +49,8 @@ final class AppLogger: PublicDiagnosticEventSink {
     private let fileManager: FileManager
     private let now: () -> Date
     private let reportFailure: (String) -> Void
-    private let sessionID: Data
     private var sessionDescriptor: Int32 = -1
     private var fileLoggingStopped = false
-    private var fileKey: SymmetricKey?
     private var nextSequence: UInt64 = 0
     private var publicEvents: [PublicDiagnosticEvent] = []
     private let publicEventStore: PublicDiagnosticEventStore?
@@ -69,11 +66,10 @@ final class AppLogger: PublicDiagnosticEventSink {
         let loggingEnabled = Self.shouldEnableSharedLogging()
         self.init(
             logURL: base.appendingPathComponent(
-                "voiceinputbuddy.app-\(day)-session-\(sessionName).rmlog"
+                "voiceinputbuddy.app-\(day)-session-\(sessionName).log"
             ),
             metadata: .current(),
             fileManager: fileManager,
-            publicKeyDataProvider: { DiagnosticLogPublicKeyConfiguration.current() },
             publicEventStore: nil, // No configured diagnostic upload service.
             isEnabled: loggingEnabled
         )
@@ -88,9 +84,6 @@ final class AppLogger: PublicDiagnosticEventSink {
         retirementHandler: RetirementHandler? = nil,
         now: @escaping () -> Date = Date.init,
         reportFailure: ((String) -> Void)? = nil,
-        publicKeyDataProvider: @escaping () -> Data? = {
-            DiagnosticLogPublicKeyConfiguration.current()
-        },
         publicEventStore: PublicDiagnosticEventStore? = nil,
         isEnabled: Bool = true
     ) {
@@ -107,7 +100,6 @@ final class AppLogger: PublicDiagnosticEventSink {
         self.reportFailure = reportFailure ?? { message in
             Self.systemLogger.error("\(message, privacy: .public)")
         }
-        self.sessionID = DiagnosticLogEnvelope.sessionID()
         self.publicEventStore = publicEventStore
 
         let formatter = ISO8601DateFormatter()
@@ -127,34 +119,23 @@ final class AppLogger: PublicDiagnosticEventSink {
                 ofItemAtPath: logDirectoryURL.path
             )
 
-            guard let publicKeyData = publicKeyDataProvider() else {
-                fileLoggingStopped = true
-                diagnose("encryption_public_key_missing")
-                return
-            }
-            let session = try DiagnosticLogEnvelope.makeSession(
-                publicKeyData: publicKeyData,
-                sessionID: sessionID
-            )
             try withExclusiveLogLock {
-                try session.header.write(to: logURL, options: .atomic)
-                try fileManager.setAttributes(
-                    [.posixPermissions: 0o600], ofItemAtPath: logURL.path
-                )
-                // A lifetime shared lock lets retention skip sessions still in use.
-                let descriptor = Darwin.open(logURL.path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+                // Session names are unique. Never overwrite an existing file or follow a link.
+                let descriptor = Darwin.open(logURL.path,
+                    O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC | O_NOFOLLOW,
+                    mode_t(S_IRUSR | S_IWUSR))
                 guard descriptor >= 0 else { throw POSIXError(.EIO) }
                 guard flock(descriptor, LOCK_SH | LOCK_NB) == 0 else {
                     _ = Darwin.close(descriptor)
                     throw POSIXError(.EIO)
                 }
                 sessionDescriptor = descriptor
-                self.fileKey = session.fileKey
+                try appendAtomically(Data("Voice Input Buddy runtime log (UTF-8)\n".utf8))
                 do { try retireOldSessions(archiveCount: max(0, archiveCount), handler: retirementHandler) }
                 catch { diagnose("session_retirement_failed", error: error) }
             }
         } catch {
-            fileLoggingStopped = fileKey == nil
+            fileLoggingStopped = true
             diagnose("session_file_create_failed", error: error)
         }
     }
@@ -167,7 +148,7 @@ final class AppLogger: PublicDiagnosticEventSink {
         let candidates = try fileManager.contentsOfDirectory(
             at: logDirectoryURL, includingPropertiesForKeys: [.contentModificationDateKey]
         ).filter { url in
-            url.lastPathComponent != logURL.lastPathComponent && url.pathExtension == "rmlog" &&
+            url.lastPathComponent != logURL.lastPathComponent && url.pathExtension == "log" &&
                 (url.lastPathComponent.hasPrefix("voiceinputbuddy.app-") ||
                  url.lastPathComponent.hasPrefix("sayall.app-"))
         }.sorted {
@@ -198,7 +179,7 @@ final class AppLogger: PublicDiagnosticEventSink {
         }
     }
 
-    /// Writes a redacted diagnostic snapshot as ordered encrypted records.
+    /// Writes a redacted diagnostic snapshot as ordered text records.
     func writeDiagnosticSummary(_ summary: String, event: String) {
         guard isEnabled else { return }
         let normalizedEvent = Self.singleLine(event)
@@ -221,8 +202,7 @@ final class AppLogger: PublicDiagnosticEventSink {
         }
     }
 
-    /// Retains upload-approved events across launches and writes the encrypted
-    /// local file. The private transport never reads the local file.
+    /// Retains upload-approved events across launches and writes the text log. The private transport never reads the local file.
     func record(_ event: PublicDiagnosticEvent) {
         guard isEnabled else { return }
         queue.async { [weak self] in
@@ -274,7 +254,7 @@ final class AppLogger: PublicDiagnosticEventSink {
         queue.sync {}
     }
 
-    /// Test-only style entry point that still writes encrypted data.
+    /// Test-only style entry point that writes UTF-8 text.
     func writeSynchronously(_ message: String, at date: Date) {
         guard isEnabled else { return }
         queue.sync {
@@ -329,31 +309,16 @@ final class AppLogger: PublicDiagnosticEventSink {
     private func appendRecord(message: String, date: Date) {
         guard !fileLoggingStopped else { return }
         do {
-            guard let fileKey else { throw DiagnosticLogEnvelope.Error.invalidRecord }
             let sequence = nextSequence
             let line = "\(formatter.string(from: date)) pid=\(metadata.processID) " +
                 "ver=\(metadata.version) build=\(metadata.build) seq=\(sequence) " +
                 "\(Self.singleLine(message))\n"
-            let sealed = try AES.GCM.seal(
-                Data(line.utf8),
-                using: fileKey,
-                authenticating: DiagnosticLogEnvelope.associatedData(
-                    sessionID: sessionID,
-                    sequence: sequence
-                )
-            )
-            guard let combined = sealed.combined,
-                  combined.count <= Int(UInt32.max)
-            else { throw DiagnosticLogEnvelope.Error.invalidRecord }
-
-            var length = UInt32(combined.count).bigEndian
-            var record = withUnsafeBytes(of: &length) { Data($0) }
-            record.append(combined)
+            let record = Data(line.utf8)
             let appended = try withExclusiveLogLock {
                 let existingSize = fileSize(at: logURL)
                 guard existingSize + UInt64(record.count) <= maximumFileSize else {
                     fileLoggingStopped = true
-                    reportFailure("encrypted_log_size_limit_reached")
+                    reportFailure("log_size_limit_reached")
                     return false
                 }
                 try appendAtomically(record)
@@ -363,7 +328,7 @@ final class AppLogger: PublicDiagnosticEventSink {
                 nextSequence += 1
             }
         } catch {
-            diagnose("encrypted_log_write_failed", error: error)
+            diagnose("log_write_failed", error: error)
         }
     }
 

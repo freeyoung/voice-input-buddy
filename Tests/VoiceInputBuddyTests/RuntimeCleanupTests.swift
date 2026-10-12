@@ -1,5 +1,4 @@
 import CoreGraphics
-import CryptoKit
 import Foundation
 import Testing
 @testable import VoiceInputBuddy
@@ -16,38 +15,52 @@ struct DiagnosticLogRetentionTests {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }
         var failures: [String] = []
-        let key = Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation
-        let url = root.appendingPathComponent("voiceinputbuddy.app-test.rmlog")
+        let url = root.appendingPathComponent("voiceinputbuddy.app-test.log")
         let logger = AppLogger(logURL: url, maximumFileSize: 512,
-                               reportFailure: { failures.append($0) }, publicKeyDataProvider: { key })
+                               reportFailure: { failures.append($0) })
         for _ in 0..<20 { logger.writeSynchronously(String(repeating: "x", count: 600), at: Date()) }
-        #expect(failures == ["encrypted_log_size_limit_reached"])
+        #expect(failures == ["log_size_limit_reached"])
         #expect(try Data(contentsOf: url).count <= 512)
     }
 
-    @Test func missingKeyReportsOnceWithoutCreatingPlaintext() throws {
+    @Test func textLogNeedsNoKeyAndPreservesUnicodeWithoutInjectedLines() throws {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }
-        var failures: [String] = []
-        let url = root.appendingPathComponent("voiceinputbuddy.app-test.rmlog")
-        let logger = AppLogger(logURL: url, reportFailure: { failures.append($0) }, publicKeyDataProvider: { nil })
-        for _ in 0..<20 { logger.writeSynchronously("private text", at: Date()) }
-        #expect(failures == ["encryption_public_key_missing"])
-        #expect(!FileManager.default.fileExists(atPath: url.path))
+        let url = root.appendingPathComponent("voiceinputbuddy.app-test.log")
+        let logger = AppLogger(logURL: url)
+        logger.write("设备连接正常\nnew line")
+        logger.flush()
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("设备连接正常 new line"))
+        #expect(text.contains("seq=0"))
+        #expect(text.split(separator: "\n").count == 2)
+        let mode = try #require(FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? NSNumber)
+        #expect(mode.intValue == 0o600)
+    }
+
+    @Test func initialLogSymlinkNeverOverwritesTarget() throws {
+        let root = try directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let target = root.appendingPathComponent("user-data")
+        try Data("untouched".utf8).write(to: target)
+        let url = root.appendingPathComponent("voiceinputbuddy.app-test.log")
+        try FileManager.default.createSymbolicLink(at: url, withDestinationURL: target)
+        let logger = AppLogger(logURL: url)
+        logger.writeSynchronously("must not overwrite", at: Date())
+        #expect(try String(contentsOf: target, encoding: .utf8) == "untouched")
     }
 
     @Test func retentionKeepsNewestArchivesAndUnrelatedFiles() throws {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }
-        let old = root.appendingPathComponent("sayall.app-old.rmlog")
-        let recent = root.appendingPathComponent("voiceinputbuddy.app-recent.rmlog")
-        let unrelated = root.appendingPathComponent("user.rmlog")
+        let old = root.appendingPathComponent("sayall.app-old.log")
+        let recent = root.appendingPathComponent("voiceinputbuddy.app-recent.log")
+        let unrelated = root.appendingPathComponent("user.log")
         for url in [old, recent, unrelated] { try Data("archive".utf8).write(to: url) }
         try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: old.path)
         try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2)], ofItemAtPath: recent.path)
-        let key = Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation
-        let logger = AppLogger(logURL: root.appendingPathComponent("voiceinputbuddy.app-current.rmlog"),
-                               archiveCount: 1, publicKeyDataProvider: { key })
+        let logger = AppLogger(logURL: root.appendingPathComponent("voiceinputbuddy.app-current.log"),
+                               archiveCount: 1)
         withExtendedLifetime(logger) {
             #expect(!FileManager.default.fileExists(atPath: old.path))
             #expect(FileManager.default.fileExists(atPath: recent.path))
@@ -58,15 +71,14 @@ struct DiagnosticLogRetentionTests {
     @Test func retentionSkipsActiveSessionsAndSymbolicLinks() throws {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }
-        let key = Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation
-        let activeURL = root.appendingPathComponent("voiceinputbuddy.app-active.rmlog")
-        let active = AppLogger(logURL: activeURL, publicKeyDataProvider: { key })
+        let activeURL = root.appendingPathComponent("voiceinputbuddy.app-active.log")
+        let active = AppLogger(logURL: activeURL)
         let target = root.appendingPathComponent("user-data")
         try Data("untouched".utf8).write(to: target)
-        let link = root.appendingPathComponent("voiceinputbuddy.app-link.rmlog")
+        let link = root.appendingPathComponent("voiceinputbuddy.app-link.log")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
-        let next = AppLogger(logURL: root.appendingPathComponent("voiceinputbuddy.app-next.rmlog"),
-                             archiveCount: 0, publicKeyDataProvider: { key })
+        let next = AppLogger(logURL: root.appendingPathComponent("voiceinputbuddy.app-next.log"),
+                             archiveCount: 0)
         let targetContents = try String(contentsOf: target, encoding: .utf8)
         let linkDestination = try FileManager.default.destinationOfSymbolicLink(atPath: link.path)
         withExtendedLifetime((active, next)) {

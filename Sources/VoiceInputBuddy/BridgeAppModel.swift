@@ -2997,7 +2997,18 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     func openLogFolder() {
-        NSWorkspace.shared.open(AppLogger.shared.logDirectoryURL)
+        let logger = AppLogger.shared
+        logger.write("LOGS opened_by_user")
+        logger.flush()
+        if FileManager.default.fileExists(atPath: logger.logURL.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([logger.logURL])
+        } else {
+            let localization = LocalizationStore(settings: settings)
+            let alert = NSAlert()
+            alert.messageText = localization.text("diagnostics.logs.open_failed")
+            alert.informativeText = localization.text("diagnostics.logs.open_failed.detail")
+            alert.runModal()
+        }
     }
 
     private func recordPublicDiagnosticEvent(

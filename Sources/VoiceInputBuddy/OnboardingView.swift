@@ -2800,7 +2800,7 @@ struct OnboardingView: View {
     }
 
     private var visibleVoiceTools: [OnboardingVoiceTool] {
-        OnboardingVoiceToolVisibilityPolicy.visibleTools(availability: voiceToolAvailability)
+        OnboardingVoiceToolVisibilityPolicy.tools
     }
 
     private var allRecognizedVoiceToolsUnavailable: Bool {

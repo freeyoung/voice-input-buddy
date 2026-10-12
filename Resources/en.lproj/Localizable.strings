@@ -447,7 +447,7 @@
 "diagnostics.title" = "Diagnostics";
 "diagnostics.logs.title" = "App Logs";
 "diagnostics.logs.privacy" = "Diagnostic logs stay on this Mac. Log upload is disabled.";
-"diagnostics.logs.last_entry" = "Open encrypted support logs or copy a redacted diagnostic summary.";
+"diagnostics.logs.last_entry" = "Open local text logs or copy a redacted diagnostic summary.";
 "diagnostics.logs.show_in_finder" = "Show Logs in Finder";
 "diagnostics.logs.copy_summary" = "Copy Diagnostic Summary";
 "diagnostics.logs.send" = "Send Diagnostics";
@@ -1218,3 +1218,6 @@
 "onboarding.voice_tool.guide.open_voicecursor.detail" = "Open VoiceCursor → Settings → General to configure its hotkey and microphone.";
 "onboarding.voice_tool.guide.screenshot.voicecursor_setting_fn" = "In VoiceCursor → General → Hotkeys, set Dictation to Fn.";
 "onboarding.voice_tool.guide.screenshot.voicecursor_setting_mic" = "In VoiceCursor → Audio → Microphone, choose Voice Input Buddy Mic.";
+
+"diagnostics.logs.open_failed" = "Unable to open the log file";
+"diagnostics.logs.open_failed.detail" = "Check that your Library/Logs/VoiceInputBuddy folder is writable, then try again.";

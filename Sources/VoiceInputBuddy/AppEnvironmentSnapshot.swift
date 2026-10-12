@@ -45,7 +45,7 @@ struct AppEnvironmentSnapshot: Equatable {
         let buildChannel = stableBuildChannel(
             bundle.object(forInfoDictionaryKey: "VoiceInputBuddyBuildChannel") as? String
         )
-        let capabilities = ["audio", "bluetooth", "public_key_encrypted_logs"]
+        let capabilities = ["audio", "bluetooth", "local_text_logs"]
 
         return AppEnvironmentSnapshot(
             operatingSystemMajor: String(processInfo.operatingSystemVersion.majorVersion),

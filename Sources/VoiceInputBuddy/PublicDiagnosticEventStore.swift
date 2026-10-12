@@ -1,6 +1,6 @@
 import Foundation
 
-/// Persists only upload-approved events, independently of encrypted local logs.
+/// Persists only upload-approved events, independently of local text logs.
 /// AppLogger serializes all access to this store.
 final class PublicDiagnosticEventStore {
     private struct Record: Codable {
