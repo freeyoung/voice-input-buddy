@@ -29,6 +29,22 @@ final class KeyboardEventSuppressor {
     private let lock = NSLock()
     private var pendingEvents: [PendingEvent] = []
     private var heldEventCounts: [RemoteNativeEvent: Int] = [:]
+    private var heldUntil: [RemoteNativeEvent: TimeInterval] = [:]
+    private var suppressedDowns = Set<RemoteNativeEvent>()
+    private let uptime: () -> TimeInterval
+
+    init(uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.uptime = uptime
+    }
+
+    private func expireHeldEvents(at now: TimeInterval) {
+        for event in heldUntil.compactMap({ $0.value <= now ? $0.key : nil }) {
+            heldEventCounts.removeValue(forKey: event)
+            heldUntil.removeValue(forKey: event)
+            suppressedDowns.remove(event)
+            pendingEvents.removeAll { $0.event == event }
+        }
+    }
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     /// 最近 arm 过的事件（带过期时刻），仅用于诊断日志：只有与这些事件相关的
@@ -79,6 +95,8 @@ final class KeyboardEventSuppressor {
         lock.lock()
         pendingEvents.removeAll()
         heldEventCounts.removeAll()
+        heldUntil.removeAll()
+        suppressedDowns.removeAll()
         recentArmed.removeAll()
         lock.unlock()
         EventTapPort.release(port: eventTap, source: runLoopSource)
@@ -98,8 +116,9 @@ final class KeyboardEventSuppressor {
             "HID FILTER arm events=\(nativeEvents.map(Self.logToken).sorted().joined(separator: "+")) "
                 + "edge=\(edge == .down ? "down" : "up")"
         )
-        let now = ProcessInfo.processInfo.systemUptime
+        let now = uptime()
         lock.lock()
+        expireHeldEvents(at: now)
         recentArmed.removeAll { $0.until <= now }
         for nativeEvent in nativeEvents {
             recentArmed.append((event: nativeEvent, until: now + 1.0))
@@ -109,6 +128,7 @@ final class KeyboardEventSuppressor {
             switch edge {
             case .down:
                 heldEventCounts[nativeEvent, default: 0] += 1
+                heldUntil[nativeEvent] = now + 30
                 pendingEvents.append(PendingEvent(
                     event: nativeEvent,
                     edge: edge,
@@ -151,15 +171,25 @@ final class KeyboardEventSuppressor {
         }
         guard let descriptor = descriptor(type: type, event: event) else { return false }
 
-        let now = ProcessInfo.processInfo.systemUptime
+        let now = uptime()
         lock.lock()
+        expireHeldEvents(at: now)
         pendingEvents.removeAll { $0.expiresAt <= now }
         recentArmed.removeAll { $0.until <= now }
         if let matchIndex = pendingEvents.firstIndex(where: {
             $0.event == descriptor.event && $0.edge == descriptor.edge
         }) {
             pendingEvents.remove(at: matchIndex)
+            let paired: Bool
+            if descriptor.edge == .down {
+                suppressedDowns.insert(descriptor.event)
+                paired = true
+            } else {
+                paired = suppressedDowns.remove(descriptor.event) != nil
+                heldUntil.removeValue(forKey: descriptor.event)
+            }
             lock.unlock()
+            guard paired else { return false }
             // 诊断：命中并吞掉——与 miss 日志对照即可判定「系统是否产生了该事件」。
             AppLogger.shared.write(
                 "HID FILTER suppressed event=\(Self.logToken(descriptor.event)) "
@@ -167,17 +197,34 @@ final class KeyboardEventSuppressor {
             )
             return true
         }
-        if descriptor.edge == .down, (heldEventCounts[descriptor.event] ?? 0) > 0 {
-            if type == .keyDown,
-               event.getIntegerValueField(.keyboardEventAutorepeat) == 0 {
+        if descriptor.edge == .down {
+            let isRepeat = type == .keyDown
+                ? event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+                : (NSEvent(cgEvent: event)?.data1 ?? 0) & 1 != 0
+            if !isRepeat {
+                let hadArmedState = heldEventCounts[descriptor.event] != nil ||
+                    suppressedDowns.contains(descriptor.event) ||
+                    pendingEvents.contains { $0.event == descriptor.event }
                 heldEventCounts.removeValue(forKey: descriptor.event)
+                heldUntil.removeValue(forKey: descriptor.event)
+                suppressedDowns.remove(descriptor.event)
+                pendingEvents.removeAll { $0.event == descriptor.event }
                 lock.unlock()
-                AppLogger.shared.write(
-                    "HID FILTER passed event=\(Self.logToken(descriptor.event)) "
-                        + "edge=down type=\(type.rawValue) reason=fresh_key_down"
-                )
+                if hadArmedState {
+                    AppLogger.shared.write(
+                        "HID FILTER passed event=\(Self.logToken(descriptor.event)) "
+                            + "edge=down type=\(type.rawValue) reason=fresh_key_down"
+                    )
+                }
                 return false
             }
+            let paired = (heldEventCounts[descriptor.event] ?? 0) > 0 && suppressedDowns.contains(descriptor.event)
+            lock.unlock()
+            return paired
+        }
+        if descriptor.edge == .up, suppressedDowns.remove(descriptor.event) != nil {
+            heldEventCounts.removeValue(forKey: descriptor.event)
+            heldUntil.removeValue(forKey: descriptor.event)
             lock.unlock()
             return true
         }

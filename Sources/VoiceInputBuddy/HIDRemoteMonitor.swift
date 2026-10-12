@@ -251,7 +251,7 @@ final class HIDRemoteMonitor {
                 CFRunLoopGetMain(),
                 CFRunLoopMode.commonModes.rawValue
             )
-            eventSuppressor.stop()
+            if ownsEventSuppressor { eventSuppressor.stop() }
             let karabinerInstalled = karabinerElementsInstalled()
             if let exclusiveMessageKey = Self.deviceOpenFailureMessageKey(
                 result: result,
@@ -736,7 +736,7 @@ final class HIDRemoteMonitor {
                     "HID GESTURE button=tv trigger=singleClick path=app_switcher"
                 )
                 guard performAppSwitcherAction(for: button, trigger: .singleClick) else {
-                    return
+                    continue
                 }
                 continue
             }
@@ -747,7 +747,7 @@ final class HIDRemoteMonitor {
                         "path=app_switcher"
                 )
                 guard performAppSwitcherAction(for: button, trigger: .singleClick) else {
-                    return
+                    continue
                 }
                 continue
             }
@@ -776,7 +776,7 @@ final class HIDRemoteMonitor {
                     recognizesDoubleClick: recognizesDoubleClick,
                     recognizesLongPress: recognizesLongPress
                 )
-                guard processGestureCommands(commands) else { return }
+                guard processGestureCommands(commands) else { continue }
             } else {
                 guard shouldAcceptRawPress(
                     button: button,
@@ -797,7 +797,7 @@ final class HIDRemoteMonitor {
                 diagnosticLogger(
                     "HID GESTURE button=\(button.rawValue) trigger=singleClick path=raw"
                 )
-                guard performConfiguredAction(for: button, trigger: .singleClick) else { return }
+                guard performConfiguredAction(for: button, trigger: .singleClick) else { continue }
                 if !hasSingleClickOverride {
                     startRepeatIfNeeded(
                         usage: usage,
@@ -818,7 +818,7 @@ final class HIDRemoteMonitor {
             if let button = RemoteButton.usageMap[usage] {
                 if onRuntimeButton?(profileID, button, .release) == true { continue }
                 scheduleNonRepeatableRelease(for: button)
-                guard processGestureCommands(gestureRecognizer.release(button)) else { return }
+                guard processGestureCommands(gestureRecognizer.release(button)) else { continue }
             }
         }
     }
@@ -1047,7 +1047,11 @@ final class HIDRemoteMonitor {
             afterMilliseconds: HIDRemoteTiming.repeatStartMilliseconds,
             repeatingEveryMilliseconds: interval
         ) { [weak self] in
-            guard let self, self.activeUsages.contains(usage) else { return }
+            guard let self else { return }
+            guard self.activeUsages.contains(usage) else {
+                self.repeatTimers.removeValue(forKey: usage)?.cancel()
+                return
+            }
             if self.settings.hasSecondaryAction(for: button, profileID: self.profileID) ||
                 !Self.shouldRepeat(
                     action: action,

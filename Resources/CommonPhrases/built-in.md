@@ -1,7 +1,7 @@
 # 内置常用语 / Built-in Common Phrases
 
 > 用途：语音搭子Voice Input Buddy.app 内置常用语的唯一人工编辑源。
-> 当前状态（2026-10-02）：本文件的 12 条内容与默认键位声明已接通构建期 JSON 生成、校验与打包；macOS 本地候选读取生成资源，真机验收仍待完成。完整状态见 [产品规范](../../feature/common-phrases/PRODUCT_SPEC.md)。
+> 当前状态（2026-10-12）：本文件的 12 条内容与默认键位声明已接通构建期 JSON 生成、校验与打包；macOS 本地候选读取生成资源，真机验收仍待完成。生成与校验由 `scripts/generate-common-phrases.py` 和 `scripts/test-common-phrases.py` 完成。
 > 以下机器读取与默认键位规则已接通构建链路。修改本文件并重新打包，App 内的内置常用语必须随之变化；不得在 Swift 代码里另存一份硬编码列表。
 
 ## 机器读取约定

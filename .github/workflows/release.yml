@@ -40,12 +40,14 @@ jobs:
         run: |
           python3 scripts/test-release-metadata.py
           python3 scripts/test-release-sources.py
+          python3 scripts/test-common-phrases.py
           python3 scripts/test-app-bundle.py
           python3 scripts/test-installation-actions.py
           python3 scripts/test-appcast.py
           python3 scripts/test-pages-update-feeds.py
           python3 scripts/test-update-signature.py
           swift build --disable-keychain --product AppleRemoteAudioCapture
+          swift build --disable-keychain --product AppleRemoteHCIService
           swift test --disable-keychain
       - name: Build app, driver, and standalone uninstaller
         run: |

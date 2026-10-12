@@ -369,11 +369,11 @@ enum KeyboardInjector {
         case .appSwitcher:
             keyPoster(48, .maskCommand)
         case .volumeUp:
-            postSystemKey(type: 0)
+            systemKeyPoster(0)
         case .volumeDown:
-            postSystemKey(type: 1)
+            systemKeyPoster(1)
         case .volumeMute:
-            postSystemKey(type: 7)
+            systemKeyPoster(7)
         case .playPause:
             systemKeyPoster(16)
         case .previousCommandLeft:

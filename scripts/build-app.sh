@@ -25,6 +25,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$app/Contents/Framewor
 cp "$bin/VoiceInputBuddy" "$app/Contents/MacOS/VoiceInputBuddy"
 cp Resources/Info.plist "$app/Contents/Info.plist"
 cp -R Resources/. "$app/Contents/Resources/"
+python3 scripts/generate-common-phrases.py Resources/CommonPhrases/built-in.md "$app/Contents/Resources/CommonPhrases.json"
 cp LICENSE THIRD_PARTY_NOTICES.md "$app/Contents/Resources/"
 cp -R "$bin/Sparkle.framework" "$app/Contents/Frameworks/"
 python3 scripts/thin-framework.py "$app/Contents/Frameworks/Sparkle.framework" "$BUILD_ARCH"

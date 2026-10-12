@@ -30,6 +30,7 @@ final class ShortcutCaptureMonitor {
     private let onCapture: (CustomKeyboardShortcut) -> Void
     private let accessibilityTrusted: () -> Bool
     private let dispatchCallback: CallbackDispatcher
+    private let modifierIsPressed: (UInt16) -> Bool
     private let lock = NSLock()
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -41,6 +42,9 @@ final class ShortcutCaptureMonitor {
     init(
         onCapture: @escaping (CustomKeyboardShortcut) -> Void,
         accessibilityTrusted: @escaping () -> Bool = { KeyboardInjector.isAccessibilityTrusted },
+        modifierIsPressed: @escaping (UInt16) -> Bool = {
+            CGEventSource.keyState(.hidSystemState, key: $0)
+        },
         dispatchCallback: @escaping CallbackDispatcher = {
             DispatchQueue.main.async(execute: $0)
         }
@@ -48,6 +52,7 @@ final class ShortcutCaptureMonitor {
         self.onCapture = onCapture
         self.accessibilityTrusted = accessibilityTrusted
         self.dispatchCallback = dispatchCallback
+        self.modifierIsPressed = modifierIsPressed
     }
 
     func start() -> Result<Void, ShortcutCaptureStartFailure> {
@@ -56,12 +61,7 @@ final class ShortcutCaptureMonitor {
             return .failure(.accessibilityPermissionRequired)
         }
 
-        lock.lock()
-        didCapture = false
-        pressedModifierKeyCodes.removeAll()
-        standaloneModifierCandidate = nil
-        modifierChordDetected = false
-        lock.unlock()
+        resetCaptureState()
 
         let context = Unmanaged.passUnretained(self).toOpaque()
         guard let eventTap = CGEvent.tapCreate(
@@ -89,6 +89,15 @@ final class ShortcutCaptureMonitor {
         self.runLoopSource = runLoopSource
         EventTapPort.activate(port: eventTap, source: runLoopSource)
         return .success(())
+    }
+
+    func resetCaptureState() {
+        lock.lock()
+        didCapture = false
+        pressedModifierKeyCodes = Set(StandaloneKeyboardModifier.allCases.map(\.keyCode).filter(modifierIsPressed))
+        standaloneModifierCandidate = nil
+        modifierChordDetected = !pressedModifierKeyCodes.isEmpty
+        lock.unlock()
     }
 
     func stop() {

@@ -41,8 +41,11 @@ final class DispatchHIDRemoteScheduledTask: HIDRemoteScheduledTask {
     }
 
     func cancel() {
+        source.setEventHandler(handler: nil)
         source.cancel()
     }
+
+    deinit { cancel() }
 }
 
 struct DispatchHIDRemoteScheduler: HIDRemoteScheduling {
@@ -67,8 +70,14 @@ struct DispatchHIDRemoteScheduler: HIDRemoteScheduling {
         } else {
             source.schedule(deadline: deadline)
         }
-        source.setEventHandler(handler: action)
+        let task = DispatchHIDRemoteScheduledTask(source: source)
+        source.setEventHandler { [weak task] in
+            guard let task else { return }
+            // One-shot callbacks release their captures even if the handle is retained.
+            if repeatingEveryMilliseconds == nil { task.cancel() }
+            action()
+        }
         source.resume()
-        return DispatchHIDRemoteScheduledTask(source: source)
+        return task
     }
 }
