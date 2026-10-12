@@ -13,3 +13,6 @@ __pycache__/
 
 # Local research notes; product references belong in the tracked README/docs.
 /references/
+
+# Local review reports and working notes.
+/.workbuddy/
