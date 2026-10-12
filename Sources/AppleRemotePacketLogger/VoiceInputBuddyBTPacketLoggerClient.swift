@@ -351,8 +351,7 @@ public final class AppleRemotePacketLoggerClient: @unchecked Sendable {
         }
         let packet = Data(bytes: packetBytes, count: packetLength)
         if AppleRemotePacketLoggerRecord.isProfileRequired(packet) {
-            state = .stopped
-            invalidateConnection()
+            stopOnQueue(emitEvent: false)
             emit(.profileRequired)
             return
         }

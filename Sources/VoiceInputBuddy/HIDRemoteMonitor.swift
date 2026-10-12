@@ -93,6 +93,7 @@ final class HIDRemoteMonitor {
     private var nativePassthroughUsages = Set<UInt16>()
     private var repeatTimers: [UInt16: HIDRemoteScheduledTask] = [:]
     private var nonRepeatablePressedButtons = Set<RemoteButton>()
+    private var nonRepeatableExpiryTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
     private var nonRepeatableReleaseTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
     private var gestureRecognizer = RemoteButtonGestureRecognizer()
     private var doubleClickTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
@@ -246,6 +247,10 @@ final class HIDRemoteMonitor {
 
         let result = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         guard result == kIOReturnSuccess else {
+            IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)
+            IOHIDManagerRegisterDeviceRemovalCallback(manager, nil, nil)
+            IOHIDManagerRegisterInputReportCallback(manager, nil, nil)
+            IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
             IOHIDManagerUnscheduleFromRunLoop(
                 manager,
                 CFRunLoopGetMain(),
@@ -983,7 +988,17 @@ final class HIDRemoteMonitor {
             return true
         }
         nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
-        return nonRepeatablePressedButtons.insert(button).inserted
+        guard nonRepeatablePressedButtons.insert(button).inserted else { return false }
+        nonRepeatableExpiryTimers[button] = scheduler.schedule(
+            afterMilliseconds: 8_000, repeatingEveryMilliseconds: nil
+        ) { [weak self] in
+            self?.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
+            guard let self else { return }
+            self.finishNonRepeatablePress(button)
+            self.activeUsages = self.activeUsages.filter { RemoteButton.usageMap[$0] != button }
+            self.onActiveButtons?(self.profileID, RemoteButton.buttons(for: self.activeUsages))
+        }
+        return true
     }
 
     static func shouldRepeat(
@@ -1026,6 +1041,7 @@ final class HIDRemoteMonitor {
     }
 
     func finishNonRepeatablePress(_ button: RemoteButton) {
+        nonRepeatableExpiryTimers.removeValue(forKey: button)?.cancel()
         nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
         nonRepeatablePressedButtons.remove(button)
     }
@@ -1314,6 +1330,8 @@ final class HIDRemoteMonitor {
         repeatTimers.removeAll()
         nonRepeatableReleaseTimers.values.forEach { $0.cancel() }
         nonRepeatableReleaseTimers.removeAll()
+        nonRepeatableExpiryTimers.values.forEach { $0.cancel() }
+        nonRepeatableExpiryTimers.removeAll()
         nonRepeatablePressedButtons.removeAll()
         resetGestureRecognition()
         if appSwitcherSession.isActive { finishAppSwitcherLifecycle(reason: "common_phrases_opened", confirmed: false) }
@@ -1344,6 +1362,8 @@ final class HIDRemoteMonitor {
         nativePassthroughUsages.removeAll()
         nonRepeatableReleaseTimers.values.forEach { $0.cancel() }
         nonRepeatableReleaseTimers.removeAll()
+        nonRepeatableExpiryTimers.values.forEach { $0.cancel() }
+        nonRepeatableExpiryTimers.removeAll()
         nonRepeatablePressedButtons.removeAll()
         resetGestureRecognition()
         activeUsages.removeAll()

@@ -98,25 +98,39 @@ public final class AppleRemotePklgVoiceExtractor {
 
     public init() {}
 
+    // A PKLG record contains nine metadata bytes and an HCI ACL packet with
+    // a 16-bit payload length. Process large file chunks incrementally.
+    private static let maximumRecordLength = 65_548
+    public var bufferedByteCount: Int { residual.count }
+    public var pendingACLByteCount: Int { assembling.values.reduce(0) { $0 + $1.buffer.count } }
+
     public func ingest(_ data: Data) -> [AppleRemoteVoiceFrame] {
-        residual.append(contentsOf: data)
         var frames: [AppleRemoteVoiceFrame] = []
-        var offset = 0
-        while offset + 4 <= residual.count {
-            let length = Int(residual[offset]) << 24 | Int(residual[offset + 1]) << 16
-                | Int(residual[offset + 2]) << 8 | Int(residual[offset + 3])
-            guard length >= 9 else { break }
-            let recordEnd = offset + 4 + length
-            guard recordEnd <= residual.count else { break }
-            let type = residual[offset + 12]
-            if type == 0x03 {
-                let payload = Array(residual[(offset + 13)..<recordEnd])
-                if let frame = handleACL(payload) { frames.append(frame) }
+        var inputOffset = data.startIndex
+        while inputOffset < data.endIndex {
+            let end = min(data.endIndex, inputOffset + 32_768)
+            residual.append(contentsOf: data[inputOffset..<end])
+            inputOffset = end
+            var offset = 0
+            while offset + 4 <= residual.count {
+                let length = Int(residual[offset]) << 24 | Int(residual[offset + 1]) << 16
+                    | Int(residual[offset + 2]) << 8 | Int(residual[offset + 3])
+                guard (9...Self.maximumRecordLength).contains(length) else {
+                    offset += 1
+                    assembling.removeAll()
+                    continue
+                }
+                let recordEnd = offset + 4 + length
+                guard recordEnd <= residual.count else { break }
+                if residual[offset + 12] == 0x03,
+                   let frame = handleACL(Array(residual[(offset + 13)..<recordEnd])) {
+                    frames.append(frame)
+                }
+                recordsScanned += 1
+                offset = recordEnd
             }
-            recordsScanned += 1
-            offset = recordEnd
+            if offset > 0 { residual.removeFirst(offset) }
         }
-        if offset > 0 { residual.removeFirst(offset) }
         return frames
     }
 
@@ -126,16 +140,23 @@ public final class AppleRemotePklgVoiceExtractor {
         let handle = header & 0x0FFF
         let packetBoundary = (header >> 12) & 0x3
         let aclLength = Int(payload[2]) | (Int(payload[3]) << 8)
-        let end = min(4 + aclLength, payload.count)
-        guard end > 4 else { return nil }
+        let end = 4 + aclLength
+        guard end == payload.count, end > 4 else { assembling[handle] = nil; return nil }
         let aclData = Array(payload[4..<end])
         if packetBoundary == 0x2 || packetBoundary == 0x0 {
-            guard aclData.count >= 2 else { assembling[handle] = nil; return nil }
+            guard aclData.count >= 4 else { assembling[handle] = nil; return nil }
             let l2capLength = Int(aclData[0]) | (Int(aclData[1]) << 8)
+            guard aclData.count <= 4 + l2capLength else { assembling[handle] = nil; return nil }
+            if assembling.count >= 32, assembling[handle] == nil { assembling.removeAll() }
             assembling[handle] = (l2capLength, aclData)
         } else if packetBoundary == 0x1 {
-            guard assembling[handle] != nil else { return nil }
-            assembling[handle]!.buffer.append(contentsOf: aclData)
+            guard var state = assembling[handle] else { return nil }
+            guard state.buffer.count + aclData.count <= 4 + state.length else {
+                assembling[handle] = nil
+                return nil
+            }
+            state.buffer.append(contentsOf: aclData)
+            assembling[handle] = state
         } else { return nil }
         guard let state = assembling[handle], state.buffer.count >= 4 + state.length else { return nil }
         assembling[handle] = nil

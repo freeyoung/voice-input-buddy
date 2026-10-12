@@ -344,7 +344,6 @@ final class AppSettings: ObservableObject {
         static let onboardingStagedVoiceBinding = "onboarding.stagedVoiceBinding"
         static let onboardingTrialSnapshot = "onboarding.trialSnapshot"
         static let onboardingMigrationVersion = "onboarding.migrationVersion"
-        static let onboardingInstallStateMigrationVersion = "onboarding.installStateMigrationVersion"
         static let firstUseEvents = "onboarding.diagnostics.events"
         static let firstUseStepStartedAt = "onboarding.diagnostics.stepStartedAt"
         static let firstUseLastSignature = "onboarding.diagnostics.lastSignature"
@@ -386,24 +385,6 @@ final class AppSettings: ObservableObject {
         unifiedBaseBindings.removeAll { $0.remoteProfileID == profileID && $0.button == button && $0.trigger == trigger }
         unifiedBaseBindings.append(UnifiedButtonBinding(remoteProfileID: profileID, button: button,
                                                         trigger: trigger, configured: configured))
-    }
-
-    func migrateLegacyMacroBindings(_ bindings: [UnifiedButtonBinding]) throws {
-        guard !defaults.bool(forKey: "unifiedBaseBindingsMigrated") else { return }
-        guard !corruptedSettingKeys.contains("unifiedBaseBindings") else { throw AppConfigurationError.invalidValues }
-        // Keep the exact pre-migration host data, including per-device mappings.
-        let backup = try exportedConfigurationData()
-        defaults.set(backup, forKey: "unifiedBaseBindingsMigrationBackup")
-        if let profiles = defaults.data(forKey: "remoteDeviceProfiles") {
-            defaults.set(profiles, forKey: "unifiedRemoteProfilesMigrationBackup")
-        }
-        for binding in bindings where !unifiedBaseBindings.contains(where: {
-            $0.remoteProfileID == binding.remoteProfileID && $0.button == binding.button && $0.trigger == binding.trigger
-        }) {
-            unifiedBaseBindings.append(binding)
-        }
-        defaults.set(true, forKey: "unifiedBaseBindingsMigrated")
-        AppLogger.shared.write("BUTTON CONFIGURATION phase=completed result=migrated bindings=\(bindings.count)")
     }
 
     @Published var buttonBindings: [RemoteButton: ButtonAction] {
@@ -556,9 +537,6 @@ final class AppSettings: ObservableObject {
             defaults.set(chromecastVoiceMode.rawValue, forKey: Keys.chromecastVoiceMode)
         }
     }
-
-    /// One-session notice for an existing Command mode normalized to Fn by Onboarding.
-    @Published private(set) var pendingOnboardingVoiceKeyMigration: VoiceKeyMode? = nil
 
     private var continuousRecordingPowerBindingBackup: ConfiguredButtonAction? {
         didSet { saveContinuousRecordingPowerBindingBackup() }
@@ -1259,7 +1237,6 @@ final class AppSettings: ObservableObject {
         recordFirstUseEvent(.completed, step: .complete)
         onboardingStep = .complete
         onboardingCompletedVersion = Self.currentOnboardingVersion
-        pendingOnboardingVoiceKeyMigration = nil
     }
 
     func restartOnboarding() {
@@ -1277,12 +1254,6 @@ final class AppSettings: ObservableObject {
         onboardingCompletedVersion = 0
         defaults.removeObject(forKey: Keys.firstUseStepStartedAt)
         defaults.removeObject(forKey: Keys.firstUseLastSignature)
-    }
-
-    func consumePendingOnboardingVoiceKeyMigration() -> VoiceKeyMode? {
-        let pending = pendingOnboardingVoiceKeyMigration
-        pendingOnboardingVoiceKeyMigration = nil
-        return pending
     }
 
     private static func restoreInterruptedOnboardingTrial(in defaults: UserDefaults) {
@@ -1877,22 +1848,18 @@ final class AppSettings: ObservableObject {
             completedUpdate = previousBuild == nil && sparkleHadLaunchedBefore
         }
 
-        if defaults.integer(forKey: Keys.onboardingMigrationVersion) < Self.currentOnboardingVersion ||
-            defaults.integer(forKey: Keys.onboardingInstallStateMigrationVersion) < Self.currentOnboardingVersion {
+        if defaults.integer(forKey: Keys.onboardingMigrationVersion) < Self.currentOnboardingVersion {
             let hasPersistedOnboardingState =
                 defaults.object(forKey: Keys.onboardingCompletedVersion) != nil ||
                 defaults.object(forKey: Keys.onboardingStep) != nil ||
                 defaults.object(forKey: Keys.onboardingRemoteAvailability) != nil ||
                 defaults.object(forKey: Keys.onboardingControlMethod) != nil ||
                 defaults.object(forKey: Keys.onboardingVoiceTool) != nil
-            let isExistingInstall = previousBuild != nil ||
-                sparkleHadLaunchedBefore ||
-                hasPersistedAppConfiguration
+            let isExistingInstall = hasPersistedAppConfiguration
             if !isOnboardingComplete, !hasPersistedOnboardingState, isExistingInstall {
                 completeOnboarding()
             }
             defaults.set(Self.currentOnboardingVersion, forKey: Keys.onboardingMigrationVersion)
-            defaults.set(Self.currentOnboardingVersion, forKey: Keys.onboardingInstallStateMigrationVersion)
         }
 
         defaults.set(currentBuild, forKey: Keys.lastLaunchedBuild)

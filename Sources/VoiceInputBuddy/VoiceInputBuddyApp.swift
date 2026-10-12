@@ -811,8 +811,13 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         }
     }
 
-    private func startUpdaterIfNeeded() {
-        guard !updaterStarted, updateFeedSelection.validatedStableFeedURL != nil else { return }
+    @discardableResult
+    private func startUpdaterIfNeeded() -> Bool {
+        if updaterStarted { return true }
+        guard updateFeedSelection.validatedStableFeedURL != nil else {
+            updateInformation.setUnavailable()
+            return false
+        }
         updater.automaticallyChecksForUpdates =
             UpdateCheckPolicy(
                 checksForPreReleaseUpdates: model.settings.checksForPreReleaseUpdates
@@ -821,9 +826,10 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         catch {
             updateInformation.setUnavailable()
             AppLogger.shared.write("UPDATE START failed " + AppLogger.errorFields(error))
-            return
+            return false
         }
         updaterStarted = true
+        return true
     }
 
     func feedURLString(for updater: SPUUpdater) -> String? {
@@ -1082,7 +1088,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                         "selected_channel=stable source=cloudflare_channel"
                 )
             }
-            startUpdaterIfNeeded()
+            guard startUpdaterIfNeeded() else { return }
             if updater.sessionInProgress {
                 if case .userInitiated = purpose { updateUserDriver.showUpdateInFocus() }
                 return

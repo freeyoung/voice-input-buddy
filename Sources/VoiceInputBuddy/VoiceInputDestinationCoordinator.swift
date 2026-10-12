@@ -77,6 +77,13 @@ struct VoiceInputDestinationSnapshot: Equatable {
         self.focusIdentity = focusIdentity
     }
 
+    var isSensitiveDestination: Bool {
+        if protectedContent || role == "AXSecureTextField" || subrole == "AXSecureTextField" { return true }
+        let text = semanticText.lowercased()
+        return ["password", "passcode", "secret", "api key", "apikey", "token", "credit card",
+                "密码", "口令", "密钥", "令牌", "信用卡"].contains(where: text.contains)
+    }
+
     var isSafeEditableDestination: Bool {
         guard enabled, editable, !protectedContent else { return false }
         guard role == "AXTextArea" || role == "AXTextField" || role == "AXComboBox" else {
@@ -255,7 +262,15 @@ final class VoiceInputDestinationCoordinator {
     func waitUntilReady(
         completion: @escaping (VoiceInputDestinationWaitResult) -> Void
     ) -> VoiceInputDestinationWait {
-        guard var request = pendingRequest else { return .immediate }
+        guard var request = pendingRequest else {
+            // Direct, explicit voice typing may target search fields or custom editors.
+            // Protected/sensitive fields must still be refused without a pending launch.
+            if snapshot().isSensitiveDestination {
+                onStateChange(.cancelled(.targetChanged))
+                return .cancelled(.targetChanged)
+            }
+            return .immediate
+        }
         switch evaluate(snapshot(), request: &request) {
         case .ready:
             pendingRequest = request

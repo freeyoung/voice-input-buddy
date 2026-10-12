@@ -9,8 +9,12 @@ final class BluetoothPendingAudioStart {
     @discardableResult
     func cancel(ifOwnedBy identifier: UUID) -> Bool {
         guard self.identifier == identifier else { return false }
-        self.identifier = nil
-        audio.cancel()
+        cancel()
         return true
     }
+    func cancel() {
+        identifier = nil
+        audio.cancel()
+    }
+
 }

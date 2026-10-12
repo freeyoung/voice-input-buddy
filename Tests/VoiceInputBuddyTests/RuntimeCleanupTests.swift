@@ -53,9 +53,9 @@ struct DiagnosticLogRetentionTests {
     @Test func retentionKeepsNewestArchivesAndUnrelatedFiles() throws {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }
-        let old = root.appendingPathComponent("sayall.app-old.log")
+        let old = root.appendingPathComponent("voiceinputbuddy.app-old.log")
         let recent = root.appendingPathComponent("voiceinputbuddy.app-recent.log")
-        let unrelated = root.appendingPathComponent("user.log")
+        let unrelated = root.appendingPathComponent("sayall.app-old.log")
         for url in [old, recent, unrelated] { try Data("archive".utf8).write(to: url) }
         try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: old.path)
         try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2)], ofItemAtPath: recent.path)

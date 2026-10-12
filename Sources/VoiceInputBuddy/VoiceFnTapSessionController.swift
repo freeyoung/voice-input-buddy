@@ -104,6 +104,7 @@ final class VoiceFnTapSessionController {
     private var pendingVoice: PendingVoice?
     private var scheduledTasks: [VoiceFnTapScheduledTask] = []
     private var functionKeyIsPressed = false
+    private var keyReleaseRetryTask: VoiceFnTapScheduledTask?
     private var idleCompletions: [() -> Void] = []
     private var suppressAudioUntilRemoteStop = false
     private var drainOperationID: UInt64?
@@ -139,6 +140,12 @@ final class VoiceFnTapSessionController {
         self.uptime = uptime
     }
 
+    deinit {
+        scheduledTasks.forEach { $0.cancel() }
+        keyReleaseRetryTask?.cancel()
+        if functionKeyIsPressed { _ = setFunctionKeyPressed(false) }
+    }
+
     func setEnabled(_ enabled: Bool, completion: (() -> Void)? = nil) {
         isEnabled = enabled
         if enabled {
@@ -168,7 +175,7 @@ final class VoiceFnTapSessionController {
 
     @discardableResult
     func startVoice() -> Bool {
-        guard isEnabled, !isSuspended else { return false }
+        guard isEnabled, !isSuspended, !functionKeyIsPressed else { return false }
         switch phase {
         case .idle:
             beginSession()
@@ -394,19 +401,24 @@ final class VoiceFnTapSessionController {
         generation sessionGeneration: UInt64,
         completion: @escaping (Bool) -> Void
     ) {
-        guard generation == sessionGeneration else { return }
+        guard generation == sessionGeneration else { completion(false); return }
         guard setFunctionKeyPressed(true) else {
             completion(false)
             return
         }
         functionKeyIsPressed = true
+        let result = TapResult(completion)
         let task = schedule(tapDuration) { [weak self] in
-            guard let self, self.generation == sessionGeneration else { return }
-            let success = self.setFunctionKeyPressed(false)
-            self.functionKeyIsPressed = !success
-            completion(success)
+            guard let self, self.generation == sessionGeneration else {
+                result.finish(false)
+                return
+            }
+            result.finish(self.releaseFunctionKeyIfNeeded())
         }
-        scheduledTasks.append(task)
+        scheduledTasks.append(VoiceFnTapScheduledTask {
+            task.cancel()
+            result.finish(false)
+        })
     }
 
     private func terminateCurrentSession(
@@ -483,13 +495,26 @@ final class VoiceFnTapSessionController {
         guard functionKeyIsPressed else { return false }
         let success = setFunctionKeyPressed(false)
         functionKeyIsPressed = !success
+        if success {
+            keyReleaseRetryTask?.cancel()
+            keyReleaseRetryTask = nil
+        } else if keyReleaseRetryTask == nil {
+            // Keep the safety gate until a real key-up succeeds, but retry without
+            // requiring a new voice event after Accessibility permission recovers.
+            keyReleaseRetryTask = schedule(1) { [weak self] in
+                guard let self else { return }
+                self.keyReleaseRetryTask = nil
+                _ = self.releaseFunctionKeyIfNeeded()
+                self.runIdleCompletions()
+            }
+        }
         return success
     }
 
     private func postImmediateFunctionKeyTap() -> Bool {
-        let down = setFunctionKeyPressed(true)
-        let up = setFunctionKeyPressed(false)
-        return down && up
+        guard !functionKeyIsPressed, setFunctionKeyPressed(true) else { return false }
+        functionKeyIsPressed = true
+        return releaseFunctionKeyIfNeeded()
     }
 
     private func logDrainTerminalIfNeeded(result: String, reason: String) {
@@ -525,5 +550,18 @@ final class VoiceFnTapSessionController {
         let completions = idleCompletions
         idleCompletions.removeAll()
         completions.forEach { $0() }
+    }
+}
+
+private final class TapResult {
+    private let lock = NSLock()
+    private var completion: ((Bool) -> Void)?
+    init(_ completion: @escaping (Bool) -> Void) { self.completion = completion }
+    func finish(_ success: Bool) {
+        lock.lock()
+        let callback = completion
+        completion = nil
+        lock.unlock()
+        callback?(success)
     }
 }

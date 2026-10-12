@@ -69,7 +69,7 @@ final class LoginItemService: ObservableObject {
         status == .requiresApproval
     }
 
-    func refresh(clearFailure: Bool = true) {
+    func refresh(clearFailure: Bool = false) {
         status = controller.status
         if clearFailure {
             didFailToUpdate = false

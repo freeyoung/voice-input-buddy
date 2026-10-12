@@ -268,14 +268,12 @@ final class XiaomiBluetoothBridge: NSObject {
         reconnectPolicy.reset()
         central?.stopScan()
         closeMicrophoneIfNeeded()
-        if let central, let peripheral, peripheral.state != .disconnected {
-            requestedReconnectDelay = nil
-            lifecycle = .disconnecting(lifecycle.generation ?? generationCounter)
-            central.cancelPeripheralConnection(peripheral)
-        } else {
-            finishAttempt(reconnectAfter: nil)
-        }
         resetSession()
+        if let central, let peripheral, peripheral.state != .disconnected {
+            central.cancelPeripheralConnection(peripheral)
+        }
+        // Do not depend on a disconnect callback after powered-off or teardown.
+        finishAttempt(reconnectAfter: nil)
         state = .stopped
     }
 
@@ -295,7 +293,7 @@ final class XiaomiBluetoothBridge: NSObject {
         if let central, let peripheral, peripheral.state != .disconnected {
             requestedReconnectDelay = 0.1
             lifecycle = .disconnecting(lifecycle.generation ?? generationCounter)
-            state = .reconnecting
+            publishReconnectingState()
             central.cancelPeripheralConnection(peripheral)
             return
         }
@@ -366,8 +364,8 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     func resumeConnectionCycleIfNeeded(reason: String) {
-        guard systemSuspension.consumeConnectionCycleNeeded() else { return }
         guard shouldRun, !lifecycle.isReady else { return }
+        guard systemSuspension.consumeConnectionCycleNeeded() else { return }
         AppLogger.shared.write(
             "BLE SYSTEM_SUSPENSION phase=recovering result=requested reason=\(reason) " +
                 "lifecycle=\(String(describing: lifecycle))"
@@ -664,7 +662,7 @@ final class XiaomiBluetoothBridge: NSObject {
                   self.lifecycle == .connecting(generation)
             else { return }
             AppLogger.shared.write("BLE CONNECT TIMEOUT")
-            self.state = .reconnecting
+            self.publishReconnectingState()
             if let central = self.central,
                let peripheral = self.peripheral,
                peripheral.state != .disconnected {
@@ -692,20 +690,26 @@ final class XiaomiBluetoothBridge: NSObject {
         decoder.reset()
     }
 
+    private func publishReconnectingState() {
+        // Keep the actionable failure visible until the next connection attempt starts.
+        if case .failed = state { return }
+        state = .reconnecting
+    }
+
     private func scheduleReconnect(bypassCachedTarget: Bool = false) {
         guard shouldRun else { return }
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
             reconnectWorkItem?.cancel()
             reconnectWorkItem = nil
-            state = .reconnecting
+            publishReconnectingState()
             AppLogger.shared.write(
                 "BLE RECONNECT deferred reason=system_suspended"
             )
             return
         }
         reconnectWorkItem?.cancel()
-        state = .reconnecting
+        publishReconnectingState()
         let delay = nextAutomaticReconnectDelay(
             bypassCachedTarget: bypassCachedTarget || currentAttemptUsesCachedTarget
         )
@@ -761,14 +765,14 @@ final class XiaomiBluetoothBridge: NSObject {
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
             lifecycle = .stopped
-            state = .reconnecting
+            publishReconnectingState()
             AppLogger.shared.write(
                 "BLE RECONNECT deferred reason=system_suspended"
             )
             return
         }
 
-        state = .reconnecting
+        publishReconnectingState()
         lifecycle = .waitingReconnect(finishedGeneration)
         let work = DispatchWorkItem { [weak self] in
             guard let self,
