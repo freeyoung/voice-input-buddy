@@ -72,3 +72,11 @@ GitHub Releases；安装同时更新 App 和驱动，需要管理员授权，并
 新 App 使用各自的更新源，开发阶段不维护旧 universal feed。arm64 feed 标注 Sparkle 的 [arm64 硬件要求](https://sparkle-project.org/documentation/api-reference/Classes/SUAppcastItem.html)，Intel feed 指向 Intel 包。
 
 应用的更新摘要直接读取 appcast 中的说明，不再生成或下载独立的 `.en.txt` / `.zh.txt` 文件。
+
+## 更新界面的语言与版本
+
+菜单“检查更新”及检查、结果、下载、准备安装和错误提示均使用应用内选定的语言（中文、英文或跟随系统），切换语言后无需重新启动。当前版本、新版本及可获得的本次检查结果均显示完整发布版本和 Git 提交计数，例如 `v26-10-12.070（Git 提交数：70）`。
+
+界面通过 Sparkle 的公开 `SPUUserDriver` 接口实现；检查来源、更新签名校验、下载和安装仍由 Sparkle 处理。“查看更新内容”打开项目的 GitHub Releases。
+
+Debug 构建可设置 `VOICE_INPUT_BUDDY_UPDATE_UI_PREVIEW=checking`（也支持 `found`、`current`、`error`、`ready`）和 `VOICE_INPUT_BUDDY_UPDATE_UI_LANGUAGE=en` 来查看隔离的更新界面样例。此预览不联网、不检查权限、不安装更新，不修改用户设置，并在两分钟后结束；Release 构建不包含此入口。

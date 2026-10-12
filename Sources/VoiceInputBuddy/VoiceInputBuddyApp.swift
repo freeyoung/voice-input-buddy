@@ -98,6 +98,10 @@ enum AppEntryPointVisibilityPolicy {
 enum VoiceInputBuddyApp {
     @MainActor
     static func main() {
+#if DEBUG
+        if LocalizedUpdateUserDriver.runPreviewIfRequested() { return }
+#endif
+
         if CommandLine.arguments.contains("--unregister-login-item") {
             if SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval {
                 do { try SMAppService.mainApp.unregister() }
@@ -184,7 +188,7 @@ enum VoiceInputBuddyApp {
 
 @MainActor
 private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
-    NSWindowDelegate, SPUUpdaterDelegate, @preconcurrency SPUStandardUserDriverDelegate
+    NSWindowDelegate, SPUUpdaterDelegate
 {
     private enum UpdateCheckPurpose {
         case information
@@ -213,11 +217,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private var updateCheckTask: Task<Void, Never>?
     private var resolvedUpdateFeedURLString: String?
     private var updaterStarted = false
-    private lazy var updaterController = SPUStandardUpdaterController(
-        startingUpdater: false,
-        updaterDelegate: self,
-        userDriverDelegate: self
-    )
+    private lazy var updateUserDriver = LocalizedUpdateUserDriver(localization: localization)
+    private lazy var updater = SPUUpdater(hostBundle: .main, applicationBundle: .main,
+                                         userDriver: updateUserDriver, delegate: self)
 
     private let connectionItem = NSMenuItem()
     private let audioItem = NSMenuItem()
@@ -771,12 +773,12 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 updateInformation.reset()
                 let policy = UpdateCheckPolicy(checksForPreReleaseUpdates: isEnabled)
                 if updaterStarted {
-                    updaterController.updater.automaticallyChecksForUpdates =
+                    updater.automaticallyChecksForUpdates =
                         policy.allowsBackgroundUpdatePrompts
                 }
                 if policy.startsUpdaterAutomatically {
                     startUpdaterIfNeeded()
-                    updaterController.updater.resetUpdateCycleAfterShortDelay()
+                    updater.resetUpdateCycleAfterShortDelay()
                     refreshUpdateInformation()
                 }
             }
@@ -811,11 +813,16 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     private func startUpdaterIfNeeded() {
         guard !updaterStarted, updateFeedSelection.validatedStableFeedURL != nil else { return }
-        updaterController.updater.automaticallyChecksForUpdates =
+        updater.automaticallyChecksForUpdates =
             UpdateCheckPolicy(
                 checksForPreReleaseUpdates: model.settings.checksForPreReleaseUpdates
             ).allowsBackgroundUpdatePrompts
-        updaterController.startUpdater()
+        do { try updater.start() }
+        catch {
+            updateInformation.setUnavailable()
+            AppLogger.shared.write("UPDATE START failed " + AppLogger.errorFields(error))
+            return
+        }
         updaterStarted = true
     }
 
@@ -1076,13 +1083,16 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 )
             }
             startUpdaterIfNeeded()
-            guard !updaterController.updater.sessionInProgress else { return }
+            if updater.sessionInProgress {
+                if case .userInitiated = purpose { updateUserDriver.showUpdateInFocus() }
+                return
+            }
             switch purpose {
             case .information:
                 updateInformation.beginChecking()
-                updaterController.updater.checkForUpdateInformation()
+                updater.checkForUpdateInformation()
             case .userInitiated:
-                updaterController.checkForUpdates(nil)
+                updater.checkForUpdates()
             }
         }
     }
@@ -1131,10 +1141,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 "candidate_build=\(latestItem.versionString) " +
                 "installed_build=\(currentBuild)"
         )
-    }
-
-    func standardUserDriverShouldShowVersionHistory(for item: SUAppcastItem) -> Bool {
-        false
     }
 
     func updater(

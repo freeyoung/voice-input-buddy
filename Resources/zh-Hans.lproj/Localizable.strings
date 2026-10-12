@@ -1219,3 +1219,35 @@
 
 "diagnostics.logs.open_failed" = "无法打开日志文件";
 "diagnostics.logs.open_failed.detail" = "请检查 Library/Logs/VoiceInputBuddy 目录是否可写，然后重试。";
+
+"update.dialog.window" = "软件更新";
+"update.dialog.version" = "%1$@（Git 提交数：%2$@）";
+"update.dialog.current" = "当前版本：%1$@";
+"update.dialog.permission" = "自动检查更新？";
+"update.dialog.permission.detail" = "当前版本：%1$@\n是否允许自动检查新版本？不会发送使用情况信息。";
+"update.dialog.manual_only" = "手动检查";
+"update.dialog.allow_checks" = "允许自动检查";
+"update.dialog.checking" = "正在检查更新…";
+"update.dialog.found" = "发现新版本";
+"update.dialog.found.detail" = "当前版本：%1$@\n可用新版本：%2$@";
+"update.dialog.later" = "稍后提醒";
+"update.dialog.skip" = "跳过此版本";
+"update.dialog.install" = "安装更新";
+"update.dialog.not_found" = "没有可安装的新版本";
+"update.dialog.not_found.detail" = "当前版本：%1$@\n所选更新渠道中没有找到可安装的新版本。";
+"update.dialog.error" = "更新未能完成";
+"update.dialog.error.detail" = "当前版本：%1$@\n请稍后重试；如果问题持续，请检查网络连接。\n错误：%2$@（%3$@）";
+"update.dialog.downloading" = "正在下载更新…";
+"update.dialog.extracting" = "正在准备更新…";
+"update.dialog.ready" = "更新已准备好";
+"update.dialog.cancel_install" = "取消安装";
+"update.dialog.install_restart" = "安装并重新启动";
+"update.dialog.installing" = "正在安装更新…";
+"update.dialog.retry_quit" = "再次尝试退出应用";
+"update.dialog.installed" = "更新已安装";
+"update.dialog.history" = "查看更新内容";
+
+"update.dialog.current_and_target" = "当前版本：%1$@\n更新版本：%2$@";
+"update.dialog.not_found.latest.detail" = "当前版本：%1$@\n本次检查的最新版本：%2$@\n此渠道中没有可安装的新版本。";
+
+"update.dialog.install_later" = "稍后安装";
