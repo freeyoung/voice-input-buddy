@@ -111,7 +111,7 @@ final class AppleRemoteAudioClient {
         let pipe = Pipe()
         let process = Process()
         process.executableURL = helper
-        process.arguments = ["--port", "0", "--token", token]
+        process.arguments = ["--port", "0"]
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         process.terminationHandler = { [weak self] process in
@@ -128,6 +128,7 @@ final class AppleRemoteAudioClient {
             }
         }
         do {
+            process.standardInput = try AppleRemoteAudioIPC.startupTokenPipe(token: token)
             try process.run()
         } catch {
             reportStatus("unavailable:helper_start_failed")
