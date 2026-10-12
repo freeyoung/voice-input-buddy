@@ -1,0 +1,232 @@
+import AppKit
+import Combine
+import CoreBluetooth
+import BuddyRemoteCore
+import BuddyRemoteUI
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> WindowDragNSView {
+        WindowDragNSView()
+    }
+
+    func updateNSView(_ nsView: WindowDragNSView, context: Context) {}
+}
+
+struct ShortcutCaptureView: NSViewRepresentable {
+    let onCapture: (CustomKeyboardShortcut) -> Void
+    let onFailure: (ShortcutCaptureStartFailure) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onCapture: onCapture, onFailure: onFailure)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.startMonitoring()
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onCapture = onCapture
+        context.coordinator.onFailure = onFailure
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.stopMonitoring()
+    }
+
+    final class Coordinator {
+        var onCapture: (CustomKeyboardShortcut) -> Void
+        var onFailure: (ShortcutCaptureStartFailure) -> Void
+        private var monitor: ShortcutCaptureMonitor?
+
+        init(
+            onCapture: @escaping (CustomKeyboardShortcut) -> Void,
+            onFailure: @escaping (ShortcutCaptureStartFailure) -> Void
+        ) {
+            self.onCapture = onCapture
+            self.onFailure = onFailure
+        }
+
+        func startMonitoring() {
+            guard monitor == nil else { return }
+            let capture = onCapture
+            let monitor = ShortcutCaptureMonitor(onCapture: capture)
+            self.monitor = monitor
+            if case let .failure(failure) = monitor.start() {
+                self.monitor = nil
+                DispatchQueue.main.async { [weak self] in
+                    self?.onFailure(failure)
+                }
+            }
+        }
+
+        func stopMonitoring() {
+            monitor?.stop()
+            monitor = nil
+        }
+
+        deinit {
+            stopMonitoring()
+        }
+    }
+}
+
+enum CompatibilityButtonStyle {
+    case standard
+    case prominent
+}
+
+enum SettingsVisualRenderingPolicy {
+    static let isScreenshotHarness = ProcessInfo.processInfo.environment[
+        "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"
+    ] != nil
+
+    static var usesNativeGlass: Bool { !isScreenshotHarness }
+}
+
+struct CompatibilityGlassContainer<Content: View>: View {
+    let spacing: CGFloat
+    let content: Content
+
+    init(spacing: CGFloat, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    @ViewBuilder
+    var body: some View {
+        if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
+            GlassEffectContainer(spacing: spacing) {
+                content
+            }
+        } else {
+            content
+        }
+    }
+}
+
+private struct CompatibilityButtonStyleModifier: ViewModifier {
+    let style: CompatibilityButtonStyle
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
+            switch style {
+            case .standard:
+                content.buttonStyle(.glass)
+            case .prominent:
+                content.buttonStyle(.glassProminent)
+            }
+        } else {
+            switch style {
+            case .standard:
+                content.buttonStyle(.bordered)
+            case .prominent:
+                content.buttonStyle(.borderedProminent)
+            }
+        }
+    }
+}
+
+private struct CompatibilityScrollEdgeEffectModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
+            content.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            content
+        }
+    }
+}
+
+private struct CompatibilityFocusEffectDisabledModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.focusEffectDisabled()
+        } else {
+            content
+        }
+    }
+}
+
+private struct CompatibilityRoundedButtonBorderShapeModifier: ViewModifier {
+    let radius: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.buttonBorderShape(.roundedRectangle(radius: radius))
+        } else {
+            content
+        }
+    }
+}
+
+private struct CompatibilityTintedGlassModifier<GlassShape: Shape>: ViewModifier {
+    let tint: Color
+    let shape: GlassShape
+    let interactive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
+            if interactive {
+                content.glassEffect(.clear.tint(tint).interactive(), in: shape)
+            } else {
+                content.glassEffect(.clear.tint(tint), in: shape)
+            }
+        } else {
+            content
+                .background(tint, in: shape)
+                .overlay(
+                    shape.stroke(
+                        Color(nsColor: .separatorColor).opacity(0.45),
+                        lineWidth: 1
+                    )
+                )
+        }
+    }
+}
+
+extension View {
+    func compatibilityButtonStyle(_ style: CompatibilityButtonStyle) -> some View {
+        modifier(CompatibilityButtonStyleModifier(style: style))
+    }
+
+    func compatibilityScrollEdgeEffect() -> some View {
+        modifier(CompatibilityScrollEdgeEffectModifier())
+    }
+
+    func compatibilityFocusEffectDisabled() -> some View {
+        modifier(CompatibilityFocusEffectDisabledModifier())
+    }
+
+    func compatibilityRoundedButtonBorderShape(radius: CGFloat) -> some View {
+        modifier(CompatibilityRoundedButtonBorderShapeModifier(radius: radius))
+    }
+
+    func compatibilityTintedGlass<GlassShape: Shape>(
+        tint: Color,
+        in shape: GlassShape,
+        interactive: Bool = false
+    ) -> some View {
+        modifier(
+            CompatibilityTintedGlassModifier(
+                tint: tint,
+                shape: shape,
+                interactive: interactive
+            )
+        )
+    }
+}
+
+
+final class WindowDragNSView: NSView {
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
+    }
+}

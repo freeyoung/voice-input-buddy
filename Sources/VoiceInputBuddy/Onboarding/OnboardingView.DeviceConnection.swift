@@ -1,0 +1,279 @@
+import AppKit
+import Combine
+import CoreBluetooth
+import BuddyRemoteUI
+import BuddyRemoteCore
+import SwiftUI
+
+extension OnboardingView {
+    @ViewBuilder
+    var remoteContent: some View {
+        switch settings.onboardingControlMethod {
+        case .physicalRemote:
+            physicalRemoteContent
+        case .iPhoneApp:
+            iPhoneRemoteContent
+        case .webRemote:
+            webRemoteContent
+        case .unselected:
+            remoteAvailabilityContent
+        }
+    }
+
+    private var physicalRemoteContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            onboardingTitle("onboarding.remote.title")
+            Text(verbatim: localization.text("onboarding.remote.detail"))
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(localization.text(physicalRemotePairingKeys.title))
+                    .font(.system(size: 14, weight: .semibold))
+
+                Label {
+                    Text(localization.text(physicalRemotePairingKeys.firstStep))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "1.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                }
+
+                Label {
+                    Text(localization.text(physicalRemotePairingKeys.secondStep))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "2.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                }
+
+                if let thirdStep = physicalRemotePairingKeys.thirdStep {
+                    Label {
+                        Text(localization.text(thirdStep))
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "3.circle.fill")
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
+            }
+            .font(.system(size: 12))
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.accentColor.opacity(0.18), lineWidth: 1)
+            }
+
+            statusCard(
+                icon: selectedControlConnected
+                    ? "checkmark.circle.fill"
+                    : "dot.radiowaves.left.and.right",
+                title: !selectedControlConnected && !observedRemoteButtons.isEmpty
+                    ? localization.text("onboarding.remote.hid_connected")
+                    : selectedControlConnected
+                        ? localization.text("onboarding.remote.connected")
+                        : localization.text("onboarding.remote.searching"),
+                detail: localization.text(
+                    selectedControlConnected
+                        ? "onboarding.remote.connected_detail"
+                        : !observedRemoteButtons.isEmpty
+                            ? "onboarding.remote.hid_connected_detail"
+                            : "onboarding.remote.searching_detail"
+                ),
+                isComplete: selectedControlConnected,
+                compact: true
+            )
+
+            statusCard(
+                icon: remoteInputDiagnostic.shouldShowVoiceButtonCorrection
+                    ? "exclamationmark.triangle.fill"
+                    : observedRemoteButtons.isEmpty
+                        ? "button.programmable"
+                        : "checkmark.circle.fill",
+                title: localization.text(
+                    remoteInputDiagnostic.shouldShowVoiceButtonCorrection
+                        ? "onboarding.remote.voice_button_mistake.title"
+                        : observedRemoteButtons.isEmpty
+                            ? "onboarding.remote.button_waiting"
+                            : "onboarding.remote.button_received"
+                ),
+                detail: physicalRemoteButtonStatusDetail,
+                isComplete: !observedRemoteButtons.isEmpty,
+                pendingColor: remoteInputDiagnostic.shouldShowVoiceButtonCorrection ? .orange : nil,
+                compact: true
+            )
+
+            if shouldShowSecureInputWarning {
+                secureInputWarningCard
+            }
+
+            if !selectedControlConnected {
+                openBluetoothSettingsButton
+            }
+        }
+    }
+
+    private var physicalRemoteButtonStatusDetail: String {
+        let instructionKey = remoteInputDiagnostic.shouldShowVoiceButtonCorrection
+            ? "onboarding.remote.voice_button_mistake.detail"
+            : observedRemoteButtons.isEmpty
+                ? "onboarding.remote.button_waiting_detail"
+                : "onboarding.remote.button_detail"
+        return localization.text(instructionKey)
+    }
+
+    var shouldShowSecureInputWarning: Bool {
+        OnboardingSecureInputPolicy.shouldShowWarning(
+            step: settings.onboardingStep,
+            source: settings.onboardingControlSource,
+            remoteConnected: selectedControlConnected,
+            remoteButtonObserved: settings.onboardingStep == .controls
+                ? !testedControlButtons.isEmpty
+                : !observedRemoteButtons.isEmpty,
+            secureInputActive: secureInputActive,
+            waitStartedAtUptime: secureInputWaitStartedAtUptime,
+            nowUptime: ProcessInfo.processInfo.systemUptime
+        )
+    }
+
+    var secureInputWarningCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "lock.trianglebadge.exclamationmark.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.orange)
+                    .frame(width: 32, height: 32)
+                    .background(Color.orange.opacity(0.12), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: localization.text("onboarding.secure_input.title"))
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(verbatim: localization.text("onboarding.secure_input.detail"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 10) {
+                onboardingActionButton(id: "secure-input.recheck") {
+                    recheckSecureInput()
+                } label: {
+                    Text(verbatim: localization.text("onboarding.secure_input.recheck"))
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text(verbatim: localization.text("onboarding.secure_input.help"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.orange.opacity(0.25), lineWidth: 1)
+        }
+    }
+
+    private var iPhoneRemoteContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            onboardingTitle("onboarding.apple_companion.title")
+            Text(verbatim: localization.text("onboarding.apple_companion.detail"))
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            onboardingLink(id: "iphone.install", destination: AppLinks.githubRepository) {
+                Label {
+                    Text(verbatim: localization.text("about.support.github"))
+                } icon: {
+                    Image(systemName: "arrow.up.right.square")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+
+            statusCard(
+                icon: selectedControlConnected
+                    ? "checkmark.circle.fill"
+                    : "iphone.and.arrow.forward",
+                title: localization.text(
+                    selectedControlConnected
+                        ? "onboarding.apple_companion.connected"
+                        : "onboarding.apple_companion.waiting"
+                ),
+                detail: localization.text("onboarding.apple_companion.connection_detail"),
+                isComplete: selectedControlConnected
+            )
+
+            controllerButtonStatusCard(
+                waitingDetailKey: "onboarding.apple_companion.button_detail"
+            )
+        }
+    }
+
+    private var webRemoteContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            onboardingTitle("onboarding.web_remote.title")
+            Text(verbatim: localization.text("onboarding.web_remote.detail"))
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            statusCard(
+                icon: webRemoteConnected
+                    ? "checkmark.circle.fill"
+                    : "qrcode.viewfinder",
+                title: webRemoteConnectionTitle,
+                detail: localization.text("onboarding.web_remote.connection_detail"),
+                isComplete: webRemoteConnected
+            )
+
+            controllerButtonStatusCard(
+                waitingDetailKey: "onboarding.web_remote.button_detail"
+            )
+
+            if !model.webRemoteState.isEnabled {
+                onboardingActionButton(id: "web.retry") {
+                    model.enableWebRemoteConnection()
+                } label: {
+                    Text(verbatim: localization.text("onboarding.web_remote.retry"))
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func controllerButtonStatusCard(waitingDetailKey: String) -> some View {
+        statusCard(
+            icon: observedRemoteButtons.isEmpty
+                ? "button.programmable"
+                : "checkmark.circle.fill",
+            title: localization.text(
+                observedRemoteButtons.isEmpty
+                    ? "onboarding.remote.button_waiting"
+                    : "onboarding.remote.button_received"
+            ),
+            detail: localization.text(
+                observedRemoteButtons.isEmpty
+                    ? waitingDetailKey
+                    : "onboarding.remote.button_detail"
+            ),
+            isComplete: !observedRemoteButtons.isEmpty
+        )
+    }
+
+    private var openBluetoothSettingsButton: some View {
+        onboardingActionButton(id: "bluetooth.settings.open") {
+            openBluetoothSettings()
+        } label: {
+            Text(verbatim: localization.text("onboarding.remote.open_bluetooth"))
+        }
+            .buttonStyle(.bordered)
+    }
+}

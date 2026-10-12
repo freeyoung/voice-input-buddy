@@ -1,0 +1,759 @@
+import Combine
+import Foundation
+
+final class AppSettings: ObservableObject {
+    static let continuousRecordingExperimentAvailable = false
+    static let currentOnboardingVersion = 1
+
+    enum Keys {
+        static let gainDB = "gainDB"
+        static let selectedAudioDeviceUID = "selectedAudioDeviceUID"
+        static let lastKnownAudioDeviceUID = "lastKnownAudioDeviceUID"
+        static let customMappingEnabled = "customMappingEnabled"
+        static let legacyExclusiveHID = "exclusiveHID"
+        static let buttonBindings = "buttonBindings"
+        static let buttonShortcuts = "buttonShortcuts"
+        static let buttonApplicationProfileIDs = "buttonApplicationProfileIDs"
+        static let secondaryButtonBindings = "secondaryButtonBindings"
+        static let buttonRapidPressEnabled = "buttonRapidPressEnabled"
+        static let customApplicationProfiles = "customApplicationProfiles"
+        static let peripheralIdentifier = "peripheralIdentifier"
+        static let remoteDeviceProfiles = "remoteDeviceProfiles"
+        static let selectedRemoteProfileID = "selectedRemoteProfileID"
+        static let applicationLanguage = "applicationLanguage"
+        static let appIconIdentifier = "appIconIdentifier"
+        static let showDockIcon = "showDockIcon"
+        static let showStatusBarIcon = "showStatusBarIcon"
+        static let openMainWindowAtLaunch = "openMainWindowAtLaunch"
+        static let checksForPreReleaseUpdates = "checksForPreReleaseUpdates"
+        static let experimentalContinuousRecordingEnabled = "experimentalContinuousRecordingEnabled"
+        static let voiceFnTapModeEnabled = "voiceFnTapModeEnabled"
+        static let chromecastAllowSystemReservedKeys = "chromecast.allowSystemReservedKeys"
+        static let chromecastSystemReservedExceptions = "chromecast.systemReservedExceptions"
+        static let voiceKeyMode = "voiceKeyMode"
+        static let siriRemoteScrollArrowReversed = "siriRemote.scrollArrowReversed"
+        static let siriRemoteEnabled = "siriRemote.enabled"
+        static let siriRemoteNeedsUserAction = "siriRemote.needsUserAction"
+        static let chromecastEnabled = "chromecast.enabled"
+        static let chromecastVoiceMode = "chromecast.voiceMode"
+        static let continuousRecordingPowerBindingBackup = "continuousRecordingPowerBindingBackup"
+        static let lastLaunchedBuild = "launch.lastLaunchedBuild"
+        static let totalButtonPressCount = "usage.totalButtonPressCount"
+        static let totalVoiceDuration = "usage.totalVoiceDuration"
+        static let dailyStatistics = "usage.dailyStatistics"
+        static let voiceSessionRanking = "usage.voiceSessionRanking"
+        static let trustedPhoneIdentityFingerprints = "security.trustedPhoneIdentityFingerprints"
+        static let onboardingCompletedVersion = "onboarding.completedVersion"
+        static let onboardingStep = "onboarding.step"
+        static let onboardingRemoteAvailability = "onboarding.remoteAvailability"
+        static let onboardingControlMethod = "onboarding.controlMethod"
+        static let onboardingControlSource = "onboarding.controlSource"
+        static let onboardingAppleRemoteGeneration = "onboarding.appleRemoteGeneration"
+        static let onboardingVoiceTool = "onboarding.voiceTool"
+        static let onboardingVoiceBindingPreference = "onboarding.voiceBindingPreference"
+        static let onboardingPreferredGesture = "onboarding.preferredGesture"
+        static let onboardingVerifiedVoiceBinding = "onboarding.verifiedVoiceBinding"
+        static let onboardingStagedVoiceBinding = "onboarding.stagedVoiceBinding"
+        static let onboardingTrialSnapshot = "onboarding.trialSnapshot"
+        static let onboardingMigrationVersion = "onboarding.migrationVersion"
+        static let firstUseEvents = "onboarding.diagnostics.events"
+        static let firstUseStepStartedAt = "onboarding.diagnostics.stepStartedAt"
+        static let firstUseLastSignature = "onboarding.diagnostics.lastSignature"
+    }
+
+    let defaults: UserDefaults
+
+    @Published var gainDB: Double {
+        didSet { defaults.set(gainDB, forKey: Keys.gainDB) }
+    }
+
+    @Published var selectedAudioDeviceUID: String {
+        didSet {
+            defaults.set(selectedAudioDeviceUID, forKey: Keys.selectedAudioDeviceUID)
+            if !selectedAudioDeviceUID.isEmpty {
+                lastKnownAudioDeviceUID = selectedAudioDeviceUID
+                defaults.set(selectedAudioDeviceUID, forKey: Keys.lastKnownAudioDeviceUID)
+            }
+        }
+    }
+
+    var lastKnownAudioDeviceUID: String
+
+    @Published var customMappingEnabled: Bool {
+        didSet { defaults.set(customMappingEnabled, forKey: Keys.customMappingEnabled) }
+    }
+
+    var configuredActionOverride: ((UUID?, RemoteButton, ButtonTrigger) -> ConfiguredButtonAction?)?
+    @Published var unifiedBaseBindings: [UnifiedButtonBinding] = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(unifiedBaseBindings) {
+                defaults.set(data, forKey: "unifiedBaseBindings")
+            }
+        }
+    }
+
+    func setBaseBinding(_ configured: ConfiguredButtonAction, for button: RemoteButton,
+                        trigger: ButtonTrigger, profileID: UUID?) {
+        unifiedBaseBindings.removeAll { $0.remoteProfileID == profileID && $0.button == button && $0.trigger == trigger }
+        unifiedBaseBindings.append(UnifiedButtonBinding(remoteProfileID: profileID, button: button,
+                                                        trigger: trigger, configured: configured))
+    }
+
+    @Published var buttonBindings: [RemoteButton: ButtonAction] {
+        didSet {
+            saveBindings()
+            saveSelectedRemoteProfileMappings()
+        }
+    }
+
+    @Published var buttonShortcuts: [RemoteButton: CustomKeyboardShortcut] {
+        didSet {
+            saveShortcuts()
+            saveSelectedRemoteProfileMappings()
+        }
+    }
+
+    @Published var buttonApplicationProfileIDs: [RemoteButton: UUID] {
+        didSet {
+            saveButtonApplicationProfileIDs()
+            saveSelectedRemoteProfileMappings()
+        }
+    }
+
+    @Published var secondaryButtonBindings: [RemoteButton: [ButtonTrigger: ConfiguredButtonAction]] {
+        didSet {
+            saveSecondaryBindings()
+            saveSelectedRemoteProfileMappings()
+        }
+    }
+
+    @Published var buttonRapidPressEnabled: [RemoteButton: Bool] {
+        didSet {
+            saveButtonRapidPressEnabled()
+            saveSelectedRemoteProfileMappings()
+        }
+    }
+
+    @Published var customApplicationProfiles: [CustomApplicationProfile] {
+        didSet { saveCustomApplicationProfiles() }
+    }
+
+    @Published var remoteDeviceProfiles: [RemoteDeviceProfile] {
+        didSet { saveRemoteDeviceProfiles() }
+    }
+
+    @Published var selectedRemoteProfileID: UUID? {
+        didSet { defaults.set(selectedRemoteProfileID?.uuidString, forKey: Keys.selectedRemoteProfileID) }
+    }
+
+    @Published var applicationLanguage: AppLanguage {
+        didSet { defaults.set(applicationLanguage.rawValue, forKey: Keys.applicationLanguage) }
+    }
+
+    @Published var appIconIdentifier: AppIconIdentifier {
+        didSet {
+            defaults.set(appIconIdentifier.rawValue, forKey: Keys.appIconIdentifier)
+        }
+    }
+
+    @Published var showDockIcon: Bool {
+        didSet { defaults.set(showDockIcon, forKey: Keys.showDockIcon) }
+    }
+
+    @Published var showStatusBarIcon: Bool {
+        didSet { defaults.set(showStatusBarIcon, forKey: Keys.showStatusBarIcon) }
+    }
+
+    @Published var openMainWindowAtLaunch: Bool {
+        didSet { defaults.set(openMainWindowAtLaunch, forKey: Keys.openMainWindowAtLaunch) }
+    }
+
+    @Published var checksForPreReleaseUpdates: Bool {
+        didSet {
+            defaults.set(checksForPreReleaseUpdates, forKey: Keys.checksForPreReleaseUpdates)
+        }
+    }
+
+    @Published var experimentalContinuousRecordingEnabled: Bool {
+        didSet {
+            defaults.set(
+                experimentalContinuousRecordingEnabled,
+                forKey: Keys.experimentalContinuousRecordingEnabled
+            )
+        }
+    }
+
+    @Published var voiceFnTapModeEnabled: Bool {
+        didSet {
+            defaults.set(
+                voiceFnTapModeEnabled,
+                forKey: Keys.voiceFnTapModeEnabled
+            )
+        }
+    }
+
+    /// 历史系统占用键豁免。保留读取兼容；当前普通键不受此值限制。
+    @Published var chromecastAllowSystemReservedKeys: Bool {
+        didSet {
+            defaults.set(
+                chromecastAllowSystemReservedKeys,
+                forKey: Keys.chromecastAllowSystemReservedKeys
+            )
+        }
+    }
+
+    /// 历史逐键豁免，保留旧配置的读取兼容。
+    @Published var chromecastSystemReservedExceptions: Set<String> {
+        didSet {
+            defaults.set(
+                chromecastSystemReservedExceptions.sorted().joined(separator: ","),
+                forKey: Keys.chromecastSystemReservedExceptions
+            )
+        }
+    }
+
+    @Published var voiceKeyMode: VoiceKeyMode {
+        didSet {
+            defaults.set(voiceKeyMode.rawValue, forKey: Keys.voiceKeyMode)
+        }
+    }
+
+    @Published var siriRemoteScrollArrowReversed: Bool {
+        didSet {
+            defaults.set(
+                siriRemoteScrollArrowReversed,
+                forKey: Keys.siriRemoteScrollArrowReversed
+            )
+        }
+    }
+
+    /// Only an explicit user action enables Apple Remote runtime services.
+    @Published var siriRemoteEnabled: Bool {
+        didSet { defaults.set(siriRemoteEnabled, forKey: Keys.siriRemoteEnabled) }
+    }
+
+    @Published var siriRemoteNeedsUserAction: Bool {
+        didSet { defaults.set(siriRemoteNeedsUserAction, forKey: Keys.siriRemoteNeedsUserAction) }
+    }
+
+    /// Chromecast 遥控器总开关。私有包缺失时该设置无副作用，设置页也不会展示。
+    @Published var chromecastEnabled: Bool {
+        didSet {
+            defaults.set(chromecastEnabled, forKey: Keys.chromecastEnabled)
+        }
+    }
+
+    /// Chromecast 语音手势模式。默认 `toggle`（按一下开始、再按一下结束）。
+    @Published var chromecastVoiceMode: ChromecastVoiceMode {
+        didSet {
+            defaults.set(chromecastVoiceMode.rawValue, forKey: Keys.chromecastVoiceMode)
+        }
+    }
+
+    var continuousRecordingPowerBindingBackup: ConfiguredButtonAction? {
+        didSet { saveContinuousRecordingPowerBindingBackup() }
+    }
+
+    var isLoadingRemoteProfile = false
+
+    @Published var totalButtonPressCount: UInt64 {
+        didSet {
+            defaults.set(NSNumber(value: totalButtonPressCount), forKey: Keys.totalButtonPressCount)
+        }
+    }
+
+    @Published var totalVoiceDuration: TimeInterval {
+        didSet { defaults.set(totalVoiceDuration, forKey: Keys.totalVoiceDuration) }
+    }
+
+    @Published var dailyStatistics: [String: DailyUsageStatistics] {
+        didSet {
+            if let data = try? JSONEncoder().encode(dailyStatistics) {
+                defaults.set(data, forKey: Keys.dailyStatistics)
+            }
+        }
+    }
+
+    @Published var voiceSessionRanking: [VoiceSessionUsageRecord] {
+        didSet {
+            if let data = try? JSONEncoder().encode(voiceSessionRanking) {
+                defaults.set(data, forKey: Keys.voiceSessionRanking)
+            }
+        }
+    }
+
+    @Published var trustedPhoneIdentityFingerprints: Set<String> {
+        didSet {
+            defaults.set(
+                trustedPhoneIdentityFingerprints.sorted(),
+                forKey: Keys.trustedPhoneIdentityFingerprints
+            )
+        }
+    }
+
+    @Published var onboardingCompletedVersion: Int {
+        didSet {
+            defaults.set(onboardingCompletedVersion, forKey: Keys.onboardingCompletedVersion)
+        }
+    }
+
+    @Published var onboardingStep: OnboardingStep {
+        didSet { defaults.set(onboardingStep.rawValue, forKey: Keys.onboardingStep) }
+    }
+
+    @Published var onboardingRemoteAvailability: OnboardingRemoteAvailability {
+        didSet {
+            defaults.set(
+                onboardingRemoteAvailability.rawValue,
+                forKey: Keys.onboardingRemoteAvailability
+            )
+        }
+    }
+
+    @Published var onboardingControlMethod: OnboardingControlMethod {
+        didSet {
+            defaults.set(onboardingControlMethod.rawValue, forKey: Keys.onboardingControlMethod)
+        }
+    }
+
+    @Published var onboardingControlSource: OnboardingControlSource {
+        didSet {
+            defaults.set(onboardingControlSource.rawValue, forKey: Keys.onboardingControlSource)
+        }
+    }
+
+    @Published var onboardingAppleRemoteGeneration: OnboardingAppleRemoteGeneration? {
+        didSet {
+            defaults.set(
+                onboardingAppleRemoteGeneration?.rawValue,
+                forKey: Keys.onboardingAppleRemoteGeneration
+            )
+        }
+    }
+
+    @Published var onboardingVoiceTool: OnboardingVoiceTool {
+        didSet { defaults.set(onboardingVoiceTool.rawValue, forKey: Keys.onboardingVoiceTool) }
+    }
+
+    @Published var onboardingVoiceBindingPreference: OnboardingVoiceBindingPreference {
+        didSet {
+            defaults.set(
+                onboardingVoiceBindingPreference.rawValue,
+                forKey: Keys.onboardingVoiceBindingPreference
+            )
+        }
+    }
+
+    @Published var onboardingPreferredGesture: VoiceGestureMode? {
+        didSet {
+            defaults.set(onboardingPreferredGesture?.rawValue, forKey: Keys.onboardingPreferredGesture)
+        }
+    }
+
+    @Published var verifiedVoiceToolBinding: VoiceToolUserBinding? {
+        didSet {
+            if let verifiedVoiceToolBinding,
+               let data = try? JSONEncoder().encode(verifiedVoiceToolBinding) {
+                defaults.set(data, forKey: Keys.onboardingVerifiedVoiceBinding)
+            } else {
+                defaults.removeObject(forKey: Keys.onboardingVerifiedVoiceBinding)
+            }
+        }
+    }
+
+    @Published var stagedVoiceToolBinding: VoiceToolUserBinding?
+
+    var isOnboardingComplete: Bool {
+        onboardingCompletedVersion >= Self.currentOnboardingVersion
+    }
+
+    var hasHistoricalAudioConfiguration: Bool {
+        isOnboardingComplete || firstUseEvents.contains {
+            ($0.kind == .passed && $0.step == .audio) || $0.kind == .completed
+        }
+    }
+
+    var peripheralIdentifier: UUID? {
+        get {
+            guard let raw = defaults.string(forKey: Keys.peripheralIdentifier) else { return nil }
+            return UUID(uuidString: raw)
+        }
+        set {
+            defaults.set(newValue?.uuidString, forKey: Keys.peripheralIdentifier)
+        }
+    }
+
+    /// Keys whose stored data existed but could not be decoded on the last load. The raw
+    /// bytes are preserved under "<key>.corrupt" so a reset is recoverable and visible
+    /// instead of looking like a first run.
+    @Published var corruptedSettingKeys: [String] = []
+
+    /// Splits "never saved" from "saved but unreadable". Only the latter is a fault, and
+    /// silently treating it as a first run is what let user configuration disappear.
+    /// Static because callers run inside `init` before the instance is fully formed.
+    private static func decodeSetting<T: Decodable>(
+        _ type: T.Type,
+        forKey key: String,
+        from defaults: UserDefaults,
+        corrupted: inout [String]
+    ) -> T? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            defaults.set(data, forKey: "\(key).corrupt")
+            corrupted.append(key)
+            AppLogger.shared.write(
+                "SETTINGS decode_failed category=\(diagnosticSettingCategory(key)) " +
+                "bytes=\(data.count) reason=\(diagnosticDecodeReason(error))"
+            )
+            if let event = PublicDiagnosticEvent(
+                component: "settings", action: "load", phase: "failed", result: "defaults_applied",
+                reason: "\(diagnosticSettingCategory(key))_\(diagnosticDecodeReason(error))", source: "app"
+            ) { AppLogger.shared.record(event) }
+            return nil
+        }
+    }
+
+    static func diagnosticSettingCategory(_ key: String) -> String {
+        switch key {
+        case "remoteDeviceProfiles": "remote_profiles"
+        case "buttonBindings", "buttonShortcuts", "buttonApplicationProfileIDs",
+             "secondaryButtonBindings", "buttonRapidPressEnabled", "continuousRecordingPowerBindingBackup":
+            "button_mapping"
+        case "customApplicationProfiles": "custom_apps"
+        case "usage.dailyStatistics", "usage.voiceSessionRanking": "usage"
+        case "onboarding.stagedVoiceBinding": "onboarding"
+        default: "other"
+        }
+    }
+
+    static func diagnosticDecodeReason(_ error: Error) -> String {
+        switch error {
+        case DecodingError.dataCorrupted: "data_corrupted"
+        case DecodingError.keyNotFound: "key_missing"
+        case DecodingError.typeMismatch: "type_mismatch"
+        case DecodingError.valueNotFound: "value_missing"
+        default: "unknown"
+        }
+    }
+
+    init(defaults: UserDefaults = .standard) {
+        var corruptedKeys: [String] = []
+        self.defaults = defaults
+        Self.restoreInterruptedOnboardingTrial(in: defaults)
+        remoteDeviceProfiles = []
+        selectedRemoteProfileID = nil
+        gainDB = defaults.object(forKey: Keys.gainDB) == nil
+            ? 10.0
+            : defaults.double(forKey: Keys.gainDB)
+        let persistedAudioDeviceUID = defaults.string(forKey: Keys.selectedAudioDeviceUID) ?? ""
+        selectedAudioDeviceUID = persistedAudioDeviceUID
+        lastKnownAudioDeviceUID = defaults.string(forKey: Keys.lastKnownAudioDeviceUID) ?? persistedAudioDeviceUID
+        if defaults.string(forKey: Keys.lastKnownAudioDeviceUID) == nil,
+           !persistedAudioDeviceUID.isEmpty {
+            defaults.set(persistedAudioDeviceUID, forKey: Keys.lastKnownAudioDeviceUID)
+        }
+        if defaults.object(forKey: Keys.customMappingEnabled) != nil {
+            customMappingEnabled = defaults.bool(forKey: Keys.customMappingEnabled)
+        } else {
+            customMappingEnabled = defaults.bool(forKey: Keys.legacyExclusiveHID)
+        }
+
+        if let decoded = Self.decodeSetting(
+            [String: ButtonAction].self,
+            forKey: Keys.buttonBindings,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) {
+            buttonBindings = Self.defaultBindings.merging(
+                Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
+                    RemoteButton(rawValue: key).map { ($0, value) }
+                })
+            ) { _, saved in saved }
+        } else {
+            buttonBindings = Self.defaultBindings
+        }
+
+        if let decoded = Self.decodeSetting(
+            [String: CustomKeyboardShortcut].self,
+            forKey: Keys.buttonShortcuts,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) {
+            buttonShortcuts = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
+                RemoteButton(rawValue: key).map { ($0, value) }
+            })
+        } else {
+            buttonShortcuts = [:]
+        }
+
+        if let decoded = Self.decodeSetting(
+            [String: UUID].self,
+            forKey: Keys.buttonApplicationProfileIDs,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) {
+            buttonApplicationProfileIDs = Dictionary(
+                uniqueKeysWithValues: decoded.compactMap { key, value in
+                    RemoteButton(rawValue: key).map { ($0, value) }
+                }
+            )
+        } else {
+            buttonApplicationProfileIDs = [:]
+        }
+
+        if let decoded = Self.decodeSetting(
+            [String: Bool].self,
+            forKey: Keys.buttonRapidPressEnabled,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) {
+            buttonRapidPressEnabled = Dictionary(
+                uniqueKeysWithValues: decoded.compactMap { key, value in
+                    RemoteButton(rawValue: key).map { ($0, value) }
+                }
+            )
+        } else {
+            buttonRapidPressEnabled = [:]
+        }
+
+        if let decoded = Self.decodeSetting(
+            [String: [String: ConfiguredButtonAction]].self,
+            forKey: Keys.secondaryButtonBindings,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) {
+            secondaryButtonBindings = Dictionary(uniqueKeysWithValues: decoded.compactMap { buttonKey, bindings in
+                guard let button = RemoteButton(rawValue: buttonKey) else { return nil }
+                let parsed = Dictionary(uniqueKeysWithValues: bindings.compactMap { triggerKey, binding in
+                    ButtonTrigger(rawValue: triggerKey).map { ($0, binding) }
+                })
+                return parsed.isEmpty ? nil : (button, parsed)
+            })
+        } else {
+            secondaryButtonBindings = [:]
+        }
+
+        customApplicationProfiles = Self.decodeSetting(
+            [CustomApplicationProfile].self,
+            forKey: Keys.customApplicationProfiles,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) ?? []
+
+        applicationLanguage = AppLanguage(
+            rawValue: defaults.string(forKey: Keys.applicationLanguage) ?? ""
+        ) ?? .system
+        let storedAppIcon = AppIconIdentifier(
+            rawValue: defaults.string(forKey: Keys.appIconIdentifier)
+                ?? AppIconIdentifier.standard.rawValue
+        )
+        appIconIdentifier = storedAppIcon == .facetedDuck ? .standard : storedAppIcon
+        if storedAppIcon == .facetedDuck {
+            defaults.set(AppIconIdentifier.standard.rawValue, forKey: Keys.appIconIdentifier)
+        }
+        showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil
+            ? true
+            : defaults.bool(forKey: Keys.showDockIcon)
+        showStatusBarIcon = defaults.object(forKey: Keys.showStatusBarIcon) == nil
+            ? true
+            : defaults.bool(forKey: Keys.showStatusBarIcon)
+        openMainWindowAtLaunch = defaults.object(forKey: Keys.openMainWindowAtLaunch) == nil
+            ? true
+            : defaults.bool(forKey: Keys.openMainWindowAtLaunch)
+        checksForPreReleaseUpdates = defaults.bool(forKey: Keys.checksForPreReleaseUpdates)
+        experimentalContinuousRecordingEnabled = defaults.bool(
+            forKey: Keys.experimentalContinuousRecordingEnabled
+        )
+        voiceFnTapModeEnabled = defaults.bool(forKey: Keys.voiceFnTapModeEnabled)
+        chromecastAllowSystemReservedKeys = defaults.bool(
+            forKey: Keys.chromecastAllowSystemReservedKeys
+        )
+        chromecastSystemReservedExceptions = Set(
+            (defaults.string(forKey: Keys.chromecastSystemReservedExceptions) ?? "")
+                .split(separator: ",")
+                .map(String.init)
+        )
+        voiceKeyMode = VoiceKeyMode(
+            rawValue: defaults.string(forKey: Keys.voiceKeyMode) ?? ""
+        ) ?? .function
+        siriRemoteScrollArrowReversed = defaults.bool(
+            forKey: Keys.siriRemoteScrollArrowReversed
+        )
+        siriRemoteEnabled = defaults.bool(forKey: Keys.siriRemoteEnabled)
+        siriRemoteNeedsUserAction = defaults.bool(forKey: Keys.siriRemoteNeedsUserAction)
+        // 首次运行默认开启：私有包只会被编入有该硬件的构建，让用户先找开关再测试没有意义。
+        chromecastEnabled = defaults.object(forKey: Keys.chromecastEnabled) == nil
+            ? true
+            : defaults.bool(forKey: Keys.chromecastEnabled)
+        chromecastVoiceMode = ChromecastVoiceMode(
+            rawValue: defaults.string(forKey: Keys.chromecastVoiceMode) ?? ""
+        ) ?? .productDefault
+        continuousRecordingPowerBindingBackup = Self.decodeSetting(
+            ConfiguredButtonAction.self,
+            forKey: Keys.continuousRecordingPowerBindingBackup,
+            from: defaults,
+            corrupted: &corruptedKeys
+        )
+        totalButtonPressCount = (
+            defaults.object(forKey: Keys.totalButtonPressCount) as? NSNumber
+        )?.uint64Value ?? 0
+        totalVoiceDuration = defaults.object(forKey: Keys.totalVoiceDuration) == nil
+            ? 0
+            : max(0, defaults.double(forKey: Keys.totalVoiceDuration))
+        dailyStatistics = Self.decodeSetting(
+            [String: DailyUsageStatistics].self,
+            forKey: Keys.dailyStatistics,
+            from: defaults,
+            corrupted: &corruptedKeys
+        ) ?? [:]
+        voiceSessionRanking = Self.normalizedVoiceSessionRanking(
+            Self.decodeSetting(
+                [VoiceSessionUsageRecord].self,
+                forKey: Keys.voiceSessionRanking,
+                from: defaults,
+                corrupted: &corruptedKeys
+            ) ?? []
+        )
+        trustedPhoneIdentityFingerprints = Set(
+            defaults.stringArray(forKey: Keys.trustedPhoneIdentityFingerprints) ?? []
+        )
+        onboardingCompletedVersion = defaults.integer(forKey: Keys.onboardingCompletedVersion)
+        let persistedOnboardingStep = defaults.string(forKey: Keys.onboardingStep)
+            .flatMap(OnboardingStep.init(rawValue:))
+            ?? .welcome
+        // Older builds persisted a separate control-method page. The new flow owns
+        // both physical and companion choices on the control-source page, so resume
+        // those interrupted sessions there without discarding the selected source.
+        onboardingStep = persistedOnboardingStep.normalized
+        let persistedControlMethod = defaults.string(forKey: Keys.onboardingControlMethod)
+            .flatMap(OnboardingControlMethod.init(rawValue:))
+            ?? (persistedOnboardingStep == .welcome ||
+                persistedOnboardingStep == .voiceTool ||
+                persistedOnboardingStep == .remoteAvailability ||
+                persistedOnboardingStep == .controlMethod
+                ? .unselected
+                : .physicalRemote)
+        onboardingControlMethod = persistedControlMethod
+        onboardingControlSource = defaults.string(forKey: Keys.onboardingControlSource)
+            .flatMap(OnboardingControlSource.init(rawValue:))
+            ?? OnboardingControlSource.migrated(from: persistedControlMethod)
+        onboardingAppleRemoteGeneration = defaults.string(
+            forKey: Keys.onboardingAppleRemoteGeneration
+        ).flatMap(OnboardingAppleRemoteGeneration.init(rawValue:))
+        onboardingRemoteAvailability = defaults.string(
+            forKey: Keys.onboardingRemoteAvailability
+        )
+            .flatMap(OnboardingRemoteAvailability.init(rawValue:))
+            ?? {
+                switch persistedControlMethod {
+                case .physicalRemote:
+                    return .hasRemote
+                case .iPhoneApp, .webRemote:
+                    return .noRemote
+                case .unselected:
+                    return .unselected
+                }
+            }()
+        let persistedOnboardingVoiceTool = defaults.string(forKey: Keys.onboardingVoiceTool)
+        if persistedOnboardingVoiceTool == "chatterfly" {
+            defaults.set(OnboardingVoiceTool.unselected.rawValue, forKey: Keys.onboardingVoiceTool)
+            AppLogger.shared.write("ONBOARDING VOICE_TOOL migrated_from=chatterfly to=unselected")
+        }
+        onboardingVoiceTool = persistedOnboardingVoiceTool
+            .flatMap(OnboardingVoiceTool.init(rawValue:))
+            ?? .unselected
+        onboardingVoiceBindingPreference = defaults.string(
+            forKey: Keys.onboardingVoiceBindingPreference
+        )
+            .flatMap(OnboardingVoiceBindingPreference.init(rawValue:))
+            ?? .documentedDefault
+        onboardingPreferredGesture = defaults.string(forKey: Keys.onboardingPreferredGesture)
+            .flatMap(VoiceGestureMode.init(rawValue:))
+        verifiedVoiceToolBinding = Self.decodeSetting(
+            VoiceToolUserBinding.self,
+            forKey: Keys.onboardingVerifiedVoiceBinding,
+            from: defaults,
+            corrupted: &corruptedKeys
+        )
+        stagedVoiceToolBinding = Self.decodeSetting(
+            VoiceToolUserBinding.self,
+            forKey: Keys.onboardingStagedVoiceBinding,
+            from: defaults,
+            corrupted: &corruptedKeys
+        )
+        let legacyMappings = RemoteDeviceMappings(
+            buttonBindings: buttonBindings,
+            buttonShortcuts: buttonShortcuts,
+            buttonApplicationProfileIDs: buttonApplicationProfileIDs,
+            secondaryButtonBindings: secondaryButtonBindings,
+            buttonRapidPressEnabled: buttonRapidPressEnabled
+        )
+        if
+            let decoded = Self.decodeSetting(
+                [RemoteDeviceProfile].self,
+                forKey: Keys.remoteDeviceProfiles,
+                from: defaults,
+                corrupted: &corruptedKeys
+            ),
+            !decoded.isEmpty
+        {
+            remoteDeviceProfiles = decoded
+            if let event = PublicDiagnosticEvent(
+                component: "settings", action: "load", phase: "completed", result: "loaded",
+                reason: "remote_profiles", source: "app"
+            ) { AppLogger.shared.record(event) }
+            let savedID = defaults.string(forKey: Keys.selectedRemoteProfileID).flatMap(UUID.init(uuidString:))
+            selectedRemoteProfileID = decoded.contains(where: { $0.id == savedID })
+                ? savedID
+                : decoded.first?.id
+            if let selectedRemoteProfileID,
+               let selected = decoded.first(where: { $0.id == selectedRemoteProfileID }) {
+                buttonBindings = Self.defaultBindings.merging(selected.mappings.parsedButtonBindings) {
+                    _, saved in saved
+                }
+                buttonShortcuts = selected.mappings.parsedButtonShortcuts
+                buttonApplicationProfileIDs = selected.mappings.parsedButtonApplicationProfileIDs
+                secondaryButtonBindings = selected.mappings.parsedSecondaryButtonBindings
+                buttonRapidPressEnabled = selected.mappings.parsedButtonRapidPressEnabled
+            }
+        } else {
+            let migrated = RemoteDeviceProfile(
+                bluetoothIdentifier: defaults.string(forKey: Keys.peripheralIdentifier).flatMap(UUID.init(uuidString:)),
+                mappings: legacyMappings
+            )
+            remoteDeviceProfiles = [migrated]
+            selectedRemoteProfileID = migrated.id
+        }
+        applyContinuousRecordingExperimentState(
+            enabled: experimentalContinuousRecordingEnabled,
+            backup: continuousRecordingPowerBindingBackup
+        )
+        if let data = defaults.data(forKey: "unifiedBaseBindings") {
+            do { unifiedBaseBindings = try JSONDecoder().decode([UnifiedButtonBinding].self, from: data) }
+            catch { corruptedKeys.append("unifiedBaseBindings") }
+        }
+        corruptedSettingKeys = corruptedKeys
+    }
+
+    /// What the last import in this session refused to adopt, or `nil` when it adopted
+    /// everything. In memory only: it describes one user action, not stored state, and it must
+    /// not outlive the session in which the user imported the file.
+    @Published var configurationImportNotice: ConfigurationImportReport?
+
+    /// Bundle identifiers, audio device identifiers and display names are matched or displayed,
+    /// never executed, so a length bound is the whole requirement for them.
+    static let maximumImportedIdentifierLength = 256
+    static let maximumImportedPathLength = 1_024
+    static let maximumImportedKeyLabelLength = 64
+    /// macOS virtual key codes are 7-bit; this app's own label table stops at 126 and
+    /// `RemoteButton.nativeEvent` never exceeds it. A larger code is not a key.
+    static let maximumImportedKeyCode: UInt16 = 127
+
+    enum ImportedApplicationProfile {
+        case usable(CustomApplicationProfile)
+        case notInstalledOnThisMac(CustomApplicationProfile)
+        case rejected
+    }
+}

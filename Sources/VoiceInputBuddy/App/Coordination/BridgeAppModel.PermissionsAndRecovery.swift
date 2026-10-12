@@ -1,0 +1,228 @@
+import AppKit
+import AVFoundation
+import Combine
+import CoreAudio
+import CoreBluetooth
+import Foundation
+import BuddyRemoteCore
+
+extension BridgeAppModel {
+    static func shouldRecoverHIDAfterCompletedUpdate(
+        completedUpdate: Bool,
+        customMappingEnabled: Bool
+    ) -> Bool {
+        completedUpdate && customMappingEnabled
+    }
+
+    static func shouldReapplyHIDSettings(
+        previousState: BluetoothBridgeState?,
+        currentState: BluetoothBridgeState
+    ) -> Bool {
+        guard case .ready = currentState else { return false }
+        guard let previousState else { return true }
+        if case .ready = previousState { return false }
+        return true
+    }
+
+    static func canStartBluetoothVoice(
+        mode: VoiceKeyMode,
+        voiceFnTapModeEnabled: Bool = false,
+        isVoiceKeyNeutralized: Bool
+    ) -> Bool {
+        (mode == .function && !voiceFnTapModeEnabled) || isVoiceKeyNeutralized
+    }
+
+    static func canFallbackVoiceKeyMode(
+        isStreaming: Bool,
+        allowVoiceKeyModeFallback: Bool
+    ) -> Bool {
+        !isStreaming && allowVoiceKeyModeFallback
+    }
+
+    static func voiceKeyCompatibilityWarning(
+        remoteConnected: Bool,
+        usesPrivateAdapter: Bool,
+        customMappingEnabled: Bool,
+        hidStatusKey: String,
+        voiceShortcutStatusKey: String,
+        karabinerRunning: Bool
+    ) -> VoiceKeyCompatibilityWarning? {
+        guard remoteConnected, !usesPrivateAdapter, customMappingEnabled else { return nil }
+
+        let isExclusiveAccess = hidStatusKey == "button_mapping.error.exclusive_access" ||
+            hidStatusKey == "button_mapping.error.exclusive_access.karabiner"
+        if isExclusiveAccess {
+            return hidStatusKey == "button_mapping.error.exclusive_access.karabiner" && karabinerRunning
+                ? .karabiner
+                : .otherInputTool
+        }
+
+        let isVoiceKeyMappingUnavailable = voiceShortcutStatusKey == "voice_button.status.waiting" ||
+            hidStatusKey == "button_mapping.status.disconnected" ||
+            hidStatusKey == "button_mapping.status.waiting_for_device"
+        return isVoiceKeyMappingUnavailable && karabinerRunning ? .karabiner : nil
+    }
+
+    @discardableResult
+    static func importConfiguration(
+        from data: Data,
+        into settings: AppSettings,
+        isStreaming: Bool,
+        releaseVoiceKey: () -> Bool
+    ) throws -> Bool {
+        let importedVoiceKeyConfiguration = try settings.voiceKeyConfigurationState(in: data)
+        let changesVoiceKeyConfiguration =
+            importedVoiceKeyConfiguration != settings.voiceKeyConfigurationState
+        if changesVoiceKeyConfiguration {
+            guard !isStreaming, releaseVoiceKey() else {
+                throw AppConfigurationError.unsafeVoiceKeyChange
+            }
+        }
+        try settings.importConfiguration(from: data)
+        return changesVoiceKeyConfiguration
+    }
+
+    func recoverHIDAfterCompletedUpdate(delay: TimeInterval = 2) {
+        guard started, settings.customMappingEnabled else { return }
+        completedUpdateHIDRecoveryWorkItem?.cancel()
+        stopHIDMonitors()
+        AppLogger.shared.write("HID UPDATE RECOVERY scheduled delay_ms=\(Int(delay * 1_000))")
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.started, self.settings.customMappingEnabled else { return }
+            self.completedUpdateHIDRecoveryWorkItem = nil
+            self.applyHIDSettings()
+            AppLogger.shared.write("HID UPDATE RECOVERY applied")
+        }
+        completedUpdateHIDRecoveryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    func refreshHIDAfterPermissionChange() {
+        let current = HIDPermissionSnapshot.current
+        guard HIDPermissionRecoveryPolicy.shouldReapplySettings(
+            started: started,
+            customMappingEnabled: settings.customMappingEnabled,
+            voiceKeyMode: settings.voiceKeyMode,
+            voiceFnTapModeEnabled: settings.voiceFnTapModeEnabled,
+            softwareVoiceKeyHeld: voiceKeyLatch.isHeld,
+            previous: appliedHIDPermissionSnapshot,
+            current: current
+        ) else { return }
+        let previous = appliedHIDPermissionSnapshot
+        AppLogger.shared.write(
+            "HID PERMISSIONS changed " +
+                "input=\(previous?.inputMonitoringGranted ?? false)->\(current.inputMonitoringGranted) " +
+                "accessibility=\(previous?.accessibilityGranted ?? false)->\(current.accessibilityGranted) " +
+                "recovery=apply_settings"
+        )
+        recordPublicDiagnosticEvent(
+            component: "permission",
+            action: "input_monitoring",
+            phase: "observed",
+            result: current.inputMonitoringGranted ? "granted" : "denied",
+            reason: "status_changed",
+            source: "app"
+        )
+        recordPublicDiagnosticEvent(
+            component: "permission",
+            action: "accessibility",
+            phase: "observed",
+            result: current.accessibilityGranted ? "granted" : "denied",
+            reason: "status_changed",
+            source: "app"
+        )
+        applyHIDSettings()
+    }
+
+    func reconnect() {
+        guard started else { return }
+        if bluetoothBridges.isEmpty && discoveryBluetoothBridge == nil {
+            AppLogger.shared.write("BLE RECONNECT starting_missing_bridges")
+            startBluetoothConnections()
+            return
+        }
+        if let selectedBluetoothBridge {
+            selectedBluetoothBridge.reconnectNow()
+        } else {
+            bluetoothBridges.values.forEach { $0.reconnectNow() }
+            discoveryBluetoothBridge?.reconnectNow()
+        }
+    }
+
+    func recheckRemoteInput() {
+        guard started, !isStreaming else { return }
+        AppLogger.shared.write("HID USER_RECHECK requested")
+        applyHIDSettings()
+        refreshVoiceKeyCompatibilityWarning()
+    }
+
+    func refreshVoiceKeyCompatibilityWarning() {
+        let warning = Self.voiceKeyCompatibilityWarning(
+            remoteConnected: isConnected,
+            usesPrivateAdapter: settings.selectedRemoteProfile?.model.usesPrivateAdapter == true,
+            customMappingEnabled: settings.customMappingEnabled,
+            hidStatusKey: hidStatus.key,
+            voiceShortcutStatusKey: voiceShortcutStatus.key,
+            karabinerRunning: HIDRemoteMonitor.isKarabinerElementsRunning()
+        )
+        guard warning != voiceKeyCompatibilityWarning else { return }
+        voiceKeyCompatibilityWarning = warning
+        let reason: String
+        switch warning {
+        case .karabiner: reason = "karabiner"
+        case .otherInputTool: reason = "other_input_tool"
+        case nil: reason = "none"
+        }
+        AppLogger.shared.write(
+            "HID VOICE_KEY_COMPATIBILITY state=\(warning == nil ? "clear" : "warning") reason=\(reason)"
+        )
+    }
+
+    func recoverBluetoothVoiceLink(reason: String) {
+        let targets: [XiaomiBluetoothBridge]
+        if let selectedBluetoothBridge {
+            targets = [selectedBluetoothBridge]
+        } else {
+            targets = Array(bluetoothBridges.values)
+        }
+        AppLogger.shared.write(
+            "BLE RECOVERY phase=begin trigger=\(reason) target_bridges=\(targets.count) " +
+                "configured_bridges=\(bluetoothBridges.count) " +
+                "discovery=\(discoveryBluetoothBridge != nil) " +
+                "ready_bridges=\(readyBluetoothBridgeCount)"
+        )
+        if targets.isEmpty, discoveryBluetoothBridge == nil {
+            startBluetoothConnections()
+            AppLogger.shared.write(
+                "BLE RECOVERY phase=begin trigger=\(reason) cause=started_missing_bridges"
+            )
+            return
+        }
+        targets.forEach { $0.recoverVoiceLink(reason: reason) }
+        discoveryBluetoothBridge?.recoverVoiceLink(reason: reason)
+    }
+
+    func setBluetoothSystemSuspended(_ suspended: Bool, reason: String) {
+        bluetoothBridges.values.forEach {
+            $0.setSystemSuspended(suspended, reason: reason)
+        }
+        discoveryBluetoothBridge?.setSystemSuspended(suspended, reason: reason)
+    }
+
+    func resumeBluetoothConnectionCyclesIfNeeded(reason: String) {
+        bluetoothBridges.values.forEach {
+            $0.resumeConnectionCycleIfNeeded(reason: reason)
+        }
+        discoveryBluetoothBridge?.resumeConnectionCycleIfNeeded(reason: reason)
+    }
+
+    func refreshRemoteDiscovery() {
+        guard started else { return }
+        if discoveryBluetoothBridge == nil {
+            startBluetoothDiscoveryIfNeeded()
+        } else {
+            discoveryBluetoothBridge?.reconnectNow()
+        }
+        AppLogger.shared.write("BLE DISCOVERY refreshed_from_foreground")
+    }
+}

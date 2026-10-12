@@ -47,20 +47,36 @@ enum VoiceInputBuddyResourceBundle {
         urls.append(currentDirectory.appendingPathComponent("Resources", isDirectory: true))
 
 #if DEBUG
-        // `#filePath` points into Sources/VoiceInputBuddy in local SwiftPM builds.
-        // Keep this development-only fallback out of Release binaries so a
-        // shipped app never embeds the developer's absolute source path.
-        let sourceRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        urls.append(sourceRoot.appendingPathComponent("Resources", isDirectory: true))
+        // Resolve from the package marker instead of assuming a source directory depth.
+        // Keep absolute source paths out of Release binaries.
+        if let resources = developmentResourceRoot(from: URL(fileURLWithPath: #filePath)) {
+            urls.append(resources)
+        }
 #endif
         return urls.reduce(into: []) { result, url in
             guard !result.contains(url) else { return }
             result.append(url)
         }
     }
+
+#if DEBUG
+    static func developmentResourceRoot(from sourceFile: URL) -> URL? {
+        var directory = sourceFile.deletingLastPathComponent().standardizedFileURL
+        while true {
+            let resources = directory.appendingPathComponent("Resources", isDirectory: true)
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: directory.appendingPathComponent("Package.swift").path),
+               FileManager.default.fileExists(atPath: resources.path, isDirectory: &isDirectory),
+               isDirectory.boolValue {
+                return resources
+            }
+            guard directory.path != "/", !directory.path.isEmpty else { return nil }
+            let parent = directory.deletingLastPathComponent().standardizedFileURL
+            guard parent.path != directory.path else { return nil }
+            directory = parent
+        }
+    }
+#endif
 
     private static func hasLocalizedResources(in bundle: Bundle) -> Bool {
         bundle.path(forResource: "en", ofType: "lproj") != nil ||

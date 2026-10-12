@@ -23,8 +23,8 @@ class AppBundleTests(unittest.TestCase):
         shutil.copy2(SOURCE / 'scripts/verify-onboarding-resources.py', self.root / 'scripts/verify-onboarding-resources.py')
         shutil.copytree(SOURCE / 'Resources', self.root / 'Resources')
         (self.root / 'Sources/VoiceInputBuddy').mkdir(parents=True)
-        shutil.copy2(SOURCE / 'Sources/VoiceInputBuddy/OnboardingView.swift',
-                     self.root / 'Sources/VoiceInputBuddy/OnboardingView.swift')
+        shutil.copytree(SOURCE / 'Sources/VoiceInputBuddy/Onboarding',
+                        self.root / 'Sources/VoiceInputBuddy/Onboarding')
         for name in ['LICENSE', 'THIRD_PARTY_NOTICES.md']:
             shutil.copy2(SOURCE / name, self.root / name)
         self.toolbin = self.root / 'tools'
@@ -78,6 +78,30 @@ class AppBundleTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(marker.read_text(), 'keep previous build')
         self.assertEqual(list((self.root / 'dist').glob('.app-build.*')), [])
+
+    def test_missing_image_in_nested_guide_preserves_previous_bundle(self):
+        result = self.build()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        marker = self.app / 'Contents/Resources/previous-build.txt'
+        marker.write_text('keep previous build')
+        nested = self.root / 'Sources/VoiceInputBuddy/Onboarding/Guides'
+        nested.mkdir()
+        (nested / 'MissingImage.swift').write_text('let guide = .screenshot("missing-fixture")\n')
+        result = self.build()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Missing light screenshot: missing-fixture', result.stderr)
+        self.assertEqual(marker.read_text(), 'keep previous build')
+
+    def test_empty_setup_sources_cannot_silently_skip_resource_checks(self):
+        result = self.build()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        marker = self.app / 'Contents/Resources/previous-build.txt'
+        marker.write_text('keep previous build')
+        shutil.rmtree(self.root / 'Sources/VoiceInputBuddy/Onboarding')
+        result = self.build()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('No onboarding sources found', result.stderr)
+        self.assertEqual(marker.read_text(), 'keep previous build')
 
 if __name__ == '__main__':
     unittest.main()

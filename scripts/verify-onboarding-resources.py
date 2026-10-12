@@ -7,7 +7,9 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
 resources = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'Resources'
-source = (root / 'Sources/VoiceInputBuddy/OnboardingView.swift').read_text()
+setup_sources = sorted((root / 'Sources/VoiceInputBuddy/Onboarding').rglob('*.swift'))
+assert setup_sources, 'No onboarding sources found; resource checks cannot be skipped'
+source = '\n'.join(path.read_text() for path in setup_sources)
 names = set(re.findall(r'\.screenshot\("([\w-]+)"\)', source))
 names.update(re.findall(r'onboardingGuideScreenshot\(\s*resourceName: "([\w-]+)"', source))
 files = []
