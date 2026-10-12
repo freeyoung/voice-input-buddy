@@ -656,6 +656,9 @@ final class HIDRemoteMonitor {
         onActiveButtons?(profileID, RemoteButton.buttons(for: usages))
 
         for usage in pressed.sorted() {
+            // A failed action may stop/reset the monitor. Do not dispatch further
+            // presses from that stale snapshot, but still finish its release edges.
+            guard activeUsages == usages else { break }
             guard let button = RemoteButton.usageMap[usage] else { continue }
             let preflightProfileID = profileID
             let preflightRecognizesDoubleClick = settings.configuredAction(

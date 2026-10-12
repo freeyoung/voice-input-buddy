@@ -67,6 +67,31 @@ struct InputLifecycleRegressionTests {
         monitor.disconnectSimulatedDevice()
     }
 
+    @Test func stoppedMonitorDoesNotDispatchRemainingPressesInSameReport() {
+        let (values, name) = defaults()
+        defer { values.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: values)
+        settings.customMappingEnabled = true
+        settings.configuredActionOverride = { _, _, trigger in
+            ConfiguredButtonAction(action: trigger == .singleClick ? .arrowUp : .disabled, shortcut: nil)
+        }
+        var allowed = true
+        let profile = UUID()
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: profile,
+            runtimePermissions: { allowed }, actionPerformer: { _, _, _ in allowed = false; return false },
+            diagnosticLogger: { _ in })
+        var presses: [RemoteButton] = []
+        monitor.onRuntimeButton = { _, button, edge in
+            if edge == .press { presses.append(button) }
+            return false
+        }
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: profile)
+        let usages = [RemoteButton.up.hidUsage, RemoteButton.right.hidUsage].sorted()
+        let bytes = usages.flatMap { [UInt8($0 & 255), UInt8($0 >> 8)] }
+        monitor.handleSimulatedReport(reportID: 1, data: Data(bytes))
+        #expect(presses.count == 1)
+    }
+
     @Test func physicalKeyUpIsNeverConsumedAfterItsDownPassed() throws {
         let filter = KeyboardEventSuppressor()
         let down = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 50, keyDown: true))
