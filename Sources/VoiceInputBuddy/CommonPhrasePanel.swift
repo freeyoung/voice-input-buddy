@@ -15,6 +15,7 @@ final class CommonPhraseController: ObservableObject {
     private var routing = CommonPhraseRouting()
     private var panel: NSPanel?
     private var feedbackPanel: NSPanel?
+    private var feedbackGeneration: UInt64 = 0
     private let inserter: CommonPhraseInserter
     private let frontmostProcessID: () -> pid_t?
     private var targetPID: pid_t?
@@ -143,6 +144,10 @@ final class CommonPhraseController: ObservableObject {
 
     private func showFailure(_ key: String) {
         guard let localization else { return }
+        feedbackPanel?.close()
+        feedbackPanel = nil
+        feedbackGeneration &+= 1
+        let feedbackToken = feedbackGeneration
         messageKey = key
         let size = CGSize(width: 300, height: 100)
         let window = CommonPhrasePanel(contentRect: NSRect(origin: .zero, size: size),
@@ -167,7 +172,8 @@ final class CommonPhraseController: ObservableObject {
         let current = generation
         let duration: TimeInterval = key == "common_phrases.error.input_unavailable" ? 5 : 3
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
-            guard let self, self.generation == current else { return }
+            guard let self, self.generation == current,
+                  self.feedbackGeneration == feedbackToken else { return }
             self.close(reason: "failure_hint_timeout")
         }
     }

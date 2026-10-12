@@ -103,7 +103,6 @@ struct OnboardingView: View {
     @State private var voiceToolAvailability: [OnboardingVoiceTool: OnboardingVoiceToolAvailability] = [:]
     @State private var voiceToolRuntimeState: [OnboardingVoiceTool: OnboardingVoiceToolRuntimeState] = [:]
     @State private var systemFunctionKeyUsage = OnboardingSystemFunctionKeyUsage.current
-    @State private var voiceKeyMigrationSource: VoiceKeyMode?
     @State private var selectedInputMethodGuideStep: Int?
     @State private var completedInputMethodGuideSteps = Set<Int>()
     @State private var transcriptFocusRequest = 0
@@ -154,9 +153,6 @@ struct OnboardingView: View {
             initialValue: voiceToolAvailabilityOverride ?? Self.detectVoiceToolAvailability()
         )
         _selectedInputMethodGuideStep = State(initialValue: initialInputMethodGuideStep)
-        _voiceKeyMigrationSource = State(
-            initialValue: model.settings.pendingOnboardingVoiceKeyMigration
-        )
         _showAlternativeControlSources = State(
             initialValue: [.chromecastRemote, .appleCompanion, .webRemote].contains(
                 model.settings.onboardingControlSource
@@ -631,38 +627,6 @@ struct OnboardingView: View {
         }
         .padding(10)
         .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    @ViewBuilder
-    private var onboardingVoiceKeyMigrationNotice: some View {
-        if let voiceKeyMigrationSource {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Color.orange)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(
-                        LocalizedMessage(
-                            "onboarding.voice_key.migration.title",
-                            arguments: [localization.text(voiceKeyMigrationSource.localizationKey)]
-                        ).text(using: localization)
-                    )
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    Text(verbatim: localization.text("onboarding.voice_key.migration.detail"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.orange.opacity(0.35), lineWidth: 1)
-            }
-        }
     }
 
     private var remoteAvailabilityContent: some View {
@@ -3117,7 +3081,7 @@ struct OnboardingView: View {
         ) else {
             return nil
         }
-        return NSImage(contentsOf: url)
+        return OnboardingImageCache.image(at: url)
     }
 
     private func voiceToolIcon(_ tool: OnboardingVoiceTool) -> String {
@@ -3306,7 +3270,7 @@ struct OnboardingView: View {
         ) else {
             return nil
         }
-        return NSImage(contentsOf: url)
+        return OnboardingImageCache.image(at: url)
     }
 
     private func selectVoiceTool(_ tool: OnboardingVoiceTool) {
@@ -3335,13 +3299,6 @@ struct OnboardingView: View {
         settings.beginOnboardingVoiceTrial(plan)
         model.setVoiceKeyMode(plan.binding.shortcut)
         model.setVoiceFnTapModeEnabled(plan.fnTapModeEnabled)
-        applyChromecastModeIfNeeded(plan)
-    }
-
-    private func enforceOnboardingVoiceKeyPolicy() {
-        if let pending = settings.consumePendingOnboardingVoiceKeyMigration() {
-            voiceKeyMigrationSource = pending
-        }
     }
 
     private func refreshVoiceToolAvailability() {
@@ -3415,7 +3372,6 @@ struct OnboardingView: View {
         shortcutCaptureErrorKey = nil
         model.setVoiceKeyMode(plan.binding.shortcut)
         model.setVoiceFnTapModeEnabled(plan.fnTapModeEnabled)
-        applyChromecastModeIfNeeded(plan)
     }
 
     private func handleShortcutCaptureFailure(_ failure: ShortcutCaptureStartFailure) {
@@ -3526,14 +3482,14 @@ struct OnboardingView: View {
             step: settings.onboardingStep,
             source: settings.onboardingControlSource
         ) else {
-            secureInputActive = nil
-            secureInputWaitStartedAtUptime = nil
-            lastLoggedSecureInputState = nil
+            if secureInputActive != nil { secureInputActive = nil }
+            if secureInputWaitStartedAtUptime != nil { secureInputWaitStartedAtUptime = nil }
+            if lastLoggedSecureInputState != nil { lastLoggedSecureInputState = nil }
             return
         }
 
         let active = SecureInputMonitor.isEnabled()
-        secureInputActive = active
+        if secureInputActive != active { secureInputActive = active }
         if lastLoggedSecureInputState != active {
             AppLogger.shared.write(
                 "ONBOARDING SECURE_INPUT phase=state_changed active=\(active)"
@@ -3548,7 +3504,7 @@ struct OnboardingView: View {
             if secureInputWaitStartedAtUptime == nil {
                 secureInputWaitStartedAtUptime = ProcessInfo.processInfo.systemUptime
             }
-        } else {
+        } else if secureInputWaitStartedAtUptime != nil {
             secureInputWaitStartedAtUptime = nil
         }
     }
@@ -3617,15 +3573,15 @@ struct OnboardingView: View {
             testedControlButtons.removeAll()
             secureInputWaitStartedAtUptime = nil
         case .complete:
-            secureInputActive = nil
-            secureInputWaitStartedAtUptime = nil
-            lastLoggedSecureInputState = nil
+            if secureInputActive != nil { secureInputActive = nil }
+            if secureInputWaitStartedAtUptime != nil { secureInputWaitStartedAtUptime = nil }
+            if lastLoggedSecureInputState != nil { lastLoggedSecureInputState = nil }
             prepareSelectedControlConnection()
             model.refreshAudioDevices()
         default:
-            secureInputActive = nil
-            secureInputWaitStartedAtUptime = nil
-            lastLoggedSecureInputState = nil
+            if secureInputActive != nil { secureInputActive = nil }
+            if secureInputWaitStartedAtUptime != nil { secureInputWaitStartedAtUptime = nil }
+            if lastLoggedSecureInputState != nil { lastLoggedSecureInputState = nil }
             break
         }
         settings.recordFirstUseEvent(.entered, step: step)
@@ -4270,10 +4226,6 @@ struct OnboardingView: View {
         settings.setOnboardingStep(previous)
     }
 
-    private func applyChromecastModeIfNeeded(_ plan: OnboardingVoicePairingPlan) {
-        guard plan.chromecastVoiceMode != nil else { return }
-    }
-
     private func requestBluetoothPermission() {
         guard interactionProbe == nil else { return }
         if bluetoothAuthorization == .allowedAlways {
@@ -4588,5 +4540,21 @@ private struct OnboardingShortcutCaptureView: NSViewRepresentable {
         deinit {
             stopMonitoring()
         }
+    }
+}
+
+private enum OnboardingImageCache {
+    private static let images: NSCache<NSURL, NSImage> = {
+        let cache = NSCache<NSURL, NSImage>()
+        cache.countLimit = 16
+        cache.totalCostLimit = 32 * 1_024 * 1_024
+        return cache
+    }()
+    static func image(at url: URL) -> NSImage? {
+        if let image = images.object(forKey: url as NSURL) { return image }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        let pixels = image.representations.reduce(0) { $0 + $1.pixelsWide * $1.pixelsHigh }
+        images.setObject(image, forKey: url as NSURL, cost: max(1, pixels) * 4)
+        return image
     }
 }

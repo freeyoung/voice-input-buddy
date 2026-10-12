@@ -58,7 +58,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "AppleRemoteAudioCapture",
+            name: "VoiceInputBuddyAppleRemoteAudioCapture",
             dependencies: ["AppleRemoteAudioCore", "AppleRemotePacketLogger"],
             path: "Sources/AppleRemoteAudioCapture",
             linkerSettings: [

@@ -202,28 +202,54 @@ final class UpdateInformationStore: ObservableObject {
 
     private let userDefaults: UserDefaults
     private var pendingUpdate: PendingUpdate?
+    private var checkingDeadline: VoiceFnTapScheduledTask?
+    private var checkingGeneration = UUID()
+    private let schedule: VoiceFnTapSessionController.Scheduler
+    private let checkingTimeout: TimeInterval
 
-    init(userDefaults: UserDefaults = .standard) {
+    init(userDefaults: UserDefaults = .standard, checkingTimeout: TimeInterval = 30,
+         schedule: @escaping VoiceFnTapSessionController.Scheduler = VoiceFnTapScheduledTask.mainQueue) {
         self.userDefaults = userDefaults
+        self.checkingTimeout = checkingTimeout
+        self.schedule = schedule
     }
 
-    func beginChecking() {
+    deinit { checkingDeadline?.cancel() }
+
+    private func cancelCheckingDeadline() {
+        checkingGeneration = UUID()
+        checkingDeadline?.cancel()
+        checkingDeadline = nil
+    }
+
+    func beginChecking(timeoutEnabled: Bool = true) {
+        cancelCheckingDeadline()
         state = .checking
+        guard timeoutEnabled else { return }
+        let generation = checkingGeneration
+        checkingDeadline = schedule(checkingTimeout) { [weak self] in
+            guard let self, self.checkingGeneration == generation,
+                  self.state == .checking else { return }
+            self.setUnavailable()
+        }
     }
 
     func reset() {
+        cancelCheckingDeadline()
         pendingUpdate = nil
         state = .idle
         clearUnseenUpdate(reason: "update_state_reset")
     }
 
     func setUpToDate() {
+        cancelCheckingDeadline()
         pendingUpdate = nil
         state = .upToDate
         clearUnseenUpdate(reason: "up_to_date")
     }
 
     func setUnavailable() {
+        cancelCheckingDeadline()
         pendingUpdate = nil
         state = .unavailable
         clearUnseenUpdate(reason: "update_information_unavailable")
@@ -234,6 +260,7 @@ final class UpdateInformationStore: ObservableObject {
         buildVersion: String,
         fallbackDescription: String?
     ) {
+        cancelCheckingDeadline()
         let pending = PendingUpdate(
             displayVersion: displayVersion,
             buildVersion: buildVersion,

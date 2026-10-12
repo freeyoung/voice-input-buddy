@@ -193,6 +193,11 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private enum UpdateCheckPurpose {
         case information
         case userInitiated
+
+        var usesInformationTimeout: Bool {
+            if case .information = self { return true }
+            return false
+        }
     }
 
     private let model = BridgeAppModel()
@@ -811,8 +816,13 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         }
     }
 
-    private func startUpdaterIfNeeded() {
-        guard !updaterStarted, updateFeedSelection.validatedStableFeedURL != nil else { return }
+    @discardableResult
+    private func startUpdaterIfNeeded() -> Bool {
+        if updaterStarted { return true }
+        guard updateFeedSelection.validatedStableFeedURL != nil else {
+            updateInformation.setUnavailable()
+            return false
+        }
         updater.automaticallyChecksForUpdates =
             UpdateCheckPolicy(
                 checksForPreReleaseUpdates: model.settings.checksForPreReleaseUpdates
@@ -821,9 +831,10 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         catch {
             updateInformation.setUnavailable()
             AppLogger.shared.write("UPDATE START failed " + AppLogger.errorFields(error))
-            return
+            return false
         }
         updaterStarted = true
+        return true
     }
 
     func feedURLString(for updater: SPUUpdater) -> String? {
@@ -1026,7 +1037,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         updateCheckTask?.cancel()
         updateCheckTask = Task { [weak self] in
             guard let self else { return }
-            updateInformation.beginChecking()
+            updateInformation.beginChecking(timeoutEnabled: purpose.usesInformationTimeout)
             let includePreRelease = model.settings.checksForPreReleaseUpdates
             let testFeed = UpdateFeedResolver.testInjectedFeed(
                 environment: ProcessInfo.processInfo.environment,
@@ -1082,7 +1093,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                         "selected_channel=stable source=cloudflare_channel"
                 )
             }
-            startUpdaterIfNeeded()
+            guard startUpdaterIfNeeded() else { return }
             if updater.sessionInProgress {
                 if case .userInitiated = purpose { updateUserDriver.showUpdateInFocus() }
                 return

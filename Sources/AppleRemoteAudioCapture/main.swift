@@ -214,8 +214,8 @@ private final class CaptureServer {
     private var voiceController: AppleRemoteVoiceController?
     private var capturing = false
     private var authorized = false
-    private let packetStreamReady = true
-    private let packetStreamStatus = "ready"
+    private let packetStreamReady = false
+    private let packetStreamStatus = "unavailable:audio_pipeline_not_implemented"
 
     init(requestedPort: UInt16, token: String) {
         self.requestedPort = requestedPort

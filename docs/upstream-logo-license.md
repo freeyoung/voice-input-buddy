@@ -1,6 +1,8 @@
+> Scope: the following license is retained as an upstream reference. Its listed asset paths belong to remote-mic-app; those alternative logos are not distributed by Voice Input Buddy. The application uses its own bundled icon.
+
 # 无线麦 App Logo 许可
 
-[English](LOGO-LICENSE.en.md)
+[English](https://github.com/HD838A/remote-mic-app/blob/main/LOGO-LICENSE.en.md)
 
 Copyright (C) 2026 HD838A. All rights reserved.
 
