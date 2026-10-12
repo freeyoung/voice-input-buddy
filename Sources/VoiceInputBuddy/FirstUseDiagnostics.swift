@@ -374,6 +374,7 @@ struct FirstUseDiagnosticContext: Equatable {
             return nil
         case .controlMethod:
             if controlMethod == .unselected { return nil }
+            fallthrough
         case .permissions:
             if !capabilities.bluetoothGranted {
                 return .bluetoothPermissionDenied

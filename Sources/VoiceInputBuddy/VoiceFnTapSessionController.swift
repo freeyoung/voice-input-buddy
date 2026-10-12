@@ -110,7 +110,7 @@ final class VoiceFnTapSessionController {
     private var drainStartedAtUptime: TimeInterval?
 
     var requiresCleanupBeforeMapping: Bool {
-        phase != .idle || functionKeyIsPressed || suppressAudioUntilRemoteStop
+        phase != .idle || functionKeyIsPressed
     }
 
     init(
@@ -233,6 +233,7 @@ final class VoiceFnTapSessionController {
     func shutdown() {
         isEnabled = false
         isSuspended = true
+        suppressAudioUntilRemoteStop = false
         pendingVoice = nil
         generation &+= 1
         cancelScheduledTasks()
@@ -520,7 +521,7 @@ final class VoiceFnTapSessionController {
     }
 
     private func runIdleCompletions() {
-        guard phase == .idle, !functionKeyIsPressed, !suppressAudioUntilRemoteStop else { return }
+        guard phase == .idle, !functionKeyIsPressed else { return }
         let completions = idleCompletions
         idleCompletions.removeAll()
         completions.forEach { $0() }

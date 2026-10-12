@@ -162,10 +162,13 @@ public final class AppleRemoteOpusDecoder {
                           Self.bundleRelativePath(), "/opt/homebrew/opt/opus/lib/libopus.0.dylib",
                           "/usr/local/opt/opus/lib/libopus.0.dylib"].compactMap { $0 }
         guard let path = candidates.first(where: { FileManager.default.isReadableFile(atPath: $0) }),
-              let handle = dlopen(path, RTLD_NOW | RTLD_LOCAL),
-              let createSymbol = dlsym(handle, "opus_decoder_create"),
+              let handle = dlopen(path, RTLD_NOW | RTLD_LOCAL) else { return nil }
+        guard let createSymbol = dlsym(handle, "opus_decoder_create"),
               let destroySymbol = dlsym(handle, "opus_decoder_destroy"),
-              let decodeSymbol = dlsym(handle, "opus_decode") else { return nil }
+              let decodeSymbol = dlsym(handle, "opus_decode") else {
+            dlclose(handle)
+            return nil
+        }
         let create = unsafeBitCast(createSymbol, to: Create.self)
         let destroy = unsafeBitCast(destroySymbol, to: Destroy.self)
         let decode = unsafeBitCast(decodeSymbol, to: Decode.self)

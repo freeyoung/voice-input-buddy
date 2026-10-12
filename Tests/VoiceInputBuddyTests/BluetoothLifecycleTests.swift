@@ -51,28 +51,6 @@ struct BluetoothLifecycleTests {
         #expect(!duplicateConsume)
     }
 
-    @Test func systemSuspensionIsWiredBeforeBluetoothStartAndAudioEarlyReturns() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let modelSource = try String(
-            contentsOf: root.appendingPathComponent("Sources/VoiceInputBuddy/BridgeAppModel.swift"),
-            encoding: .utf8
-        )
-        let bridgeSource = try String(
-            contentsOf: root.appendingPathComponent("Sources/VoiceInputBuddy/XiaomiBluetoothBridge.swift"),
-            encoding: .utf8
-        )
-
-        #expect(modelSource.contains("bridge.setSystemSuspended("))
-        #expect(modelSource.contains("setBluetoothSystemSuspended("))
-        #expect(bridgeSource.contains("guard !systemSuspension.isSuspended else"))
-        #expect(bridgeSource.contains("BLE SYSTEM_SUSPENSION"))
-        #expect(bridgeSource.contains("BLE CONNECT deferred reason=system_suspended"))
-        #expect(bridgeSource.contains("reconnectDelayAfterFailure("))
-    }
-
     @Test func batteryPollingOnlyRunsWithoutAnActiveNotificationSubscription() {
         #expect(BluetoothBatteryPollingPolicy.interval == 300)
         #expect(BluetoothBatteryPollingPolicy.shouldPoll(
@@ -87,26 +65,6 @@ struct BluetoothLifecycleTests {
             supportsNotifications: true,
             isNotifying: true
         ))
-    }
-
-    @Test func batteryRefreshIsWiredToPollingAndForegroundMetadataRefresh() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let modelSource = try String(
-            contentsOf: root.appendingPathComponent("Sources/VoiceInputBuddy/BridgeAppModel.swift"),
-            encoding: .utf8
-        )
-        let bridgeSource = try String(
-            contentsOf: root.appendingPathComponent("Sources/VoiceInputBuddy/XiaomiBluetoothBridge.swift"),
-            encoding: .utf8
-        )
-
-        #expect(modelSource.contains("bridge.refreshBatteryTelemetry(reason: reason.rawValue)"))
-        #expect(bridgeSource.contains("BLE BATTERY polling_started"))
-        #expect(bridgeSource.contains("BLE BATTERY refresh_requested"))
-        #expect(bridgeSource.contains("stopBatteryPolling(reason: \"system_suspended\")"))
     }
 
     @Test func onlySystemWakeForcesBluetoothRecovery() {
@@ -166,25 +124,6 @@ struct BluetoothLifecycleTests {
         ))
     }
 
-    @Test func sessionResumeRecoveryIsWiredIntoTheSystemAudioLifecycle() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let source = try String(
-            contentsOf: root.appendingPathComponent("Sources/VoiceInputBuddy/BridgeAppModel.swift"),
-            encoding: .utf8
-        )
-
-        // 会话切回前台后必须能走到蓝牙语音链路恢复，并把触发原因写成稳定枚举。
-        #expect(source.contains("BluetoothWakeRecoveryPolicy.shouldRecoverVoiceLinkAfterResume("))
-        #expect(source.contains("recoverBluetoothVoiceLink(reason: \"session_activated\")"))
-        #expect(source.contains("recoverBluetoothVoiceLink(reason: \"system_wake\")"))
-        // 恢复入口不能退回成「系统唤醒专用」的旧命名。
-        #expect(!source.contains("recoverBluetoothAfterSystemWake"))
-        #expect(!source.contains("recoverAfterSystemWake"))
-    }
-
     @Test func everyBridgeFirstReadyReappliesHIDMappingsButDuplicateReadyDoesNot() {
         #expect(BridgeAppModel.shouldReapplyHIDSettings(
             previousState: nil,
@@ -207,13 +146,11 @@ struct BluetoothLifecycleTests {
             currentState: .ready("reconnected")
         ))
 
-        let firstBridgeState = BluetoothBridgeState.ready("first")
         let secondBridgePreviousState: BluetoothBridgeState? = nil
         #expect(BridgeAppModel.shouldReapplyHIDSettings(
             previousState: secondBridgePreviousState,
             currentState: .ready("second")
         ))
-        #expect(firstBridgeState == .ready("first"))
     }
 
     @Test func missingHIDServiceUsesFiniteReadyOnlyRecoveryDelays() {

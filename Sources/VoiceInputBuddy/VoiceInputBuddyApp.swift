@@ -71,7 +71,7 @@ struct UpdateCheckPolicy: Equatable {
     }
 
     var refreshesAboutInformationOnAppear: Bool {
-        !checksForPreReleaseUpdates
+        true // Informational feed checks do not enable background install prompts.
     }
 }
 

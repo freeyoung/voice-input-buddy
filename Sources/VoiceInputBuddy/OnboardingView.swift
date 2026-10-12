@@ -129,7 +129,7 @@ struct OnboardingView: View {
     @State private var lastLoggedSecureInputState: Bool?
     @State private var aiPromptCopyResult: Bool?
 
-    private let permissionRefreshTimer = Timer.publish(
+    @State private var permissionRefreshTimer = Timer.publish(
         every: 1,
         on: .main,
         in: .common
@@ -195,6 +195,7 @@ struct OnboardingView: View {
             refreshSecureInputState()
         }
         .onReceive(permissionRefreshTimer) { _ in
+            guard settings.onboardingStep != .complete else { return }
             refreshPermissionStates()
             refreshSecureInputState()
             if settings.onboardingStep == .voiceTool {
@@ -3629,9 +3630,12 @@ struct OnboardingView: View {
     }
 
     private func refreshPermissionStates() {
-        bluetoothAuthorization = CBManager.authorization
-        inputMonitoringGranted = HIDRemoteMonitor.isInputMonitoringGranted
-        accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
+        let bluetooth = CBManager.authorization
+        let input = HIDRemoteMonitor.isInputMonitoringGranted
+        let accessibility = KeyboardInjector.isAccessibilityTrusted
+        if bluetoothAuthorization != bluetooth { bluetoothAuthorization = bluetooth }
+        if inputMonitoringGranted != input { inputMonitoringGranted = input }
+        if accessibilityGranted != accessibility { accessibilityGranted = accessibility }
     }
 
     private func refreshSecureInputState() {
