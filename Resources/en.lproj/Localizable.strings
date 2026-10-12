@@ -1221,3 +1221,35 @@
 
 "diagnostics.logs.open_failed" = "Unable to open the log file";
 "diagnostics.logs.open_failed.detail" = "Check that your Library/Logs/VoiceInputBuddy folder is writable, then try again.";
+
+"update.dialog.window" = "Software Update";
+"update.dialog.version" = "%1$@ (Git commits: %2$@)";
+"update.dialog.current" = "Installed version: %1$@";
+"update.dialog.permission" = "Check for updates automatically?";
+"update.dialog.permission.detail" = "Installed version: %1$@\nAllow automatic checks for new versions? No usage information is sent.";
+"update.dialog.manual_only" = "Check Manually";
+"update.dialog.allow_checks" = "Allow Automatic Checks";
+"update.dialog.checking" = "Checking for updates…";
+"update.dialog.found" = "A new version is available";
+"update.dialog.found.detail" = "Installed version: %1$@\nAvailable version: %2$@";
+"update.dialog.later" = "Remind Me Later";
+"update.dialog.skip" = "Skip This Version";
+"update.dialog.install" = "Install Update";
+"update.dialog.not_found" = "No compatible update is available";
+"update.dialog.not_found.detail" = "Installed version: %1$@\nNo newer compatible version was found on the selected update channel.";
+"update.dialog.error" = "The update could not be completed";
+"update.dialog.error.detail" = "Installed version: %1$@\nTry again later. If the problem persists, check your network connection.\nError: %2$@ (%3$@)";
+"update.dialog.downloading" = "Downloading the update…";
+"update.dialog.extracting" = "Preparing the update…";
+"update.dialog.ready" = "Ready to install";
+"update.dialog.cancel_install" = "Cancel Installation";
+"update.dialog.install_restart" = "Install and Relaunch";
+"update.dialog.installing" = "Installing the update…";
+"update.dialog.retry_quit" = "Retry Quitting the App";
+"update.dialog.installed" = "Update installed";
+"update.dialog.history" = "View Release Notes";
+
+"update.dialog.current_and_target" = "Installed version: %1$@\nUpdate version: %2$@";
+"update.dialog.not_found.latest.detail" = "Installed version: %1$@\nLatest version checked: %2$@\nNo newer compatible version is available on this channel.";
+
+"update.dialog.install_later" = "Install Later";
