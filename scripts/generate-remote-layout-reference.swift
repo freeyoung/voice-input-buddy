@@ -1,7 +1,9 @@
 import AppKit
 
 // Original schematic. Coordinates share the mapping canvas's normalized anchors.
-let size = NSSize(width: 508, height: 1030)
+let size = NSSize(width: 508, height: 850)
+// Keep the button positions while shortening only the unused lower grip.
+let buttonCoordinateHeight: CGFloat = 1030
 let image = NSImage(size: size)
 image.lockFocusFlipped(true)
 func round(_ rect: NSRect, radius: CGFloat, color: NSColor) {
@@ -9,7 +11,7 @@ func round(_ rect: NSRect, radius: CGFloat, color: NSColor) {
     NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
 }
 // Brushed-metal schematic, redrawn without any manufacturer's logo or photo.
-let body = NSBezierPath(roundedRect: NSRect(x: 88, y: 4, width: 332, height: 1022), xRadius: 22, yRadius: 22)
+let body = NSBezierPath(roundedRect: NSRect(x: 88, y: 4, width: 332, height: 842), xRadius: 22, yRadius: 22)
 let shadow = NSShadow(); shadow.shadowColor = NSColor.black.withAlphaComponent(0.18)
 shadow.shadowBlurRadius = 10; shadow.shadowOffset = NSSize(width: 0, height: -2)
 NSGraphicsContext.saveGraphicsState(); shadow.set()
@@ -27,7 +29,7 @@ metal.draw(in: body, angle: 0)
 NSColor(calibratedWhite: 0.56, alpha: 1).setStroke(); body.lineWidth = 1.5; body.stroke()
 // Light machining texture is clipped to the body, not a downloaded product image.
 NSGraphicsContext.saveGraphicsState(); body.addClip()
-for y in stride(from: CGFloat(8), to: CGFloat(1026), by: 3) {
+for y in stride(from: CGFloat(8), to: CGFloat(846), by: 3) {
     let line = NSBezierPath(); line.move(to: NSPoint(x: 92, y: y)); line.line(to: NSPoint(x: 416, y: y))
     line.lineWidth = 0.35; NSColor.white.withAlphaComponent(0.075).setStroke(); line.stroke()
 }
@@ -36,7 +38,7 @@ let ring = NSBezierPath(ovalIn: NSRect(x: 138, y: 139, width: 234, height: 234))
 NSGradient(starting: NSColor(calibratedWhite: 0.19, alpha: 1), ending: NSColor(calibratedWhite: 0.08, alpha: 1))!.draw(in: ring, angle: 90)
 NSColor(calibratedWhite: 0.36, alpha: 1).setStroke(); ring.lineWidth = 2; ring.stroke()
 // Shared volume rocker; all anchors remain identical to the mapping canvas.
-round(NSRect(x: 0.604 * size.width - 32, y: 0.390 * size.height - 32, width: 64, height: 0.09 * size.height + 64), radius: 32,
+round(NSRect(x: 0.604 * size.width - 32, y: 0.390 * buttonCoordinateHeight - 32, width: 64, height: 0.09 * buttonCoordinateHeight + 64), radius: 32,
       color: NSColor(calibratedWhite: 0.13, alpha: 1))
 let buttons: [(CGFloat, CGFloat, String)] = [
     (0.386, 0.099, "⏻"), (0.630, 0.099, "mic.fill"),
@@ -48,7 +50,7 @@ let buttons: [(CGFloat, CGFloat, String)] = [
     (0.604, 0.569, "TV")
 ]
 for (x, y, label) in buttons {
-    let rect = NSRect(x: x * size.width - 28, y: y * size.height - 28, width: 56, height: 56)
+    let rect = NSRect(x: x * size.width - 28, y: y * buttonCoordinateHeight - 28, width: 56, height: 56)
     let isTopButton = y < 0.13
     let isDirection = y > 0.13 && y < 0.34 && label != "OK"
     if !isDirection {
@@ -70,6 +72,13 @@ for (x, y, label) in buttons {
         let measured = text.size()
         text.draw(at: NSPoint(x: rect.midX - measured.width / 2, y: rect.midY - measured.height / 2))
     }
+}
+for (label, y, fontSize) in [("Voice Input Buddy", CGFloat(715), CGFloat(25)), ("语音搭子", CGFloat(752), CGFloat(27))] {
+    let text = NSAttributedString(string: label, attributes: [
+        .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
+        .foregroundColor: NSColor(calibratedWhite: 0.30, alpha: 1)
+    ])
+    text.draw(at: NSPoint(x: size.width / 2 - text.size().width / 2, y: y))
 }
 image.unlockFocus()
 let bitmap = NSBitmapImageRep(data: image.tiffRepresentation!)!
