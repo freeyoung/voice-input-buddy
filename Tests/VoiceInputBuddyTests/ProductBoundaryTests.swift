@@ -149,9 +149,15 @@ struct ProductBoundaryTests {
         #expect(!settings.isOnboardingComplete)
         let restored = AppSettings(defaults: defaults)
         #expect(restored.onboardingVoiceTool == .voicecursor)
-        let tools = OnboardingVoiceToolVisibilityPolicy.visibleTools(availability: [:])
+        let tools = OnboardingVoiceToolVisibilityPolicy.tools
         #expect(tools.contains(.voicecursor))
         #expect(tools.contains(.other))
+    }
+
+    @Test func integrationCatalogIncludesUninstalledToolsInConsistentOrder() {
+        #expect(OnboardingVoiceToolVisibilityPolicy.tools == [
+            .doubao, .weixin, .typeless, .vokie, .voicecursor, .other,
+        ])
     }
 
     @Test @MainActor func firstRunLanguageFollowsSystemAndExplicitChoicePersists() throws {

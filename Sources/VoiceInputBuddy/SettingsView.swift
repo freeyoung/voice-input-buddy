@@ -2949,7 +2949,7 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                    ForEach(OnboardingVoiceTool.allCases.filter { $0 != .unselected }) { tool in
+                    ForEach(OnboardingVoiceToolVisibilityPolicy.tools) { tool in
                         integrationToolCard(tool)
                     }
                 }

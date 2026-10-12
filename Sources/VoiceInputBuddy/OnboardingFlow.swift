@@ -652,21 +652,9 @@ enum OnboardingVoiceToolAvailability: String, Equatable, Hashable {
 }
 
 enum OnboardingVoiceToolVisibilityPolicy {
-    static func visibleTools(
-        availability: [OnboardingVoiceTool: OnboardingVoiceToolAvailability]
-    ) -> [OnboardingVoiceTool] {
-        var tools: [OnboardingVoiceTool] = [.doubao]
-        if availability[.weixin] == .available {
-            tools.append(.weixin)
-        }
-        tools.append(.vokie)
-        if availability[.typeless] == .available {
-            tools.append(.typeless)
-        }
-        tools.append(.voicecursor)
-        tools.append(.other)
-        return tools
-    }
+    // Discovery affects availability badges and setup readiness, not the catalog.
+    // Both onboarding and Settings must expose the same supported integrations.
+    static let tools = OnboardingVoiceTool.allCases.filter { $0 != .unselected }
 }
 
 enum OnboardingVoiceToolRuntimeState: String, Equatable, Hashable {
