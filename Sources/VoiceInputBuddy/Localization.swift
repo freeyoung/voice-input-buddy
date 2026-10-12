@@ -6,6 +6,19 @@ import Foundation
 /// only considered when the executable has no localized resources (the normal
 /// `swift run` layout).
 enum VoiceInputBuddyResourceBundle {
+    static func onboardingImageURL(named name: String, isDark: Bool, in bundle: Bundle) -> URL? {
+        let appearances = isDark ? ["dark", "light"] : ["light"]
+        for appearance in appearances {
+            for format in ["jpg", "jpeg", "png"] {
+                if let url = bundle.url(forResource: "\(name)-\(appearance)",
+                                        withExtension: format, subdirectory: "Onboarding") {
+                    return url
+                }
+            }
+        }
+        return nil
+    }
+
     static var mainOrDevelopment: Bundle {
         if hasLocalizedResources(in: .main) {
             return .main

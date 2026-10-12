@@ -5,13 +5,12 @@ import BuddyRemoteUI
 import BuddyRemoteCore
 import SwiftUI
 
-
-
 private struct OnboardingInputMethodGuideStep: Identifiable {
     enum Content {
         case screenshot(String)
         case instruction(systemImage: String, detailKey: String)
         case systemFunctionKey
+        case microphoneIntegration
     }
 
     let id: Int
@@ -115,8 +114,6 @@ struct OnboardingView: View {
     @State private var voiceAttemptStartedAtUptime: TimeInterval?
     @State private var voiceTranscriptWaitStartedAtUptime: TimeInterval?
     @State private var activeFocusLossStartedAtUptime: TimeInterval?
-    @State private var externalToolVoiceKeyConfirmed = false
-    @State private var externalToolGlobalVoiceConfirmed = false
     @State private var externalToolMicrophoneConfirmed = false
     @State private var voiceTranscriptDeadlineToken = UUID()
     @State private var suppressConnectedPhysicalRemoteAutoRouteOnce = false
@@ -306,8 +303,6 @@ struct OnboardingView: View {
             prepareForStep(step)
         }
         .onChange(of: settings.onboardingVoiceTool) { _, _ in
-            resetExternalToolVoiceKeyConfirmation(reason: "voice_tool_changed")
-            resetExternalToolGlobalVoiceConfirmation(reason: "voice_tool_changed")
             resetExternalToolMicrophoneConfirmation(reason: "voice_tool_changed")
             refreshSelectedVoiceToolRuntimeState()
         }
@@ -320,12 +315,6 @@ struct OnboardingView: View {
         toolObservedContent
         .onChange(of: externalToolMicrophoneConfirmed) { _, confirmed in
             logExternalToolMicrophoneConfirmation(confirmed)
-        }
-        .onChange(of: externalToolVoiceKeyConfirmed) { _, confirmed in
-            logExternalToolVoiceKeyConfirmation(confirmed)
-        }
-        .onChange(of: externalToolGlobalVoiceConfirmed) { _, confirmed in
-            logExternalToolGlobalVoiceConfirmation(confirmed)
         }
     }
 
@@ -371,22 +360,6 @@ struct OnboardingView: View {
             "ONBOARDING EXTERNAL_MICROPHONE_CONFIRMATION source=user " +
                 "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
                 "expected_device=\(selectedAudioDeviceDiagnosticKind.rawValue)"
-        )
-    }
-
-    private func logExternalToolVoiceKeyConfirmation(_ confirmed: Bool) {
-        AppLogger.shared.write(
-            "ONBOARDING EXTERNAL_VOICE_KEY_CONFIRMATION source=user " +
-                "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
-                "expected=\(externalToolExpectedVoiceKeyDiagnosticValue)"
-        )
-    }
-
-    private func logExternalToolGlobalVoiceConfirmation(_ confirmed: Bool) {
-        AppLogger.shared.write(
-            "ONBOARDING EXTERNAL_GLOBAL_VOICE_CONFIRMATION source=user " +
-                "confirmed=\(confirmed) tool=\(settings.onboardingVoiceTool.rawValue) " +
-                "applicable=\(externalToolGlobalVoiceConfirmationRequired)"
         )
     }
 
@@ -478,7 +451,9 @@ struct OnboardingView: View {
                     .accessibilityIdentifier("onboarding.language")
                 }
                 if settings.onboardingStep == .voiceTool && !canContinue {
-                    Text(verbatim: localization.text("onboarding.voice_tool.guide.continue_hint"))
+                    Text(verbatim: localization.text(inputMethodGuideStepsCompleted
+                        ? "onboarding.voice_tool.guide.microphone_hint"
+                        : "onboarding.voice_tool.guide.continue_hint"))
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1157,6 +1132,8 @@ struct OnboardingView: View {
                     onboardingGuideInstruction(systemImage: systemImage, detailKey: detailKey)
                 case .systemFunctionKey:
                     systemFunctionKeyInstruction
+                case .microphoneIntegration:
+                    externalToolMicrophoneConfigurationCard
                 }
             } else {
                 Text(verbatim: localization.text("onboarding.voice_tool.guide.select_step"))
@@ -1213,13 +1190,11 @@ struct OnboardingView: View {
         .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func onboardingGuideScreenshot(resourceName: String) -> some View {
+    private func onboardingGuideScreenshot(resourceName: String, focusRect: CGRect? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let image = onboardingGuideImage(resourceName: resourceName) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: 220)
+                onboardingGuidePreview(image: image, focusRect: guideFocusRect(for: resourceName) ?? focusRect)
+                    .frame(maxWidth: .infinity, maxHeight: resourceName.contains("settings") ? 260 : resourceName.contains("microphone") ? 150 : 220)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay {
                         RoundedRectangle(cornerRadius: 10)
@@ -1241,6 +1216,49 @@ struct OnboardingView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if resourceName == "doubao-settings", let binding = proposedPairingPlan?.binding {
+                Text(LocalizedMessage("onboarding.voice_tool.guide.match_shortcut",
+                    arguments: [localization.text(binding.shortcut.localizationKey)]).text(using: localization))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func guideFocusRect(for resourceName: String) -> CGRect? {
+        guard let url = VoiceInputBuddyResourceBundle.onboardingImageURL(
+            named: resourceName, isDark: colorScheme == .dark,
+            in: VoiceInputBuddyResourceBundle.mainOrDevelopment
+        ), ["jpg", "jpeg"].contains(url.pathExtension.lowercased()) else { return nil }
+        // These bounds follow the annotations in the replacement screenshots.
+        switch resourceName {
+        case "doubao-menu": return CGRect(x: 0, y: 0.06, width: 1, height: 0.57)
+        case "weixin-input-menu": return CGRect(x: 0.01, y: 0.055, width: 0.69, height: 0.33)
+        case "doubao-settings": return CGRect(x: 0.28, y: 0.11, width: 0.70, height: 0.73)
+        case "weixin-input-settings": return CGRect(x: 0.31, y: 0.33, width: 0.67, height: 0.51)
+        case "doubao-input-microphone": return CGRect(x: 0.23, y: 0.245, width: 0.54, height: 0.52)
+        case "weixin-input-microphone": return CGRect(x: 0.59, y: 0.525, width: 0.40, height: 0.325)
+        default: return nil
+        }
+    }
+
+    @ViewBuilder
+    private func onboardingGuidePreview(image: NSImage, focusRect: CGRect?) -> some View {
+        if let focusRect {
+            // Display the relevant region of the original screenshot without altering its pixels.
+            GeometryReader { proxy in
+                let width = proxy.size.width / focusRect.width
+                let height = width * image.size.height / image.size.width
+                Image(nsImage: image)
+                    .resizable()
+                    .frame(width: width, height: height)
+                    .offset(x: -width * focusRect.minX, y: -height * focusRect.minY)
+            }
+            .aspectRatio(image.size.width * focusRect.width / (image.size.height * focusRect.height), contentMode: .fit)
+            .clipped()
+        } else {
+            Image(nsImage: image).resizable().scaledToFit()
         }
     }
 
@@ -1807,8 +1825,6 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
 
-            externalToolConfigurationConfirmationCard
-
             ZStack(alignment: .topLeading) {
                 OnboardingTranscriptEditor(
                     text: $transcript,
@@ -1916,36 +1932,23 @@ struct OnboardingView: View {
         )
     }
 
-    private var externalToolConfigurationConfirmationCard: some View {
+    private var externalToolMicrophoneConfigurationCard: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label {
-                Text(
-                    LocalizedMessage(
-                        "onboarding.voice_test.configuration.title",
-                        arguments: [localization.text(settings.onboardingVoiceTool.titleKey)]
-                    ).text(using: localization)
-                )
-                    .font(.system(size: 13, weight: .semibold))
-            } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Color.orange)
-            }
+            Label(localization.text("onboarding.voice_test.microphone_confirmation.title"),
+                  systemImage: "mic.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
 
-            Text(
-                LocalizedMessage(
-                    "onboarding.voice_test.configuration.detail",
-                    arguments: [localization.text(settings.onboardingVoiceTool.titleKey)]
-                ).text(using: localization)
-            )
+            Text(LocalizedMessage(
+                "onboarding.voice_tool.guide.microphone_detail",
+                arguments: [
+                    localization.text(settings.onboardingVoiceTool.titleKey),
+                    selectedAudioDevice?.name ?? localization.text("onboarding.audio.select_required"),
+                ]
+            ).text(using: localization))
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-
-            configurationStatusRow(
-                label: localization.text("onboarding.voice_test.configuration.buddy_audio_output"),
-                value: buddyAudioOutputConfigurationText,
-                isComplete: onboardingAudioReady
-            )
 
             if let runtimeStatus = selectedVoiceToolRuntimeStatusText {
                 HStack(alignment: .top, spacing: 8) {
@@ -1969,23 +1972,7 @@ struct OnboardingView: View {
 
             Divider()
 
-            onboardingToggle(id: "voice-test.confirm.voice-key", isOn: $externalToolVoiceKeyConfirmed) {
-                Text(verbatim: localization.text("onboarding.voice_test.configuration.voice_gesture_checkbox"))
-                .font(.system(size: 12, weight: .medium))
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .toggleStyle(.checkbox)
-
-            if externalToolGlobalVoiceConfirmationRequired {
-                onboardingToggle(id: "voice-test.confirm.global-voice", isOn: $externalToolGlobalVoiceConfirmed) {
-                Text(verbatim: localization.text("onboarding.voice_test.configuration.global_voice_checkbox"))
-                        .font(.system(size: 12, weight: .medium))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .toggleStyle(.checkbox)
-            }
-
-            onboardingToggle(id: "voice-test.confirm.microphone", isOn: $externalToolMicrophoneConfirmed) {
+            onboardingToggle(id: "voice-tool.confirm.microphone", isOn: $externalToolMicrophoneConfirmed) {
                 Text(
                     LocalizedMessage(
                         "onboarding.voice_test.microphone_confirmation.checkbox",
@@ -1999,42 +1986,26 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
             .toggleStyle(.checkbox)
+            .disabled(selectedAudioDevice == nil)
 
-            if voiceAttempt.result == .externalToolNoCommit {
-                Label {
-                    Text(verbatim: localization.text("onboarding.voice_test.configuration.no_commit"))
-                } icon: {
-                    Image(systemName: "xmark.circle.fill")
-                }
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
+            if settings.onboardingVoiceTool == .weixin {
+                onboardingGuideScreenshot(
+                    resourceName: "weixin-input-microphone",
+                    focusRect: CGRect(x: 0.62, y: 0.447, width: 0.34, height: 0.33)
+                )
+            } else if settings.onboardingVoiceTool == .doubao {
+                onboardingGuideScreenshot(
+                    resourceName: "doubao-input-microphone"
+                )
             }
+
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.orange.opacity(0.35), lineWidth: 1)
-        }
-    }
-
-    private func configurationStatusRow(
-        label: String,
-        value: String,
-        isComplete: Bool
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 4)
-            Label(value, systemImage: isComplete ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(isComplete ? Color.green : Color.red)
-                .multilineTextAlignment(.trailing)
-                .fixedSize(horizontal: false, vertical: true)
+                .stroke(Color.accentColor.opacity(0.20), lineWidth: 1)
         }
     }
 
@@ -2881,6 +2852,7 @@ struct OnboardingView: View {
             remoteAvailability: settings.onboardingRemoteAvailability,
             controlMethod: settings.onboardingControlMethod,
             voiceKeyMode: settings.voiceKeyMode,
+            voiceToolMicrophoneConfirmed: externalToolMicrophoneConfirmed,
             capabilities: capabilities
         )
         if settings.onboardingStep == .voiceTest {
@@ -3119,12 +3091,6 @@ struct OnboardingView: View {
         return "\(plan.binding.shortcut.rawValue)_\(plan.binding.gestureMode.rawValue)"
     }
 
-    private var buddyVoiceKeyConfigurationReady: Bool {
-        guard let plan = proposedPairingPlan else { return false }
-        return settings.voiceKeyMode == plan.binding.shortcut &&
-            settings.voiceFnTapModeEnabled == plan.fnTapModeEnabled
-    }
-
     private var voiceGestureInstruction: String {
         guard let plan = proposedPairingPlan else {
             return localization.text("onboarding.voice_test.waiting_voice")
@@ -3135,31 +3101,10 @@ struct OnboardingView: View {
         )
     }
 
-    private var buddyAudioOutputConfigurationText: String {
-        guard let selectedAudioDevice else {
-            return localization.text("onboarding.audio.select_required")
-        }
-        guard onboardingAudioReady else {
-            return LocalizedMessage(
-                "onboarding.voice_test.configuration.audio_output_not_ready",
-                arguments: [selectedAudioDevice.name]
-            ).text(using: localization)
-        }
-        return selectedAudioDevice.name
-    }
-
     private var externalToolGlobalVoiceConfirmationRequired: Bool {
         OnboardingVoiceTestConfigurationPolicy.requiresGlobalVoiceConfirmation(
             for: settings.onboardingVoiceTool
         )
-    }
-
-    private var externalToolConfigurationConfirmed: Bool {
-        buddyVoiceKeyConfigurationReady &&
-            onboardingAudioReady &&
-            externalToolVoiceKeyConfirmed &&
-            (!externalToolGlobalVoiceConfirmationRequired || externalToolGlobalVoiceConfirmed) &&
-            externalToolMicrophoneConfirmed
     }
 
     private var selectedVoiceToolRuntimeReady: Bool {
@@ -3386,11 +3331,16 @@ struct OnboardingView: View {
         return toolSteps + [
             OnboardingInputMethodGuideStep(
                 id: 3,
+                titleKey: "onboarding.voice_tool.guide.select_microphone",
+                content: .microphoneIntegration
+            ),
+            OnboardingInputMethodGuideStep(
+                id: 4,
                 titleKey: "onboarding.voice_tool.guide.release_system_fn",
                 content: .systemFunctionKey
             ),
             OnboardingInputMethodGuideStep(
-                id: 4,
+                id: 5,
                 titleKey: "onboarding.voice_tool.guide.release_wechat_fn",
                 content: .screenshot("weixin-app-shortcuts")
             ),
@@ -3415,11 +3365,9 @@ struct OnboardingView: View {
     }
 
     private func onboardingGuideImage(resourceName: String) -> NSImage? {
-        let appearance = colorScheme == .dark ? "dark" : "light"
-        guard let url = VoiceInputBuddyResourceBundle.mainOrDevelopment.url(
-            forResource: "\(resourceName)-\(appearance)",
-            withExtension: "png",
-            subdirectory: "Onboarding"
+        guard let url = VoiceInputBuddyResourceBundle.onboardingImageURL(
+            named: resourceName, isDark: colorScheme == .dark,
+            in: VoiceInputBuddyResourceBundle.mainOrDevelopment
         ) else {
             return nil
         }
@@ -3957,11 +3905,11 @@ struct OnboardingView: View {
             firstSampleLatencyMilliseconds: nil,
             sessionDurationMilliseconds: nil,
             transcriptWaitMilliseconds: nil,
-            externalToolVoiceKeyUserConfirmed: externalToolVoiceKeyConfirmed,
+            externalToolVoiceKeyUserConfirmed: inputMethodGuideStepsCompleted,
             externalToolExpectedVoiceKey: externalToolExpectedVoiceKeyDiagnosticValue,
             externalToolGlobalVoiceApplicable: externalToolGlobalVoiceConfirmationRequired,
             externalToolGlobalVoiceUserConfirmed: !externalToolGlobalVoiceConfirmationRequired ||
-                externalToolGlobalVoiceConfirmed,
+                inputMethodGuideStepsCompleted,
             externalToolMicrophoneUserConfirmed: externalToolMicrophoneConfirmed,
             audioDelivery: model.voiceAudioDeliveryDiagnosticSnapshot(),
             result: .none
@@ -4195,22 +4143,6 @@ struct OnboardingView: View {
         externalToolMicrophoneConfirmed = false
         AppLogger.shared.write(
             "ONBOARDING EXTERNAL_MICROPHONE_CONFIRMATION reset reason=\(reason)"
-        )
-    }
-
-    private func resetExternalToolVoiceKeyConfirmation(reason: String) {
-        guard externalToolVoiceKeyConfirmed else { return }
-        externalToolVoiceKeyConfirmed = false
-        AppLogger.shared.write(
-            "ONBOARDING EXTERNAL_VOICE_KEY_CONFIRMATION reset reason=\(reason)"
-        )
-    }
-
-    private func resetExternalToolGlobalVoiceConfirmation(reason: String) {
-        guard externalToolGlobalVoiceConfirmed else { return }
-        externalToolGlobalVoiceConfirmed = false
-        AppLogger.shared.write(
-            "ONBOARDING EXTERNAL_GLOBAL_VOICE_CONFIRMATION reset reason=\(reason)"
         )
     }
 

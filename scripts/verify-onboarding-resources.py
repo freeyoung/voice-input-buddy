@@ -9,13 +9,51 @@ root = Path(__file__).resolve().parent.parent
 resources = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'Resources'
 source = (root / 'Sources/VoiceInputBuddy/OnboardingView.swift').read_text()
 names = set(re.findall(r'\.screenshot\("([\w-]+)"\)', source))
-names.update(re.findall(r'onboardingGuideScreenshot\(resourceName: "([\w-]+)"\)', source))
-files = [resources / 'Onboarding' / f'{name}-{theme}.png'
-         for name in sorted(names) for theme in ('light', 'dark')]
+names.update(re.findall(r'onboardingGuideScreenshot\(\s*resourceName: "([\w-]+)"', source))
+files = []
+def image_path(name, appearance):
+    return next((path for extension in ('jpg', 'jpeg', 'png')
+                 if (path := resources / 'Onboarding' / f'{name}-{appearance}.{extension}').exists()), None)
+
+def dimensions(path):
+    data = path.read_bytes()
+    if path.suffix == '.png':
+        assert data[:8] == b'\x89PNG\r\n\x1a\n' and len(data) >= 24, f'Invalid PNG: {path}'
+        return struct.unpack('>II', data[16:24])
+    assert data[:2] == b'\xff\xd8', f'Invalid JPEG: {path}'
+    offset = 2
+    while offset < len(data):
+        assert data[offset] == 0xff, f'Invalid JPEG marker: {path}'
+        while offset < len(data) and data[offset] == 0xff:
+            offset += 1
+        assert offset < len(data), f'Truncated JPEG: {path}'
+        marker = data[offset]
+        offset += 1
+        if marker in (0xda, 0xd9):
+            break
+        if marker == 0x01 or 0xd0 <= marker <= 0xd8:
+            continue
+        assert offset + 2 <= len(data), f'Truncated JPEG: {path}'
+        length = struct.unpack('>H', data[offset:offset + 2])[0]
+        assert length >= 2 and offset + length <= len(data), f'Invalid JPEG segment: {path}'
+        if marker in (0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf):
+            assert length >= 8, f'Truncated JPEG frame: {path}'
+            height, width = struct.unpack('>HH', data[offset + 3:offset + 7])
+            return width, height
+        offset += length
+    raise AssertionError(f'JPEG has no image dimensions: {path}')
+
+for name in sorted(names):
+    light = image_path(name, 'light')
+    assert light is not None, f'Missing light screenshot: {name}'
+    files.append(light)
+    dark = image_path(name, 'dark')
+    # New local captures are light only; the view falls back to that real capture.
+    if dark is not None or name not in {'doubao-input-microphone', 'weixin-input-microphone'}:
+        assert dark is not None, f'Missing dark screenshot: {name}'
+        files.append(dark)
 files.append(resources / 'BuddyRemoteIllustration.png')
 for path in files:
-    data = path.read_bytes()
-    assert data[:8] == b'\x89PNG\r\n\x1a\n', f'Invalid PNG: {path}'
-    width, height = struct.unpack('>II', data[16:24])
+    width, height = dimensions(path)
     assert width > 0 and height > 0, f'Empty image: {path}'
 print(f'Verified {len(files)} setup and device images in {resources}')

@@ -5,6 +5,22 @@ import Testing
 
 @Suite("Product privacy boundaries")
 struct ProductBoundaryTests {
+    @Test @MainActor func onboardingLoadsReplacementJPEGsAndRetainsDarkPNGSelection() throws {
+        let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
+        let bundle = try #require(Bundle(path: resources.path))
+        let paired = ["doubao-menu", "doubao-settings", "weixin-input-menu", "weixin-input-settings"]
+        let microphone = ["doubao-input-microphone", "weixin-input-microphone"]
+        for name in paired + microphone {
+            let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(named: name, isDark: false, in: bundle))
+            #expect(url.lastPathComponent == "\(name)-light.jpg")
+            let image = try #require(NSImage(contentsOf: url))
+            #expect(image.size.width > 0 && image.size.height > 0)
+            let dark = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(named: name, isDark: true, in: bundle))
+            #expect(dark.lastPathComponent == "\(name)-\(paired.contains(name) ? "dark.png" : "light.jpg")")
+        }
+    }
+
     @Test func releaseTagsCanBeComparedAndPreviewFallsBack() async {
         #expect(UpdateVersion.normalized("v26-10-11.021") == "26.10.11.021")
         #expect(UpdateVersion.isNewer("v26-10-11.022", than: "v26-10-11.021"))
@@ -70,8 +86,8 @@ struct ProductBoundaryTests {
                      "vokie-step-2", "weixin-app-shortcuts", "weixin-input-menu",
                      "weixin-input-settings"] {
             for theme in ["light", "dark"] {
-                let url = try #require(bundle.url(forResource: "\(name)-\(theme)",
-                    withExtension: "png", subdirectory: "Onboarding"))
+                let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(
+                    named: name, isDark: theme == "dark", in: bundle))
                 let image = try #require(NSImage(contentsOf: url))
                 #expect(image.isValid)
             }
@@ -190,6 +206,36 @@ struct ProductBoundaryTests {
         ready.microphoneDriverInstalled = true
         #expect(OnboardingFlowPolicy.canContinue(
             from: .audio, voiceTool: .unselected, capabilities: ready
+        ))
+    }
+
+    @Test func inputToolRequiresMicrophoneSetupBeforeIndependentVoiceTest() {
+        let passed = OnboardingCapabilities(
+            voiceSessionStarted: true, voiceSamplesReceived: true,
+            voiceSessionEnded: true, transcriptionAppeared: true
+        )
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .voiceTool, voiceTool: .weixin, capabilities: passed
+        ))
+        #expect(OnboardingFlowPolicy.canContinue(
+            from: .voiceTool, voiceTool: .weixin,
+            voiceToolMicrophoneConfirmed: true, capabilities: passed
+        ))
+        // Step 7 verifies the input result and has no configuration confirmations.
+        #expect(OnboardingFlowPolicy.canContinue(
+            from: .voiceTest, voiceTool: .weixin, capabilities: passed
+        ))
+        var incomplete = passed
+        incomplete.voiceSamplesReceived = false
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .voiceTest, voiceTool: .weixin,
+            voiceToolMicrophoneConfirmed: true, capabilities: incomplete
+        ))
+        var typed = passed
+        typed.manualTranscriptInputObserved = true
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .voiceTest, voiceTool: .weixin,
+            voiceToolMicrophoneConfirmed: true, capabilities: typed
         ))
     }
 

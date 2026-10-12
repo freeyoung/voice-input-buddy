@@ -17,7 +17,7 @@ struct RemoteMappingPlacement: Identifiable {
 
 enum RemoteMappingLayout {
     static let canvasHeight: CGFloat = 570
-    static let remoteSize = CGSize(width: 251, height: 510)
+    static let remoteSize = CGSize(width: 251, height: 251 * 850 / 508)
     static let arrowCardGap: CGFloat = 7
 
     static let buttonPlacements: [RemoteMappingPlacement] = [
@@ -45,7 +45,8 @@ enum RemoteMappingLayout {
         )
         return CGPoint(
             x: remoteOrigin.x + remoteSize.width * anchor.x,
-            y: remoteOrigin.y + remoteSize.height * anchor.y
+            // The illustration keeps its original button positions in a shorter grip.
+            y: remoteOrigin.y + remoteSize.height * anchor.y * 1030 / 850
         )
     }
 
