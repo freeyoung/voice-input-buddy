@@ -101,7 +101,9 @@ struct InputLifecycleRegressionTests {
         settings.setAction(.appSwitcher, for: .tv)
         settings.setAction(.arrowRight, for: .right)
         settings.setAction(.arrowLeft, for: .left)
-        let filter = KeyboardEventSuppressor()
+        // This exercises delivery order, not wall-clock expiry. AppKit event
+        // creation can exceed the pending window on a busy UI/build machine.
+        let filter = KeyboardEventSuppressor(uptime: { 0 })
         var selections: [UInt16] = []
         let profile = UUID()
         let monitor = HIDRemoteMonitor(settings: settings, profileID: profile,
