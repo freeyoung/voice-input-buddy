@@ -193,6 +193,36 @@ struct ProductBoundaryTests {
         ))
     }
 
+    @Test func inputToolRequiresMicrophoneSetupBeforeIndependentVoiceTest() {
+        let passed = OnboardingCapabilities(
+            voiceSessionStarted: true, voiceSamplesReceived: true,
+            voiceSessionEnded: true, transcriptionAppeared: true
+        )
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .voiceTool, voiceTool: .weixin, capabilities: passed
+        ))
+        #expect(OnboardingFlowPolicy.canContinue(
+            from: .voiceTool, voiceTool: .weixin,
+            voiceToolMicrophoneConfirmed: true, capabilities: passed
+        ))
+        // Step 7 verifies the input result and has no configuration confirmations.
+        #expect(OnboardingFlowPolicy.canContinue(
+            from: .voiceTest, voiceTool: .weixin, capabilities: passed
+        ))
+        var incomplete = passed
+        incomplete.voiceSamplesReceived = false
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .voiceTest, voiceTool: .weixin,
+            voiceToolMicrophoneConfirmed: true, capabilities: incomplete
+        ))
+        var typed = passed
+        typed.manualTranscriptInputObserved = true
+        #expect(!OnboardingFlowPolicy.canContinue(
+            from: .voiceTest, voiceTool: .weixin,
+            voiceToolMicrophoneConfirmed: true, capabilities: typed
+        ))
+    }
+
     @Test @MainActor func wizardStartsWithEnvironmentAndMigratesLegacyWelcome() throws {
         let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

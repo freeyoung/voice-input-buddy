@@ -174,7 +174,7 @@ enum OnboardingScreenshotRenderer {
 
         for (step, filename) in pages(for: controlMethod) {
             settings.selectedAudioDeviceUID = switch step {
-            case .voiceTest, .controls, .complete:
+            case .voiceTool, .voiceTest, .controls, .complete:
                 DoubaoAudioDevicePolicy.deviceUID
             default:
                 ""

@@ -730,6 +730,10 @@
 "onboarding.voice_tool.guide.title" = "Set up your voice app";
 "onboarding.voice_tool.guide.detail" = "Review every step for the selected app. Voice Input Buddy never changes third-party settings.";
 "onboarding.voice_tool.guide.continue_hint" = "Review and click every step on the right first.";
+"onboarding.voice_tool.guide.microphone_hint" = "Confirm the microphone choice in step 3 before continuing.";
+"onboarding.voice_tool.guide.microphone_detail" = "In %@ → Voice Input settings, choose “%@” as the microphone. Set this in the voice app itself.";
+"onboarding.voice_tool.guide.match_shortcut" = "Set the voice shortcut to %@ to match this setup. The screenshot shows the installed app's current settings.";
+"onboarding.voice_tool.guide.screenshot.doubao_microphone" = "In Doubao → Voice Input → Microphone, select Voice Input Buddy Mic.";
 "onboarding.voice_tool.guide.select_step" = "Click a step on the right to view its setup instructions.";
 "onboarding.voice_tool.guide.select_doubao" = "Select Doubao";
 "onboarding.voice_tool.guide.configure_doubao" = "Set Fn as Doubao’s voice shortcut";
@@ -925,6 +929,8 @@
 "onboarding.voice_test.configuration.global_voice_checkbox" = "I confirmed Doubao has global voice activation enabled";
 "onboarding.voice_test.configuration.no_commit" = "No text appeared. Recheck the voice input behavior, global activation, and microphone settings above.";
 "onboarding.voice_test.microphone_confirmation.title" = "The voice app must use the same microphone";
+"onboarding.voice_tool.guide.select_microphone" = "Choose the voice app's microphone";
+"onboarding.voice_tool.guide.screenshot.weixin_input_microphone" = "In WeChat Input Method → Voice Input → Microphone, select Voice Input Buddy Mic. This screenshot was captured from the installed app.";
 "onboarding.voice_test.microphone_confirmation.detail" = "Selecting “%@” in Voice Input Buddy only routes remote audio; it does not change %@’s own microphone setting. In that tool, set the microphone to “%@” too.";
 "onboarding.voice_test.microphone_confirmation.checkbox" = "I confirmed %@ uses “%@” as its microphone";
 "onboarding.voice_test.placeholder" = "Try saying: Voice Input Buddy is connected";

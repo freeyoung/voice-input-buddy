@@ -778,13 +778,14 @@ enum OnboardingFlowPolicy {
         remoteAvailability: OnboardingRemoteAvailability = .hasRemote,
         controlMethod: OnboardingControlMethod = .physicalRemote,
         voiceKeyMode: VoiceKeyMode = .function,
+        voiceToolMicrophoneConfirmed: Bool = false,
         capabilities: OnboardingCapabilities
     ) -> Bool {
         switch step {
         case .welcome:
             return true
         case .voiceTool:
-            return voiceTool != .unselected
+            return voiceTool != .unselected && voiceToolMicrophoneConfirmed
         case .remoteAvailability:
             return remoteAvailability != .unselected
         case .controlMethod:

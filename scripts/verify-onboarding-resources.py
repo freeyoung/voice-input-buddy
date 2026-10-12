@@ -9,9 +9,14 @@ root = Path(__file__).resolve().parent.parent
 resources = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'Resources'
 source = (root / 'Sources/VoiceInputBuddy/OnboardingView.swift').read_text()
 names = set(re.findall(r'\.screenshot\("([\w-]+)"\)', source))
-names.update(re.findall(r'onboardingGuideScreenshot\(resourceName: "([\w-]+)"\)', source))
-files = [resources / 'Onboarding' / f'{name}-{theme}.png'
-         for name in sorted(names) for theme in ('light', 'dark')]
+names.update(re.findall(r'onboardingGuideScreenshot\(\s*resourceName: "([\w-]+)"', source))
+files = []
+for name in sorted(names):
+    files.append(resources / 'Onboarding' / f'{name}-light.png')
+    dark = resources / 'Onboarding' / f'{name}-dark.png'
+    # New local captures are light only; the view falls back to that real capture.
+    if dark.exists() or name not in {'doubao-microphone', 'weixin-input-microphone'}:
+        files.append(dark)
 files.append(resources / 'BuddyRemoteIllustration.png')
 for path in files:
     data = path.read_bytes()
