@@ -13,6 +13,7 @@ if [[ ! -d "$source/.git" ]]; then
     git -C "$source" checkout --detach FETCH_HEAD
 fi
 [[ "$(git -C "$source" rev-parse HEAD)" == "$revision" ]] || { echo 'Unexpected BlackHole revision' >&2; exit 1; }
+python3 "$root/scripts/verify-dependency-checkout.py" "$source" "$root/third_party/blackhole/device-usb.patch"
 if git -C "$source" apply --check "$root/third_party/blackhole/device-usb.patch" 2>/dev/null; then
     git -C "$source" apply "$root/third_party/blackhole/device-usb.patch"
 else

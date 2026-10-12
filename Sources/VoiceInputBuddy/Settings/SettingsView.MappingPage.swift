@@ -395,11 +395,15 @@ extension SettingsView {
                                 ).action == .disabled
                             },
                             set: { disabled in
-                                setMappingAction(
-                                    disabled ? .disabled : .escape,
-                                    for: target.button,
+                                let key = "\(settings.selectedRemoteProfileID?.uuidString ?? "base"):\(editingMappingProfileID?.uuidString ?? "base"):\(target.id)"
+                                let current = mappingConfiguration(for: target.button, trigger: target.trigger)
+                                if disabled { disabledMappingBackups[key] = current }
+                                let replacement = MappingDisablePolicy.configuration(
+                                    disabling: disabled, current: current,
+                                    backup: disabledMappingBackups[key], button: target.button,
                                     trigger: target.trigger
                                 )
+                                saveMappingBinding(replacement, button: target.button, trigger: target.trigger)
                                 shortcutCaptureTarget = nil
                                 applicationShortcutCaptureProfileID = nil
                             }

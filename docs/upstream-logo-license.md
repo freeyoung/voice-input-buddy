@@ -2,7 +2,7 @@
 
 # 无线麦 App Logo 许可
 
-[English](https://github.com/HD838A/remote-mic-app/blob/main/LOGO-LICENSE.en.md)
+Upstream license reference: the original text below is preserved locally; upstream asset paths are not part of this distribution.
 
 Copyright (C) 2026 HD838A. All rights reserved.
 
@@ -46,4 +46,4 @@ Fork 和修改后的发行版本必须将上述品牌资产替换为其有权使
 
 ## 软件许可
 
-除本许可明确列出的 App Logo、App Icon 和另行标明的第三方材料外，macOS App、驱动及相关软件代码按 `GPL-3.0-only` 发布，详见 [LICENSE.md](LICENSE.md)。
+除本许可明确列出的 App Logo、App Icon 和另行标明的第三方材料外，macOS App、驱动及相关软件代码按 `GPL-3.0-only` 发布，详见 [LICENSE](../LICENSE)。

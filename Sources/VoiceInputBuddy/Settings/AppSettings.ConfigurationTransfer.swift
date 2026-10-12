@@ -245,9 +245,7 @@ extension AppSettings {
         customMappingEnabled = configuration.customMappingEnabled
         buttonBindings = Self.defaultBindings.merging(importedBindings) { _, imported in imported }
         buttonShortcuts = importedShortcuts
-        if configuration.unifiedBaseBindings != nil {
-            unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected)
-        }
+        unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected)
         buttonApplicationProfileIDs = importedApplicationProfileIDs
         secondaryButtonBindings = importedSecondaryBindings
         buttonRapidPressEnabled = importedRapidPressEnabled

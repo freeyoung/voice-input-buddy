@@ -137,10 +137,12 @@ extension BridgeAppModel {
             "REMOTE MAPPING_DEFAULT phase=completed result=selected " +
                 "reason=xiaomi_default family=xiaomi"
         )
+#if DEBUG
         if ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"] != nil {
             settings.selectRemoteProfile(profile.id)
             return
         }
+#endif
         selectRemoteProfile(profile.id)
     }
 

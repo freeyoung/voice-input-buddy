@@ -34,12 +34,14 @@ enum VoiceInputBuddyResourceBundle {
 
     private static var candidates: [URL] {
         var urls: [URL] = []
+#if DEBUG
         if let explicitPath = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_RESOURCE_ROOT"
         ], !explicitPath.isEmpty {
             urls.append(URL(fileURLWithPath: explicitPath, isDirectory: true))
         }
 
+#endif
         let currentDirectory = URL(
             fileURLWithPath: FileManager.default.currentDirectoryPath,
             isDirectory: true

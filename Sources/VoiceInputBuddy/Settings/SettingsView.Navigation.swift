@@ -196,10 +196,14 @@ extension SettingsView {
                 aboutPage
             }
         case .mapping:
-            if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
-                mappingPage
-            } else if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
-                mappingPage
+            if let device = settings.selectedRemoteProfile,
+               device.model.isAppleSiriRemote || device.model.isChromecastRemote {
+                settingsPage {
+                    PageHeader(title: localization.text("button_mapping.page.title"))
+                } content: {
+                    Text(localization.text("button_mapping.unsupported_device"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             } else {
                 mappingPage
             }

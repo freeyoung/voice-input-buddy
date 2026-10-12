@@ -37,7 +37,7 @@ extension SettingsView {
             prompt: localization.text("configuration.import.prompt")
         ) else { return }
         do {
-            try model.importConfiguration(from: Data(contentsOf: url))
+            try model.importConfiguration(from: ConfigurationFileReader.read(from: url))
             localization.select(settings.applicationLanguage)
             syncEntryPointVisibility()
             if settings.configurationImportNotice != nil {

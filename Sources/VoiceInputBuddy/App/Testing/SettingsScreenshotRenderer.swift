@@ -1,3 +1,4 @@
+#if DEBUG
 import AppKit
 import SwiftUI
 
@@ -316,3 +317,5 @@ enum SettingsScreenshotRenderer {
         }
     }
 }
+
+#endif

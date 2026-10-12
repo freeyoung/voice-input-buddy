@@ -1249,3 +1249,7 @@
 "update.dialog.not_found.latest.detail" = "当前版本：%1$@\n本次检查的最新版本：%2$@\n此渠道中没有可安装的新版本。";
 
 "update.dialog.install_later" = "稍后安装";
+
+"common_phrases.key.ok" = "确认键";
+
+"button_mapping.unsupported_device" = "此遥控器目前尚未支持。请选择小米遥控器进行按键设置。";

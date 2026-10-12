@@ -1251,3 +1251,7 @@
 "update.dialog.not_found.latest.detail" = "Installed version: %1$@\nLatest version checked: %2$@\nNo newer compatible version is available on this channel.";
 
 "update.dialog.install_later" = "Install Later";
+
+"common_phrases.key.ok" = "Select button";
+
+"button_mapping.unsupported_device" = "This remote is not supported yet. Select a Xiaomi remote to configure its buttons.";

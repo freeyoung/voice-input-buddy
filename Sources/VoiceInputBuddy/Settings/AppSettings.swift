@@ -256,31 +256,12 @@ final class AppSettings: ObservableObject {
 
     var isLoadingRemoteProfile = false
 
-    @Published private(set) var totalButtonPressCount: UInt64 {
-        didSet {
-            defaults.set(NSNumber(value: totalButtonPressCount), forKey: Keys.totalButtonPressCount)
-        }
-    }
-
-    @Published private(set) var totalVoiceDuration: TimeInterval {
-        didSet { defaults.set(totalVoiceDuration, forKey: Keys.totalVoiceDuration) }
-    }
-
-    @Published var dailyStatistics: [String: DailyUsageStatistics] {
-        didSet {
-            if let data = try? JSONEncoder().encode(dailyStatistics) {
-                defaults.set(data, forKey: Keys.dailyStatistics)
-            }
-        }
-    }
-
-    @Published private(set) var voiceSessionRanking: [VoiceSessionUsageRecord] {
-        didSet {
-            if let data = try? JSONEncoder().encode(voiceSessionRanking) {
-                defaults.set(data, forKey: Keys.voiceSessionRanking)
-            }
-        }
-    }
+    // Retired usage surfaces remain empty for compatibility with dormant views.
+    // No old usage data is loaded, and writes never persist statistics.
+    @Published private(set) var totalButtonPressCount: UInt64
+    @Published private(set) var totalVoiceDuration: TimeInterval
+    @Published private(set) var dailyStatistics: [String: DailyUsageStatistics]
+    @Published private(set) var voiceSessionRanking: [VoiceSessionUsageRecord]
 
     @Published var trustedPhoneIdentityFingerprints: Set<String> {
         didSet {
@@ -596,26 +577,15 @@ final class AppSettings: ObservableObject {
             from: defaults,
             corrupted: &corruptedKeys
         )
-        totalButtonPressCount = (
-            defaults.object(forKey: Keys.totalButtonPressCount) as? NSNumber
-        )?.uint64Value ?? 0
-        totalVoiceDuration = defaults.object(forKey: Keys.totalVoiceDuration) == nil
-            ? 0
-            : max(0, defaults.double(forKey: Keys.totalVoiceDuration))
-        dailyStatistics = Self.decodeSetting(
-            [String: DailyUsageStatistics].self,
-            forKey: Keys.dailyStatistics,
-            from: defaults,
-            corrupted: &corruptedKeys
-        ) ?? [:]
-        voiceSessionRanking = Self.normalizedVoiceSessionRanking(
-            Self.decodeSetting(
-                [VoiceSessionUsageRecord].self,
-                forKey: Keys.voiceSessionRanking,
-                from: defaults,
-                corrupted: &corruptedKeys
-            ) ?? []
-        )
+        for key in [Keys.totalButtonPressCount, Keys.totalVoiceDuration,
+                    Keys.dailyStatistics, Keys.voiceSessionRanking] {
+            defaults.removeObject(forKey: key)
+            defaults.removeObject(forKey: "\(key).corrupt")
+        }
+        totalButtonPressCount = 0
+        totalVoiceDuration = 0
+        dailyStatistics = [:]
+        voiceSessionRanking = []
         trustedPhoneIdentityFingerprints = Set(
             defaults.stringArray(forKey: Keys.trustedPhoneIdentityFingerprints) ?? []
         )

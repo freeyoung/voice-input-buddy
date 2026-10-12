@@ -13,13 +13,14 @@ extension BridgeAppModel {
     ) {
         if pendingAppleRemoteVoiceStarts.contains(device) {
             if appleRemoteVoiceDevices.contains(device) {
-                pendingAppleRemoteVoiceStopRequested = true
+                pendingAppleRemoteVoiceStops.request(device)
                 AppLogger.shared.write(
                     "APPLE REMOTE VOICE phase=deferred result=pending_tail " +
                         "reason=\(reason)"
                 )
             } else {
                 pendingAppleRemoteVoiceStarts.remove(device)
+                pendingAppleRemoteVoiceStops.cancel(device)
                 pendingAppleRemoteVoiceAudio.cancel()
                 AppLogger.shared.write(
                     "APPLE REMOTE VOICE phase=completed result=cancelled_before_audio_ready " +
@@ -335,6 +336,7 @@ extension BridgeAppModel {
         if appleRemoteAppSwitcherSession.isActive {
             finishAppleRemoteAppSwitcher(reason: "voice_started", confirmed: false)
         }
+        pendingAppleRemoteVoiceStops.cancel(device)
         guard appleRemoteVoiceDevices.insert(device).inserted else { return }
         appleRemoteVoiceCaptureRetryWorkItem?.cancel()
         appleRemoteVoiceCaptureRetryWorkItem = nil
@@ -412,7 +414,7 @@ extension BridgeAppModel {
             if shouldStartConfiguration {
                 pendingAppleRemoteVoiceStarts.remove(device)
                 pendingAppleRemoteVoiceAudio.cancel()
-                pendingAppleRemoteVoiceStopRequested = false
+                pendingAppleRemoteVoiceStops.cancel(device)
             }
             siriRemoteFeature.setVoiceTouchSuppressed(false)
             AppLogger.shared.write(
@@ -437,7 +439,7 @@ extension BridgeAppModel {
             if shouldStartConfiguration {
                 pendingAppleRemoteVoiceStarts.remove(device)
                 pendingAppleRemoteVoiceAudio.cancel()
-                pendingAppleRemoteVoiceStopRequested = false
+                pendingAppleRemoteVoiceStops.cancel(device)
             }
             AppLogger.shared.write(
                 "APPLE REMOTE VOICE phase=pending result=audio_capture_not_ready " +
@@ -473,8 +475,7 @@ extension BridgeAppModel {
                 guard let self else { return }
                 let pendingDevices = self.pendingAppleRemoteVoiceStarts
                 self.pendingAppleRemoteVoiceStarts.removeAll()
-                let stopRequested = self.pendingAppleRemoteVoiceStopRequested
-                self.pendingAppleRemoteVoiceStopRequested = false
+                let stoppedDevices = self.pendingAppleRemoteVoiceStops.take(pending: pendingDevices)
                 let bufferedAudio = self.pendingAppleRemoteVoiceAudio.drain()
                 guard ready else {
                     self.pendingAppleRemoteVoiceAudio.cancel()
@@ -492,13 +493,23 @@ extension BridgeAppModel {
                     )
                     self.receiveAppleRemoteAudio(bufferedAudio)
                 }
-                if stopRequested, let pendingDevice = pendingDevices.first {
-                    self.endAppleRemoteVoice(
-                        for: pendingDevice,
-                        reason: "released_before_audio_ready"
-                    )
+                for pendingDevice in stoppedDevices {
+                    self.endAppleRemoteVoice(for: pendingDevice, reason: "released_before_audio_ready")
                 }
             }
         }
+    }
+}
+
+/// A release queued during shared audio setup belongs to that device alone.
+struct DeviceVoiceStopRequests<Device: Hashable> {
+    private var devices = Set<Device>()
+    mutating func request(_ device: Device) { devices.insert(device) }
+    mutating func cancel(_ device: Device) { devices.remove(device) }
+    mutating func removeAll() { devices.removeAll() }
+    mutating func take(pending: Set<Device>) -> Set<Device> {
+        let stopped = devices.intersection(pending)
+        devices.subtract(pending)
+        return stopped
     }
 }

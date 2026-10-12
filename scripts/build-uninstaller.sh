@@ -17,7 +17,7 @@ for component in system data; do
     chmod +x "$work/$component/"*
     pkgbuild --nopayload --scripts "$work/$component" \
         --identifier "com.zfdang.voice-input-buddy.uninstaller.$component" \
-        --version "$RELEASE_BUNDLE_VERSION" "$work/$component.pkg"
+        --version "$RELEASE_PACKAGE_VERSION" "$work/$component.pkg"
 done
 cat > "$work/Distribution.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
@@ -32,8 +32,8 @@ cat > "$work/Distribution.xml" <<XML
   <choices-outline><line choice="system"/><line choice="data"/></choices-outline>
   <choice id="system" title="Remove app and microphone driver / 删除程序和驱动" enabled="false" selected="true"><pkg-ref id="com.zfdang.voice-input-buddy.uninstaller.system"/></choice>
   <choice id="data" title="Delete settings, logs and caches / 删除设置、日志和缓存" start_selected="true" description="Clear personal data for the currently logged-in desktop user. Uncheck to keep it. / 默认清除当前桌面用户的数据，取消勾选即可保留。"><pkg-ref id="com.zfdang.voice-input-buddy.uninstaller.data"/></choice>
-  <pkg-ref id="com.zfdang.voice-input-buddy.uninstaller.system" version="$RELEASE_BUNDLE_VERSION" auth="Root">system.pkg</pkg-ref>
-  <pkg-ref id="com.zfdang.voice-input-buddy.uninstaller.data" version="$RELEASE_BUNDLE_VERSION" auth="Root">data.pkg</pkg-ref>
+  <pkg-ref id="com.zfdang.voice-input-buddy.uninstaller.system" version="$RELEASE_PACKAGE_VERSION" auth="Root">system.pkg</pkg-ref>
+  <pkg-ref id="com.zfdang.voice-input-buddy.uninstaller.data" version="$RELEASE_PACKAGE_VERSION" auth="Root">data.pkg</pkg-ref>
 </installer-gui-script>
 XML
 mkdir -p "$work/resources"

@@ -258,7 +258,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var pendingAppleRemoteVoiceAudio = CommandVoiceActivationAudioBuffer(
         maximumSampleCount: 32_000
     )
-    var pendingAppleRemoteVoiceStopRequested = false
+    var pendingAppleRemoteVoiceStops = DeviceVoiceStopRequests<SiriRemoteDeviceIdentity>()
     var appleRemoteVoiceStopOperation: UInt64 = 0
     var appleRemoteVoiceCaptureRetryAttempt = 0
     var appleRemoteVoiceCaptureRetryWorkItem: DispatchWorkItem?
@@ -722,6 +722,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         commonPhrases.close(reason: "app_stop")
         resetAllAppleRemoteState(reason: "app_stop")
         pendingAppleRemoteVoiceStarts.removeAll()
+        pendingAppleRemoteVoiceStops.removeAll()
         appleRemoteVoiceDevices.removeAll()
         appleRemoteVoiceStopping = false
         appleRemoteVoiceStopOperation &+= 1

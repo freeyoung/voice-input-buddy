@@ -335,7 +335,12 @@ extension BridgeAppModel {
         let handled = KeyboardInjector.send(
             configured.action,
             shortcut: configured.shortcut,
-            applicationProfile: applicationProfile
+            applicationProfile: applicationProfile,
+            focusInputCompletion: { [weak self] succeeded in
+                if let requestID {
+                    self?.voiceInputDestinationCoordinator.completeFocusOperation(requestID: requestID, succeeded: succeeded)
+                }
+            }
         )
         if !handled, let requestID {
             voiceInputDestinationCoordinator.cancel(requestID: requestID, reason: .actionFailed)

@@ -14,7 +14,13 @@ done <<< "$release_metadata"
 configuration="${CONFIGURATION:-release}"
 source scripts/architecture.sh
 scratch="$root/.build/app-$BUILD_ARCH"
+if [[ -d "$scratch/checkouts/Sparkle/.git" ]]; then
+    python3 scripts/verify-dependency-checkout.py "$scratch/checkouts/Sparkle"
+fi
 swift build --disable-keychain --scratch-path "$scratch" -c "$configuration" --arch "$BUILD_ARCH" --product VoiceInputBuddy
+if [[ -d "$scratch/checkouts/Sparkle/.git" ]]; then
+    python3 scripts/verify-dependency-checkout.py "$scratch/checkouts/Sparkle"
+fi
 bin="$(swift build --disable-keychain --scratch-path "$scratch" -c "$configuration" --arch "$BUILD_ARCH" --show-bin-path)"
 destination="$root/dist/Voice Input Buddy.app"
 mkdir -p "$root/dist"

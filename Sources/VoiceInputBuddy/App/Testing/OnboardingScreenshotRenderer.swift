@@ -1,3 +1,4 @@
+#if DEBUG
 import AppKit
 import SwiftUI
 
@@ -308,3 +309,5 @@ enum OnboardingScreenshotRenderer {
         return window
     }
 }
+
+#endif

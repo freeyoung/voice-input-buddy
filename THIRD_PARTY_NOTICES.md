@@ -10,7 +10,7 @@ Voice Input Buddy bundles its app and the independently named VoiceInputBuddyMic
 - Version: 2.9.4 / `b6496a74a087257ef5e6da1c5b29a447a60f5bd7`
 - License: MIT and the framework's included third-party notices
 
-The complete framework and its license resources are preserved in the app; matching source is included with releases. No update feed or upstream signing key is reused.
+The complete framework and its license resources are preserved in the app; matching source is available at the pinned revision linked in docs/source-code.md. No update feed or upstream signing key is reused.
 
 ## remote-mic-app
 

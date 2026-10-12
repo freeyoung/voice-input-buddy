@@ -109,6 +109,7 @@ enum VoiceInputBuddyApp {
             }
             return
         }
+#if DEBUG
         if let screenshotDirectory = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"
         ] {
@@ -147,6 +148,7 @@ enum VoiceInputBuddyApp {
             }
             return
         }
+#endif
         let bundleIdentifier = Bundle.main.bundleIdentifier
             ?? ApplicationInstanceGuard.fallbackBundleIdentifier
         var instanceLock: ApplicationInstanceLock?

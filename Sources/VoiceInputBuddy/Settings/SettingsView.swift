@@ -36,6 +36,7 @@ struct SettingsView: View {
     @State var isMappingSelectionLocked = true
     @State private var selectedStatisticsDate: Date?
     @State var mappingEditingTarget: ShortcutEditingTarget?
+    @State var disabledMappingBackups: [String: ConfiguredButtonAction] = [:]
     @State var mappingActionFilter: MappingActionFilter = .all
     @State var shortcutCaptureTarget: ShortcutEditingTarget?
     @State var applicationShortcutCaptureProfileID: UUID?
