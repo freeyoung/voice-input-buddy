@@ -281,9 +281,7 @@ enum SettingsScreenshotRenderer {
         updateInformation.setAvailable(
             displayVersion: "1.9.22",
             buildVersion: "183",
-            archiveURL: nil,
-            fallbackDescription: notes,
-            localeIdentifier: language.rawValue
+            fallbackDescription: notes
         )
     }
 

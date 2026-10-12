@@ -43,6 +43,7 @@ jobs:
           python3 scripts/test-app-bundle.py
           python3 scripts/test-installation-actions.py
           python3 scripts/test-appcast.py
+          python3 scripts/test-pages-update-feeds.py
           python3 scripts/test-update-signature.py
           swift build --disable-keychain --product AppleRemoteAudioCapture
           swift test --disable-keychain
@@ -50,28 +51,19 @@ jobs:
         run: |
           scripts/build-app.sh
           scripts/build-driver.sh
-          scripts/build-uninstaller.sh
+          if [[ "$BUILD_ARCH" == arm64 ]]; then scripts/build-uninstaller.sh; fi
           test "$(lipo -archs 'dist/Voice Input Buddy.app/Contents/MacOS/VoiceInputBuddy')" = "$BUILD_ARCH"
           test "$(lipo -archs dist/VoiceInputBuddyMic.driver/Contents/MacOS/VoiceInputBuddyMic)" = "$BUILD_ARCH"
-      - name: Package app, driver, and matching complete source
+      - name: Package app and driver
         run: |
           scripts/build-release-package.sh
           scripts/verify-release-package.sh
-          if [[ "$BUILD_ARCH" == arm64 ]]; then
-            scripts/build-release-sources.sh
-            python3 scripts/build-release-notes.py
-          fi
       - name: Sign and verify production update package
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
         run: scripts/sign-release-update.sh
-      - name: Checksum release assets
-        run: |
-          source scripts/architecture.sh
-          cd dist/release
-          shasum -a 256 * > "SHA256SUMS_$RELEASE_ARCH_LABEL.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-release-${{ matrix.arch }}
@@ -95,6 +87,24 @@ jobs:
           pattern: macOS-release-*
           merge-multiple: true
           path: release
+      - name: Check immutable release
+        id: release_state
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload website update feeds
+        if: steps.release_state.outputs.exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-update-feeds
+          overwrite: true
+          path: release/appcast-*.xml
+          if-no-files-found: error
+          retention-days: 90
       - name: Publish release
         shell: bash
         run: |
@@ -102,8 +112,10 @@ jobs:
           macOS 14 or later, Apple Silicon and Intel.
 
           Download the `Voice_Input_Buddy_*_arm64.pkg` installer for Apple Silicon or
-          `Voice_Input_Buddy_*_intel.pkg` for Intel. Matching standalone uninstaller
-          PKGs are attached; uninstall defaults to deleting your settings, logs and caches. The app installer installs both
+          `Voice_Input_Buddy_*_intel.pkg` for Intel.
+          `Voice_Input_Buddy_Uninstaller_*_universal.pkg` uninstalls on either architecture
+          and deletes settings, logs and caches by default. Installer’s fixed “Install”
+          labels execute uninstall actions for this package. The app installer installs both
           `/Applications/Voice Input Buddy.app` and the virtual microphone driver.
           Administrator authorization is required. Installing the driver briefly
           restarts Core Audio and may interrupt playback or recording.
@@ -111,13 +123,20 @@ jobs:
           This build uses ad-hoc application signatures. The PKG is unsigned and
           not notarized by Apple; it may be blocked by Gatekeeper and application
           updates may require renewed Input Monitoring / Accessibility permissions.
-          Matching complete source (including patched BlackHole and Sparkle) and
-          SHA-256 checksums are attached.
+          Source: https://github.com/zfdang/voice-input-buddy/tree/RELEASE_TAG_PLACEHOLDER
+          Build instructions and the driver patch are in that source revision.
+          Bundled dependency source:
+          - BlackHole: https://github.com/ExistentialAudio/BlackHole/tree/e2b22aaaba4e507a097131704bf96dabc004d9cf
+          - Sparkle: https://github.com/sparkle-project/Sparkle/tree/b6496a74a087257ef5e6da1c5b29a447a60f5bd7
           NOTES
+          sed -i "s/RELEASE_TAG_PLACEHOLDER/$RELEASE_TAG/g" release-notes.md
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             # A completed release is immutable on rerun; do not replace its files.
             echo "Release $RELEASE_TAG already exists."
           else
-            gh release create "$RELEASE_TAG" release/* --target "$RELEASE_COMMIT" \
+            gh release create "$RELEASE_TAG" \
+              "release/Voice_Input_Buddy_${RELEASE_TAG}_macOS_arm64.pkg" \
+              "release/Voice_Input_Buddy_${RELEASE_TAG}_macOS_intel.pkg" \
+              "release/Voice_Input_Buddy_Uninstaller_${RELEASE_TAG}_macOS_universal.pkg" --target "$RELEASE_COMMIT" \
               --title "$RELEASE_TAG" --notes-file release-notes.md --latest
           fi

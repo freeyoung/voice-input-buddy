@@ -737,9 +737,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 if self.statusItem != nil {
                     self.rebuildStatusMenu()
                 }
-                self.updateInformation.reloadReleaseNotes(
-                    localeIdentifier: self.localization.locale.identifier
-                )
             }
             .store(in: &subscriptions)
     }
@@ -1101,9 +1098,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         updateInformation.setAvailable(
             displayVersion: item.displayVersionString,
             buildVersion: item.versionString,
-            archiveURL: item.fileURL,
-            fallbackDescription: item.itemDescription,
-            localeIdentifier: localization.locale.identifier
+            fallbackDescription: item.itemDescription
         )
     }
 
@@ -1135,9 +1130,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         updateInformation.setAvailable(
             displayVersion: latestItem.displayVersionString,
             buildVersion: latestItem.versionString,
-            archiveURL: latestItem.fileURL,
-            fallbackDescription: latestItem.itemDescription,
-            localeIdentifier: localization.locale.identifier
+            fallbackDescription: latestItem.itemDescription
         )
         AppLogger.shared.write(
             "UPDATE CHECK semantic_newer_but_sparkle_rejected " +

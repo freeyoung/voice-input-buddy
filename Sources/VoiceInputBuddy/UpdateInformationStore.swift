@@ -169,27 +169,6 @@ enum UpdateVersion {
 }
 
 enum UpdateReleaseNotes {
-    private static let maximumDownloadSize = 128 * 1_024
-
-    static func languageCode(for localeIdentifier: String) -> String {
-        localeIdentifier.lowercased().hasPrefix("zh") ? "zh" : "en"
-    }
-
-    static func assetURL(
-        for updateArchiveURL: URL,
-        displayVersion: String,
-        localeIdentifier: String
-    ) -> URL? {
-        guard updateArchiveURL.scheme == "https",
-              updateArchiveURL.host == "github.com",
-              displayVersion.range(of: #"^[0-9A-Za-z.-]+$"#, options: .regularExpression) != nil
-        else { return nil }
-        let languageCode = languageCode(for: localeIdentifier)
-        return updateArchiveURL
-            .deletingLastPathComponent()
-            .appendingPathComponent("Voice_Input_Buddy_\(displayVersion).\(languageCode).txt")
-    }
-
     static func parse(_ text: String) -> [String] {
         text.split(whereSeparator: \Character.isNewline).compactMap { line in
             var value = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -201,34 +180,16 @@ enum UpdateReleaseNotes {
         }
     }
 
-    static func load(from url: URL) async throws -> String {
-        var request = URLRequest(url: url)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 30
-        request.setValue("VoiceInputBuddy", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let response = response as? HTTPURLResponse,
-              response.statusCode == 200,
-              data.count <= maximumDownloadSize,
-              let text = String(data: data, encoding: .utf8)
-        else {
-            throw UpdateFeedResolutionError.invalidResponse
-        }
-        return text
-    }
 }
 
 @MainActor
 final class UpdateInformationStore: ObservableObject {
-    typealias NotesLoader = @Sendable (URL) async throws -> String
-
     @Published private(set) var state: UpdateInformationState = .idle
     @Published private(set) var hasUnseenUpdate = false
 
     private struct PendingUpdate: Equatable {
         let displayVersion: String
         let buildVersion: String
-        let archiveURL: URL?
         let fallbackNotes: [String]
 
         var identifier: String {
@@ -240,23 +201,10 @@ final class UpdateInformationStore: ObservableObject {
         "updateInformation.lastSeenUpdateIdentifier"
 
     private let userDefaults: UserDefaults
-    private let notesLoader: NotesLoader
     private var pendingUpdate: PendingUpdate?
-    private var notesTask: Task<Void, Never>?
-    private var notesGeneration = 0
 
-    init(
-        userDefaults: UserDefaults = .standard,
-        notesLoader: @escaping NotesLoader = { url in
-            try await UpdateReleaseNotes.load(from: url)
-        }
-    ) {
+    init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        self.notesLoader = notesLoader
-    }
-
-    deinit {
-        notesTask?.cancel()
     }
 
     func beginChecking() {
@@ -264,21 +212,18 @@ final class UpdateInformationStore: ObservableObject {
     }
 
     func reset() {
-        notesTask?.cancel()
         pendingUpdate = nil
         state = .idle
         clearUnseenUpdate(reason: "update_state_reset")
     }
 
     func setUpToDate() {
-        notesTask?.cancel()
         pendingUpdate = nil
         state = .upToDate
         clearUnseenUpdate(reason: "up_to_date")
     }
 
     func setUnavailable() {
-        notesTask?.cancel()
         pendingUpdate = nil
         state = .unavailable
         clearUnseenUpdate(reason: "update_information_unavailable")
@@ -287,14 +232,11 @@ final class UpdateInformationStore: ObservableObject {
     func setAvailable(
         displayVersion: String,
         buildVersion: String,
-        archiveURL: URL?,
-        fallbackDescription: String?,
-        localeIdentifier: String
+        fallbackDescription: String?
     ) {
         let pending = PendingUpdate(
             displayVersion: displayVersion,
             buildVersion: buildVersion,
-            archiveURL: archiveURL,
             fallbackNotes: fallbackDescription.map(UpdateReleaseNotes.parse) ?? []
         )
         let candidateChanged = pendingUpdate?.identifier != pending.identifier
@@ -311,7 +253,6 @@ final class UpdateInformationStore: ObservableObject {
                     "build_version=\(AppLogger.stableToken(buildVersion))"
             )
         }
-        loadReleaseNotes(for: pending, localeIdentifier: localeIdentifier)
     }
 
     func markAvailableUpdateSeen() {
@@ -323,11 +264,6 @@ final class UpdateInformationStore: ObservableObject {
                 "display_version=\(AppLogger.stableToken(pendingUpdate.displayVersion)) " +
                 "build_version=\(AppLogger.stableToken(pendingUpdate.buildVersion))"
         )
-    }
-
-    func reloadReleaseNotes(localeIdentifier: String) {
-        guard let pendingUpdate else { return }
-        loadReleaseNotes(for: pendingUpdate, localeIdentifier: localeIdentifier)
     }
 
     private func information(
@@ -349,35 +285,4 @@ final class UpdateInformationStore: ObservableObject {
         )
     }
 
-    private func loadReleaseNotes(
-        for pending: PendingUpdate,
-        localeIdentifier: String
-    ) {
-        notesTask?.cancel()
-        guard let archiveURL = pending.archiveURL,
-              let notesURL = UpdateReleaseNotes.assetURL(
-                for: archiveURL,
-                displayVersion: pending.displayVersion,
-                localeIdentifier: localeIdentifier
-              )
-        else { return }
-
-        notesGeneration += 1
-        let generation = notesGeneration
-        let notesLoader = notesLoader
-        notesTask = Task { [weak self] in
-            do {
-                let text = try await notesLoader(notesURL)
-                guard !Task.isCancelled, let self,
-                      generation == self.notesGeneration,
-                      self.pendingUpdate == pending
-                else { return }
-                let notes = UpdateReleaseNotes.parse(text)
-                guard !notes.isEmpty else { return }
-                self.state = .available(self.information(for: pending, notes: notes))
-            } catch {
-                guard !Task.isCancelled else { return }
-            }
-        }
-    }
 }

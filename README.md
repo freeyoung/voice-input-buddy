@@ -77,7 +77,7 @@ The tool must accept the virtual microphone and expose a usable voice shortcut. 
 
 Choose the `*_macOS_arm64.pkg` installer for Apple Silicon or `*_macOS_intel.pkg` for Intel. Each contains the app and its **Voice Input Buddy Mic** driver.
 
-To uninstall, download the matching `Voice_Input_Buddy_Uninstaller_*_macOS_arm64.pkg` or `*_macOS_intel.pkg` and open the package in macOS Installer. The default removes the app, driver, and your settings, logs and caches. Uncheck the personal-data removal option to retain settings and logs. Administrator authorization is required; audio briefly restarts. See [uninstallation details](docs/uninstall.md).
+To uninstall, download `Voice_Input_Buddy_Uninstaller_*_macOS_universal.pkg` (works on both architectures) and open the package in macOS Installer. The default removes the app, driver, and your settings, logs and caches. Uncheck the personal-data removal option to retain settings and logs. Installer’s fixed **Install** button executes uninstall actions; no software is installed. Administrator authorization is required; audio briefly restarts. See [uninstallation details](docs/uninstall.md).
 
 ## References
 
