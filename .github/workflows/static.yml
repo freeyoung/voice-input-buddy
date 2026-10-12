@@ -20,6 +20,7 @@ on:
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -40,25 +41,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Include latest published update feed
+      - name: Include latest published update feeds
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          PAGES_UPDATE_RUN_ID: ${{ github.event.workflow_run.id }}
         shell: bash
-        run: |
-          # Pull only a published release feed; website-only deploys preserve it.
-          gh release view --json assets > "$RUNNER_TEMP/latest-release.json"
-          if python3 - "$RUNNER_TEMP/latest-release.json" <<'PYTHON'
-          import json, sys
-          names = {a['name'] for a in json.load(open(sys.argv[1]))['assets']}
-          sys.exit(0 if {'appcast-arm64.xml', 'appcast-intel.xml'} <= names else 1)
-          PYTHON
-          then
-            gh release download --pattern 'appcast-*.xml' --dir pages
-          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            echo 'Successful release is missing its update feed.' >&2
-            exit 1
-          fi
+        run: scripts/prepare-pages-update-feeds.sh
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

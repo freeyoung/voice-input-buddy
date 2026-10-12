@@ -23,7 +23,7 @@
 
 ## 驱动
 
-VoiceInputBuddyMic.driver 基于固定版本 BlackHole 源码构建，使用独立 Bundle ID、设备 UID 与工厂 UUID。其实际源码、补丁与许可证随 Release 源码包提供。
+VoiceInputBuddyMic.driver 基于固定版本 BlackHole 源码构建，使用独立 Bundle ID、设备 UID 与工厂 UUID。其对应固定版本源码、补丁与许可证通过 Release 的源码链接提供，见 [source-code.md](source-code.md)。
 
 ## macOS 系统模块
 

@@ -77,7 +77,7 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 
 Apple Silicon 选择 `*_macOS_arm64.pkg`，Intel 选择 `*_macOS_intel.pkg`。每份包含 App 和 **Voice Input Buddy Mic** 驱动。
 
-卸载时下载匹配架构的 `Voice_Input_Buddy_Uninstaller_*_macOS_arm64.pkg` 或 `*_macOS_intel.pkg`，通过 macOS Installer 打开。默认删除 App、驱动和当前用户设置、日志、缓存；取消勾选个人数据删除选项即可保留设置与日志。需要管理员认证，音频服务会短暂重启。详见[卸载说明](docs/uninstall.md)。
+卸载时下载通用的 `Voice_Input_Buddy_Uninstaller_*_macOS_universal.pkg`（Apple Silicon / Intel 共用），通过 macOS Installer 打开。默认删除 App、驱动和当前用户设置、日志、缓存；取消勾选个人数据删除选项即可保留设置与日志。系统固定的“安装”按钮实际执行卸载，不安装程序。需要管理员认证，音频服务会短暂重启。详见[卸载说明](docs/uninstall.md)。
 
 ## References
 

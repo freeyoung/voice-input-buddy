@@ -2,15 +2,23 @@ import Foundation
 import Testing
 @testable import VoiceInputBuddy
 
-@Suite("Published update note assets")
+@Suite("Update feed descriptions")
 struct ReleaseNotesAssetTests {
-    @Test func localizedAssetsMatchReleasePackageDirectory() throws {
-        let package = try #require(URL(string: "https://github.com/zfdang/voice-input-buddy/releases/download/v26-10-12.036/Voice_Input_Buddy_v26-10-12.036_macOS_intel.pkg"))
-        for (locale, language) in [("zh_CN", "zh"), ("en_US", "en")] {
-            let url = try #require(UpdateReleaseNotes.assetURL(for: package, displayVersion: "v26-10-12.036", localeIdentifier: locale))
-            #expect(url.lastPathComponent == "Voice_Input_Buddy_v26-10-12.036.\(language).txt")
-            #expect(url.deletingLastPathComponent() == package.deletingLastPathComponent())
+    @MainActor @Test func updateDetailsComeFromTheFeedWithoutSeparateAssets() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let store = UpdateInformationStore(userDefaults: defaults)
+        store.setAvailable(displayVersion: "v26-10-12.043", buildVersion: "43",
+                           fallbackDescription: "- Updates app and driver.\n- Administrator authorization required.")
+        guard case .available(let details) = store.state else {
+            Issue.record("Expected available update"); return
         }
-        #expect(UpdateReleaseNotes.assetURL(for: package, displayVersion: "../escape", localeIdentifier: "en") == nil)
+        #expect(details.releaseNotes == ["Updates app and driver.", "Administrator authorization required."])
+        #expect(store.hasUnseenUpdate)
+        store.markAvailableUpdateSeen()
+        #expect(!store.hasUnseenUpdate)
+        store.reset()
+        #expect(store.state == .idle)
     }
 }

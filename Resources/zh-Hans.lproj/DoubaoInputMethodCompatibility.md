@@ -10,6 +10,6 @@ Voice Input Buddy 使用基于 BlackHole 的独立双声道回环驱动，设备
 
 验证时，在 QuickTime Player 的“新建音频录制”中选择回环麦克风，按住遥控器语音键说话，确认输入电平变化；随后在有焦点的文本框中测试目标输入工具。构建成功不等于硬件验收完成。
 
-从 Release 下载匹配 CPU 架构的独立卸载器 PKG，通过 macOS Installer 打开。默认删除 App、驱动和当前用户设置、日志、缓存；可选择保留个人数据。移除驱动需要管理员授权，会重启 Core Audio。
+从 Release 下载Apple Silicon / Intel 共用的卸载器 PKG，通过 macOS Installer 打开。默认删除 App、驱动和当前用户设置、日志、缓存；可选择保留个人数据。移除驱动需要管理员授权，会重启 Core Audio。
 
 驱动使用固定版本 BlackHole v0.7.1 的 GPL 源码，未来公开发行二进制时必须同时提供匹配源码和补丁。

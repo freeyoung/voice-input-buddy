@@ -36,7 +36,8 @@ def generate(package, tag, version, signature, output):
     if architecture == 'arm64':
         ET.SubElement(item, f'{{{SPARKLE}}}hardwareRequirements').text = 'arm64'
     ET.SubElement(item, 'description').text = ('Updates the app and virtual microphone driver. '
-        'Administrator authorization is required; audio may briefly restart.')
+        'Administrator authorization is required; audio may briefly restart.\n'
+        '更新程序与虚拟麦克风驱动。需要管理员授权，音频服务可能短暂重启。')
     ET.SubElement(item, 'enclosure', {
         'url': f'https://github.com/zfdang/voice-input-buddy/releases/download/{tag}/{expected}',
         'length': str(package.stat().st_size), 'type': 'application/octet-stream',
