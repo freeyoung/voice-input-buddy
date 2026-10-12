@@ -32,12 +32,19 @@ enum AppleRemoteAudioCaptureMain {
         }
         guard let portIndex = args.firstIndex(of: "--port"), portIndex + 1 < args.count,
               let port = UInt16(args[portIndex + 1]),
-              let tokenIndex = args.firstIndex(of: "--token"), tokenIndex + 1 < args.count
+              !args.contains("--token")
         else {
-            fputs("usage: VoiceInputBuddyAppleRemoteAudioCapture --port 0 --token TOKEN\n", stderr)
+            fputs("usage: VoiceInputBuddyAppleRemoteAudioCapture --port 0 (token via stdin)\n", stderr)
             exit(2)
         }
-        let captureServer = CaptureServer(requestedPort: port, token: String(args[tokenIndex + 1]))
+        let token: String
+        do {
+            token = try AppleRemoteAudioIPC.readStartupToken(from: .standardInput)
+        } catch {
+            fputs("Missing or invalid startup token on stdin\n", stderr)
+            exit(2)
+        }
+        let captureServer = CaptureServer(requestedPort: port, token: token)
         server = captureServer
         captureServer.start()
         dispatchMain()

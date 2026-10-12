@@ -186,7 +186,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private let model = BridgeAppModel()
     private lazy var appIconController = AppIconController()
     private let updateInformation = UpdateInformationStore()
-    private let hardwareAnnouncements = HardwareAnnouncementStore()
     private lazy var localization = LocalizationStore(settings: model.settings)
     private var statusItem: NSStatusItem?
     private var statusItemPresentation: StatusItemPresentation = .disconnected
@@ -911,7 +910,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             rootView: VoiceInputBuddyRootView(
                 model: model,
                 updateInformation: updateInformation,
-                hardwareAnnouncements: hardwareAnnouncements,
                 checkForUpdates: { [weak self] in self?.checkForUpdates() },
                 refreshUpdateInformation: { [weak self] in
                     self?.refreshUpdateInformation()

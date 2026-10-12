@@ -1,6 +1,43 @@
 import Foundation
 
 public enum AppleRemoteAudioIPC {
+    public enum StartupTokenError: Error, Equatable {
+        case invalidToken
+    }
+
+    /// Pass the per-launch UUID over a private pipe, never process arguments.
+    /// The small fixed-size message is written before spawning the child.
+    public static func startupTokenPipe(token: String) throws -> Pipe {
+        guard token.utf8.count == 36, UUID(uuidString: token) != nil else {
+            throw StartupTokenError.invalidToken
+        }
+        let pipe = Pipe()
+        try pipe.fileHandleForWriting.write(contentsOf: Data((token + "\n").utf8))
+        try pipe.fileHandleForWriting.close()
+        return pipe
+    }
+
+    public static func readStartupToken(from handle: FileHandle) throws -> String {
+        var data = Data()
+        while data.count < 37 {
+            guard let part = try handle.read(upToCount: 37 - data.count), !part.isEmpty else {
+                throw StartupTokenError.invalidToken
+            }
+            data.append(part)
+        }
+        guard data.last == 0x0A,
+              let token = String(data: data.dropLast(), encoding: .utf8),
+              UUID(uuidString: token) != nil else {
+            throw StartupTokenError.invalidToken
+        }
+        // The parent closes the private writer before launch. Require EOF so
+        // extra bytes cannot silently turn an oversized message into a token.
+        guard try handle.read(upToCount: 1)?.isEmpty != false else {
+            throw StartupTokenError.invalidToken
+        }
+        return token
+    }
+
     public enum Kind: UInt8 {
         case hello = 1
         case start = 2
