@@ -136,7 +136,7 @@ struct ScheduledVoiceTaskLifetimeTests {
 
     @Test func completedTaskReleasesCapturedObjects() async throws {
         var probe: Probe? = Probe()
-        weak var observed = probe
+        weak let observed = probe
         var calls = 0
         let task = VoiceFnTapScheduledTask.mainQueue(after: 0) { [retained = probe!] in
             withExtendedLifetime(retained) { calls += 1 }
@@ -150,7 +150,7 @@ struct ScheduledVoiceTaskLifetimeTests {
 
     @Test func cancellationReleasesCapturedObjectsBeforeDeadline() async throws {
         var probe: Probe? = Probe()
-        weak var observed = probe
+        weak let observed = probe
         var calls = 0
         let task = VoiceFnTapScheduledTask.mainQueue(after: 0.05) { [retained = probe!] in
             withExtendedLifetime(retained) { calls += 1 }

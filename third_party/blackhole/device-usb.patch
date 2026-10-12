@@ -1,8 +1,51 @@
 diff --git a/BlackHole/BlackHole.c b/BlackHole/BlackHole.c
-index ac516ef..897fd8c 100644
+index ac516ef..c7062b8 100644
 --- a/BlackHole/BlackHole.c
 +++ b/BlackHole/BlackHole.c
-@@ -2543,7 +2543,7 @@ static OSStatus	BlackHole_GetDevicePropertyData(AudioServerPlugInDriverRef inDri
+@@ -433,15 +433,14 @@ static AudioServerPlugInDriverInterface*    gAudioServerPlugInDriverInterfacePtr
+ static AudioServerPlugInDriverRef            gAudioServerPlugInDriverRef                = &gAudioServerPlugInDriverInterfacePtr;
+ 
+ 
+-#define RETURN_FORMATTED_STRING(_string_fmt)                          \
+-if(kHas_Driver_Name_Format)                                           \
+-{                                                                     \
+-	return CFStringCreateWithFormat(NULL, NULL, CFSTR(_string_fmt), kNumber_Of_Channels); \
+-}                                                                     \
+-else                                                                  \
+-{                                                                     \
+-	return CFStringCreateWithCString(NULL, _string_fmt, kCFStringEncodingUTF8); \
+-}
++// Select the implementation at preprocessing time: fixed names have no format arguments.
++#if kHas_Driver_Name_Format
++#define RETURN_FORMATTED_STRING(_string_fmt) \
++    return CFStringCreateWithFormat(NULL, NULL, CFSTR(_string_fmt), kNumber_Of_Channels);
++#else
++#define RETURN_FORMATTED_STRING(_string_fmt) \
++    return CFStringCreateWithCString(NULL, _string_fmt, kCFStringEncodingUTF8);
++#endif
+ 
+ static CFStringRef get_box_uid(void)          { RETURN_FORMATTED_STRING(kBox_UID) }
+ static CFStringRef get_device_uid(void)       { RETURN_FORMATTED_STRING(kDevice_UID) }
+@@ -1508,18 +1507,6 @@ static OSStatus	BlackHole_GetPlugInPropertyData(AudioServerPlugInDriverRef inDri
+ 
+ 			if(CFStringCompare(*((CFStringRef*)inQualifierData), boxUID, 0) == kCFCompareEqualTo)
+ 			{
+-				CFStringRef formattedString = CFStringCreateWithFormat(NULL, NULL, CFSTR(kBox_UID), kNumber_Of_Channels);
+-				if(CFStringCompare(*((CFStringRef*)inQualifierData), formattedString, 0) == kCFCompareEqualTo)
+-				{
+-					*((AudioObjectID*)outData) = kObjectID_Box;
+-				}
+-				else
+-				{
+-					*((AudioObjectID*)outData) = kAudioObjectUnknown;
+-				}
+-				*outDataSize = sizeof(AudioObjectID);
+-				CFRelease(formattedString);
+-
+ 				*((AudioObjectID*)outData) = kObjectID_Box;
+ 			}
+ 			else
+@@ -2543,7 +2530,7 @@ static OSStatus	BlackHole_GetDevicePropertyData(AudioServerPlugInDriverRef inDri
  			//	any 32 bit integer, but common values for this property are defined in
  			//	<CoreAudio/AudioHardwareBase.h>
  			FailWithAction(inDataSize < sizeof(UInt32), theAnswer = kAudioHardwareBadPropertySizeError, Done, "BlackHole_GetDevicePropertyData: not enough space for the return value of kAudioDevicePropertyTransportType for the device");
@@ -12,7 +55,7 @@ index ac516ef..897fd8c 100644
  			break;
  
 diff --git a/BlackHole/BlackHole.plist b/BlackHole/BlackHole.plist
-index bcbc8d6..8862fe8 100644
+index bcbc8d6..8184fa2 100644
 --- a/BlackHole/BlackHole.plist
 +++ b/BlackHole/BlackHole.plist
 @@ -24,14 +24,14 @@

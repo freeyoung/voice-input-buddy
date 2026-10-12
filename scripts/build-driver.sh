@@ -7,7 +7,10 @@ source="$work/BlackHole"
 revision=e2b22aaaba4e507a097131704bf96dabc004d9cf
 mkdir -p "$work" "$root/dist"
 if [[ ! -d "$source/.git" ]]; then
-    git clone --depth 1 --branch v0.7.1 https://github.com/ExistentialAudio/BlackHole.git "$source"
+    git init --initial-branch=driver-source "$source"
+    git -C "$source" remote add origin https://github.com/ExistentialAudio/BlackHole.git
+    git -C "$source" fetch --depth 1 origin "$revision"
+    git -C "$source" checkout --detach FETCH_HEAD
 fi
 [[ "$(git -C "$source" rev-parse HEAD)" == "$revision" ]] || { echo 'Unexpected BlackHole revision' >&2; exit 1; }
 if git -C "$source" apply --check "$root/third_party/blackhole/device-usb.patch" 2>/dev/null; then
@@ -18,7 +21,7 @@ fi
 driver="$root/dist/VoiceInputBuddyMic.driver"
 mkdir -p "$driver/Contents/MacOS" "$driver/Contents/Resources"
 for arch in "$BUILD_ARCH"; do
-    xcrun clang -arch "$arch" -mmacosx-version-min=14.0 -bundle -O2 \
+    xcrun clang -arch "$arch" -mmacosx-version-min=14.0 -bundle -O2 -Werror=format-extra-args \
         -framework CoreFoundation -framework CoreAudio -framework Accelerate \
         '-DkDriver_Name="BuddyMic2ch"' '-DkPlugIn_BundleID="com.zfdang.voice-input-buddy.mic"' \
         '-DkDevice_Name="Voice Input Buddy Mic"' -DkNumber_Of_Channels=2 -DkHas_Driver_Name_Format=0 \
