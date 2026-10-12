@@ -193,8 +193,10 @@ public final class AppleRemotePacketLoggerClient: @unchecked Sendable {
 
         authorizationQueue.async { [weak self] in
             let result = Self.performAuthorizationRequest()
-            self?.stateQueue.async { [weak self] in
-                self?.handleAuthorizationResult(result, generation: requestGeneration)
+            guard let self else { Self.discardAuthorizationResult(result); return }
+            self.stateQueue.async { [weak self] in
+                guard let self else { Self.discardAuthorizationResult(result); return }
+                self.handleAuthorizationResult(result, generation: requestGeneration)
             }
         }
 
@@ -204,11 +206,17 @@ public final class AppleRemotePacketLoggerClient: @unchecked Sendable {
         }
     }
 
+    private static func discardAuthorizationResult(_ result: AuthorizationResult) {
+        guard case .granted(let grant) = result else { return }
+        if grant.createdRule {
+            authorizationRight.withCString { _ = AuthorizationRightRemove(grant.reference, $0) }
+        }
+        AuthorizationFree(grant.reference, [.destroyRights])
+    }
+
     private func handleAuthorizationResult(_ result: AuthorizationResult, generation resultGeneration: UInt64) {
         guard generation == resultGeneration, state == .authorizing else {
-            if case .granted(let grant) = result {
-                AuthorizationFree(grant.reference, [.destroyRights])
-            }
+            Self.discardAuthorizationResult(result)
             return
         }
         switch result {

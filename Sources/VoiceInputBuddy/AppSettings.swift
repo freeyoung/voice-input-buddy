@@ -733,7 +733,7 @@ final class AppSettings: ObservableObject {
             "button_mapping"
         case "customApplicationProfiles": "custom_apps"
         case "usage.dailyStatistics", "usage.voiceSessionRanking": "usage"
-        case "onboardingStagedVoiceBinding": "onboarding"
+        case "onboarding.stagedVoiceBinding": "onboarding"
         default: "other"
         }
     }
@@ -855,10 +855,14 @@ final class AppSettings: ObservableObject {
         applicationLanguage = AppLanguage(
             rawValue: defaults.string(forKey: Keys.applicationLanguage) ?? ""
         ) ?? .system
-        appIconIdentifier = AppIconIdentifier(
+        let storedAppIcon = AppIconIdentifier(
             rawValue: defaults.string(forKey: Keys.appIconIdentifier)
-                ?? AppIconIdentifier.facetedDuck.rawValue
+                ?? AppIconIdentifier.standard.rawValue
         )
+        appIconIdentifier = storedAppIcon == .facetedDuck ? .standard : storedAppIcon
+        if storedAppIcon == .facetedDuck {
+            defaults.set(AppIconIdentifier.standard.rawValue, forKey: Keys.appIconIdentifier)
+        }
         showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil
             ? true
             : defaults.bool(forKey: Keys.showDockIcon)
@@ -1873,7 +1877,8 @@ final class AppSettings: ObservableObject {
             completedUpdate = previousBuild == nil && sparkleHadLaunchedBefore
         }
 
-        if defaults.integer(forKey: Keys.onboardingMigrationVersion) < Self.currentOnboardingVersion {
+        if defaults.integer(forKey: Keys.onboardingMigrationVersion) < Self.currentOnboardingVersion ||
+            defaults.integer(forKey: Keys.onboardingInstallStateMigrationVersion) < Self.currentOnboardingVersion {
             let hasPersistedOnboardingState =
                 defaults.object(forKey: Keys.onboardingCompletedVersion) != nil ||
                 defaults.object(forKey: Keys.onboardingStep) != nil ||
@@ -1887,21 +1892,6 @@ final class AppSettings: ObservableObject {
                 completeOnboarding()
             }
             defaults.set(Self.currentOnboardingVersion, forKey: Keys.onboardingMigrationVersion)
-        }
-
-        if defaults.integer(forKey: Keys.onboardingInstallStateMigrationVersion) < Self.currentOnboardingVersion {
-            let hasPersistedOnboardingState =
-                defaults.object(forKey: Keys.onboardingCompletedVersion) != nil ||
-                defaults.object(forKey: Keys.onboardingStep) != nil ||
-                defaults.object(forKey: Keys.onboardingRemoteAvailability) != nil ||
-                defaults.object(forKey: Keys.onboardingControlMethod) != nil ||
-                defaults.object(forKey: Keys.onboardingVoiceTool) != nil
-            let isExistingInstall = previousBuild != nil ||
-                sparkleHadLaunchedBefore ||
-                hasPersistedAppConfiguration
-            if !isOnboardingComplete, !hasPersistedOnboardingState, isExistingInstall {
-                completeOnboarding()
-            }
             defaults.set(Self.currentOnboardingVersion, forKey: Keys.onboardingInstallStateMigrationVersion)
         }
 
@@ -2182,11 +2172,15 @@ final class AppSettings: ObservableObject {
         customMappingEnabled = configuration.customMappingEnabled
         buttonBindings = Self.defaultBindings.merging(importedBindings) { _, imported in imported }
         buttonShortcuts = importedShortcuts
-        unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected)
+        if configuration.unifiedBaseBindings != nil {
+            unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected)
+        }
         buttonApplicationProfileIDs = importedApplicationProfileIDs
         secondaryButtonBindings = importedSecondaryBindings
         buttonRapidPressEnabled = importedRapidPressEnabled
-        customApplicationProfiles = importedApplicationProfiles
+        if configuration.customApplicationProfiles != nil {
+            customApplicationProfiles = importedApplicationProfiles
+        }
         applicationLanguage = configuration.applicationLanguage
         if let appIconIdentifier = configuration.appIconIdentifier {
             self.appIconIdentifier = appIconIdentifier

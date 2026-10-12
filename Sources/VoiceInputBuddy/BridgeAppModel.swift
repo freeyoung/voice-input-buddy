@@ -660,12 +660,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var bluetoothBridges: [UUID: XiaomiBluetoothBridge] = [:]
     private var bluetoothBridgeStates: [ObjectIdentifier: BluetoothBridgeState] = [:]
     private var discoveryBluetoothBridge: XiaomiBluetoothBridge?
-    private var pendingBluetoothVoiceStartIdentifier: UUID?
-    // Keep up to two seconds while the audio engine opens. This protects the
-    // first word without allowing an unbounded pre-configuration buffer.
-    private var pendingBluetoothVoiceAudio = CommandVoiceActivationAudioBuffer(
-        maximumSampleCount: 32_000
-    )
+    private let pendingBluetoothVoiceStart = BluetoothPendingAudioStart()
     private var pendingBluetoothVoiceStopRequested = false
     private var activeBluetoothVoiceDeviceIdentifier: UUID?
     private var bluetoothVoiceTraceCounter: UInt64 = 0
@@ -1090,7 +1085,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             }
         }
         webRemoteClient.onStateChange = { [weak self] state in
-            self?.webRemoteState = state
+            DispatchQueue.main.async { self?.webRemoteState = state }
         }
         webRemoteClient.onApprovalCancelled = { [weak self] in
             self?.cancelWebApproval()
@@ -1186,6 +1181,11 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     func stop() {
         commonPhrases.close(reason: "app_stop")
+        resetAllAppleRemoteState(reason: "app_stop")
+        pendingAppleRemoteVoiceStarts.removeAll()
+        appleRemoteVoiceDevices.removeAll()
+        appleRemoteVoiceStopping = false
+        appleRemoteVoiceStopOperation &+= 1
         privateFeature.stop()
         macroFeature.stop()
         preferredInputSourceMonitor.stop()
@@ -1216,8 +1216,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         bluetoothBridges.removeAll()
         bluetoothBridgeStates.removeAll()
         discoveryBluetoothBridge = nil
-        pendingBluetoothVoiceStartIdentifier = nil
-        pendingBluetoothVoiceAudio.cancel()
+        pendingBluetoothVoiceStart.identifier = nil
+        pendingBluetoothVoiceStart.audio.cancel()
         pendingBluetoothVoiceStopRequested = false
         activeBluetoothVoiceDeviceIdentifier = nil
         phoneRemoteServer.stop()
@@ -4547,7 +4547,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             self.audioOutput.endSessionAfterDraining(
                 source: "apple_remote",
                 operationID: stopOperation,
-                maximumDelay: nil
+                maximumDelay: 2
             ) { [weak self] outcome in
                 self?.completeAppleRemoteVoiceStop(
                     operation: stopOperation,
@@ -4753,7 +4753,11 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         let devices = Set(appleRemoteProfileIDs.keys)
             .union(appleRemoteGestureRecognizers.keys)
             .union(appleRemoteVoiceDevices)
+            .union(appleRemoteRepeatTimers.keys.map(\.device))
+            .union(appleRemoteDoubleClickTimers.keys.map(\.device))
+            .union(appleRemoteLongPressTimers.keys.map(\.device))
         devices.forEach { resetAppleRemoteState(for: $0, reason: reason) }
+        finishAppleRemoteAppSwitcher(reason: reason, confirmed: false)
         appleRemoteProfileIDs.removeAll()
         connectedAppleRemoteProfileIDs.removeAll()
         appleRemoteActiveButtons.removeAll()
@@ -4915,23 +4919,30 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         refreshRemoteDeviceNames(reason: .peripheralEvent)
     }
 
+    private func cancelPendingBluetoothVoiceStart(for identifier: UUID) {
+        guard pendingBluetoothVoiceStart.cancel(ifOwnedBy: identifier) else { return }
+        pendingBluetoothVoiceStopRequested = false
+    }
+
     func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge) {
         guard let identifier = bridge.deviceIdentifier else { return }
-        if let pendingIdentifier = pendingBluetoothVoiceStartIdentifier,
+        if let pendingIdentifier = pendingBluetoothVoiceStart.identifier,
            pendingIdentifier != identifier {
             _ = bridge.requestMicrophoneClose()
+            cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM rejected_busy reason=pending_start")
             return
         }
         let outputReadyAtStart = audioOutput.isReadyForTestTone
         if !outputReadyAtStart {
-            let shouldStartConfiguration = pendingBluetoothVoiceStartIdentifier == nil
+            let shouldStartConfiguration = pendingBluetoothVoiceStart.identifier == nil
             if shouldStartConfiguration {
-                pendingBluetoothVoiceStartIdentifier = identifier
-                pendingBluetoothVoiceAudio.begin()
+                pendingBluetoothVoiceStart.identifier = identifier
+                pendingBluetoothVoiceStart.audio.begin()
             }
         }
         if identifier == activeBluetoothVoiceDeviceIdentifier, bluetoothVoiceActive {
+            cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM ignored_duplicate_start")
             recordPublicDiagnosticEvent(
                 component: "voice",
@@ -4952,6 +4963,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         if let activeBluetoothVoiceDeviceIdentifier,
            activeBluetoothVoiceDeviceIdentifier != identifier {
             _ = bridge.requestMicrophoneClose()
+            cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM rejected_busy")
             recordPublicDiagnosticEvent(
                 component: "voice",
@@ -4973,6 +4985,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             isVoiceKeyNeutralized: voiceFunctionMapper.isVoiceKeyNeutralized
         ) else {
             _ = bridge.requestMicrophoneClose()
+            cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write(
                 "ATVV STREAM rejected reason=voice_key_not_neutralized " +
                     "mode=\(settings.voiceKeyMode.rawValue)"
@@ -4991,6 +5004,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         if outputReadyAtStart {
             guard ensureVirtualAudioOutputReady(reason: "bluetooth_voice_start") else {
                 _ = bridge.requestMicrophoneClose()
+                cancelPendingBluetoothVoiceStart(for: identifier)
                 AppLogger.shared.write("ATVV STREAM rejected_audio_output")
                 recordPublicDiagnosticEvent(
                     component: "voice",
@@ -5005,9 +5019,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             }
         }
         let pendingStartAudio: [Int16]
-        if outputReadyAtStart, pendingBluetoothVoiceStartIdentifier == identifier {
-            pendingStartAudio = pendingBluetoothVoiceAudio.drain()
-            pendingBluetoothVoiceStartIdentifier = nil
+        if outputReadyAtStart, pendingBluetoothVoiceStart.identifier == identifier {
+            pendingStartAudio = pendingBluetoothVoiceStart.audio.drain()
+            pendingBluetoothVoiceStart.identifier = nil
         } else {
             pendingStartAudio = []
         }
@@ -5023,8 +5037,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             _ = bridge.requestMicrophoneClose()
             bluetoothVoiceActive = false
             activeBluetoothVoiceDeviceIdentifier = nil
-            pendingBluetoothVoiceStartIdentifier = nil
-            pendingBluetoothVoiceAudio.cancel()
+            pendingBluetoothVoiceStart.identifier = nil
+            pendingBluetoothVoiceStart.audio.cancel()
             pendingBluetoothVoiceStopRequested = false
             AppLogger.shared.write(
                 "ATVV STREAM rejected reason=voice_key mode=\(settings.voiceKeyMode.rawValue)"
@@ -5105,14 +5119,14 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             )
             ensureVirtualAudioOutputReady(reason: "bluetooth_voice_start") { [weak self, weak bridge] ready in
                 guard let self, let bridge,
-                      self.pendingBluetoothVoiceStartIdentifier == identifier
+                      self.pendingBluetoothVoiceStart.identifier == identifier
                 else { return }
                 let stopRequested = self.pendingBluetoothVoiceStopRequested
                 self.pendingBluetoothVoiceStopRequested = false
-                self.pendingBluetoothVoiceStartIdentifier = nil
-                let bufferedAudio = self.pendingBluetoothVoiceAudio.drain()
+                self.pendingBluetoothVoiceStart.identifier = nil
+                let bufferedAudio = self.pendingBluetoothVoiceStart.audio.drain()
                 guard ready else {
-                    self.pendingBluetoothVoiceAudio.cancel()
+                    self.pendingBluetoothVoiceStart.audio.cancel()
                     _ = bridge.requestMicrophoneClose()
                     AppLogger.shared.write("ATVV STREAM rejected_audio_output")
                     self.bluetoothBridgeDidStopVoice(bridge)
@@ -5148,19 +5162,19 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     func bluetoothBridgeDidStopVoice(_ bridge: XiaomiBluetoothBridge) {
         guard let identifier = bridge.deviceIdentifier else { return }
-        if pendingBluetoothVoiceStartIdentifier == identifier,
+        if pendingBluetoothVoiceStart.identifier == identifier,
            activeBluetoothVoiceDeviceIdentifier == nil {
-            pendingBluetoothVoiceStartIdentifier = nil
-            pendingBluetoothVoiceAudio.cancel()
+            pendingBluetoothVoiceStart.identifier = nil
+            pendingBluetoothVoiceStart.audio.cancel()
             pendingBluetoothVoiceStopRequested = false
             AppLogger.shared.write("ATVV STREAM stop_before_audio_ready result=cancelled")
             return
         }
-        if pendingBluetoothVoiceStartIdentifier == identifier {
+        if pendingBluetoothVoiceStart.identifier == identifier {
             pendingBluetoothVoiceStopRequested = true
             AppLogger.shared.write(
                 "ATVV STREAM stop_deferred_until_audio_ready result=pending_tail " +
-                    "pending_samples=\(pendingBluetoothVoiceAudio.bufferedSampleCount)"
+                    "pending_samples=\(pendingBluetoothVoiceStart.audio.bufferedSampleCount)"
             )
             return
         }
@@ -5192,8 +5206,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         activeBluetoothVoiceDeviceIdentifier = nil
         loggedBluetoothVoiceAudioDeviceIdentifier = nil
         bluetoothVoiceActive = false
-        pendingBluetoothVoiceStartIdentifier = nil
-        pendingBluetoothVoiceAudio.cancel()
+        pendingBluetoothVoiceStart.identifier = nil
+        pendingBluetoothVoiceStart.audio.cancel()
         pendingBluetoothVoiceStopRequested = false
         releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: false)
         pendingCommandVoiceAudio.cancel()
@@ -5278,11 +5292,11 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didDecode samples: [Int16]) {
         guard let identifier = bridge.deviceIdentifier else { return }
-        if identifier == pendingBluetoothVoiceStartIdentifier,
-           pendingBluetoothVoiceAudio.appendIfWaiting(samples) {
+        if identifier == pendingBluetoothVoiceStart.identifier,
+           pendingBluetoothVoiceStart.audio.appendIfWaiting(samples) {
             AppLogger.shared.write(
                 "ATVV AUDIO buffered_during_configuration samples=\(samples.count) " +
-                    "total=\(pendingBluetoothVoiceAudio.bufferedSampleCount)"
+                    "total=\(pendingBluetoothVoiceStart.audio.bufferedSampleCount)"
             )
             return
         }

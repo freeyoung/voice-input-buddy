@@ -774,6 +774,16 @@ final class VirtualAudioOutput {
         engineQueue.setSpecific(key: engineQueueKey, value: ())
     }
 
+    deinit {
+        // stop() deliberately queues work on the main-thread path; a weak queued
+        // teardown cannot run after destruction, so destruction uses synchronous ownership.
+        if DispatchQueue.getSpecific(key: engineQueueKey) != nil {
+            stopOnEngineQueue()
+        } else {
+            engineQueue.sync { stopOnEngineQueue() }
+        }
+    }
+
     /// Counts one buffer as queued for playback. Together with
     /// `scheduledVoiceBufferDidFinish` this drives the pending-buffer count that
     /// draining waits on, so it is the single seam a test can use to arm drain
@@ -1171,8 +1181,9 @@ final class VirtualAudioOutput {
         drainRequests.removeAll(keepingCapacity: true)
         drainGeneration &+= 1
         playbackLock.unlock()
-        logDrainRequests(
+        completeDrainRequests(
             cancelledRequests,
+            outcome: .forced,
             phase: "cancelled",
             result: "cancelled",
             reason: "explicit_cancel",

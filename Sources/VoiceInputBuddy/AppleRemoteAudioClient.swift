@@ -44,13 +44,37 @@ struct AppleRemoteAudioCaptureGenerationGate: Equatable {
     }
 }
 
+struct AppleRemoteHelperReadyMessages {
+    private var buffer = Data()
+    private var accepted = false
+
+    mutating func consume(_ data: Data) -> NWEndpoint.Port? {
+        guard !accepted else { return nil }
+        guard data.count <= 65_536, buffer.count <= 65_536 - data.count else {
+            buffer.removeAll()
+            return nil
+        }
+        buffer.append(data)
+        while let newline = buffer.firstIndex(of: 0x0A) {
+            let lineData = buffer.prefix(upTo: newline)
+            buffer.removeFirst(buffer.distance(from: buffer.startIndex, to: newline) + 1)
+            guard let line = String(data: lineData, encoding: .utf8),
+                  let port = AppleRemoteAudioClient.helperReadyPort(from: line) else { continue }
+            accepted = true
+            buffer.removeAll()
+            return port
+        }
+        return nil
+    }
+}
+
 final class AppleRemoteAudioClient {
     private let helperURL: () -> URL?
     private let logger: (String) -> Void
     private var process: Process?
     private var outputPipe: Pipe?
     private var connection: NWConnection?
-    private var outputBuffer = Data()
+    private var helperReadyMessages = AppleRemoteHelperReadyMessages()
     private var inputBuffer = Data()
     private var token = UUID().uuidString
     private let packetQueue = DispatchQueue(
@@ -108,6 +132,8 @@ final class AppleRemoteAudioClient {
             return
         }
         token = UUID().uuidString
+        helperReadyMessages = AppleRemoteHelperReadyMessages()
+        outputPipe?.fileHandleForReading.readabilityHandler = nil
         let pipe = Pipe()
         let process = Process()
         process.executableURL = helper
@@ -116,7 +142,7 @@ final class AppleRemoteAudioClient {
         process.standardError = FileHandle.nullDevice
         process.terminationHandler = { [weak self] process in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.process === process else { return }
                 self.logger("APPLE REMOTE AUDIO helper=terminated status=\(process.terminationStatus)")
                 self.connection?.cancel()
                 self.connection = nil
@@ -137,10 +163,13 @@ final class AppleRemoteAudioClient {
         }
         self.process = process
         self.outputPipe = pipe
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+        pipe.fileHandleForReading.readabilityHandler = { [weak self, weak process] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            self?.consumeHelperOutput(data)
+            DispatchQueue.main.async { [weak self, weak process] in
+                guard let self, let process, self.process === process else { return }
+                self.consumeHelperOutput(data)
+            }
         }
         logger("APPLE REMOTE AUDIO component=starting helper=present")
         preparePacketStream()
@@ -296,14 +325,7 @@ final class AppleRemoteAudioClient {
     }
 
     private func consumeHelperOutput(_ data: Data) {
-        outputBuffer.append(data)
-        while let newline = outputBuffer.firstIndex(of: 0x0A) {
-            let lineData = outputBuffer.prefix(upTo: newline)
-            outputBuffer.removeFirst(outputBuffer.distance(from: outputBuffer.startIndex, to: newline) + 1)
-            guard let line = String(data: lineData, encoding: .utf8),
-                  let port = Self.helperReadyPort(from: line) else { continue }
-            connect(port: port)
-        }
+        if let port = helperReadyMessages.consume(data) { connect(port: port) }
     }
 
     /// A helper must report a concrete listening port; zero is only valid when binding.
@@ -316,10 +338,12 @@ final class AppleRemoteAudioClient {
     }
 
     private func connect(port: NWEndpoint.Port) {
+        guard self.connection == nil else { return }
+        inputBuffer.removeAll()
         let connection = NWConnection(host: "127.0.0.1", port: port, using: .tcp)
         self.connection = connection
-        connection.stateUpdateHandler = { [weak self] state in
-            guard let self else { return }
+        connection.stateUpdateHandler = { [weak self, weak connection] state in
+            guard let self, let connection, self.connection === connection else { return }
             switch state {
             case .ready:
                 self.helperReady = true
@@ -328,7 +352,7 @@ final class AppleRemoteAudioClient {
                 connection.send(content: AppleRemoteAudioIPC.encode(hello), completion: .contentProcessed { error in
                     if let error { self.logger("APPLE REMOTE AUDIO hello_failed \(AppLogger.errorFields(error))") }
                 })
-                self.receive()
+                self.receive(on: connection)
                 self.logger("APPLE REMOTE AUDIO phase=ipc_ready result=connected")
             case .failed(let error):
                 self.helperReady = false
@@ -339,12 +363,12 @@ final class AppleRemoteAudioClient {
             default: break
             }
         }
-        connection.start(queue: .global(qos: .userInitiated))
+        connection.start(queue: .main)
     }
 
-    private func receive() {
-        connection?.receive(minimumIncompleteLength: 1, maximumLength: 512 * 1024) { [weak self] data, _, isComplete, error in
-            guard let self else { return }
+    private func receive(on connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 512 * 1024) { [weak self, weak connection] data, _, isComplete, error in
+            guard let self, let connection, self.connection === connection else { return }
             if let data, !data.isEmpty {
                 self.inputBuffer.append(data)
                 let frames: [AppleRemoteAudioIPC.Frame]
@@ -401,7 +425,7 @@ final class AppleRemoteAudioClient {
                 }
             }
             if let error { self.logger("APPLE REMOTE AUDIO receive_failed \(AppLogger.errorFields(error))") }
-            if !isComplete && error == nil { self.receive() }
+            if !isComplete && error == nil { self.receive(on: connection) }
         }
     }
 

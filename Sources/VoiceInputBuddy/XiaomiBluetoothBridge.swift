@@ -45,6 +45,11 @@ private final class XiaomiPeripheralDelegateProxy: NSObject, CBPeripheralDelegat
         self.owner = owner
     }
 
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        owner?.handleWriteResponse(peripheral: peripheral, generation: generation,
+                                   characteristic: characteristic, error: error)
+    }
+
     func peripheralDidUpdateName(_ peripheral: CBPeripheral) {
         owner?.handleNameUpdate(peripheral: peripheral, generation: generation)
     }
@@ -159,6 +164,21 @@ final class XiaomiBluetoothBridge: NSObject {
     private var accumulator = FrameAccumulator()
     private var pendingSync: (predictor: Int, stepIndex: Int)?
     private var streaming = false
+    private lazy var acknowledgedWrites = AcknowledgedBluetoothWriteQueue(
+        send: { [weak self] data in
+            guard let self, let peripheral = self.peripheral,
+                  let characteristic = self.transmitCharacteristic else { return }
+            peripheral.writeValue(data, for: characteristic, type: .withResponse)
+        },
+        onFailure: { [weak self] in
+            guard let self else { return }
+            self.microphoneOpened = false
+            self.stopStreaming()
+            AppLogger.shared.write("BLE WRITE failed reason=response_or_timeout")
+            self.scheduleReconnect()
+        }
+    )
+    // This is a requested-open flag; ATVV stream notifications establish actual streaming.
     private var microphoneOpened = false
     private var cancelledMicrophoneOpenAt: Date?
     private var sessionID: UInt8 = 0
@@ -580,6 +600,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     private func resetPeripheral() {
+        acknowledgedWrites.reset()
         stopBatteryPolling(reason: "peripheral_reset")
         peripheral?.delegate = nil
         peripheral = nil
@@ -768,8 +789,16 @@ final class XiaomiBluetoothBridge: NSObject {
         let type: CBCharacteristicWriteType = transmitCharacteristic.properties.contains(.writeWithoutResponse)
             ? .withoutResponse
             : .withResponse
+        if type == .withResponse { return acknowledgedWrites.enqueue(data) }
         peripheral.writeValue(data, for: transmitCharacteristic, type: type)
         return true
+    }
+
+    fileprivate func handleWriteResponse(peripheral: CBPeripheral, generation: UInt64,
+                                         characteristic: CBCharacteristic, error: Error?) {
+        guard shouldRun, isCurrent(peripheral), currentGeneration() == generation,
+              characteristic === transmitCharacteristic else { return }
+        acknowledgedWrites.acknowledge(success: error == nil)
     }
 
     private func closeMicrophoneIfNeeded() {

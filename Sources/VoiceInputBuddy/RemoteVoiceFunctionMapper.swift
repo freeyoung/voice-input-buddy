@@ -126,7 +126,8 @@ final class RemoteVoiceFunctionMapper {
     }
     private static let journalKey = "hid.originalMappings.v1"
     private let recoveryDefaults: UserDefaults
-    private let bootID: String
+    private let bootID: String?
+    private let recoveryJournalURL: URL?
     private let serviceProvider: ServiceProvider
     private var originalMappings: [UInt64: OriginalMappings] = [:]
     private(set) var isApplied = false
@@ -142,33 +143,75 @@ final class RemoteVoiceFunctionMapper {
     init(
         serviceProvider: @escaping ServiceProvider = RemoteVoiceFunctionMapper.systemServices,
         recoveryDefaults: UserDefaults = .standard,
-        bootID: String = RemoteVoiceFunctionMapper.currentBootID()
+        bootID: String? = RemoteVoiceFunctionMapper.currentBootID(),
+        recoveryJournalURL: URL? = nil
     ) {
         self.serviceProvider = serviceProvider
         self.recoveryDefaults = recoveryDefaults
         self.bootID = bootID
-        if let data = recoveryDefaults.data(forKey: Self.journalKey),
+        self.recoveryJournalURL = recoveryJournalURL ?? (recoveryDefaults === UserDefaults.standard
+            ? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+                .appendingPathComponent("VoiceInputBuddy/HIDMappingRecovery.json") : nil)
+        if let bootID,
+           let data = self.recoveryJournalURL.flatMap({ try? Data(contentsOf: $0) })
+                ?? recoveryDefaults.data(forKey: Self.journalKey),
            let journal = try? JSONDecoder().decode(RecoveryJournal.self, from: data),
            journal.bootID == bootID {
             originalMappings = journal.mappings
         }
     }
 
-    private static func currentBootID() -> String {
-        var size = 0
-        guard sysctlbyname("kern.bootsessionuuid", nil, &size, nil, 0) == 0, size > 0 else { return UUID().uuidString }
-        var bytes = [CChar](repeating: 0, count: size)
-        guard sysctlbyname("kern.bootsessionuuid", &bytes, &size, nil, 0) == 0 else { return UUID().uuidString }
-        return String(cString: bytes)
+    static func bootIdentity(uuid: String?, bootTime: (seconds: Int64, microseconds: Int64)?) -> String? {
+        if let uuid, !uuid.isEmpty { return uuid }
+        guard let bootTime, bootTime.seconds > 0, (0..<1_000_000).contains(bootTime.microseconds) else { return nil }
+        return "boot-time:\(bootTime.seconds):\(bootTime.microseconds)"
     }
 
-    private func persistRecoveryJournal() {
-        if originalMappings.isEmpty {
-            recoveryDefaults.removeObject(forKey: Self.journalKey)
-        } else if let data = try? JSONEncoder().encode(RecoveryJournal(bootID: bootID, mappings: originalMappings)) {
-            recoveryDefaults.set(data, forKey: Self.journalKey)
+    private static func currentBootID() -> String? {
+        var size = 0
+        if sysctlbyname("kern.bootsessionuuid", nil, &size, nil, 0) == 0, size > 0 {
+            var bytes = [CChar](repeating: 0, count: size)
+            if sysctlbyname("kern.bootsessionuuid", &bytes, &size, nil, 0) == 0,
+               let identity = bootIdentity(uuid: String(cString: bytes), bootTime: nil) { return identity }
         }
-        recoveryDefaults.synchronize()
+        var bootTime = timeval()
+        size = MemoryLayout<timeval>.size
+        if sysctlbyname("kern.boottime", &bootTime, &size, nil, 0) == 0,
+           let identity = bootIdentity(uuid: nil, bootTime: (Int64(bootTime.tv_sec), Int64(bootTime.tv_usec))) {
+            AppLogger.shared.write("VOICE FN MAPPING boot_identity source=boot_time reason=uuid_unavailable")
+            return identity
+        }
+        AppLogger.shared.write("VOICE FN MAPPING boot_identity result=unavailable")
+        return nil
+    }
+
+    @discardableResult
+    private func persistRecoveryJournal() -> Bool {
+        guard let bootID else { return false }
+        do {
+            if let url = recoveryJournalURL {
+                if originalMappings.isEmpty {
+                    if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+                } else {
+                    let directory = url.deletingLastPathComponent()
+                    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
+                        attributes: [.posixPermissions: 0o700])
+                    let data = try JSONEncoder().encode(RecoveryJournal(bootID: bootID, mappings: originalMappings))
+                    try data.write(to: url, options: .atomic)
+                    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+                }
+                recoveryDefaults.removeObject(forKey: Self.journalKey)
+            } else if originalMappings.isEmpty {
+                recoveryDefaults.removeObject(forKey: Self.journalKey)
+            } else {
+                // Isolated defaults suites are used by injected in-memory test services.
+                recoveryDefaults.set(try JSONEncoder().encode(RecoveryJournal(bootID: bootID, mappings: originalMappings)), forKey: Self.journalKey)
+            }
+            return true
+        } catch {
+            AppLogger.shared.write("VOICE FN MAPPING journal result=failed")
+            return false
+        }
     }
 
     @discardableResult
@@ -176,6 +219,7 @@ final class RemoteVoiceFunctionMapper {
         suppressPowerKey: Bool = false,
         neutralizeVoiceKey: Bool = false
     ) -> Bool {
+        guard bootID != nil else { resetAppliedState(); return false }
         let services = serviceProvider()
         let matchedCount = services.count
         matchedServiceCount = matchedCount
@@ -196,20 +240,9 @@ final class RemoteVoiceFunctionMapper {
         }
         var appliedCountsByLocation: [UInt32: Int] = [:]
 
+        // Snapshot every service and persist once, before the first system write.
         for (index, service) in services.enumerated() {
-            guard let registryID = service.registryID else {
-                if neutralizeVoiceKey {
-                    rollback(
-                        services: services,
-                        snapshots: snapshots,
-                        appliedIndices: appliedIndices,
-                        newlyStoredRegistryIDs: newlyStoredRegistryIDs,
-                        matchedCount: matchedCount
-                    )
-                    return false
-                }
-                continue
-            }
+            guard let registryID = service.registryID else { continue }
             let current = service.readMappings()
             snapshots[index] = current
             if originalMappings[registryID] == nil {
@@ -230,7 +263,28 @@ final class RemoteVoiceFunctionMapper {
                 )
                 newlyStoredRegistryIDs.insert(registryID)
             }
-            persistRecoveryJournal() // Persist before changing a system HID property.
+        }
+        guard persistRecoveryJournal() else {
+            newlyStoredRegistryIDs.forEach { originalMappings.removeValue(forKey: $0) }
+            resetAppliedState()
+            return false
+        }
+
+        for (index, service) in services.enumerated() {
+            guard let registryID = service.registryID else {
+                if neutralizeVoiceKey {
+                    rollback(
+                        services: services,
+                        snapshots: snapshots,
+                        appliedIndices: appliedIndices,
+                        newlyStoredRegistryIDs: newlyStoredRegistryIDs,
+                        matchedCount: matchedCount
+                    )
+                    return false
+                }
+                continue
+            }
+            let current = snapshots[index] ?? service.readMappings()
             let desired = RemoteVoiceFunctionMappingPolicy.applying(
                 to: current,
                 voiceMapping: neutralizeVoiceKey
