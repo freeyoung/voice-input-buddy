@@ -85,6 +85,8 @@ Apple Silicon 选择 `*_macOS_arm64.pkg`，Intel 选择 `*_macOS_intel.pkg`。�
 | --- | --- |
 | [remote-mic-app](https://github.com/HD838A/remote-mic-app) | 遥控器连接、音频桥接、按键映射与界面的代码基础 |
 | [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | 小米 ATVV 协议、ADPCM 解码和 HID 映射参考 |
+| [mi_remote_control](https://github.com/godarrenw/mi_remote_control) | 按键动作、应用预设与故障排查的设计参考 |
+| [open-voice-bridge](https://github.com/nijez/open-voice-bridge) | 设备能力建模与语音链路诊断的设计参考 |
 | [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | 虚拟麦克风驱动 |
 | [MiRemoteVoice](https://github.com/VincentKingHsu/MiRemoteVoice) | USB transport 回环音频设备的兼容设计参考 |
 | [Sparkle](https://github.com/sparkle-project/Sparkle) 2.9.4 | macOS 应用内更新，验证一体安装包的签名 |
