@@ -10,7 +10,6 @@ final class AppSettings: ObservableObject {
         static let selectedAudioDeviceUID = "selectedAudioDeviceUID"
         static let lastKnownAudioDeviceUID = "lastKnownAudioDeviceUID"
         static let customMappingEnabled = "customMappingEnabled"
-        static let legacyExclusiveHID = "exclusiveHID"
         static let buttonBindings = "buttonBindings"
         static let buttonShortcuts = "buttonShortcuts"
         static let buttonApplicationProfileIDs = "buttonApplicationProfileIDs"
@@ -38,10 +37,6 @@ final class AppSettings: ObservableObject {
         static let chromecastVoiceMode = "chromecast.voiceMode"
         static let continuousRecordingPowerBindingBackup = "continuousRecordingPowerBindingBackup"
         static let lastLaunchedBuild = "launch.lastLaunchedBuild"
-        static let totalButtonPressCount = "usage.totalButtonPressCount"
-        static let totalVoiceDuration = "usage.totalVoiceDuration"
-        static let dailyStatistics = "usage.dailyStatistics"
-        static let voiceSessionRanking = "usage.voiceSessionRanking"
         static let trustedPhoneIdentityFingerprints = "security.trustedPhoneIdentityFingerprints"
         static let onboardingCompletedVersion = "onboarding.completedVersion"
         static let onboardingStep = "onboarding.step"
@@ -55,7 +50,6 @@ final class AppSettings: ObservableObject {
         static let onboardingVerifiedVoiceBinding = "onboarding.verifiedVoiceBinding"
         static let onboardingStagedVoiceBinding = "onboarding.stagedVoiceBinding"
         static let onboardingTrialSnapshot = "onboarding.trialSnapshot"
-        static let onboardingMigrationVersion = "onboarding.migrationVersion"
         static let firstUseEvents = "onboarding.diagnostics.events"
         static let firstUseStepStartedAt = "onboarding.diagnostics.stepStartedAt"
         static let firstUseLastSignature = "onboarding.diagnostics.lastSignature"
@@ -256,32 +250,6 @@ final class AppSettings: ObservableObject {
 
     var isLoadingRemoteProfile = false
 
-    @Published private(set) var totalButtonPressCount: UInt64 {
-        didSet {
-            defaults.set(NSNumber(value: totalButtonPressCount), forKey: Keys.totalButtonPressCount)
-        }
-    }
-
-    @Published private(set) var totalVoiceDuration: TimeInterval {
-        didSet { defaults.set(totalVoiceDuration, forKey: Keys.totalVoiceDuration) }
-    }
-
-    @Published var dailyStatistics: [String: DailyUsageStatistics] {
-        didSet {
-            if let data = try? JSONEncoder().encode(dailyStatistics) {
-                defaults.set(data, forKey: Keys.dailyStatistics)
-            }
-        }
-    }
-
-    @Published private(set) var voiceSessionRanking: [VoiceSessionUsageRecord] {
-        didSet {
-            if let data = try? JSONEncoder().encode(voiceSessionRanking) {
-                defaults.set(data, forKey: Keys.voiceSessionRanking)
-            }
-        }
-    }
-
     @Published var trustedPhoneIdentityFingerprints: Set<String> {
         didSet {
             defaults.set(
@@ -422,7 +390,6 @@ final class AppSettings: ObservableObject {
              "secondaryButtonBindings", "buttonRapidPressEnabled", "continuousRecordingPowerBindingBackup":
             "button_mapping"
         case "customApplicationProfiles": "custom_apps"
-        case "usage.dailyStatistics", "usage.voiceSessionRanking": "usage"
         case "onboarding.stagedVoiceBinding": "onboarding"
         default: "other"
         }
@@ -454,11 +421,7 @@ final class AppSettings: ObservableObject {
            !persistedAudioDeviceUID.isEmpty {
             defaults.set(persistedAudioDeviceUID, forKey: Keys.lastKnownAudioDeviceUID)
         }
-        if defaults.object(forKey: Keys.customMappingEnabled) != nil {
-            customMappingEnabled = defaults.bool(forKey: Keys.customMappingEnabled)
-        } else {
-            customMappingEnabled = defaults.bool(forKey: Keys.legacyExclusiveHID)
-        }
+        customMappingEnabled = defaults.bool(forKey: Keys.customMappingEnabled)
 
         if let decoded = Self.decodeSetting(
             [String: ButtonAction].self,
@@ -595,26 +558,6 @@ final class AppSettings: ObservableObject {
             forKey: Keys.continuousRecordingPowerBindingBackup,
             from: defaults,
             corrupted: &corruptedKeys
-        )
-        totalButtonPressCount = (
-            defaults.object(forKey: Keys.totalButtonPressCount) as? NSNumber
-        )?.uint64Value ?? 0
-        totalVoiceDuration = defaults.object(forKey: Keys.totalVoiceDuration) == nil
-            ? 0
-            : max(0, defaults.double(forKey: Keys.totalVoiceDuration))
-        dailyStatistics = Self.decodeSetting(
-            [String: DailyUsageStatistics].self,
-            forKey: Keys.dailyStatistics,
-            from: defaults,
-            corrupted: &corruptedKeys
-        ) ?? [:]
-        voiceSessionRanking = Self.normalizedVoiceSessionRanking(
-            Self.decodeSetting(
-                [VoiceSessionUsageRecord].self,
-                forKey: Keys.voiceSessionRanking,
-                from: defaults,
-                corrupted: &corruptedKeys
-            ) ?? []
         )
         trustedPhoneIdentityFingerprints = Set(
             defaults.stringArray(forKey: Keys.trustedPhoneIdentityFingerprints) ?? []

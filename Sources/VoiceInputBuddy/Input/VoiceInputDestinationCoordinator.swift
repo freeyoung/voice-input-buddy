@@ -30,6 +30,7 @@ enum VoiceInputDestinationState: Equatable {
 enum VoiceInputDestinationIntent: Equatable {
     case application(bundleIdentifier: String)
     case shortcut
+    case focusInput
 
     static func resolve(
         configured: ConfiguredButtonAction,
@@ -41,6 +42,7 @@ enum VoiceInputDestinationIntent: Equatable {
         if configured.action == .openCustomApplication, let applicationProfile {
             return .application(bundleIdentifier: applicationProfile.bundleIdentifier)
         }
+        if configured.action == .focusInput { return .focusInput }
         if configured.action == .customShortcut, configured.shortcut != nil {
             return .shortcut
         }
@@ -202,6 +204,7 @@ final class VoiceInputDestinationCoordinator {
         let initialWasSafeEditable: Bool
         var adoptedShortcutBundleIdentifier: String?
         var observedExpectedApplication = false
+        var focusOperationCompleted = false
         var waiter: ((VoiceInputDestinationWaitResult) -> Void)?
     }
 
@@ -254,6 +257,13 @@ final class VoiceInputDestinationCoordinator {
         }
         AppLogger.shared.write("VOICE DESTINATION pending request=\(requestID) intent=\(intent.logValue)")
         return requestID
+    }
+
+    func completeFocusOperation(requestID: UInt64, succeeded: Bool) {
+        guard pendingRequest?.id == requestID else { return }
+        guard succeeded else { cancelPending(reason: .actionFailed); return }
+        pendingRequest?.focusOperationCompleted = true
+        if pendingRequest?.waiter != nil { poll(requestID: requestID) }
     }
 
     func cancel(requestID: UInt64, reason: VoiceInputDestinationCancellation) {
@@ -334,6 +344,13 @@ final class VoiceInputDestinationCoordinator {
             }
             return .waiting
 
+        case .focusInput:
+            guard request.focusOperationCompleted else { return .waiting }
+            guard current.bundleIdentifier == request.initialBundleIdentifier else {
+                return .cancelled(.targetChanged)
+            }
+            return current.isSafeEditableDestination ? .ready : .waiting
+
         case .shortcut:
             if let adopted = request.adoptedShortcutBundleIdentifier {
                 guard current.bundleIdentifier == adopted else {
@@ -394,6 +411,7 @@ private extension VoiceInputDestinationIntent {
         switch self {
         case let .application(bundleIdentifier): return "application:\(bundleIdentifier)"
         case .shortcut: return "shortcut"
+        case .focusInput: return "focus_input"
         }
     }
 }

@@ -84,14 +84,12 @@ enum CorruptedSettingsNotice {
     static let buttonMappingItemKey = "settings.corrupted.item.button_mapping"
     static let customApplicationItemKey = "settings.corrupted.item.custom_application"
     static let remoteDeviceItemKey = "settings.corrupted.item.remote_device"
-    static let statisticsItemKey = "settings.corrupted.item.statistics"
     static let otherItemKey = "settings.corrupted.item.other"
 
     private static let itemKeyOrder = [
         buttonMappingItemKey,
         customApplicationItemKey,
         remoteDeviceItemKey,
-        statisticsItemKey,
         otherItemKey,
     ]
 
@@ -104,8 +102,6 @@ enum CorruptedSettingsNotice {
         "continuousRecordingPowerBindingBackup": buttonMappingItemKey,
         "customApplicationProfiles": customApplicationItemKey,
         "remoteDeviceProfiles": remoteDeviceItemKey,
-        "usage.dailyStatistics": statisticsItemKey,
-        "usage.voiceSessionRanking": statisticsItemKey,
     ]
 
     static func affectedItemKeys(for storageKeys: [String]) -> [String] {

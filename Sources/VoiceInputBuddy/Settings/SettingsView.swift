@@ -34,8 +34,8 @@ struct SettingsView: View {
     @State private var selectedSiriRemoteControlID = "select"
     @State private var selectedChromecastControlID = "select"
     @State var isMappingSelectionLocked = true
-    @State private var selectedStatisticsDate: Date?
     @State var mappingEditingTarget: ShortcutEditingTarget?
+    @State var mappingDisableEditor = MappingDisableEditor()
     @State var mappingActionFilter: MappingActionFilter = .all
     @State var shortcutCaptureTarget: ShortcutEditingTarget?
     @State var applicationShortcutCaptureProfileID: UUID?
@@ -62,7 +62,6 @@ struct SettingsView: View {
         syncEntryPointVisibility: @escaping () -> Void = {},
         appIconCatalog: AppIconCatalog? = nil,
         initialSection: SettingsSection? = nil,
-        initialShareSection: SettingsSection? = nil,
         initialMappingEditingButton: RemoteButton? = nil,
         initialMappingEditingTrigger: ButtonTrigger = .singleClick,
         initialShortcutPickerShowsKeyboard: Bool = false,

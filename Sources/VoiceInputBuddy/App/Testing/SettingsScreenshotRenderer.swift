@@ -1,3 +1,4 @@
+#if DEBUG
 import AppKit
 import SwiftUI
 
@@ -49,9 +50,6 @@ enum SettingsScreenshotRenderer {
         let showsStandardKeyboard = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SHORTCUT_MODE"
         ] == "keyboard"
-        let expandsShare = ProcessInfo.processInfo.environment[
-            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_EXPAND_SHARE"
-        ] == "1"
         let usesSiriRemote = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIRI_REMOTE"
         ] == "1"
@@ -159,7 +157,6 @@ enum SettingsScreenshotRenderer {
                 model: model,
                 updateInformation: updateInformation,
                 initialSection: section,
-                initialShareSection: section == .statistics && expandsShare ? section : nil,
                 initialMappingEditingButton: section == .mapping && opensMappingEditor ? .ok : nil,
                 initialShortcutPickerShowsKeyboard: showsStandardKeyboard
             ).environmentObject(localization))
@@ -189,7 +186,6 @@ enum SettingsScreenshotRenderer {
                 model: model,
                 updateInformation: updateInformation,
                 initialSection: section,
-                initialShareSection: section == .statistics && expandsShare ? section : nil,
                 initialMappingEditingButton: section == .mapping && opensMappingEditor
                     ? .ok
                     : nil,
@@ -316,3 +312,5 @@ enum SettingsScreenshotRenderer {
         }
     }
 }
+
+#endif

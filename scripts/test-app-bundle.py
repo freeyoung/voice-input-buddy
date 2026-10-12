@@ -17,7 +17,7 @@ class AppBundleTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / 'scripts').mkdir()
         shutil.copy2(SOURCE / 'scripts/build-app.sh', self.root / 'scripts/build-app.sh')
-        for name in ['architecture.sh','thin-framework.py']:
+        for name in ['architecture.sh','thin-framework.py','verify-dependency-checkout.py']:
             shutil.copy2(SOURCE / 'scripts' / name, self.root / 'scripts' / name)
         shutil.copy2(SOURCE / 'scripts/generate-common-phrases.py', self.root / 'scripts/generate-common-phrases.py')
         shutil.copy2(SOURCE / 'scripts/verify-onboarding-resources.py', self.root / 'scripts/verify-onboarding-resources.py')

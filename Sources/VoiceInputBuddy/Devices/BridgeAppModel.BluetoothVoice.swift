@@ -543,6 +543,7 @@ extension BridgeAppModel {
             ?? RemoteDeviceNamePolicy.observedSystemName(from: profile.customName)
     }
 
+#if DEBUG
     func configureRemoteCardsForSettingsScreenshot(
         profileIDs: Set<UUID>,
         systemNames: [UUID: String],
@@ -557,6 +558,8 @@ extension BridgeAppModel {
         remoteBatteryLevels = batteryLevels
         remotePowerStates = powerStates
     }
+
+#endif
 
     func isRemoteConnected(_ profileID: UUID) -> Bool {
         connectedRemoteProfileIDs.contains(profileID)

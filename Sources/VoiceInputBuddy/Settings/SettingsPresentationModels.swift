@@ -14,7 +14,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case buttonProfiles
     case membership
     case mapping
-    case statistics
     case commonPhrases
     case permissions
     case about
@@ -30,7 +29,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .buttonProfiles: return ""
         case .membership: return ""
         case .mapping: return "settings.section.buttons"
-        case .statistics: return "settings.section.statistics"
         case .commonPhrases: return "common_phrases.title"
         case .permissions: return "settings.section.permissions"
         case .about: return "settings.section.settings"
@@ -46,7 +44,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .buttonProfiles: return "rectangle.3.group"
         case .membership: return "crown.fill"
         case .mapping: return "keyboard"
-        case .statistics: return "person.crop.circle"
         case .commonPhrases: return "text.quote"
         case .permissions: return "shield.lefthalf.filled"
         case .about: return "gearshape"
@@ -382,54 +379,5 @@ struct VersionTapRevealCounter {
         guard tapCount >= requiredTaps else { return false }
         tapCount = 0
         return true
-    }
-}
-
-private struct StatisticsColumnsLayout: Layout {
-    let spacing: CGFloat = 14
-
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) -> CGSize {
-        guard subviews.count == 2 else { return .zero }
-
-        let width = proposal.width ?? 0
-        let availableWidth = max(0, width - spacing)
-        let rankingWidth = max(360, availableWidth * 0.42)
-        let rightWidth = max(0, availableWidth - rankingWidth)
-        let leftSize = subviews[0].sizeThatFits(
-            ProposedViewSize(width: rankingWidth, height: nil)
-        )
-        let rightSize = subviews[1].sizeThatFits(
-            ProposedViewSize(width: rightWidth, height: nil)
-        )
-        return CGSize(width: width, height: max(leftSize.height, rightSize.height))
-    }
-
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) {
-        guard subviews.count == 2 else { return }
-
-        let availableWidth = max(0, bounds.width - spacing)
-        let rankingWidth = max(360, availableWidth * 0.42)
-        subviews[0].place(
-            at: CGPoint(x: bounds.minX, y: bounds.minY),
-            anchor: .topLeading,
-            proposal: ProposedViewSize(width: rankingWidth, height: bounds.height)
-        )
-        subviews[1].place(
-            at: CGPoint(x: bounds.minX + rankingWidth + spacing, y: bounds.minY),
-            anchor: .topLeading,
-            proposal: ProposedViewSize(
-                width: max(0, availableWidth - rankingWidth),
-                height: bounds.height
-            )
-        )
     }
 }

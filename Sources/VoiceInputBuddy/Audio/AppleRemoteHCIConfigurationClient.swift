@@ -15,65 +15,71 @@ final class AppleRemoteHCIConfigurationClient {
         stop()
     }
 
+    private let scheduleTimeout: (@escaping () -> Void) -> Void
+    private let requestPreparation: ((NSXPCConnection, @escaping (Bool, String) -> Void) -> Void)?
+
+    init(scheduleTimeout: @escaping (@escaping () -> Void) -> Void = { operation in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: operation)
+    }, requestPreparation: ((NSXPCConnection, @escaping (Bool, String) -> Void) -> Void)? = nil) {
+        self.scheduleTimeout = scheduleTimeout
+        self.requestPreparation = requestPreparation
+    }
+
     func prepare(completion: @escaping (Result) -> Void) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.prepare(completion: completion) }
+            return
+        }
         guard connection == nil else {
-            completion(.failed(
-                prepared
-                    ? "configuration_already_prepared"
-                    : "configuration_in_progress"
-            ))
+            completion(.failed(prepared ? "configuration_already_prepared" : "configuration_in_progress"))
             return
         }
         let connection = NSXPCConnection(
-            machServiceName: AppleRemoteHCIConstants.machServiceName,
-            options: .privileged
+            machServiceName: AppleRemoteHCIConstants.machServiceName, options: .privileged
         )
-        AppLogger.shared.write(
-            "APPLE REMOTE HCI XPC phase=connecting service=present " +
-                Self.clientSignatureDiagnostic()
-        )
-        connection.remoteObjectInterface = NSXPCInterface(
-            with: AppleRemoteHCIServiceProtocol.self
-        )
-        connection.invalidationHandler = { [weak self] in
-            AppLogger.shared.write("APPLE REMOTE HCI XPC phase=invalidated")
-            self?.connection = nil
-            self?.prepared = false
-        }
-        connection.interruptionHandler = { [weak self] in
-            AppLogger.shared.write("APPLE REMOTE HCI XPC phase=interrupted")
-            self?.connection = nil
-            self?.prepared = false
-        }
-        connection.resume()
         self.connection = connection
-
         let latch = CompletionLatch()
-        let remote = connection.remoteObjectProxyWithErrorHandler { error in
-            guard latch.claim() else { return }
-            AppLogger.shared.write(
-                "APPLE REMOTE HCI XPC phase=failed result=remote_proxy_error " +
-                    AppLogger.errorFields(error)
-            )
-            completion(.failed(
-                "hci_helper_unreachable_\((error as NSError).code)"
-            ))
-        }
-        guard let helper = remote as? AppleRemoteHCIServiceProtocol else {
-            if latch.claim() {
-                completion(.failed("hci_helper_interface_unavailable"))
+        let finish: (Bool, String) -> Void = { [weak self, weak connection] succeeded, status in
+            let deliver = {
+                guard latch.claim() else { return }
+                guard let self, let connection, self.connection === connection else {
+                    completion(.failed("configuration_cancelled"))
+                    return
+                }
+                self.prepared = succeeded
+                if !succeeded { self.stop() }
+                completion(succeeded ? .ready : .failed(status))
             }
+            if Thread.isMainThread { deliver() }
+            else { DispatchQueue.main.async(execute: deliver) }
+        }
+        connection.remoteObjectInterface = NSXPCInterface(with: AppleRemoteHCIServiceProtocol.self)
+        let disconnected: (String) -> Void = { [weak self, weak connection] status in
+            DispatchQueue.main.async {
+                finish(false, status)
+                guard let self, let connection, self.connection === connection else { return }
+                self.prepared = false
+                self.connection = nil
+                connection.invalidate()
+            }
+        }
+        connection.invalidationHandler = { disconnected("hci_helper_invalidated") }
+        connection.interruptionHandler = { disconnected("hci_helper_interrupted") }
+        scheduleTimeout { finish(false, "hci_helper_timed_out") }
+        if let requestPreparation {
+            requestPreparation(connection, finish)
             return
         }
-        helper.prepareConfiguration { [weak self] succeeded, status in
-            guard latch.claim() else { return }
-            self?.prepared = succeeded
-            completion(succeeded ? .ready : .failed(status))
+        AppLogger.shared.write("APPLE REMOTE HCI XPC phase=connecting " + Self.clientSignatureDiagnostic())
+        connection.resume()
+        let remote = connection.remoteObjectProxyWithErrorHandler { error in
+            finish(false, "hci_helper_unreachable_\((error as NSError).code)")
         }
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 8) {
-            guard latch.claim() else { return }
-            completion(.failed("hci_helper_timed_out"))
+        guard let helper = remote as? AppleRemoteHCIServiceProtocol else {
+            finish(false, "hci_helper_interface_unavailable")
+            return
         }
+        helper.prepareConfiguration { finish($0, $1) }
     }
 
     private static func clientSignatureDiagnostic() -> String {

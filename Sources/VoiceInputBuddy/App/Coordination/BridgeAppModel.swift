@@ -45,7 +45,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var isPlayingTestTone = false
     @Published var isAudioOutputReady = false
     @Published var hasReceivedCurrentVoiceSamples = false
-    @Published var activeVoiceSource: UsageEventSource?
+    @Published var activeVoiceSource: RemoteInputSource?
     @Published var lastMobileRemoteButtonObservation: MobileRemoteButtonObservation?
     @Published var isPhoneRemoteConnectionEnabled = false
     @Published var isPhoneRemoteConnected = false
@@ -144,12 +144,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var heldVoiceKeyMode: VoiceKeyMode?
     var pendingVoiceKeyMode: VoiceKeyMode?
     var pendingCommandVoiceAudio = CommandVoiceActivationAudioBuffer()
-    var voiceSessionStartedAt: Date?
     var voiceSessionID: UUID?
     var voiceAudioDeliveryGeneration = 0
     var voiceAudioDeliveryDiagnostic = VoiceAudioDeliveryDiagnostic()
-    var voiceSessionUsageSource: UsageEventSource?
-    var voiceSessionApplicationName: String?
     var bluetoothVoiceActive = false
     var loggedBluetoothVoiceAudioDeviceIdentifier: UUID?
     var mobileVoiceLifecycle = MobileVoiceLifecycleState()
@@ -193,7 +190,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var webRemoteSessionOperationCounter: UInt64 = 0
     var webRemoteSessionIdempotencyKey: String?
     var remoteButtonTitles: [String: String] = [:]
-    var mobileButtonGestureRecognizers: [UsageEventSource: RemoteButtonGestureRecognizer] = [:]
+    var mobileButtonGestureRecognizers: [RemoteInputSource: RemoteButtonGestureRecognizer] = [:]
     var mobileDoubleClickTimers: [MobileButtonGestureKey: DispatchSourceTimer] = [:]
     var mobileLongPressTimers: [MobileButtonGestureKey: DispatchSourceTimer] = [:]
     var bluetoothBridges: [UUID: XiaomiBluetoothBridge] = [:]
@@ -258,7 +255,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var pendingAppleRemoteVoiceAudio = CommandVoiceActivationAudioBuffer(
         maximumSampleCount: 32_000
     )
-    var pendingAppleRemoteVoiceStopRequested = false
+    var pendingAppleRemoteVoiceStops = DeviceVoiceStopRequests<SiriRemoteDeviceIdentity>()
     var appleRemoteVoiceStopOperation: UInt64 = 0
     var appleRemoteVoiceCaptureRetryAttempt = 0
     var appleRemoteVoiceCaptureRetryWorkItem: DispatchWorkItem?
@@ -722,6 +719,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         commonPhrases.close(reason: "app_stop")
         resetAllAppleRemoteState(reason: "app_stop")
         pendingAppleRemoteVoiceStarts.removeAll()
+        pendingAppleRemoteVoiceStops.removeAll()
         appleRemoteVoiceDevices.removeAll()
         appleRemoteVoiceStopping = false
         appleRemoteVoiceStopOperation &+= 1
@@ -779,8 +777,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         if cancelledPendingRestart {
             completion?(.unavailable)
         }
-        voiceSessionUsageSource = nil
-        voiceSessionApplicationName = nil
         releaseVoiceKeyIfNeeded()
         stopHIDMonitors()
         isAudioOutputReady = false

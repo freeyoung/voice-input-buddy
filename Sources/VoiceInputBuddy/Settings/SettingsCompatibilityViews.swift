@@ -80,9 +80,14 @@ enum CompatibilityButtonStyle {
 }
 
 enum SettingsVisualRenderingPolicy {
+#if DEBUG
     static let isScreenshotHarness = ProcessInfo.processInfo.environment[
         "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"
     ] != nil
+
+#else
+    static let isScreenshotHarness = false
+#endif
 
     static var usesNativeGlass: Bool { !isScreenshotHarness }
 }

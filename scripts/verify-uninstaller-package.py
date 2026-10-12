@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 
 package = Path(sys.argv[1])
 root = Path(__file__).resolve().parent
+metadata = dict(line.split('=', 1) for line in subprocess.check_output(
+    [str(root / 'release-metadata.sh')], text=True).splitlines())
 with tempfile.TemporaryDirectory() as directory:
     expanded = Path(directory) / 'expanded'
     subprocess.run(['pkgutil', '--expand-full', str(package), str(expanded)], check=True)
@@ -24,6 +26,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert choices['data'].get('start_selected') == 'true'
     for component in ['system', 'data']:
         info = ET.parse(expanded / f'{component}.pkg/PackageInfo')
+        assert info.getroot().get('version') == metadata['RELEASE_PACKAGE_VERSION']
         assert info.find('payload') is None or info.find('payload').get('numberOfFiles') == '0'
         scripts = expanded / f'{component}.pkg/Scripts'
         for file in scripts.iterdir():

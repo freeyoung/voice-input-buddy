@@ -65,19 +65,20 @@ struct ProductBoundaryTests {
         }
     }
 
-    @Test @MainActor func usageEventsNeverPersistCounters() throws {
+    @Test @MainActor func configurationOperationsPersistPreferencesWithoutUsageData() throws {
         let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
-        let buttonCount = settings.totalButtonPressCount
-        let duration = settings.totalVoiceDuration
-        settings.recordButtonPress()
-        settings.recordVoiceDuration(12.5)
-        #expect(settings.totalButtonPressCount == buttonCount)
-        #expect(settings.totalVoiceDuration == duration)
-        #expect(defaults.object(forKey: "usage.totalButtonPressCount") == nil)
-        #expect(defaults.object(forKey: "usage.totalVoiceDuration") == nil)
+        settings.setAction(.commandCopy, for: .right)
+        settings.gainDB = 12
+        try settings.importConfiguration(from: settings.exportedConfigurationData())
+        _ = settings.recordLaunchAndDetectCompletedUpdate(currentBuild: "80", sparkleHadLaunchedBefore: false)
+        let persisted = defaults.persistentDomain(forName: suite) ?? [:]
+        #expect(!persisted.isEmpty)
+        #expect(persisted.keys.allSatisfy { !$0.hasPrefix("usage.") })
+        let exported = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
+        #expect(exported.keys.allSatisfy { !$0.hasPrefix("usage.") })
     }
 
     @Test @MainActor func everySetupScreenshotAndRemoteIllustrationDecodes() throws {
@@ -106,7 +107,6 @@ struct ProductBoundaryTests {
         )
         #expect(sections.contains(.mapping))
         #expect(sections.contains(.connection))
-        #expect(!sections.contains(.statistics))
         #expect(!SettingsSection.allCases.map(\.rawValue).contains("transcripts"))
         #expect(!sections.contains(.membership))
     }

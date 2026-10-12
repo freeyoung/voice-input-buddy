@@ -179,7 +179,7 @@ struct SessionRecoveryTests {
         #expect(writes == before)
     }
 
-    @Test func legacyImportPreservesFieldsAbsentFromSnapshot() throws {
+    @Test func legacyImportPreservesApplicationLibraryButReplacesMappingOverrides() throws {
         let (values, name) = defaults()
         defer { values.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: values)
@@ -194,7 +194,7 @@ struct SessionRecoveryTests {
         object["formatVersion"] = 1
         try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
         #expect(settings.customApplicationProfiles == [profile])
-        #expect(settings.unifiedBaseBindings == [binding])
+        #expect(settings.unifiedBaseBindings.isEmpty)
         object["customApplicationProfiles"] = []
         object["unifiedBaseBindings"] = []
         try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))

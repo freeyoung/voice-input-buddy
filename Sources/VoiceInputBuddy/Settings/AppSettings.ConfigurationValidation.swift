@@ -150,6 +150,9 @@ extension AppSettings {
     }
 
     static func validatedConfiguration(from data: Data) throws -> PersonalizedConfiguration {
+        guard data.count <= ConfigurationFileReader.maximumBytes else {
+            throw AppConfigurationError.fileTooLarge
+        }
         let configuration = try JSONDecoder().decode(PersonalizedConfiguration.self, from: data)
         guard [1, 2].contains(configuration.formatVersion) else {
             throw AppConfigurationError.unsupportedVersion

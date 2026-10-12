@@ -63,16 +63,8 @@ extension SettingsView {
         } label: {
             VStack(spacing: 7) {
                 ZStack(alignment: .topTrailing) {
-                    if section == .statistics {
-                        Image(nsImage: appIconCatalog.image(for: settings.appIconIdentifier))
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 28, height: 28)
-                            .accessibilityHidden(true)
-                    } else {
-                        Image(systemName: sectionSystemImage(section))
-                            .font(.system(size: 21, weight: .semibold))
-                    }
+                    Image(systemName: sectionSystemImage(section))
+                        .font(.system(size: 21, weight: .semibold))
                     if SettingsPageBehavior.showsUpdateBadge(
                         for: section,
                         hasUnseenUpdate: updateInformation.hasUnseenUpdate
@@ -89,9 +81,6 @@ extension SettingsView {
                     || section == .buttonProfiles
                     || section == .membership {
                     Text(sectionTitle(section))
-                        .font(.system(size: 13, weight: .semibold))
-                } else if section == .statistics {
-                    Text(membershipFeature.accountDisplayName ?? localization.text("settings.section.login"))
                         .font(.system(size: 13, weight: .semibold))
                 } else {
                     Text(section.title)
@@ -196,15 +185,17 @@ extension SettingsView {
                 aboutPage
             }
         case .mapping:
-            if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
-                mappingPage
-            } else if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
-                mappingPage
+            if let device = settings.selectedRemoteProfile,
+               device.model.isAppleSiriRemote || device.model.isChromecastRemote {
+                settingsPage {
+                    PageHeader(title: localization.text("button_mapping.page.title"))
+                } content: {
+                    Text(localization.text("button_mapping.unsupported_device"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             } else {
                 mappingPage
             }
-        case .statistics:
-            aboutPage
         case .commonPhrases:
             CommonPhraseSettingsView(store: model.commonPhraseStore) {
                 selectedSection = .mapping

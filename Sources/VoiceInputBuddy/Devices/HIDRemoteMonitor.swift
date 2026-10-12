@@ -1351,7 +1351,7 @@ final class HIDRemoteMonitor {
         appSwitcherConfirmationProbe = nil
         appSwitcherOriginBundleIdentifier = nil
         if !activeDeviceIsSeized {
-            for usage in activeUsages {
+            for usage in activeUsages.subtracting(nativePassthroughUsages) {
                 if let button = RemoteButton.usageMap[usage] {
                     eventSuppressor.arm(button: button, edge: .up)
                 }

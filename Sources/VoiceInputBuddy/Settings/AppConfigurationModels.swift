@@ -20,6 +20,7 @@ struct ConfigurationImportReport: Equatable {
 
 enum AppConfigurationError: Error {
     case unsupportedVersion
+    case fileTooLarge
     case invalidValues
     case unsafeVoiceKeyChange
 }
@@ -58,4 +59,21 @@ struct PersonalizedConfiguration: Codable {
     let voiceFnTapModeEnabled: Bool?
     let voiceKeyMode: VoiceKeyMode?
     let continuousRecordingPowerBindingBackup: ConfiguredButtonAction?
+}
+
+/// Reads at most the limit plus one byte, including growing files and streams.
+enum ConfigurationFileReader {
+    static let maximumBytes = 2 * 1024 * 1024
+
+    static func read(from url: URL) throws -> Data {
+        let file = try FileHandle(forReadingFrom: url)
+        defer { try? file.close() }
+        var data = Data()
+        while data.count <= maximumBytes {
+            guard let chunk = try file.read(upToCount: min(64 * 1024, maximumBytes + 1 - data.count)),
+                  !chunk.isEmpty else { return data }
+            data.append(chunk)
+        }
+        throw AppConfigurationError.fileTooLarge
+    }
 }

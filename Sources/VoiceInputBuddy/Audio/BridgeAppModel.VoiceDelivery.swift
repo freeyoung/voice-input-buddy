@@ -77,8 +77,7 @@ extension BridgeAppModel {
             statusMessage: LocalizedMessage("audio.test_tone.blocked_voice_active"),
             logReason: "voice_start"
         )
-        let startedAt = Date()
-        let source = currentVoiceUsageSource
+        let source = currentVoiceSource
         let sessionID = UUID()
         voiceAudioDeliveryGeneration &+= 1
         let audioSnapshot = audioOutput.diagnosticSnapshot(
@@ -92,10 +91,7 @@ extension BridgeAppModel {
             countersAtStart: audioSnapshot.counters
         )
         activeVoiceSource = source
-        settings.recordButtonPress(control: .voice, source: source, at: startedAt)
-        voiceSessionStartedAt = startedAt
         voiceSessionID = sessionID
-        voiceSessionUsageSource = source
         isStreaming = true
     }
 
@@ -108,19 +104,6 @@ extension BridgeAppModel {
               activeMobileVoiceSource == nil,
               isStreaming
         else { return }
-        let endedAt = Date()
-        if let voiceSessionStartedAt {
-            settings.recordVoiceDuration(
-                endedAt.timeIntervalSince(voiceSessionStartedAt),
-                startedAt: voiceSessionStartedAt,
-                source: voiceSessionUsageSource ?? .unknown,
-                applicationName: voiceSessionApplicationName,
-                at: endedAt
-            )
-            self.voiceSessionStartedAt = nil
-        }
-        voiceSessionUsageSource = nil
-        voiceSessionApplicationName = nil
         voiceSessionID = nil
         voiceAudioDeliveryDiagnostic.sessionEnded = true
         voiceAudioDeliveryDiagnostic.outputAtObservation = audioOutput.diagnosticSnapshot(
@@ -137,7 +120,7 @@ extension BridgeAppModel {
         chromecastFeature.notifyHostVoiceSessionEnded()
     }
 
-    private var currentVoiceUsageSource: UsageEventSource {
+    private var currentVoiceSource: RemoteInputSource {
         if bluetoothVoiceActive || !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping
             || chromecastVoiceActive || chromecastVoiceStopping {
             return .bluetoothRemote

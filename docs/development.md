@@ -84,3 +84,13 @@ Fn 释放失败时不会调用“清理完成”回调或立即重入映射，�
 向导专用的焦点 modifier 直接在导航页面使用，不再给整个模块的 View 增加扩展方法。
 
 本地资源定位根据 Package.swift 与 Resources 目录查找，不依赖源码所在层级。打包资源检查递归扫描整个 Sources/VoiceInputBuddy，以覆盖位于 Integrations 等其他功能目录的向导截图引用；同时检查 Onboarding 源码仍存在，没有源码时直接失败，不能静默跳过。`scripts/test-app-bundle.py` 用隔离的编译/签名 fixture 验证嵌套指南缺图时保留已有 App，不需要安装真实驱动。
+
+### Unsupported remote integrations
+
+The public macOS product currently supports Xiaomi remotes. Phone, watch, Web Remote,
+Siri Remote and Chromecast adapters are dormant scaffolding, not supported connections.
+Their management panels are deliberately absent from the shipped connection page.
+AppleRemoteHCIService and VoiceInputBuddyAppleRemoteAudioCapture are experimental build
+targets used by protocol tests; build-app.sh does not bundle or install these helpers.
+Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
+Screenshot fixture entry points are debug-only.

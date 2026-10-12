@@ -210,7 +210,12 @@ private final class CaptureServer {
     private let queue = DispatchQueue(label: "VoiceInputBuddy.appleRemoteAudio.capture")
     private var listener: NWListener?
     private var connection: NWConnection?
-    private var commandBuffer = Data()
+    private final class Candidate {
+        let connection: NWConnection
+        var buffer = Data()
+        init(_ connection: NWConnection) { self.connection = connection }
+    }
+    private var candidates: [ObjectIdentifier: Candidate] = [:]
     private var voiceController: AppleRemoteVoiceController?
     private var capturing = false
     private var authorized = false
@@ -244,49 +249,62 @@ private final class CaptureServer {
         }
     }
 
-    private func accept(_ connection: NWConnection) {
-        stopCapture()
-        self.connection?.cancel()
-        commandBuffer.removeAll(keepingCapacity: false)
-        self.connection = connection
-        authorized = false
-        connection.stateUpdateHandler = { [weak self, weak connection] state in
-            guard let self, let connection, self.connection === connection else { return }
-            if case .failed = state {
-                self.stopCapture()
-                self.commandBuffer.removeAll(keepingCapacity: false)
-                self.authorized = false
-                self.connection = nil
-            }
+    private func accept(_ incoming: NWConnection) {
+        // A newcomer must authenticate before it owns any capture state. Never
+        // replace an established session, even with a second valid hello.
+        guard connection == nil, candidates.count < 4 else { incoming.cancel(); return }
+        let candidate = Candidate(incoming)
+        let id = ObjectIdentifier(incoming)
+        candidates[id] = candidate
+        incoming.stateUpdateHandler = { [weak self, weak incoming] state in
+            guard let self, let incoming else { return }
+            if case .failed = state { self.close(incoming) }
         }
-        connection.start(queue: queue)
-        receive()
+        incoming.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + 3) { [weak self, weak incoming] in
+            guard let self, let incoming, self.connection !== incoming else { return }
+            self.close(incoming)
+        }
+        receive(candidate)
     }
 
-    private func receive() {
-        guard let receivingConnection = connection else { return }
-        receivingConnection.receive(minimumIncompleteLength: 1, maximumLength: 4 * 1024) { [weak self] data, _, isComplete, error in
-            guard let self, self.connection === receivingConnection else { return }
+    private func close(_ incoming: NWConnection) {
+        if connection === incoming {
+            stopCapture()
+            connection = nil
+            authorized = false
+        }
+        candidates.removeValue(forKey: ObjectIdentifier(incoming))
+        incoming.cancel()
+    }
+
+    private func receive(_ candidate: Candidate) {
+        let incoming = candidate.connection
+        incoming.receive(minimumIncompleteLength: 1, maximumLength: 4 * 1024) { [weak self] data, _, isComplete, error in
+            guard let self, self.candidates[ObjectIdentifier(incoming)] === candidate else { return }
             if let data, !data.isEmpty {
-                self.commandBuffer.append(data)
+                candidate.buffer.append(data)
                 do {
-                    for frame in try AppleRemoteAudioIPC.decodeFrames(buffer: &self.commandBuffer, maximumLength: 4 * 1024) {
+                    for frame in try AppleRemoteAudioIPC.decodeFrames(buffer: &candidate.buffer, maximumLength: 4 * 1024) {
+                        if self.connection !== incoming {
+                            guard self.connection == nil, frame.kind == .hello,
+                                  String(data: frame.payload, encoding: .utf8) == self.token else {
+                                self.close(incoming)
+                                return
+                            }
+                            self.connection = incoming
+                            self.authorized = true
+                            // Cancel other pending handshakes without disturbing this owner.
+                            for other in Array(self.candidates.values) where other !== candidate {
+                                self.close(other.connection)
+                            }
+                        }
                         self.handle(frame)
                     }
-                } catch {
-                    self.stopCapture()
-                    receivingConnection.cancel()
-                    self.connection = nil
-                    return
-                }
+                } catch { self.close(incoming); return }
             }
-            if isComplete || error != nil {
-                self.stopCapture()
-                self.commandBuffer.removeAll(keepingCapacity: false)
-                self.authorized = false
-                receivingConnection.cancel()
-                self.connection = nil
-            } else { self.receive() }
+            if isComplete || error != nil { self.close(incoming) }
+            else { self.receive(candidate) }
         }
     }
 
@@ -295,7 +313,7 @@ private final class CaptureServer {
         case .hello:
             guard String(data: frame.payload, encoding: .utf8) == token else {
                 sendStatus("unauthorized")
-                connection?.cancel()
+                if let connection { close(connection) }
                 return
             }
             authorized = true
