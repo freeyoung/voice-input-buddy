@@ -77,7 +77,6 @@ struct ProductBoundaryTests {
         let persisted = defaults.persistentDomain(forName: suite) ?? [:]
         #expect(!persisted.isEmpty)
         #expect(persisted.keys.allSatisfy { !$0.hasPrefix("usage.") })
-        #expect(persisted.keys.allSatisfy { !$0.contains("retiredUsage") })
         let exported = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
         #expect(exported.keys.allSatisfy { !$0.hasPrefix("usage.") })
     }

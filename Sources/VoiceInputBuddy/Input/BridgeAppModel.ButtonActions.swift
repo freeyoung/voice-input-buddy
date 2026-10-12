@@ -235,7 +235,6 @@ extension BridgeAppModel {
         guard performExternalConfiguredAction(configured) else {
             return false
         }
-
         AppLogger.shared.write(
             "PHONE REMOTE button=\(button.rawValue) trigger=\(trigger.rawValue) " +
                 "action=\(configured.action.rawValue)"

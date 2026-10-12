@@ -387,7 +387,6 @@ extension BridgeAppModel {
             }
             self.selectRemoteProfile(resolvedProfileID)
             self.lastRemoteButtonPress = button
-
             if self.macroFeature.isEditorActive {
                 AppLogger.shared.write(
                     "HID BUTTON button=\(button.rawValue) path=binding_editor_capture"

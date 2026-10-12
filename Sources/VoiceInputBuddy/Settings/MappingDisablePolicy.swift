@@ -5,6 +5,7 @@ enum MappingDisablePolicy {
                               backup: ConfiguredButtonAction?, button: RemoteButton,
                               trigger: ButtonTrigger) -> ConfiguredButtonAction {
         if disabling { return .disabled }
+        if current.action != .disabled { return current }
         if let backup, backup.action != .disabled { return backup }
         // A previously disabled slot has no action to restore. Use the device default
         // for a click, or an unconfigured shortcut (no key injection) for other gestures.

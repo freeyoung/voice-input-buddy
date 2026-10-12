@@ -220,4 +220,22 @@ struct ReviewRuntimeRegressionTests {
         #expect(AppSettings(defaults: defaults).configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .arrowRight)
     }
 
+    @Test(arguments: [ButtonTrigger.singleClick, .doubleClick, .longPress])
+    func redundantEnablePreservesTheEntireCurrentBinding(trigger: ButtonTrigger) {
+        let current = ConfiguredButtonAction(action: .openCustomApplication, shortcut: nil,
+            applicationProfileID: UUID(), macroID: "current-metadata")
+        for backup: ConfiguredButtonAction? in [nil, .disabled, .init(action: .escape, shortcut: nil)] {
+            #expect(MappingDisablePolicy.configuration(disabling: false, current: current,
+                backup: backup, button: .right, trigger: trigger) == current)
+        }
+    }
+
+    @Test func editorEnableDoesNotReplaceNewActionWithItsStaleBackup() {
+        let scope = MappingDisableScope(deviceID: UUID(), mappingProfileID: UUID(), button: .right, trigger: .singleClick)
+        var editor = MappingDisableEditor()
+        _ = editor.configuration(disabling: true, current: .init(action: .commandCopy, shortcut: nil), scope: scope)
+        let updated = ConfiguredButtonAction(action: .commandPaste, shortcut: nil)
+        #expect(editor.configuration(disabling: false, current: updated, scope: scope) == updated)
+    }
+
 }
