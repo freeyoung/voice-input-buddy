@@ -113,7 +113,7 @@ extension OnboardingView {
         )
     }
 
-    func selectedControlAccepts(_ source: UsageEventSource) -> Bool {
+    func selectedControlAccepts(_ source: RemoteInputSource) -> Bool {
         switch settings.onboardingControlMethod {
         case .iPhoneApp:
             return source == .nearbyPhone
@@ -124,7 +124,7 @@ extension OnboardingView {
         }
     }
 
-    func selectedControlAcceptsVoice(_ source: UsageEventSource?) -> Bool {
+    func selectedControlAcceptsVoice(_ source: RemoteInputSource?) -> Bool {
         switch settings.onboardingControlSource {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return source == .bluetoothRemote &&

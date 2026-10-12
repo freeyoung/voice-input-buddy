@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -33,5 +34,13 @@ class CheckoutTests(unittest.TestCase):
             source.write_text('patched\n')
             (repo / 'unexpected.c').write_text('untracked\n')
             with self.assertRaises(ValueError): module.verify(repo, patch)
+
+    def test_invalid_argument_count_reports_usage_without_traceback(self):
+        script = Path(__file__).with_name('verify-dependency-checkout.py')
+        for arguments in [[], ['one', 'two', 'three']]:
+            result = subprocess.run([sys.executable, str(script), *arguments], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('usage:', result.stderr.lower())
+            self.assertNotIn('Traceback', result.stderr)
 
 if __name__ == '__main__': unittest.main()

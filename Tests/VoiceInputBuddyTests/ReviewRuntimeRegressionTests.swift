@@ -59,21 +59,6 @@ struct ReviewRuntimeRegressionTests {
         monitor.disconnectSimulatedDevice()
     }
 
-    @Test func retiredStatisticsArePurgedWithoutReadingThem() {
-        let (defaults, name) = values()
-        defer { defaults.removePersistentDomain(forName: name) }
-        let keys = ["usage.totalButtonPressCount", "usage.totalVoiceDuration", "usage.dailyStatistics", "usage.voiceSessionRanking"]
-        for key in keys { defaults.set(Data([255]), forKey: key); defaults.set(Data([255]), forKey: key + ".corrupt") }
-        let settings = AppSettings(defaults: defaults)
-        #expect(settings.totalButtonPressCount == 0)
-        #expect(settings.totalVoiceDuration == 0)
-        #expect(settings.dailyStatistics.isEmpty)
-        #expect(settings.voiceSessionRanking.isEmpty)
-        #expect(settings.corruptedSettingKeys.isEmpty)
-        settings.recordButtonPress()
-        for key in keys { #expect(defaults.object(forKey: key) == nil); #expect(defaults.object(forKey: key + ".corrupt") == nil) }
-    }
-
     @Test func v1ImportReplacesExistingUnifiedOverrides() throws {
         let (defaults, name) = values()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -189,6 +174,50 @@ struct ReviewRuntimeRegressionTests {
         client.prepare { #expect($0 == .ready) }
         #expect(connections.count == 2)
         client.stop()
+    }
+
+    @Test func mappingToggleRestoresOnlyItsOwnDeviceProfileButtonAndGesture() {
+        let device = UUID(), profile = UUID()
+        let scopes = [
+            MappingDisableScope(deviceID: device, mappingProfileID: profile, button: .right, trigger: .singleClick),
+            MappingDisableScope(deviceID: UUID(), mappingProfileID: profile, button: .right, trigger: .singleClick),
+            MappingDisableScope(deviceID: device, mappingProfileID: UUID(), button: .right, trigger: .singleClick),
+            MappingDisableScope(deviceID: device, mappingProfileID: profile, button: .left, trigger: .singleClick),
+            MappingDisableScope(deviceID: device, mappingProfileID: profile, button: .right, trigger: .doubleClick),
+        ]
+        let actions: [ButtonAction] = [.commandCopy, .commandPaste, .commandFind, .commandQuit, .returnKey]
+        var editor = MappingDisableEditor()
+        for (scope, action) in zip(scopes, actions) {
+            #expect(editor.configuration(disabling: true, current: .init(action: action, shortcut: nil), scope: scope) == .disabled)
+            // Repeated disable notifications must not overwrite the stored action.
+            _ = editor.configuration(disabling: true, current: .disabled, scope: scope)
+        }
+        for (scope, action) in zip(scopes, actions) {
+            #expect(editor.configuration(disabling: false, current: .disabled, scope: scope).action == action)
+        }
+    }
+
+    @Test func mappingToggleSavesDisabledAndRestoredBindingsAndRebuiltEditorUsesDefault() {
+        let (defaults, name) = values()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        let scope = MappingDisableScope(deviceID: nil, mappingProfileID: nil, button: .right, trigger: .singleClick)
+        settings.setBaseBinding(.init(action: .commandCopy, shortcut: nil), for: .right, trigger: .singleClick, profileID: nil)
+        var editor = MappingDisableEditor()
+        func toggle(_ disabled: Bool) {
+            let replacement = editor.configuration(disabling: disabled,
+                current: settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil), scope: scope)
+            settings.setBaseBinding(replacement, for: .right, trigger: .singleClick, profileID: nil)
+        }
+        toggle(true)
+        #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil) == .disabled)
+        toggle(false)
+        #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .commandCopy)
+        toggle(true)
+        editor = MappingDisableEditor()
+        toggle(false)
+        #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .arrowRight)
+        #expect(AppSettings(defaults: defaults).configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .arrowRight)
     }
 
 }

@@ -9,7 +9,7 @@ import BuddyRemoteCore
 extension BridgeAppModel {
     func performPhoneCommand(
         _ button: RemoteButton,
-        source: UsageEventSource,
+        source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
         guard source != .nearbyPhone || membershipFeature.canStartCompanionConnection else {
@@ -34,7 +34,7 @@ extension BridgeAppModel {
         return performMobileConfiguredAction(for: button, trigger: .singleClick, source: source, phraseSource: phraseSource)
     }
 
-    func observeMobileButton(_ button: RemoteButton, source: UsageEventSource) {
+    func observeMobileButton(_ button: RemoteButton, source: RemoteInputSource) {
         lastMobileRemoteButtonObservation = MobileRemoteButtonObservation(
             source: source,
             button: button
@@ -44,7 +44,7 @@ extension BridgeAppModel {
     func handleMobileButtonEvent(
         _ button: RemoteButton,
         phase: RemoteButtonPhase,
-        source: UsageEventSource,
+        source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
         if phase == .press && source == .nearbyPhone && !membershipFeature.canStartCompanionConnection {
@@ -116,7 +116,7 @@ extension BridgeAppModel {
 
     private func processMobileGestureCommands(
         _ commands: [RemoteButtonGestureRecognizer.Command],
-        source: UsageEventSource,
+        source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
         for command in commands {
@@ -149,7 +149,7 @@ extension BridgeAppModel {
 
     private func scheduleMobileDoubleClickTimeout(
         for button: RemoteButton,
-        source: UsageEventSource,
+        source: RemoteInputSource,
         phraseSource: String? = nil
     ) {
         let key = MobileButtonGestureKey(source: source, button: button)
@@ -170,7 +170,7 @@ extension BridgeAppModel {
 
     private func scheduleMobileLongPressTimeout(
         for button: RemoteButton,
-        source: UsageEventSource,
+        source: RemoteInputSource,
         phraseSource: String? = nil
     ) {
         let key = MobileButtonGestureKey(source: source, button: button)
@@ -189,7 +189,7 @@ extension BridgeAppModel {
         timer.resume()
     }
 
-    func resetMobileButtonGestures(source: UsageEventSource, phraseSource: String? = nil) {
+    func resetMobileButtonGestures(source: RemoteInputSource, phraseSource: String? = nil) {
         commonPhrases.reset(source: phraseSource ?? "mobile:\(source.rawValue)")
         let doubleClickKeys = mobileDoubleClickTimers.keys.filter { $0.source == source }
         doubleClickKeys.forEach {
@@ -205,7 +205,7 @@ extension BridgeAppModel {
     private func performMobileConfiguredAction(
         for button: RemoteButton,
         trigger: ButtonTrigger,
-        source: UsageEventSource,
+        source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
         if performButtonProfileBoundAction(
@@ -214,7 +214,6 @@ extension BridgeAppModel {
             trigger: trigger,
             source: phraseSource ?? "mobile:\(source.rawValue)"
         ) {
-            settings.recordButtonPress(control: .remoteButton(button), source: source)
             AppLogger.shared.write(
                 "PHONE REMOTE button=\(button.rawValue) trigger=\(trigger.rawValue) action=private_feature"
             )
@@ -223,9 +222,6 @@ extension BridgeAppModel {
         let configured = settings.configuredAction(for: button, trigger: trigger)
         if configured.action.isAppInternal {
             let handled = performInternalAction(configured.action, source: phraseSource ?? "mobile:\(source.rawValue)")
-            if handled {
-                settings.recordButtonPress(control: .remoteButton(button), source: source)
-            }
             AppLogger.shared.write(
                 "PHONE REMOTE button=\(button.rawValue) trigger=\(trigger.rawValue) " +
                     "action=\(configured.action.rawValue) handled=\(handled)"
@@ -239,7 +235,7 @@ extension BridgeAppModel {
         guard performExternalConfiguredAction(configured) else {
             return false
         }
-        settings.recordButtonPress(control: .remoteButton(button), source: source)
+
         AppLogger.shared.write(
             "PHONE REMOTE button=\(button.rawValue) trigger=\(trigger.rawValue) " +
                 "action=\(configured.action.rawValue)"

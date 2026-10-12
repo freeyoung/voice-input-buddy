@@ -12,3 +12,23 @@ enum MappingDisablePolicy {
             ? AppSettings.defaultBindings[button] ?? .customShortcut : .customShortcut, shortcut: nil)
     }
 }
+
+/// A typed editor scope prevents another device, profile, button or gesture from
+/// restoring this slot's action. Backups intentionally live only with the view.
+struct MappingDisableScope: Hashable {
+    let deviceID: UUID?
+    let mappingProfileID: UUID?
+    let button: RemoteButton
+    let trigger: ButtonTrigger
+}
+
+struct MappingDisableEditor {
+    private var backups: [MappingDisableScope: ConfiguredButtonAction] = [:]
+
+    mutating func configuration(disabling: Bool, current: ConfiguredButtonAction,
+                                scope: MappingDisableScope) -> ConfiguredButtonAction {
+        if disabling, current.action != .disabled { backups[scope] = current }
+        return MappingDisablePolicy.configuration(disabling: disabling, current: current,
+            backup: backups[scope], button: scope.button, trigger: scope.trigger)
+    }
+}

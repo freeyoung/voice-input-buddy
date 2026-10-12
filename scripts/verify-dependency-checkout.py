@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reject local dependency edits; permit only the exact checked-in driver patch."""
+import argparse
 import os
 from pathlib import Path
 import subprocess
@@ -27,7 +28,11 @@ def verify(repository, patch=None):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('repository', type=Path, help='dependency Git checkout')
+    parser.add_argument('patch', type=Path, nargs='?', help='permitted product patch')
+    arguments = parser.parse_args()
     try:
-        verify(Path(sys.argv[1]), Path(sys.argv[2]) if len(sys.argv) == 3 else None)
+        verify(arguments.repository, arguments.patch)
     except (ValueError, subprocess.CalledProcessError) as error:
         sys.exit(str(error))

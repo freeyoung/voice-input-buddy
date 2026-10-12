@@ -554,7 +554,6 @@
 "settings.diagnostics.title" = "Diagnostics & Logs";
 "settings.application_updates.title" = "App & Updates";
 "settings.application.tagline" = "Voice within reach";
-"settings.section.statistics" = "Profile";
 "settings.section.login" = "Me";
 "settings.section.transcripts" = "Reflections";
 "about.page.subtitle" = "View version, updates, language, and app display options";
@@ -572,36 +571,6 @@
 "about.page.hero_subtitle" = "Version, preferences, and support for your wireless voice workspace";
 "about.page.hero_description" = "Turn your remote into an always-ready voice and shortcut controller for your Mac.";
 "about.privacy.local_only" = "Data stays on this Mac";
-"statistics.page.title" = "Profile";
-"statistics.page.subtitle" = "See your local usage at a glance";
-"statistics.summary.title" = "View By";
-"statistics.summary.description" = "See daily or weekly trends, or only the all-time totals.";
-"statistics.metric.button_count" = "Button Presses";
-"statistics.metric.voice_duration" = "Time Spent Speaking";
-"statistics.period.today" = "Day";
-"statistics.period.this_week" = "Week";
-"statistics.period.total" = "All";
-"statistics.chart.last_seven_days" = "Last 7 Days";
-"statistics.chart.weekly_history" = "Recent 7 Weeks + Earlier";
-"statistics.chart.earlier" = "Earlier";
-"statistics.voice_ranking.title" = "Longest Voice Sessions";
-"statistics.voice_ranking.description" = "Stored only on this Mac. Shows your 10 longest voice sessions.";
-"statistics.voice_ranking.empty" = "Complete a voice session to start your local ranking.";
-"statistics.metric.total_button_count" = "Total Button Presses";
-"statistics.metric.total_voice_duration" = "Total Speaking Time";
-"statistics.metric.week_button_count" = "Button Presses This Week";
-"statistics.metric.longest_voice" = "Longest Voice Session";
-"statistics.metric.count_unit" = "times";
-"statistics.ranking.title" = "Rankings";
-"statistics.ranking.actions" = "Most-Used Shortcuts and Actions";
-"statistics.ranking.buttons" = "Most-Used Remote Buttons";
-"statistics.ranking.voice_sessions" = "Longest Voice Sessions";
-"statistics.ranking.unknown_app" = "Unknown App";
-"statistics.ranking.empty" = "No data to show yet.";
-"statistics.ranking.view_all" = "View all Reflections";
-"statistics.calendar.title" = "Usage Calendar";
-"statistics.calendar.hint" = "Click a day or record to open Reflections";
-"statistics.calendar.open_reflections" = "Open in Reflections";
 "about.configuration.title" = "Your Settings";
 "about.configuration.description" = "Transfer audio, button, shortcut, language, appearance, startup, and update settings to another Mac.";
 "about.configuration.export" = "Export Configuration…";
@@ -671,12 +640,6 @@
 "update.completed.message" = "Successfully updated to version %1$@.";
 "update.prerelease.feed_unavailable.title" = "Unable to Check Pre-release Updates";
 "update.prerelease.feed_unavailable.message" = "The latest candidate information is unavailable. Check your network and try again. Stable updates are unaffected.";
-"usage.duration.hours_minutes" = "%1$@ hr %2$@ min";
-"usage.duration.minutes_seconds" = "%1$@ min %2$@ sec";
-"usage.duration.seconds" = "%1$@ sec";
-"usage.duration.compact_hours" = "%1$@h";
-"usage.duration.compact_minutes" = "%1$@m";
-"usage.duration.compact_seconds" = "%1$@s";
 "configuration.export.panel_title" = "Export Settings";
 "configuration.export.prompt" = "Export";
 "configuration.export.success" = "Configuration exported";
@@ -1070,7 +1033,6 @@
 "settings.corrupted.item.button_mapping" = "remote button mappings";
 "settings.corrupted.item.custom_application" = "custom application actions";
 "settings.corrupted.item.remote_device" = "remote device profiles";
-"settings.corrupted.item.statistics" = "usage statistics";
 "settings.corrupted.item.other" = "other settings";
 
 "action.combination_action" = "Action Sequence";
@@ -1255,3 +1217,5 @@
 "common_phrases.key.ok" = "Select button";
 
 "button_mapping.unsupported_device" = "This remote is not supported yet. Select a Xiaomi remote to configure its buttons.";
+
+"button_mapping.action.disable_restore_scope" = "Re-enabling restores the previous action while this settings window stays open. After closing it, a click uses the button default; double-click and long-press actions must be selected again.";

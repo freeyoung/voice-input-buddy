@@ -211,12 +211,12 @@ struct SessionRecoveryRegressionTests {
         #expect(!settings.isOnboardingComplete)
     }
 
-    @Test func configuredLegacyInstallStillMigratesWithoutRepeatingWizard() {
+    @Test func savedPreferencesDoNotBypassIncompleteOnboarding() {
         let prefs = defaults()
         prefs.set(10.0, forKey: "gainDB")
         let settings = AppSettings(defaults: prefs)
         _ = settings.recordLaunchAndDetectCompletedUpdate(currentBuild: "73", sparkleHadLaunchedBefore: false)
-        #expect(settings.isOnboardingComplete)
+        #expect(!settings.isOnboardingComplete)
     }
 
     @Test func directTypingRejectsProtectedFieldsButAllowsSearch() {

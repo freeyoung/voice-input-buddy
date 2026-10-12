@@ -104,44 +104,4 @@ extension SettingsView {
         language == .system ? localization.text("language.system") : language.nativeDisplayName
     }
 
-    private func buttonPressCountText(for period: UsageStatisticsPeriod) -> String {
-        localizedNumber(settings.usageStatistics(for: period).buttonPressCount)
-    }
-
-    private func voiceDurationText(for period: UsageStatisticsPeriod) -> String {
-        let statistics = settings.usageStatistics(for: period)
-        let totalSeconds = max(
-            0,
-            Int(min(statistics.voiceDuration.rounded(), Double(Int.max)))
-        )
-        let hours = totalSeconds / 3_600
-        let minutes = totalSeconds % 3_600 / 60
-        let seconds = totalSeconds % 60
-        if hours > 0 {
-            return String(
-                format: localization.text("usage.duration.hours_minutes"),
-                locale: localization.locale,
-                arguments: [localizedNumber(UInt64(hours)), localizedNumber(UInt64(minutes))]
-            )
-        }
-        if minutes > 0 {
-            return String(
-                format: localization.text("usage.duration.minutes_seconds"),
-                locale: localization.locale,
-                arguments: [localizedNumber(UInt64(minutes)), localizedNumber(UInt64(seconds))]
-            )
-        }
-        return String(
-            format: localization.text("usage.duration.seconds"),
-            locale: localization.locale,
-            arguments: [localizedNumber(UInt64(seconds))]
-        )
-    }
-
-    private func localizedNumber(_ value: UInt64) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = localization.locale
-        formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: value)) ?? String(value)
-    }
 }

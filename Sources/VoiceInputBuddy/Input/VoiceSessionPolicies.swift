@@ -6,8 +6,16 @@ import CoreBluetooth
 import Foundation
 import BuddyRemoteCore
 
+/// Identifies the live control/voice source, without collecting usage statistics.
+enum RemoteInputSource: String, Codable, CaseIterable, Hashable {
+    case bluetoothRemote = "bluetooth_remote"
+    case nearbyPhone = "nearby_phone"
+    case webRemote = "web_remote"
+    case unknown
+}
+
 struct MobileRemoteButtonObservation: Equatable {
-    let source: UsageEventSource
+    let source: RemoteInputSource
     let button: RemoteButton
 }
 

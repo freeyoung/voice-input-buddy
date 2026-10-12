@@ -411,3 +411,22 @@ extension AppSettings {
         }
     }
 }
+
+extension AppSettings {
+    static let defaultBindings: [RemoteButton: ButtonAction] = [
+        .power: .escape,
+        .up: .arrowUp,
+        .left: .arrowLeft,
+        .ok: .returnKey,
+        .right: .arrowRight,
+        .down: .arrowDown,
+        .back: .deleteBackward,
+        .volumeUp: .volumeUp,
+        .home: .showDesktop,
+        .volumeDown: .volumeDown,
+        .menu: .contextMenu,
+        .tv: .appSwitcher,
+        .playPause: .playPause,
+        .mute: .volumeMute,
+    ]
+}

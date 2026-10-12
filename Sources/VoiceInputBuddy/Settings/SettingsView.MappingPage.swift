@@ -395,13 +395,15 @@ extension SettingsView {
                                 ).action == .disabled
                             },
                             set: { disabled in
-                                let key = "\(settings.selectedRemoteProfileID?.uuidString ?? "base"):\(editingMappingProfileID?.uuidString ?? "base"):\(target.id)"
-                                let current = mappingConfiguration(for: target.button, trigger: target.trigger)
-                                if disabled { disabledMappingBackups[key] = current }
-                                let replacement = MappingDisablePolicy.configuration(
-                                    disabling: disabled, current: current,
-                                    backup: disabledMappingBackups[key], button: target.button,
-                                    trigger: target.trigger
+                                let scope = MappingDisableScope(
+                                    deviceID: settings.selectedRemoteProfileID,
+                                    mappingProfileID: editingMappingProfileID,
+                                    button: target.button, trigger: target.trigger
+                                )
+                                let replacement = mappingDisableEditor.configuration(
+                                    disabling: disabled,
+                                    current: mappingConfiguration(for: target.button, trigger: target.trigger),
+                                    scope: scope
                                 )
                                 saveMappingBinding(replacement, button: target.button, trigger: target.trigger)
                                 shortcutCaptureTarget = nil
@@ -413,6 +415,7 @@ extension SettingsView {
                     .toggleStyle(.switch)
                     .controlSize(.large)
                     .tint(.red)
+                    .help(localization.text("button_mapping.action.disable_restore_scope"))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Color.red.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
@@ -429,6 +432,12 @@ extension SettingsView {
                     .compatibilityButtonStyle(.standard)
                 }
 
+                if mappingConfiguration(for: target.button, trigger: target.trigger).action == .disabled {
+                    Text(localization.text("button_mapping.action.disable_restore_scope"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 mappingTriggerEditor(target.button, trigger: target.trigger)
             }
         }

@@ -138,7 +138,7 @@ struct MobileVoiceLifecycleState {
 }
 
 struct MobileButtonGestureKey: Hashable {
-    let source: UsageEventSource
+    let source: RemoteInputSource
     let button: RemoteButton
 }
 

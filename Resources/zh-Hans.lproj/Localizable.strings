@@ -554,7 +554,6 @@
 "settings.diagnostics.title" = "诊断与日志";
 "settings.application_updates.title" = "应用与更新";
 "settings.application.tagline" = "让语音触手可及";
-"settings.section.statistics" = "个人中心";
 "settings.section.login" = "我的";
 "settings.section.transcripts" = "回眸";
 "about.page.subtitle" = "查看版本、更新、语言和应用显示选项";
@@ -572,36 +571,6 @@
 "about.page.hero_subtitle" = "集中查看无线语音工作台的版本、偏好与支持信息";
 "about.page.hero_description" = "让遥控器成为随手可用的 Mac 语音与快捷操作入口。";
 "about.privacy.local_only" = "数据仅存本机";
-"statistics.page.title" = "个人中心";
-"statistics.page.subtitle" = "查看你的本机使用概览";
-"statistics.summary.title" = "查看方式";
-"statistics.summary.description" = "按日、按周查看趋势，或只查看全部累计数据。";
-"statistics.metric.button_count" = "按键次数";
-"statistics.metric.voice_duration" = "语音时长";
-"statistics.period.today" = "日";
-"statistics.period.this_week" = "周";
-"statistics.period.total" = "全部";
-"statistics.chart.last_seven_days" = "最近 7 天";
-"statistics.chart.weekly_history" = "最近 7 周与更早累计";
-"statistics.chart.earlier" = "更早";
-"statistics.voice_ranking.title" = "单次语音时长排行";
-"statistics.voice_ranking.description" = "数据仅保存在本机，展示时长最长的 10 次语音。";
-"statistics.voice_ranking.empty" = "完成一次语音输入后，这里会显示本机排行。";
-"statistics.metric.total_button_count" = "累计按键次数";
-"statistics.metric.total_voice_duration" = "累计语音时长";
-"statistics.metric.week_button_count" = "本周按键";
-"statistics.metric.longest_voice" = "最长单次语音";
-"statistics.metric.count_unit" = "次";
-"statistics.ranking.title" = "排行榜";
-"statistics.ranking.actions" = "常用快捷键 / 动作";
-"statistics.ranking.buttons" = "实体按键排行";
-"statistics.ranking.voice_sessions" = "单次语音时长排行";
-"statistics.ranking.unknown_app" = "未知应用";
-"statistics.ranking.empty" = "还没有可展示的数据。";
-"statistics.ranking.view_all" = "查看全部回眸";
-"statistics.calendar.title" = "使用日历";
-"statistics.calendar.hint" = "点击日期或记录跳转回眸";
-"statistics.calendar.open_reflections" = "在回眸中查看";
 "about.configuration.title" = "个性化配置";
 "about.configuration.description" = "迁移增益、音频设备、按键映射、快捷键、语言、Dock 显示、启动与更新通道设置。";
 "about.configuration.export" = "导出配置…";
@@ -671,12 +640,6 @@
 "update.completed.message" = "已成功更新到版本 %1$@。";
 "update.prerelease.feed_unavailable.title" = "暂时无法检查预发布版本";
 "update.prerelease.feed_unavailable.message" = "无法取得最新候选版本信息，请检查网络后重试。稳定版更新源不受影响。";
-"usage.duration.hours_minutes" = "%1$@ 小时 %2$@ 分钟";
-"usage.duration.minutes_seconds" = "%1$@ 分钟 %2$@ 秒";
-"usage.duration.seconds" = "%1$@ 秒";
-"usage.duration.compact_hours" = "%1$@小时";
-"usage.duration.compact_minutes" = "%1$@分";
-"usage.duration.compact_seconds" = "%1$@秒";
 "configuration.export.panel_title" = "导出个性化配置";
 "configuration.export.prompt" = "导出";
 "configuration.export.success" = "配置已导出";
@@ -1068,7 +1031,6 @@
 "settings.corrupted.item.button_mapping" = "遥控器按键映射";
 "settings.corrupted.item.custom_application" = "自定义应用动作";
 "settings.corrupted.item.remote_device" = "遥控器设备配置";
-"settings.corrupted.item.statistics" = "使用统计记录";
 "settings.corrupted.item.other" = "其他设置";
 
 "action.combination_action" = "组合动作";
@@ -1253,3 +1215,5 @@
 "common_phrases.key.ok" = "确认键";
 
 "button_mapping.unsupported_device" = "此遥控器目前尚未支持。请选择小米遥控器进行按键设置。";
+
+"button_mapping.action.disable_restore_scope" = "当前设置窗口内重新启用会还原之前的动作。关闭窗口后重新启用，将使用该按键的默认动作；双击和长按需要重新选择动作。";

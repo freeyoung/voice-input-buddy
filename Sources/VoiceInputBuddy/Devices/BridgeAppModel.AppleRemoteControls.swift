@@ -549,10 +549,6 @@ extension BridgeAppModel {
             trigger: trigger,
             source: "apple:\(profileID.uuidString)"
         ) {
-            settings.recordButtonPress(
-                control: .remoteButton(button),
-                source: .bluetoothRemote
-            )
             AppLogger.shared.write(
                 "APPLE REMOTE BUTTON phase=completed result=submitted " +
                     "button=\(button.rawValue) trigger=\(trigger.rawValue) action=private_feature"
@@ -580,12 +576,6 @@ extension BridgeAppModel {
                 return false
             }
             handled = performExternalConfiguredAction(configured)
-        }
-        if handled {
-            settings.recordButtonPress(
-                control: .remoteButton(button),
-                source: .bluetoothRemote
-            )
         }
         AppLogger.shared.write(
             "APPLE REMOTE BUTTON phase=completed result=\(handled ? "submitted" : "failed") " +
