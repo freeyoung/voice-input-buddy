@@ -73,7 +73,12 @@ public enum AppleRemoteAudioIPC {
         return encode(Frame(kind: .pcm, payload: payload))
     }
 
-    public static func decodeFrames(buffer: inout Data) -> [Frame] {
+    public enum FrameError: Error, Equatable { case invalidLength, unknownKind }
+
+    /// A PCM frame is normally a few kilobytes; cap even a fragmented frame.
+    public static let maximumFrameLength = 1_024 * 1_024
+
+    public static func decodeFrames(buffer: inout Data, maximumLength: Int = maximumFrameLength) throws -> [Frame] {
         var frames: [Frame] = []
         while buffer.count >= 4 {
             let start = buffer.startIndex
@@ -81,14 +86,19 @@ public enum AppleRemoteAudioIPC {
                 | Int(buffer[buffer.index(start, offsetBy: 1)]) << 16
                 | Int(buffer[buffer.index(start, offsetBy: 2)]) << 8
                 | Int(buffer[buffer.index(start, offsetBy: 3)])
-            guard length >= 1, buffer.count >= 4 + length else { break }
-            let kindIndex = buffer.index(start, offsetBy: 4)
-            let kind = Kind(rawValue: buffer[kindIndex])
-            if let kind {
-                let payloadStart = buffer.index(start, offsetBy: 5)
-                let frameEnd = buffer.index(start, offsetBy: 4 + length)
-                frames.append(Frame(kind: kind, payload: Data(buffer[payloadStart..<frameEnd])))
+            guard length >= 1, length <= maximumLength else {
+                buffer.removeAll(keepingCapacity: false)
+                throw FrameError.invalidLength
             }
+            guard buffer.count >= 4 + length else { break }
+            let kindIndex = buffer.index(start, offsetBy: 4)
+            guard let kind = Kind(rawValue: buffer[kindIndex]) else {
+                buffer.removeAll(keepingCapacity: false)
+                throw FrameError.unknownKind
+            }
+            let payloadStart = buffer.index(start, offsetBy: 5)
+            let frameEnd = buffer.index(start, offsetBy: 4 + length)
+            frames.append(Frame(kind: kind, payload: Data(buffer[payloadStart..<frameEnd])))
             buffer.removeFirst(4 + length)
         }
         return frames

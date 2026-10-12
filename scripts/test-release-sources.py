@@ -18,13 +18,14 @@ class ReleaseSourcesTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / 'scripts').mkdir()
         shutil.copy2(SCRIPT, self.root / 'scripts/build-release-sources.sh')
+        shutil.copy2(SCRIPT.with_name('architecture.sh'), self.root / 'scripts/architecture.sh')
         shutil.copy2(SCRIPT.parent.parent / '.gitignore', self.root / '.gitignore')
         shutil.copy2(SCRIPT.with_name('generate-appcast.py'), self.root / 'scripts/generate-appcast.py')
         (self.root / 'source.swift').write_text('release source\n')
         self.git('init', '-q')
         self.git('add', '.')
         self.git('-c', 'user.name=Test Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture')
-        for directory in ['.build/buddy-driver/BlackHole', '.build/app-x86_64/checkouts/Sparkle']:
+        for directory in ['.build/buddy-driver/BlackHole', '.build/app-arm64/checkouts/Sparkle']:
             dependency = self.root / directory
             dependency.mkdir(parents=True)
             subprocess.run(['git', 'init', '-q'], cwd=dependency, check=True)
@@ -40,7 +41,7 @@ class ReleaseSourcesTests(unittest.TestCase):
 
     def package(self):
         return subprocess.run(['bash', 'scripts/build-release-sources.sh'], cwd=self.root,
-                              env={**os.environ, 'RELEASE_TAG': 'v26-10-11.001'}, capture_output=True, text=True)
+                              env={**os.environ, 'RELEASE_TAG': 'v26-10-11.001', 'BUILD_ARCH': 'arm64'}, capture_output=True, text=True)
 
     def test_clean_tree_includes_matching_sources_and_licenses(self):
         result = self.package()

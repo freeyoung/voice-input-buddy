@@ -32,7 +32,7 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 
 1. 安装后打开 `/Applications/Voice Input Buddy.app`。
 2. 按设置向导授予蓝牙、输入监控和辅助功能权限，确认麦克风驱动已检测到。首次默认跟随系统语言，可在第一步选择中文或英文。
-3. 连接遥控器，并在输入工具中选择 **Voice Input Buddy** 虚拟麦克风。
+3. 连接遥控器，并在输入工具中选择 **Voice Input Buddy Mic** 虚拟麦克风。
 4. 在“输入法集成”中配置语音快捷键，通过向导测试。
 5. 打开文本输入框，按住遥控器语音键说话、松开结束。需要点按触发的工具，可调整开始／结束行为。
 
@@ -72,6 +72,12 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 - [架构与产品范围](docs/architecture.md)
 - [隐私与验证记录](docs/privacy-and-testing.md)
 - [源码来源](docs/provenance.md)、[GPL-3.0-only 许可证](LICENSE)、[第三方声明](THIRD_PARTY_NOTICES.md)
+
+## 下载与卸载
+
+Apple Silicon 选择 `*_macOS_arm64.pkg`，Intel 选择 `*_macOS_intel.pkg`。每份包含 App 和 **Voice Input Buddy Mic** 驱动。
+
+卸载时下载匹配架构的 `Voice_Input_Buddy_Uninstaller_*_macOS_arm64.pkg` 或 `*_macOS_intel.pkg`，通过 macOS Installer 打开。默认删除 App、驱动和当前用户设置、日志、缓存；取消勾选个人数据删除选项即可保留设置与日志。需要管理员认证，音频服务会短暂重启。详见[卸载说明](docs/uninstall.md)。
 
 ## References
 

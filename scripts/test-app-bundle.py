@@ -16,6 +16,8 @@ class AppBundleTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / 'scripts').mkdir()
         shutil.copy2(SOURCE / 'scripts/build-app.sh', self.root / 'scripts/build-app.sh')
+        for name in ['architecture.sh','thin-framework.py']:
+            shutil.copy2(SOURCE / 'scripts' / name, self.root / 'scripts' / name)
         shutil.copy2(SOURCE / 'scripts/verify-onboarding-resources.py', self.root / 'scripts/verify-onboarding-resources.py')
         shutil.copytree(SOURCE / 'Resources', self.root / 'Resources')
         (self.root / 'Sources/VoiceInputBuddy').mkdir(parents=True)
@@ -43,7 +45,7 @@ class AppBundleTests(unittest.TestCase):
     def build(self, fail_sign=False):
         return subprocess.run(['bash', 'scripts/build-app.sh'], cwd=self.root,
             env={**os.environ, 'PATH': str(self.toolbin) + os.pathsep + os.environ['PATH'],
-                 'BUDDY_BUILD_FIXTURE_BIN': str(self.compilerbin), 'BUILD_ARCHS': 'arm64',
+                 'BUDDY_BUILD_FIXTURE_BIN': str(self.compilerbin), 'BUILD_ARCH': 'arm64',
                  'BUDDY_BUILD_FIXTURE_FAIL_SIGN': '1' if fail_sign else '0'},
             capture_output=True, text=True)
 

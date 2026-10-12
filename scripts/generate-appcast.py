@@ -16,7 +16,11 @@ def generate(package, tag, version, signature, output):
         raise ValueError('Invalid bundle version')
     if len(base64.b64decode(signature, validate=True)) != 64:
         raise ValueError('Invalid Ed25519 signature')
-    expected = f'Voice_Input_Buddy_{tag}_macOS_universal.pkg'
+    match = re.fullmatch(r'Voice_Input_Buddy_' + re.escape(tag) + r'_macOS_(arm64|intel)\.pkg', package.name)
+    if not match:
+        raise ValueError('Package must specify arm64 or intel')
+    architecture = match.group(1)
+    expected = f'Voice_Input_Buddy_{tag}_macOS_{architecture}.pkg'
     if package.name != expected or package.stat().st_size == 0:
         raise ValueError('Package must match release tag and be nonempty')
     rss = ET.Element('rss', {'version': '2.0'})
@@ -29,6 +33,8 @@ def generate(package, tag, version, signature, output):
     ET.SubElement(item, f'{{{SPARKLE}}}version').text = version
     ET.SubElement(item, f'{{{SPARKLE}}}shortVersionString').text = tag
     ET.SubElement(item, f'{{{SPARKLE}}}minimumSystemVersion').text = '14.0'
+    if architecture == 'arm64':
+        ET.SubElement(item, f'{{{SPARKLE}}}hardwareRequirements').text = 'arm64'
     ET.SubElement(item, 'description').text = ('Updates the app and virtual microphone driver. '
         'Administrator authorization is required; audio may briefly restart.')
     ET.SubElement(item, 'enclosure', {

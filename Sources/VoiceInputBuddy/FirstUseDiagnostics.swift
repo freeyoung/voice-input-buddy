@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 
 enum VirtualAudioDeviceDiagnosticKind: String, Equatable {
-    case miRemoteV2ch = "miremotev_2ch"
+    case buddyMic = "buddy_mic"
     case blackHole2ch = "blackhole_2ch"
     case other
     case unavailable

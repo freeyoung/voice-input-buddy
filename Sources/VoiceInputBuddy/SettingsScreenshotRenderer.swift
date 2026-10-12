@@ -40,29 +40,29 @@ enum SettingsScreenshotRenderer {
         let appearance = try screenshotAppearance(from: appearanceName)
         let language = try screenshotLanguage(from: languageName)
         let opensShortcutEditor = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_OPEN_SHORTCUT_EDITOR"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_OPEN_SHORTCUT_EDITOR"
         ] == "1"
         let opensActionEditor = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_OPEN_ACTION_EDITOR"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_OPEN_ACTION_EDITOR"
         ] == "1"
         let opensMappingEditor = opensShortcutEditor || opensActionEditor
         let showsStandardKeyboard = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_SHORTCUT_MODE"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SHORTCUT_MODE"
         ] == "keyboard"
         let expandsShare = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_EXPAND_SHARE"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_EXPAND_SHARE"
         ] == "1"
         let usesSiriRemote = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_SIRI_REMOTE"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIRI_REMOTE"
         ] == "1"
         let usesChromecast = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_CHROMECAST"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_CHROMECAST"
         ] == "1"
         let showsRemoteCards = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_REMOTE_CARDS"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_REMOTE_CARDS"
         ] == "1"
-        let onlySection = ProcessInfo.processInfo.environment["REMOTE_MIC_SETTINGS_SCREENSHOT_SECTION"]
-        let interactive = ProcessInfo.processInfo.environment["REMOTE_MIC_SETTINGS_SCREENSHOT_INTERACTIVE"] == "1"
+        let onlySection = ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SECTION"]
+        let interactive = ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_INTERACTIVE"] == "1"
         try FileManager.default.createDirectory(
             at: outputDirectory,
             withIntermediateDirectories: true
@@ -78,7 +78,7 @@ enum SettingsScreenshotRenderer {
         settings.applicationLanguage = language
         settings.completeOnboarding()
         if let iconIdentifier = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_APP_ICON"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_APP_ICON"
         ] {
             settings.appIconIdentifier = AppIconIdentifier(rawValue: iconIdentifier)
         }
@@ -132,7 +132,7 @@ enum SettingsScreenshotRenderer {
         let updateInformation = UpdateInformationStore(userDefaults: defaults)
         seedAvailableUpdate(updateInformation, language: language)
         if ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_UPDATE_SEEN"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_UPDATE_SEEN"
         ] == "1" {
             updateInformation.markAvailableUpdateSeen()
         }
@@ -153,7 +153,7 @@ enum SettingsScreenshotRenderer {
 
         // Interactive review uses the production view, navigation and window geometry,
         // with the same isolated fixture settings as the offscreen renderer.
-        if ProcessInfo.processInfo.environment["REMOTE_MIC_SETTINGS_SCREENSHOT_INTERACTIVE"] == "1" {
+        if ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_INTERACTIVE"] == "1" {
             let section = sections.first { $0.rawValue == onlySection } ?? .mapping
             let controller = NSHostingController(rootView: SettingsView(
                 model: model,

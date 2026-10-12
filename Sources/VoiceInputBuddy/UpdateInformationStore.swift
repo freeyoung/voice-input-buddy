@@ -44,16 +44,16 @@ enum UpdateFeedResolver {
         assetName: String,
         includePreRelease: Bool
     ) -> ResolvedFeed? {
-        guard environment["REMOTE_MIC_UI_TEST_MODE"] == "1",
+        guard environment["VOICE_INPUT_BUDDY_UI_TEST_MODE"] == "1",
               includePreRelease,
-              let rawURL = environment["REMOTE_MIC_UI_TEST_FEED_URL"],
+              let rawURL = environment["VOICE_INPUT_BUDDY_UI_TEST_FEED_URL"],
               let url = URL(string: rawURL),
               url.scheme == "http",
               url.host == "127.0.0.1",
               url.port != nil,
-              ["appcast.xml", "appcast-intel.xml"].contains(url.lastPathComponent),
+              ["appcast-arm64.xml", "appcast-intel.xml"].contains(url.lastPathComponent),
               url.lastPathComponent == assetName,
-              let rawVersion = environment["REMOTE_MIC_UI_TEST_VERSION"],
+              let rawVersion = environment["VOICE_INPUT_BUDDY_UI_TEST_VERSION"],
               let version = UpdateVersion.normalized(rawVersion)
         else { return nil }
         return ResolvedFeed(url: url, version: version, isPreRelease: true)
@@ -187,7 +187,7 @@ enum UpdateReleaseNotes {
         let languageCode = languageCode(for: localeIdentifier)
         return updateArchiveURL
             .deletingLastPathComponent()
-            .appendingPathComponent("Remote-Mic-\(displayVersion).\(languageCode).txt")
+            .appendingPathComponent("Voice_Input_Buddy_\(displayVersion).\(languageCode).txt")
     }
 
     static func parse(_ text: String) -> [String] {

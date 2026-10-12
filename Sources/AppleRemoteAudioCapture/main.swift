@@ -224,7 +224,8 @@ private final class CaptureServer {
 
     func start() {
         do {
-            let listener = try NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: requestedPort) ?? .any)
+            let parameters = AppleRemoteAudioListenerPolicy.parameters(port: requestedPort)
+            let listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: requestedPort) ?? .any)
             listener.stateUpdateHandler = { state in
                 if case .ready = state, let port = listener.port {
                     let line = Data("READY \(port.rawValue)\n".utf8)
@@ -244,26 +245,48 @@ private final class CaptureServer {
     }
 
     private func accept(_ connection: NWConnection) {
+        stopCapture()
         self.connection?.cancel()
+        commandBuffer.removeAll(keepingCapacity: false)
         self.connection = connection
         authorized = false
-        connection.stateUpdateHandler = { [weak self] state in
-            if case .failed = state { self?.connection = nil }
+        connection.stateUpdateHandler = { [weak self, weak connection] state in
+            guard let self, let connection, self.connection === connection else { return }
+            if case .failed = state {
+                self.stopCapture()
+                self.commandBuffer.removeAll(keepingCapacity: false)
+                self.authorized = false
+                self.connection = nil
+            }
         }
         connection.start(queue: queue)
         receive()
     }
 
     private func receive() {
-        connection?.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
-            guard let self else { return }
+        guard let receivingConnection = connection else { return }
+        receivingConnection.receive(minimumIncompleteLength: 1, maximumLength: 4 * 1024) { [weak self] data, _, isComplete, error in
+            guard let self, self.connection === receivingConnection else { return }
             if let data, !data.isEmpty {
                 self.commandBuffer.append(data)
-                for frame in AppleRemoteAudioIPC.decodeFrames(buffer: &self.commandBuffer) {
-                    self.handle(frame)
+                do {
+                    for frame in try AppleRemoteAudioIPC.decodeFrames(buffer: &self.commandBuffer, maximumLength: 4 * 1024) {
+                        self.handle(frame)
+                    }
+                } catch {
+                    self.stopCapture()
+                    receivingConnection.cancel()
+                    self.connection = nil
+                    return
                 }
             }
-            if isComplete || error != nil { self.stopCapture() } else { self.receive() }
+            if isComplete || error != nil {
+                self.stopCapture()
+                self.commandBuffer.removeAll(keepingCapacity: false)
+                self.authorized = false
+                receivingConnection.cancel()
+                self.connection = nil
+            } else { self.receive() }
         }
     }
 

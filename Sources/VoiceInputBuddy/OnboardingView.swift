@@ -514,7 +514,7 @@ struct OnboardingView: View {
         case .remoteAvailability:
             remoteAvailabilityContent
         case .controlMethod:
-            controlMethodContent
+            remoteAvailabilityContent
         case .permissions:
             permissionsContent
         case .remote:
@@ -992,92 +992,6 @@ struct OnboardingView: View {
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var controlMethodContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            onboardingTitle("onboarding.control_method.title")
-            Text(verbatim: localization.text("onboarding.control_method.detail"))
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(spacing: 10) {
-                ForEach([
-                    OnboardingControlMethod.iPhoneApp,
-                    .webRemote,
-                ]) { method in
-                    onboardingActionButton(id: "control-method.\(method.rawValue)") {
-                        selectControlMethod(method)
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: controlMethodIcon(method))
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 38, height: 38)
-                                .background(
-                                    Color.accentColor.opacity(0.10),
-                                    in: RoundedRectangle(cornerRadius: 10)
-                                )
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 8) {
-                                    Text(localization.text(method.titleKey))
-                                        .font(.system(size: 15, weight: .semibold))
-                                    if method == .iPhoneApp {
-                                        Text(verbatim: localization.text("onboarding.control_method.recommended"))
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .foregroundStyle(Color.accentColor)
-                                            .padding(.horizontal, 7)
-                                            .padding(.vertical, 2)
-                                            .background(
-                                                Color.accentColor.opacity(0.10),
-                                                in: Capsule()
-                                            )
-                                    } else if method == .webRemote {
-                                        Text(verbatim: localization.text("onboarding.control_method.no_iphone"))
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                Text(localization.text(method.detailKey))
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer(minLength: 10)
-                            Image(systemName: settings.onboardingControlMethod == method
-                                ? "checkmark.circle.fill"
-                                : "circle")
-                                .font(.system(size: 18))
-                                .foregroundStyle(
-                                    settings.onboardingControlMethod == method
-                                        ? Color.accentColor
-                                        : Color.secondary
-                                )
-                        }
-                        .padding(13)
-                        .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-                        .background(
-                            settings.onboardingControlMethod == method
-                                ? Color.accentColor.opacity(0.09)
-                                : Color.primary.opacity(0.035),
-                            in: RoundedRectangle(cornerRadius: 12)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(
-                                    settings.onboardingControlMethod == method
-                                        ? Color.accentColor.opacity(0.65)
-                                        : Color.primary.opacity(0.08),
-                                    lineWidth: 1
-                                )
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 
     @ViewBuilder

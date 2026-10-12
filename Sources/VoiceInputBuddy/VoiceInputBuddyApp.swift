@@ -4,6 +4,7 @@ import CoreBluetooth
 import Darwin
 import Sparkle
 import SwiftUI
+import ServiceManagement
 
 struct UpdateFeedSelection {
     let stableFeedURLString: String?
@@ -21,7 +22,7 @@ struct UpdateFeedSelection {
 
     var appcastAssetName: String {
         guard let name = stableFeedURL?.lastPathComponent
-        else { return "appcast.xml" }
+        else { return "appcast-arm64.xml" }
         return name
     }
 
@@ -44,7 +45,7 @@ struct UpdateFeedSelection {
               components.query == nil,
               components.fragment == nil,
               let url = components.url,
-              components.path == "/appcast.xml"
+              ["/appcast-arm64.xml", "/appcast-intel.xml"].contains(components.path)
         else { return nil }
         return url
     }
@@ -53,7 +54,7 @@ struct UpdateFeedSelection {
         guard let stableFeedURL,
               var components = URLComponents(url: stableFeedURL, resolvingAgainstBaseURL: false)
         else { return nil }
-        components.path = "/preview/appcast.xml"
+        components.path = "/preview/" + stableFeedURL.lastPathComponent
         return components.url
     }
 }
@@ -97,20 +98,27 @@ enum AppEntryPointVisibilityPolicy {
 enum VoiceInputBuddyApp {
     @MainActor
     static func main() {
+        if CommandLine.arguments.contains("--unregister-login-item") {
+            if SMAppService.mainApp.status == .enabled || SMAppService.mainApp.status == .requiresApproval {
+                do { try SMAppService.mainApp.unregister() }
+                catch { fputs("Could not unregister login item: \(error)\n", stderr); exit(1) }
+            }
+            return
+        }
         if let screenshotDirectory = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_SETTINGS_SCREENSHOT_DIR"
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"
         ] {
             do {
                 try SettingsScreenshotRenderer.renderAll(
                     to: URL(fileURLWithPath: screenshotDirectory, isDirectory: true),
                     sizeValue: ProcessInfo.processInfo.environment[
-                        "REMOTE_MIC_SETTINGS_SCREENSHOT_SIZE"
+                        "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIZE"
                     ],
                     appearanceName: ProcessInfo.processInfo.environment[
-                        "REMOTE_MIC_SETTINGS_SCREENSHOT_APPEARANCE"
+                        "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_APPEARANCE"
                     ],
                     languageName: ProcessInfo.processInfo.environment[
-                        "REMOTE_MIC_SETTINGS_SCREENSHOT_LANGUAGE"
+                        "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_LANGUAGE"
                     ]
                 )
             } catch {
@@ -120,13 +128,13 @@ enum VoiceInputBuddyApp {
             return
         }
         if let screenshotDirectory = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_DIR"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_DIR"
         ] {
             do {
                 try OnboardingScreenshotRenderer.renderAll(
                     to: URL(fileURLWithPath: screenshotDirectory, isDirectory: true),
                     appearanceName: ProcessInfo.processInfo.environment[
-                        "REMOTE_MIC_ONBOARDING_SCREENSHOT_APPEARANCE"
+                        "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_APPEARANCE"
                     ]
                 )
             } catch {

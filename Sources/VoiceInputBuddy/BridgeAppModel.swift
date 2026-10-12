@@ -3228,7 +3228,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             "REMOTE MAPPING_DEFAULT phase=completed result=selected " +
                 "reason=xiaomi_default family=xiaomi"
         )
-        if ProcessInfo.processInfo.environment["REMOTE_MIC_SETTINGS_SCREENSHOT_DIR"] != nil {
+        if ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"] != nil {
             settings.selectRemoteProfile(profile.id)
             return
         }
@@ -5441,7 +5441,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         batteryLevels: [UUID: Int],
         powerStates: [UUID: RemotePowerState]
     ) {
-        guard ProcessInfo.processInfo.environment["REMOTE_MIC_SETTINGS_SCREENSHOT_DIR"] != nil else {
+        guard ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"] != nil else {
             return
         }
         connectedRemoteProfileIDs = profileIDs

@@ -8,8 +8,8 @@ struct ProductBoundaryTests {
     @Test func releaseTagsCanBeComparedAndPreviewFallsBack() async {
         #expect(UpdateVersion.normalized("v26-10-11.021") == "26.10.11.021")
         #expect(UpdateVersion.isNewer("v26-10-11.022", than: "v26-10-11.021"))
-        let stable = URL(string: "https://voice.zfdang.com/appcast.xml")!
-        let preview = URL(string: "https://voice.zfdang.com/preview/appcast.xml")!
+        let stable = URL(string: "https://voice.zfdang.com/appcast-arm64.xml")!
+        let preview = URL(string: "https://voice.zfdang.com/preview/appcast-arm64.xml")!
         let resolution = await UpdateFeedResolver.resolvePreviewFeed(stableURL: stable, previewURL: preview) { url in
             if url == preview { throw URLError(.fileDoesNotExist) }
             return Data("<sparkle:shortVersionString>v26-10-11.021</sparkle:shortVersionString>".utf8)
@@ -19,12 +19,12 @@ struct ProductBoundaryTests {
     }
 
     @Test func updateFeedOnlyUsesProductHTTPSOrigin() {
-        let selection = UpdateFeedSelection(stableFeedURLString: "https://voice.zfdang.com/appcast.xml")
-        #expect(selection.feedURLString(checksForPreReleaseUpdates: false) == "https://voice.zfdang.com/appcast.xml")
-        #expect(selection.feedURLString(checksForPreReleaseUpdates: true) == "https://voice.zfdang.com/preview/appcast.xml")
-        for url in ["http://voice.zfdang.com/appcast.xml", "https://evil.example/appcast.xml",
-                    "https://voice.zfdang.com/appcast.xml?redirect=evil", "https://user@voice.zfdang.com/appcast.xml",
-                    "https://voice.zfdang.com:8443/appcast.xml", "https://voice.zfdang.com/other.xml"] {
+        let selection = UpdateFeedSelection(stableFeedURLString: "https://voice.zfdang.com/appcast-arm64.xml")
+        #expect(selection.feedURLString(checksForPreReleaseUpdates: false) == "https://voice.zfdang.com/appcast-arm64.xml")
+        #expect(selection.feedURLString(checksForPreReleaseUpdates: true) == "https://voice.zfdang.com/preview/appcast-arm64.xml")
+        for url in ["http://voice.zfdang.com/appcast-arm64.xml", "https://evil.example/appcast-arm64.xml",
+                    "https://voice.zfdang.com/appcast-arm64.xml?redirect=evil", "https://user@voice.zfdang.com/appcast-arm64.xml",
+                    "https://voice.zfdang.com:8443/appcast-arm64.xml", "https://voice.zfdang.com/other.xml"] {
             #expect(UpdateFeedSelection(stableFeedURLString: url).validatedStableFeedURL == nil)
         }
     }

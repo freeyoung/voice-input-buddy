@@ -32,7 +32,7 @@ Download `Voice_Input_Buddy_*.pkg` from [Releases](https://github.com/zfdang/voi
 
 1. Install and open `/Applications/Voice Input Buddy.app`.
 2. Follow the guide to grant Bluetooth, Input Monitoring, and Accessibility permissions, and check that the driver is detected. The app follows your system language by default; you can choose English or Chinese on the first screen.
-3. Connect your remote. Select the **Voice Input Buddy** microphone in your input tool.
+3. Connect your remote. Select the **Voice Input Buddy Mic** microphone in your input tool.
 4. Configure the tool's voice shortcut under **Integration**, then test it with the guide.
 5. Focus a text field, press the voice button to speak, and release to finish. Adjust the trigger behavior for tools that use separate start/stop taps.
 
@@ -72,6 +72,12 @@ The tool must accept the virtual microphone and expose a usable voice shortcut. 
 - [Architecture and scope](docs/architecture.md)
 - [Privacy and testing](docs/privacy-and-testing.md)
 - [Source provenance](docs/provenance.md), [GPL-3.0-only license](LICENSE), [third-party notices](THIRD_PARTY_NOTICES.md)
+
+## Download and uninstall
+
+Choose the `*_macOS_arm64.pkg` installer for Apple Silicon or `*_macOS_intel.pkg` for Intel. Each contains the app and its **Voice Input Buddy Mic** driver.
+
+To uninstall, download the matching `Voice_Input_Buddy_Uninstaller_*_macOS_arm64.pkg` or `*_macOS_intel.pkg` and open the package in macOS Installer. The default removes the app, driver, and your settings, logs and caches. Uncheck the personal-data removal option to retain settings and logs. Administrator authorization is required; audio briefly restarts. See [uninstallation details](docs/uninstall.md).
 
 ## References
 

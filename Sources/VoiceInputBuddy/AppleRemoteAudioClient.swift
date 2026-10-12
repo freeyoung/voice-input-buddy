@@ -339,7 +339,17 @@ final class AppleRemoteAudioClient {
             guard let self else { return }
             if let data, !data.isEmpty {
                 self.inputBuffer.append(data)
-                for frame in AppleRemoteAudioIPC.decodeFrames(buffer: &self.inputBuffer) {
+                let frames: [AppleRemoteAudioIPC.Frame]
+                do { frames = try AppleRemoteAudioIPC.decodeFrames(buffer: &self.inputBuffer) }
+                catch {
+                    self.connection?.cancel()
+                    self.helperReady = false
+                    self.isCapturing = false
+                    self.forceCompleteCaptureStop(reason: "invalid_helper_frame")
+                    self.reportStatus("unavailable:invalid_helper_frame")
+                    return
+                }
+                for frame in frames {
                     switch frame.kind {
                     case .pcm:
                         let samples = AppleRemoteAudioIPC.samples(from: frame)
