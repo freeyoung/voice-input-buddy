@@ -268,16 +268,7 @@ struct FirstUseVoiceAttemptDiagnostic: Equatable {
         case .audioDeliveryFailed:
             return "audio_\(audioDelivery.result.rawValue)"
         case .externalToolNoCommit:
-            if !externalToolVoiceKeyUserConfirmed {
-                return "external_tool_voice_key_not_confirmed"
-            }
-            if externalToolGlobalVoiceApplicable,
-               !externalToolGlobalVoiceUserConfirmed {
-                return "external_tool_global_voice_not_confirmed"
-            }
-            return externalToolMicrophoneUserConfirmed
-                ? "external_tool_no_commit"
-                : "external_tool_microphone_not_confirmed"
+            return "external_tool_no_commit"
         default:
             return result.rawValue
         }

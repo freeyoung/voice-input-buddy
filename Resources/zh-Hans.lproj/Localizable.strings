@@ -539,7 +539,7 @@
 "status_item.state.disconnected" = "%@：未连接设备";
 "status_item.state.connected" = "%@：设备已连接";
 "status_item.state.streaming" = "%@：正在传输语音";
-"about.alert.description_with_version" = "版本 %1$@\n小米蓝牙遥控器 2 Pro 的无线语音与快捷操作工具。";
+"about.alert.description_with_version" = "版本 %1$@\n让遥控器成为你的语音输入搭子，轻松说话打字，一键操作常用功能。";
 "common.action.ok" = "好";
 "common.action.copy_link" = "复制链接";
 "common.status.copied" = "已复制";
@@ -558,7 +558,7 @@
 "settings.section.login" = "我的";
 "settings.section.transcripts" = "回眸";
 "about.page.subtitle" = "查看版本、更新、语言和应用显示选项";
-"about.app.description" = "小米蓝牙遥控器 2 Pro 的无线语音与快捷操作工具。";
+"about.app.description" = "让遥控器成为你的语音输入搭子，轻松说话打字，一键操作常用功能。";
 "about.app_support.title" = "应用与支持";
 "about.preferences.show_dock_icon" = "在 Dock 中显示应用图标";
 "about.preferences.show_dock_icon_help" = "关闭后仍可通过菜单栏图标打开语音搭子。";
@@ -729,7 +729,7 @@
 "onboarding.voice_key.migration.detail" = "首次设置统一使用 Fn/地球键，以确保输入法配置一致。完成设置后，你仍可在主设置页改回左/右 Command 或左/右 Option。";
 "onboarding.voice_tool.guide.title" = "按图完成语音工具设置";
 "onboarding.voice_tool.guide.detail" = "只显示当前工具需要的设置；语音搭子不会自动修改第三方工具。";
-"onboarding.voice_tool.guide.continue_hint" = "请先查看并点击右侧的每一步。";
+"onboarding.voice_tool.guide.continue_hint" = "请先查看右侧的每一个设置步骤，再继续。";
 "onboarding.voice_tool.guide.microphone_hint" = "请在第 3 个步骤中确认输入工具的麦克风选择，再继续。";
 "onboarding.voice_tool.guide.microphone_detail" = "请在%@的语音输入设置中，将麦克风选择为“%@”。这项设置需要在输入工具中手动完成。";
 "onboarding.voice_tool.guide.match_shortcut" = "请将语音热键设为“%@”，与本次方案保持一致。截图展示的是本机输入法当前的设置。";
@@ -1211,3 +1211,8 @@
 "onboarding.control_source.bluetooth_unavailable.title" = "其他蓝牙语音设备";
 
 "onboarding.control_source.unsupported" = "尚未支持";
+
+"onboarding.voice_tool.guide.open_voicecursor" = "打开 VoiceCursor";
+"onboarding.voice_tool.guide.open_voicecursor.detail" = "打开 VoiceCursor 的设置 → General，配置语音快捷键和麦克风。";
+"onboarding.voice_tool.guide.screenshot.voicecursor_setting_fn" = "在 VoiceCursor 的 General → Hotkeys 中，将 Dictation 设为 Fn。";
+"onboarding.voice_tool.guide.screenshot.voicecursor_setting_mic" = "在 VoiceCursor 的 Audio → Microphone 中选择 Voice Input Buddy Mic。";

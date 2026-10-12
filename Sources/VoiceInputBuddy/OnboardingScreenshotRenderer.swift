@@ -172,7 +172,14 @@ enum OnboardingScreenshotRenderer {
         NSApp.setActivationPolicy(.regular)
         defer { NSApp.appearance = previousAppearance }
 
-        for (step, filename) in pages(for: controlMethod) {
+#if DEBUG
+        let interactive = ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE"] == "1"
+        let renderedPages: [(OnboardingStep, String)] = interactive
+            ? [(.voiceTool, "input-tool-interactive.png")] : pages(for: controlMethod)
+#else
+        let renderedPages = pages(for: controlMethod)
+#endif
+        for (step, filename) in renderedPages {
             settings.selectedAudioDeviceUID = switch step {
             case .voiceTool, .voiceTest, .controls, .complete:
                 DoubaoAudioDevicePolicy.deviceUID
@@ -201,6 +208,24 @@ enum OnboardingScreenshotRenderer {
             let window = makeWindow(hostingController: hostingController)
 
             window.makeKeyAndOrderFront(nil)
+#if DEBUG
+            if interactive {
+                window.title = "Voice Input Buddy Preview"
+                NSApp.finishLaunching()
+                NSApp.activate(ignoringOtherApps: true)
+                let closeObserver = NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification, object: window, queue: .main
+                ) { _ in
+                    NSApp.stop(nil)
+                }
+                let timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: false) { _ in
+                    window.performClose(nil)
+                }
+                NSApp.run()
+                timer.invalidate()
+                NotificationCenter.default.removeObserver(closeObserver)
+            }
+#endif
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
             window.contentView?.layoutSubtreeIfNeeded()
             window.contentView?.displayIfNeeded()
