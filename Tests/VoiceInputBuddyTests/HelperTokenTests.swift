@@ -38,7 +38,8 @@ struct HelperTokenTests {
     @Test func tokenReaderRejectsMissingTruncatedAndOversizedInput() throws {
         for data in [Data(), Data(token.utf8), Data((token + "x").utf8),
                      Data((String(repeating: "x", count: 36) + "\n").utf8),
-                     Data(repeating: 0xFF, count: 37), Data(repeating: 0x41, count: 100)] {
+                     Data(repeating: 0xFF, count: 37), Data(repeating: 0x41, count: 100),
+                     Data((token + "\nextra").utf8)] {
             let pipe = Pipe()
             try pipe.fileHandleForWriting.write(contentsOf: data)
             try pipe.fileHandleForWriting.close()

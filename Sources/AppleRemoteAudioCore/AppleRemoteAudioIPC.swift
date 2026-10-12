@@ -30,6 +30,11 @@ public enum AppleRemoteAudioIPC {
               UUID(uuidString: token) != nil else {
             throw StartupTokenError.invalidToken
         }
+        // The parent closes the private writer before launch. Require EOF so
+        // extra bytes cannot silently turn an oversized message into a token.
+        guard try handle.read(upToCount: 1)?.isEmpty != false else {
+            throw StartupTokenError.invalidToken
+        }
         return token
     }
 
