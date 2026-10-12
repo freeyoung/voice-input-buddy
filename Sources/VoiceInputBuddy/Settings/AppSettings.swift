@@ -77,7 +77,7 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    var lastKnownAudioDeviceUID: String
+    private(set) var lastKnownAudioDeviceUID: String
 
     @Published var customMappingEnabled: Bool {
         didSet { defaults.set(customMappingEnabled, forKey: Keys.customMappingEnabled) }
@@ -256,13 +256,13 @@ final class AppSettings: ObservableObject {
 
     var isLoadingRemoteProfile = false
 
-    @Published var totalButtonPressCount: UInt64 {
+    @Published private(set) var totalButtonPressCount: UInt64 {
         didSet {
             defaults.set(NSNumber(value: totalButtonPressCount), forKey: Keys.totalButtonPressCount)
         }
     }
 
-    @Published var totalVoiceDuration: TimeInterval {
+    @Published private(set) var totalVoiceDuration: TimeInterval {
         didSet { defaults.set(totalVoiceDuration, forKey: Keys.totalVoiceDuration) }
     }
 
@@ -274,7 +274,7 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    @Published var voiceSessionRanking: [VoiceSessionUsageRecord] {
+    @Published private(set) var voiceSessionRanking: [VoiceSessionUsageRecord] {
         didSet {
             if let data = try? JSONEncoder().encode(voiceSessionRanking) {
                 defaults.set(data, forKey: Keys.voiceSessionRanking)
@@ -386,7 +386,7 @@ final class AppSettings: ObservableObject {
     /// Keys whose stored data existed but could not be decoded on the last load. The raw
     /// bytes are preserved under "<key>.corrupt" so a reset is recoverable and visible
     /// instead of looking like a first run.
-    @Published var corruptedSettingKeys: [String] = []
+    @Published private(set) var corruptedSettingKeys: [String] = []
 
     /// Splits "never saved" from "saved but unreadable". Only the latter is a fault, and
     /// silently treating it as a first run is what let user configuration disappear.

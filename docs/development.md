@@ -77,4 +77,10 @@ Fn 释放失败时不会调用“清理完成”回调或立即重入映射，�
 
 跨文件扩展需要的成员使用模块内部可见性，文件内独用的辅助实现仍为 private；没有新增 public API，也未增加 target 或模块依赖。新增功能应放到对应目录，避免再把页面与硬件操作混入入口文件。
 
-本地资源定位根据 Package.swift 与 Resources 目录查找，不依赖源码所在层级。打包资源检查递归扫描所有 Onboarding 子目录；没有源码时直接失败，不能静默跳过。`scripts/test-app-bundle.py` 用隔离的编译/签名 fixture 验证嵌套指南缺图时保留已有 App，不需要安装真实驱动。
+这次重组有明确的访问控制取舍：按主应用源码中的 private/fileprivate 声明统计（含 private(set)，不计注释和字符串），初版由 1,903 处减至 1,289 处，约 614 处放宽为 internal。复核后恢复了 5 个只在 AppSettings 主文件写入的 setter，并把向导的焦点 modifier 收回使用它的文件为 private，目前为 1,295 处。private(set) 从原来的 122 处变为 78 处：仍有 44 个属性因所属类型的跨文件扩展确实写入而使用 internal setter。
+
+恢复 private(set) 的属性为 lastKnownAudioDeviceUID、totalButtonPressCount、totalVoiceDuration、voiceSessionRanking 和 corruptedSettingKeys。这些 setter 已通过编译器检查，没有其他文件的写入。其他 internal setter 并不是独立模块边界；同一 target 的任何文件技术上都能写它们。页面应通过状态所有者的操作方法请求变化，避免直接改写连接、音频和向导状态。若以后需要更强的编译期隔离，应将状态与操作一起封装到独立服务或 target，不能把目录拆分当作这种隔离。
+
+向导专用的焦点 modifier 直接在导航页面使用，不再给整个模块的 View 增加扩展方法。
+
+本地资源定位根据 Package.swift 与 Resources 目录查找，不依赖源码所在层级。打包资源检查递归扫描整个 Sources/VoiceInputBuddy，以覆盖位于 Integrations 等其他功能目录的向导截图引用；同时检查 Onboarding 源码仍存在，没有源码时直接失败，不能静默跳过。`scripts/test-app-bundle.py` 用隔离的编译/签名 fixture 验证嵌套指南缺图时保留已有 App，不需要安装真实驱动。
