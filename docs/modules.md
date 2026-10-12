@@ -23,7 +23,7 @@
 
 ## 驱动
 
-BuddyMic2ch.driver 基于固定版本 BlackHole 源码构建，使用独立 Bundle ID、设备 UID 与工厂 UUID。其实际源码、补丁与许可证随 Release 源码包提供。
+VoiceInputBuddyMic.driver 基于固定版本 BlackHole 源码构建，使用独立 Bundle ID、设备 UID 与工厂 UUID。其实际源码、补丁与许可证随 Release 源码包提供。
 
 ## macOS 系统模块
 

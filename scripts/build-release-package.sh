@@ -1,19 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
+source "$root/scripts/architecture.sh"
 cd "$root"
 : "${RELEASE_TAG:?Run release-metadata.sh first}"
 : "${RELEASE_PACKAGE_VERSION:?Run release-metadata.sh first}"
 app="$root/dist/Voice Input Buddy.app"
-driver="$root/dist/BuddyMic2ch.driver"
+driver="$root/dist/VoiceInputBuddyMic.driver"
 codesign --verify --deep --strict "$app"
 codesign --verify --deep --strict "$driver"
 work="$(mktemp -d "$root/.build/release-package.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/payload/Applications" "$work/payload/Library/Audio/Plug-Ins/HAL" "$work/scripts" "$root/dist/release"
 ditto "$app" "$work/payload/Applications/Voice Input Buddy.app"
-ditto "$driver" "$work/payload/Library/Audio/Plug-Ins/HAL/BuddyMic2ch.driver"
-cp scripts/driver-package/postinstall "$work/scripts/postinstall"
+ditto "$driver" "$work/payload/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver"
+cp scripts/driver-package/{preinstall,postinstall} scripts/installation-common.sh "$work/scripts/"
+chmod 755 "$work/scripts/preinstall"
 chmod 755 "$work/scripts/postinstall"
 # Disable bundle relocation: always update the canonical /Applications copy.
 pkgbuild --analyze --root "$work/payload" "$work/components.plist"
@@ -31,4 +33,4 @@ PY
 pkgbuild --root "$work/payload" --component-plist "$work/components.plist" \
     --identifier com.zfdang.voice-input-buddy.installer --version "$RELEASE_PACKAGE_VERSION" \
     --scripts "$work/scripts" --install-location / \
-    "$root/dist/release/Voice_Input_Buddy_${RELEASE_TAG}_macOS_universal.pkg"
+    "$root/dist/release/Voice_Input_Buddy_${RELEASE_TAG}_macOS_${RELEASE_ARCH_LABEL}.pkg"

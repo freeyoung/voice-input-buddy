@@ -2,7 +2,7 @@
 
 ## Current distribution
 
-Voice Input Buddy bundles its app and the independently named BuddyMic2ch driver in one PKG. Driver sources are BlackHole v0.7.1 with third_party/blackhole/device-usb.patch. The complete source archive includes the actual patched driver and Sparkle sources. RC003 product photos, upstream proprietary artwork, libopus binaries and private extensions are not distributed. The historical descriptions below do not imply they are bundled or supported.
+Voice Input Buddy bundles its app and the independently named VoiceInputBuddyMic driver in one PKG. Driver sources are BlackHole v0.7.1 with third_party/blackhole/device-usb.patch. The complete source archive includes the actual patched driver and Sparkle sources. RC003 product photos, upstream proprietary artwork, libopus binaries and private extensions are not distributed. The historical descriptions below do not imply they are bundled or supported.
 
 ## Sparkle
 
@@ -82,7 +82,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 - Pinned source revision: `v0.7.1` / `e2b22aaaba4e507a097131704bf96dabc004d9cf`
 - License: GNU General Public License v3.0 (`GPL-3.0`)
 
-BlackHole remains an optional loopback-device choice. `scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `BuddyMic2ch.driver` from pinned BlackHole source. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and BuddyMic2ch; matching patched driver source is included in the release source archive.
+BlackHole remains an optional loopback-device choice. `scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `VoiceInputBuddyMic.driver` from pinned BlackHole source. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and VoiceInputBuddyMic; matching patched driver source is included in the release source archive.
 
 ## MiRemoteVoice
 

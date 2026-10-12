@@ -2,8 +2,8 @@ import Foundation
 
 enum DoubaoAudioDevicePolicy {
     static let deviceUID = "BuddyMic2ch_UID"
-    static let deviceName = "Voice Input Buddy"
-    static let legacyDeviceName = "Voice Input Buddy Mic"
+    static let deviceName = "Voice Input Buddy Mic"
+    static let legacyDeviceName = "Voice Input Buddy"
 
     static func device(in devices: [AudioDeviceInfo]) -> AudioDeviceInfo? {
         // Prefer the stable UID, even if a physical device has the same name.

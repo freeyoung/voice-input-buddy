@@ -2,6 +2,7 @@
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
+source "$root/scripts/architecture.sh"
 : "${RELEASE_TAG:?Run release-metadata.sh first}"
 # Binaries built from local edits cannot be paired with a HEAD-only archive.
 if ! git diff --quiet HEAD -- || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
@@ -19,7 +20,7 @@ for dependency in BlackHole Sparkle; do
     if [[ "$dependency" == BlackHole ]]; then
         dependency_path="$root/.build/buddy-driver/BlackHole"
     else
-        dependency_path="$root/.build/app-x86_64/checkouts/Sparkle"
+        dependency_path="$root/.build/app-$BUILD_ARCH/checkouts/Sparkle"
     fi
     test -d "$dependency_path/.git"
     git -C "$dependency_path" rev-parse HEAD > "$source_root/vendor/$dependency.revision"
