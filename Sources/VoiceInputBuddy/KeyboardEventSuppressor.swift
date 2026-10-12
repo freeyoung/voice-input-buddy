@@ -135,11 +135,9 @@ final class KeyboardEventSuppressor {
                     expiresAt: now + 0.18
                 ))
             case .up:
-                if let pendingDownIndex = pendingEvents.firstIndex(where: {
-                    $0.event == nativeEvent && $0.edge == .down
-                }) {
-                    pendingEvents.remove(at: pendingDownIndex)
-                }
+                // HID release may arrive before the native event tap delivers down.
+                // Keep its bounded expectation until delivery/expiry so a fast click
+                // cannot reach the app in addition to our injected action.
                 let remaining = (heldEventCounts[nativeEvent] ?? 0) - 1
                 if remaining > 0 {
                     heldEventCounts[nativeEvent] = remaining
@@ -218,7 +216,7 @@ final class KeyboardEventSuppressor {
                 }
                 return false
             }
-            let paired = (heldEventCounts[descriptor.event] ?? 0) > 0 && suppressedDowns.contains(descriptor.event)
+            let paired = suppressedDowns.contains(descriptor.event)
             lock.unlock()
             return paired
         }

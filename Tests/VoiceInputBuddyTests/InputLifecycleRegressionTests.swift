@@ -92,6 +92,49 @@ struct InputLifecycleRegressionTests {
         #expect(presses.count == 1)
     }
 
+    @Test(arguments: [false, true])
+    func appSwitcherNavigationOwnsNativeArrowsOnUnseizedDevice(delayedNativeEvents: Bool) throws {
+        let (values, name) = defaults()
+        defer { values.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: values)
+        settings.customMappingEnabled = true
+        settings.setAction(.appSwitcher, for: .tv)
+        settings.setAction(.arrowRight, for: .right)
+        settings.setAction(.arrowLeft, for: .left)
+        let filter = KeyboardEventSuppressor()
+        var selections: [UInt16] = []
+        let profile = UUID()
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: profile,
+            eventSuppressor: filter, ownsEventSuppressor: false,
+            runtimePermissions: { true }, diagnosticLogger: { _ in },
+            appSwitcherKeyStatePoster: { code, down, _ in
+                if down && (code == 123 || code == 124) { selections.append(code) }
+                return true
+            })
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: profile, isSeized: false)
+        func report(_ button: RemoteButton?) {
+            let usage = button?.hidUsage ?? 0
+            monitor.handleSimulatedReport(reportID: 1, data: Data([UInt8(usage & 255), UInt8(usage >> 8)]))
+        }
+        report(.tv)
+        report(nil)
+        for (button, code): (RemoteButton, UInt16) in [(.right, 124), (.left, 123), (.right, 124)] {
+            report(button)
+            // An identical held report must not inject a second navigation step.
+            report(button)
+            let nativeDown = try #require(CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true))
+            if delayedNativeEvents { report(nil) }
+            #expect(filter.handle(type: .keyDown, event: nativeDown))
+            if !delayedNativeEvents { report(nil) }
+            nativeDown.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+            #expect(filter.handle(type: .keyDown, event: nativeDown))
+            let nativeUp = try #require(CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false))
+            #expect(filter.handle(type: .keyUp, event: nativeUp))
+        }
+        #expect(selections == [124, 123, 124])
+        monitor.disconnectSimulatedDevice()
+    }
+
     @Test func physicalKeyUpIsNeverConsumedAfterItsDownPassed() throws {
         let filter = KeyboardEventSuppressor()
         let down = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 50, keyDown: true))
