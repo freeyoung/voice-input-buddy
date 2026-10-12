@@ -1601,9 +1601,9 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            onboardingLink(id: "iphone.install", destination: AppLinks.iOSAppStore(for: localization.locale)) {
+            onboardingLink(id: "iphone.install", destination: AppLinks.githubRepository) {
                 Label {
-                    Text(verbatim: localization.text("onboarding.apple_companion.install"))
+                    Text(verbatim: localization.text("about.support.github"))
                 } icon: {
                     Image(systemName: "arrow.up.right.square")
                 }

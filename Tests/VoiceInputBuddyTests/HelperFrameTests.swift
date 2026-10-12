@@ -2,6 +2,7 @@ import AppleRemoteAudioCore
 import Foundation
 import Network
 import Testing
+@testable import VoiceInputBuddy
 
 @Suite("Bounded local helper protocol")
 struct HelperFrameTests {
@@ -34,6 +35,15 @@ struct HelperFrameTests {
             try AppleRemoteAudioIPC.decodeFrames(buffer: &buffer)
         }
         #expect(buffer.isEmpty)
+    }
+    @Test func helperReadyMessageRequiresConcreteValidPort() {
+        for line in ["READY 0", "READY 65536", "READY -1", "READY invalid",
+                     "READY", "READY 1234 extra", "OTHER 1234"] {
+            #expect(AppleRemoteAudioClient.helperReadyPort(from: line) == nil)
+        }
+        for value in [1, 12345, 65535] {
+            #expect(AppleRemoteAudioClient.helperReadyPort(from: "READY \(value)")?.rawValue == UInt16(value))
+        }
     }
     @Test func listenerBindsOnlyIPv4Loopback() {
         let parameters = AppleRemoteAudioListenerPolicy.parameters(port: 12345)

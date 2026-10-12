@@ -6,12 +6,6 @@ enum AppLinks {
     )!
     static let chineseWebsite = URL(string: "https://voice.zfdang.com/")!
     static let englishWebsite = URL(string: "https://voice.zfdang.com/")!
-    static let chineseIOSAppStore = URL(
-        string: "https://github.com/zfdang/voice-input-buddy"
-    )!
-    static let englishIOSAppStore = URL(
-        string: "https://github.com/zfdang/voice-input-buddy"
-    )!
     static let feedback = URL(
         string: "https://github.com/zfdang/voice-input-buddy/issues"
     )!
@@ -19,12 +13,6 @@ enum AppLinks {
         string: "https://shurufa.doubao.com/"
     )!
     static let vokieWebsite = URL(string: "https://vokie.com/")!
-
-    static func iOSAppStore(for locale: Locale) -> URL {
-        locale.identifier.lowercased().hasPrefix("zh")
-            ? chineseIOSAppStore
-            : englishIOSAppStore
-    }
 
     static func website(for locale: Locale) -> URL {
         locale.identifier.lowercased().hasPrefix("zh")

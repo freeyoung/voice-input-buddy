@@ -300,15 +300,23 @@ final class AppleRemoteAudioClient {
         while let newline = outputBuffer.firstIndex(of: 0x0A) {
             let lineData = outputBuffer.prefix(upTo: newline)
             outputBuffer.removeFirst(outputBuffer.distance(from: outputBuffer.startIndex, to: newline) + 1)
-            guard let line = String(data: lineData, encoding: .utf8), line.hasPrefix("READY ") else { continue }
-            let fields = line.split(separator: " ")
-            guard fields.count == 2, let portValue = UInt16(fields[1]) else { continue }
-            connect(port: portValue)
+            guard let line = String(data: lineData, encoding: .utf8),
+                  let port = Self.helperReadyPort(from: line) else { continue }
+            connect(port: port)
         }
     }
 
-    private func connect(port: UInt16) {
-        let connection = NWConnection(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
+    /// A helper must report a concrete listening port; zero is only valid when binding.
+    static func helperReadyPort(from line: String) -> NWEndpoint.Port? {
+        let fields = line.split(separator: " ")
+        guard fields.count == 2, fields[0] == "READY",
+              let value = UInt16(fields[1]), value != 0,
+              let port = NWEndpoint.Port(rawValue: value) else { return nil }
+        return port
+    }
+
+    private func connect(port: NWEndpoint.Port) {
+        let connection = NWConnection(host: "127.0.0.1", port: port, using: .tcp)
         self.connection = connection
         connection.stateUpdateHandler = { [weak self] state in
             guard let self else { return }

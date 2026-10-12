@@ -476,7 +476,7 @@ struct SettingsView: View {
     @State private var configurationStatus: ConfigurationStatus?
     @State private var isClearTrustedPhonesConfirmationPresented = false
     @State private var isWebRemoteSessionPresented = false
-    @State private var isAppStoreLinkCopied = false
+    @State private var isRepositoryLinkCopied = false
     @State private var isMappingPermissionAlertPresented = false
     @State private var isWaitingForMappingPermissions = false
     @State private var expandedShareSection: SettingsSection?
@@ -945,21 +945,21 @@ struct SettingsView: View {
                                 .fixedSize(horizontal: false, vertical: true)
 
                             HStack(spacing: 8) {
-                                Link(destination: AppLinks.iOSAppStore(for: localization.locale)) {
-                                    Label("connection.phone.app_store_open", systemImage: "arrow.up.right.square")
+                                Link(destination: AppLinks.githubRepository) {
+                                    Label("about.support.github", systemImage: "arrow.up.right.square")
                                 }
                                 .compatibilityButtonStyle(.standard)
 
                                 Button {
-                                    copyIOSAppStoreLink()
+                                    copyRepositoryLink()
                                 } label: {
                                     Label(
                                         localization.text(
-                                            isAppStoreLinkCopied
+                                            isRepositoryLinkCopied
                                                 ? "common.status.copied"
                                                 : "common.action.copy_link"
                                         ),
-                                        systemImage: isAppStoreLinkCopied ? "checkmark" : "doc.on.doc"
+                                        systemImage: isRepositoryLinkCopied ? "checkmark" : "doc.on.doc"
                                     )
                                 }
                                 .compatibilityButtonStyle(.standard)
@@ -4068,11 +4068,11 @@ struct SettingsView: View {
         openWebRemoteSession()
     }
 
-    private func copyIOSAppStoreLink() {
+    private func copyRepositoryLink() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        isAppStoreLinkCopied = pasteboard.writeObjects([
-            AppLinks.iOSAppStore(for: localization.locale).absoluteString as NSString
+        isRepositoryLinkCopied = pasteboard.writeObjects([
+            AppLinks.githubRepository.absoluteString as NSString
         ])
     }
 
