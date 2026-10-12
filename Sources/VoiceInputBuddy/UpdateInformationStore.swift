@@ -222,9 +222,10 @@ final class UpdateInformationStore: ObservableObject {
         checkingDeadline = nil
     }
 
-    func beginChecking() {
+    func beginChecking(timeoutEnabled: Bool = true) {
         cancelCheckingDeadline()
         state = .checking
+        guard timeoutEnabled else { return }
         let generation = checkingGeneration
         checkingDeadline = schedule(checkingTimeout) { [weak self] in
             guard let self, self.checkingGeneration == generation,

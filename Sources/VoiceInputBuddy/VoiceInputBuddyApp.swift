@@ -193,6 +193,11 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private enum UpdateCheckPurpose {
         case information
         case userInitiated
+
+        var usesInformationTimeout: Bool {
+            if case .information = self { return true }
+            return false
+        }
     }
 
     private let model = BridgeAppModel()
@@ -1032,7 +1037,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         updateCheckTask?.cancel()
         updateCheckTask = Task { [weak self] in
             guard let self else { return }
-            updateInformation.beginChecking()
+            updateInformation.beginChecking(timeoutEnabled: purpose.usesInformationTimeout)
             let includePreRelease = model.settings.checksForPreReleaseUpdates
             let testFeed = UpdateFeedResolver.testInjectedFeed(
                 environment: ProcessInfo.processInfo.environment,

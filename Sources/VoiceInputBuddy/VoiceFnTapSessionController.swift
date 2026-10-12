@@ -105,6 +105,7 @@ final class VoiceFnTapSessionController {
     private var scheduledTasks: [VoiceFnTapScheduledTask] = []
     private var functionKeyIsPressed = false
     private var keyReleaseRetryTask: VoiceFnTapScheduledTask?
+    private var nextKeyReleaseRetryDelay: TimeInterval = 1
     private var idleCompletions: [() -> Void] = []
     private var suppressAudioUntilRemoteStop = false
     private var drainOperationID: UInt64?
@@ -175,7 +176,18 @@ final class VoiceFnTapSessionController {
 
     @discardableResult
     func startVoice() -> Bool {
-        guard isEnabled, !isSuspended, !functionKeyIsPressed else { return false }
+        guard isEnabled else {
+            logger("VOICE FN TAP start rejected reason=disabled")
+            return false
+        }
+        guard !isSuspended else {
+            logger("VOICE FN TAP start rejected reason=suspended")
+            return false
+        }
+        guard !functionKeyIsPressed else {
+            logger("VOICE FN TAP start rejected reason=key_held")
+            return false
+        }
         switch phase {
         case .idle:
             beginSession()
@@ -498,10 +510,13 @@ final class VoiceFnTapSessionController {
         if success {
             keyReleaseRetryTask?.cancel()
             keyReleaseRetryTask = nil
+            nextKeyReleaseRetryDelay = 1
         } else if keyReleaseRetryTask == nil {
             // Keep the safety gate until a real key-up succeeds, but retry without
             // requiring a new voice event after Accessibility permission recovers.
-            keyReleaseRetryTask = schedule(1) { [weak self] in
+            let delay = nextKeyReleaseRetryDelay
+            nextKeyReleaseRetryDelay = min(delay * 2, 30)
+            keyReleaseRetryTask = schedule(delay) { [weak self] in
                 guard let self else { return }
                 self.keyReleaseRetryTask = nil
                 _ = self.releaseFunctionKeyIfNeeded()

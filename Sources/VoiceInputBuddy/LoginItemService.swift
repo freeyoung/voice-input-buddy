@@ -69,11 +69,8 @@ final class LoginItemService: ObservableObject {
         status == .requiresApproval
     }
 
-    func refresh(clearFailure: Bool = false) {
+    func refresh() {
         status = controller.status
-        if clearFailure {
-            didFailToUpdate = false
-        }
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -88,12 +85,12 @@ final class LoginItemService: ObservableObject {
             }
         } catch {
             AppLogger.shared.write("LOGIN ITEM update_failed requested_enabled=\(enabled)")
-            refresh(clearFailure: false)
+            refresh()
             didFailToUpdate = enabled != isEnabled
             return
         }
 
-        refresh(clearFailure: false)
+        refresh()
         didFailToUpdate = enabled != isEnabled
         if didFailToUpdate {
             AppLogger.shared.write("LOGIN ITEM status_mismatch requested_enabled=\(enabled)")

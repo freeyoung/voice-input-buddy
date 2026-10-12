@@ -3,17 +3,17 @@ import Testing
 import AppleRemoteAudioCore
 @testable import VoiceInputBuddy
 
-private final class ReviewTask: HIDRemoteScheduledTask {
+private final class LifecycleTask: HIDRemoteScheduledTask {
     let due: UInt64
     var action: (() -> Void)?
     init(_ due: UInt64, _ action: @escaping () -> Void) { self.due = due; self.action = action }
     func cancel() { action = nil }
 }
-private final class ReviewClock: HIDRemoteScheduling {
+private final class LifecycleClock: HIDRemoteScheduling {
     var now: UInt64 = 0
-    var tasks: [ReviewTask] = []
+    var tasks: [LifecycleTask] = []
     func schedule(afterMilliseconds: UInt64, repeatingEveryMilliseconds: UInt64?, _ action: @escaping () -> Void) -> HIDRemoteScheduledTask {
-        let task = ReviewTask(now + afterMilliseconds, action)
+        let task = LifecycleTask(now + afterMilliseconds, action)
         tasks.append(task)
         return task
     }
@@ -32,7 +32,7 @@ private final class ReviewClock: HIDRemoteScheduling {
         now = end
     }
 }
-private final class ReviewLoginController: LoginItemControlling {
+private final class LifecycleLoginController: LoginItemControlling {
     var status: LoginItemRegistrationStatus = .notRegistered
     var fail = true
     func register() throws {
@@ -43,13 +43,13 @@ private final class ReviewLoginController: LoginItemControlling {
     func openLoginItemsSettings() {}
 }
 
-@Suite("Review lifecycle recovery")
+@Suite("Session recovery regressions")
 @MainActor
-struct ReviewLifecycleTests {
-    private func defaults() -> UserDefaults { UserDefaults(suiteName: "review-" + UUID().uuidString)! }
+struct SessionRecoveryRegressionTests {
+    private func defaults() -> UserDefaults { UserDefaults(suiteName: "lifecycle-" + UUID().uuidString)! }
 
     @Test func releaseRetriesWithoutAnotherVoiceEventAndOnlyThenCompletes() {
-        let clock = ReviewClock()
+        let clock = LifecycleClock()
         var canRelease = false
         var completions = 0
         let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
@@ -70,8 +70,80 @@ struct ReviewLifecycleTests {
         #expect(completions == 1)
     }
 
+    @Test func failedReleaseBacksOffWithOneTimerAndResetsAfterRecovery() {
+        let clock = LifecycleClock()
+        var canRelease = false
+        let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
+            schedule: clock.scheduleSeconds,
+            setFunctionKeyPressed: { down in down || canRelease }, enqueueAudio: { _ in },
+            drainAudio: { _, done in done() }, onFailure: { _ in })
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 100)
+        for due: UInt64 in [1100, 3100, 7100, 15100, 31100, 61100, 91100] {
+            let pending = clock.tasks.filter { $0.action != nil }
+            #expect(pending.count == 1)
+            #expect(pending.first?.due == due)
+            clock.advance(to: due)
+        }
+        canRelease = true
+        clock.advance(to: 121100)
+        #expect(!session.requiresCleanupBeforeMapping)
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 121100)
+        canRelease = false
+        clock.advance(to: 121200)
+        #expect(clock.tasks.filter { $0.action != nil }.map(\.due) == [122200])
+        canRelease = true
+        clock.advance(to: 122200)
+    }
+
+    @Test func rejectedVoiceRequestsLogTheirActualReason() {
+        let clock = LifecycleClock()
+        var logs: [String] = []
+        let session = VoiceFnTapSessionController(startDelay: 0,
+            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { _ in true },
+            enqueueAudio: { _ in }, drainAudio: { _, done in done() },
+            onFailure: { _ in }, logger: { logs.append($0) })
+        #expect(!session.startVoice())
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 0)
+        #expect(!session.startVoice())
+        session.suspend()
+        #expect(!session.startVoice())
+        #expect(logs.contains("VOICE FN TAP start rejected reason=disabled"))
+        #expect(logs.contains("VOICE FN TAP start rejected reason=key_held"))
+        #expect(logs.contains("VOICE FN TAP start rejected reason=suspended"))
+    }
+
+    @Test func manualUpdateCheckCancelsInformationDeadlineAndWaitsForUpdater() {
+        let clock = LifecycleClock()
+        let store = UpdateInformationStore(userDefaults: defaults(), checkingTimeout: 1, schedule: clock.scheduleSeconds)
+        store.beginChecking()
+        clock.advance(to: 500)
+        store.beginChecking(timeoutEnabled: false)
+        clock.advance(to: 180000)
+        #expect(store.state == .checking)
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+        store.setUpToDate()
+        #expect(store.state == .upToDate)
+    }
+
+    @Test func sensitiveMetadataIsRejectedByBothDestinationPolicies() {
+        for term in ["password", "passcode", "secret", "api key", "apikey", "token", "credit card",
+                     "密码", "口令", "密钥", "令牌", "信用卡"] {
+            let snapshot = VoiceInputDestinationSnapshot(bundleIdentifier: "test", role: "AXTextField", subrole: "",
+                enabled: true, editable: true, protectedContent: false, semanticText: term.uppercased())
+            #expect(snapshot.isSensitiveDestination)
+            #expect(!snapshot.isSafeEditableDestination)
+        }
+    }
+
     @Test func destroyingSessionReleasesHeldKeyAndCancelsDelayedTap() {
-        let clock = ReviewClock()
+        let clock = LifecycleClock()
         var events: [Bool] = []
         var session: VoiceFnTapSessionController? = VoiceFnTapSessionController(startDelay: 0,
             schedule: clock.scheduleSeconds,
@@ -90,7 +162,7 @@ struct ReviewLifecycleTests {
     }
 
     @Test func missingButtonReleaseDoesNotLatchForever() {
-        let clock = ReviewClock()
+        let clock = LifecycleClock()
         let prefs = defaults()
         let monitor = HIDRemoteMonitor(settings: AppSettings(defaults: prefs), scheduler: clock,
             runtimePermissions: { true }, diagnosticLogger: { _ in })
@@ -104,7 +176,7 @@ struct ReviewLifecycleTests {
     }
 
     @Test func foregroundRefreshPreservesLoginFailureUntilRetry() {
-        let controller = ReviewLoginController()
+        let controller = LifecycleLoginController()
         let service = LoginItemService(controller: controller)
         service.setEnabled(true)
         #expect(service.didFailToUpdate)
@@ -117,7 +189,7 @@ struct ReviewLifecycleTests {
     }
 
     @Test func abandonedUpdateCheckExpiresButCompletedResultDoesNot() {
-        let clock = ReviewClock()
+        let clock = LifecycleClock()
         let store = UpdateInformationStore(userDefaults: defaults(), checkingTimeout: 1, schedule: clock.scheduleSeconds)
         store.beginChecking()
         clock.advance(to: 1000)
@@ -154,8 +226,8 @@ struct ReviewLifecycleTests {
                     enabled: true, editable: true, protectedContent: protected, semanticText: text)
             })
         }
-        if case .cancelled(.targetChanged) = coordinator(protected: true, text: "").waitUntilReady(completion: { _ in }) {} else { Issue.record("Protected destination accepted") }
-        if case .cancelled(.targetChanged) = coordinator(protected: false, text: "Password").waitUntilReady(completion: { _ in }) {} else { Issue.record("Password destination accepted") }
+        if case .cancelled(.sensitiveDestination) = coordinator(protected: true, text: "").waitUntilReady(completion: { _ in }) {} else { Issue.record("Protected destination accepted") }
+        if case .cancelled(.sensitiveDestination) = coordinator(protected: false, text: "Password").waitUntilReady(completion: { _ in }) {} else { Issue.record("Password destination accepted") }
         if case .immediate = coordinator(protected: false, text: "Search").waitUntilReady(completion: { _ in }) {} else { Issue.record("Explicit search typing rejected") }
     }
 

@@ -4226,8 +4226,6 @@ struct OnboardingView: View {
         settings.setOnboardingStep(previous)
     }
 
-
-
     private func requestBluetoothPermission() {
         guard interactionProbe == nil else { return }
         if bluetoothAuthorization == .allowedAlways {

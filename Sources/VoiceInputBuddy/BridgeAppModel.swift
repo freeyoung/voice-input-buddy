@@ -5049,8 +5049,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             _ = bridge.requestMicrophoneClose()
             bluetoothVoiceActive = false
             activeBluetoothVoiceDeviceIdentifier = nil
-            pendingBluetoothVoiceStart.identifier = nil
-            pendingBluetoothVoiceStart.audio.cancel()
+            pendingBluetoothVoiceStart.cancel()
             pendingBluetoothVoiceStopRequested = false
             AppLogger.shared.write(
                 "ATVV STREAM rejected reason=voice_key mode=\(settings.voiceKeyMode.rawValue)"
@@ -5180,8 +5179,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         guard let identifier = bridge.deviceIdentifier else { return }
         if pendingBluetoothVoiceStart.identifier == identifier,
            activeBluetoothVoiceDeviceIdentifier == nil {
-            pendingBluetoothVoiceStart.identifier = nil
-            pendingBluetoothVoiceStart.audio.cancel()
+            pendingBluetoothVoiceStart.cancel()
             pendingBluetoothVoiceStopRequested = false
             AppLogger.shared.write("ATVV STREAM stop_before_audio_ready result=cancelled")
             return

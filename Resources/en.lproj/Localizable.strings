@@ -725,8 +725,6 @@
 "onboarding.voice_tool.typeless.fn_required" = "In Typeless, press Fn once to start voice typing, then again to stop.";
 "onboarding.voice_tool.voice_key_help" = "Voice trigger key: %1$@. The voice app must use the same key; Voice Input Buddy does not intercept input-source shortcuts.";
 "onboarding.voice_tool.fn_only" = "Use Fn/Globe for the first-time setup";
-"onboarding.voice_key.migration.title" = "Voice trigger key changed from %1$@ to Fn/Globe";
-"onboarding.voice_key.migration.detail" = "First-time setup uses Fn/Globe so the input method configuration stays consistent. After setup, you can switch back to Left or Right Command or Option in the main settings.";
 "onboarding.voice_tool.guide.title" = "Set up your voice app";
 "onboarding.voice_tool.guide.detail" = "Review every step for the selected app. Voice Input Buddy never changes third-party settings.";
 "onboarding.voice_tool.guide.continue_hint" = "View each setup step on the right before continuing.";

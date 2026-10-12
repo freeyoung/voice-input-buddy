@@ -6,6 +6,7 @@ enum VoiceInputDestinationCancellation: String, Equatable {
     case actionFailed = "action_failed"
     case superseded
     case targetChanged = "target_changed"
+    case sensitiveDestination = "sensitive_destination"
     case timedOut = "timed_out"
 }
 
@@ -77,27 +78,28 @@ struct VoiceInputDestinationSnapshot: Equatable {
         self.focusIdentity = focusIdentity
     }
 
+    private static let sensitiveTerms = [
+        "password", "passcode", "secret", "api key", "apikey", "token", "credit card",
+        "密码", "口令", "密钥", "令牌", "信用卡",
+    ]
+    private static let nonEditingTerms = [
+        "search", "find", "filter", "address bar", "settings", "preferences", "command palette",
+        "搜索", "查找", "筛选", "设置", "偏好",
+    ]
+
     var isSensitiveDestination: Bool {
         if protectedContent || role == "AXSecureTextField" || subrole == "AXSecureTextField" { return true }
         let text = semanticText.lowercased()
-        return ["password", "passcode", "secret", "api key", "apikey", "token", "credit card",
-                "密码", "口令", "密钥", "令牌", "信用卡"].contains(where: text.contains)
+        return Self.sensitiveTerms.contains(where: text.contains)
     }
 
     var isSafeEditableDestination: Bool {
-        guard enabled, editable, !protectedContent else { return false }
+        guard enabled, editable, !isSensitiveDestination else { return false }
         guard role == "AXTextArea" || role == "AXTextField" || role == "AXComboBox" else {
             return false
         }
-        guard role != "AXSecureTextField", subrole != "AXSecureTextField" else { return false }
-        let normalized = semanticText.lowercased()
-        let sensitiveTerms = [
-            "password", "passcode", "secret", "api key", "apikey", "token",
-            "credit card", "search", "find", "filter", "address bar", "settings",
-            "preferences", "command palette", "密码", "口令", "密钥", "令牌",
-            "信用卡", "搜索", "查找", "筛选", "设置", "偏好",
-        ]
-        return !sensitiveTerms.contains(where: normalized.contains)
+        let text = semanticText.lowercased()
+        return !Self.nonEditingTerms.contains(where: text.contains)
     }
 
     static func system() -> VoiceInputDestinationSnapshot {
@@ -266,8 +268,8 @@ final class VoiceInputDestinationCoordinator {
             // Direct, explicit voice typing may target search fields or custom editors.
             // Protected/sensitive fields must still be refused without a pending launch.
             if snapshot().isSensitiveDestination {
-                onStateChange(.cancelled(.targetChanged))
-                return .cancelled(.targetChanged)
+                onStateChange(.cancelled(.sensitiveDestination))
+                return .cancelled(.sensitiveDestination)
             }
             return .immediate
         }

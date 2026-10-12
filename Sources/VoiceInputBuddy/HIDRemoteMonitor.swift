@@ -990,7 +990,7 @@ final class HIDRemoteMonitor {
         nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
         guard nonRepeatablePressedButtons.insert(button).inserted else { return false }
         nonRepeatableExpiryTimers[button] = scheduler.schedule(
-            afterMilliseconds: 8_000, repeatingEveryMilliseconds: nil
+            afterMilliseconds: HIDRemoteTiming.missingReleaseTimeoutMilliseconds, repeatingEveryMilliseconds: nil
         ) { [weak self] in
             self?.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
             guard let self else { return }
