@@ -4,6 +4,8 @@ Use the github-workflow skill for Git changes. Branches use type/kebab-case name
 
 Development stage: assume no legacy users or data. Remove obsolete logic instead of adding compatibility migrations or legacy cleanup flags.
 
+This is a product assumption: do not retain retired API stubs just in case. Preserve active behavior such as audio routing, onboarding validation and completed-update detection.
+
 Scope: macOS first, Windows later. Preserve permissions, first-run wizard, microphone driver and button mapping. No statistics collection, transcript history, audio archives, remote telemetry, upstream private extensions or upstream branding.
 
 Use GPL-3.0-only and preserve third-party copyright and license notices. Public binaries require their matching complete source, including bundled driver sources. Do not copy proprietary logos, photos, signing keys or service credentials.
