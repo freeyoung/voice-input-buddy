@@ -52,9 +52,7 @@ let package = Package(
         .target(
             name: "AppleRemotePacketLogger",
             dependencies: ["AppleRemoteAudioCore", "AppleRemoteHCIProtocol"],
-            path: "Sources/AppleRemoteAudioCapture",
-            exclude: ["AppleRemoteVoiceController.swift", "main.swift"],
-            sources: ["VoiceInputBuddyBTPacketLoggerClient.swift"],
+            path: "Sources/AppleRemotePacketLogger",
             linkerSettings: [
                 .linkedFramework("Security"),
             ]
@@ -63,7 +61,6 @@ let package = Package(
             name: "AppleRemoteAudioCapture",
             dependencies: ["AppleRemoteAudioCore", "AppleRemotePacketLogger"],
             path: "Sources/AppleRemoteAudioCapture",
-            exclude: ["VoiceInputBuddyBTPacketLoggerClient.swift"],
             linkerSettings: [
                 .linkedFramework("IOKit"),
                 .linkedFramework("Network"),
@@ -78,7 +75,7 @@ let package = Package(
                 .linkedFramework("Security"),
             ]
         ),
-        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy"], path: "Tests/VoiceInputBuddyTests"),
+        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy", "AppleRemoteAudioCore", "AppleRemotePacketLogger"], path: "Tests/VoiceInputBuddyTests"),
     ],
     swiftLanguageModes: [.v5]
 )

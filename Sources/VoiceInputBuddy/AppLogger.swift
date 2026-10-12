@@ -74,10 +74,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             metadata: .current(),
             fileManager: fileManager,
             publicKeyDataProvider: { DiagnosticLogPublicKeyConfiguration.current() },
-            publicEventStore: loggingEnabled ? PublicDiagnosticEventStore(fileURL:
-                fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                    .appendingPathComponent("VoiceInputBuddy/Diagnostics/public-events.json")
-            ) : nil,
+            publicEventStore: nil, // No configured diagnostic upload service.
             isEnabled: loggingEnabled
         )
     }

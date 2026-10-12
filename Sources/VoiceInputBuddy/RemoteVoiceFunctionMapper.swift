@@ -2,7 +2,7 @@ import Foundation
 import IOKit.hid
 import IOKit.hidsystem
 
-struct HIDUsageMapping: Equatable {
+struct HIDUsageMapping: Codable, Equatable {
     static let sourceKey = "HIDKeyboardModifierMappingSrc"
     static let destinationKey = "HIDKeyboardModifierMappingDst"
 
@@ -73,16 +73,15 @@ enum RemoteVoiceFunctionMappingPolicy {
         originalPowerMapping: HIDUsageMapping?,
         in current: [HIDUsageMapping]
     ) -> [HIDUsageMapping] {
+        let ownedVoice = current.first { $0.source == remoteVoiceKey.source }
+        let restoreVoice = ownedVoice == remoteVoiceKey || ownedVoice == neutralRemoteVoiceKey
+        let restorePower = current.first { $0.source == suppressedRemotePowerKey.source } == suppressedRemotePowerKey
         var restored = current.filter {
-            $0.source != remoteVoiceKey.source &&
-                $0.source != suppressedRemotePowerKey.source
+            !(restoreVoice && $0.source == remoteVoiceKey.source) &&
+                !(restorePower && $0.source == suppressedRemotePowerKey.source)
         }
-        if let originalVoiceMapping {
-            restored.append(originalVoiceMapping)
-        }
-        if let originalPowerMapping {
-            restored.append(originalPowerMapping)
-        }
+        if restoreVoice, let originalVoiceMapping { restored.append(originalVoiceMapping) }
+        if restorePower, let originalPowerMapping { restored.append(originalPowerMapping) }
         return restored
     }
 }
@@ -116,11 +115,18 @@ final class RemoteVoiceFunctionMapper {
     private static let productID = 0x32B8
     private static let mappingProperty = "UserKeyMapping" as CFString
 
-    private struct OriginalMappings {
+    private struct OriginalMappings: Codable {
         let voice: HIDUsageMapping?
         let power: HIDUsageMapping?
     }
 
+    private struct RecoveryJournal: Codable {
+        let bootID: String
+        let mappings: [UInt64: OriginalMappings]
+    }
+    private static let journalKey = "hid.originalMappings.v1"
+    private let recoveryDefaults: UserDefaults
+    private let bootID: String
     private let serviceProvider: ServiceProvider
     private var originalMappings: [UInt64: OriginalMappings] = [:]
     private(set) var isApplied = false
@@ -133,8 +139,36 @@ final class RemoteVoiceFunctionMapper {
         matchedServiceCount > 0
     }
 
-    init(serviceProvider: @escaping ServiceProvider = RemoteVoiceFunctionMapper.systemServices) {
+    init(
+        serviceProvider: @escaping ServiceProvider = RemoteVoiceFunctionMapper.systemServices,
+        recoveryDefaults: UserDefaults = .standard,
+        bootID: String = RemoteVoiceFunctionMapper.currentBootID()
+    ) {
         self.serviceProvider = serviceProvider
+        self.recoveryDefaults = recoveryDefaults
+        self.bootID = bootID
+        if let data = recoveryDefaults.data(forKey: Self.journalKey),
+           let journal = try? JSONDecoder().decode(RecoveryJournal.self, from: data),
+           journal.bootID == bootID {
+            originalMappings = journal.mappings
+        }
+    }
+
+    private static func currentBootID() -> String {
+        var size = 0
+        guard sysctlbyname("kern.bootsessionuuid", nil, &size, nil, 0) == 0, size > 0 else { return UUID().uuidString }
+        var bytes = [CChar](repeating: 0, count: size)
+        guard sysctlbyname("kern.bootsessionuuid", &bytes, &size, nil, 0) == 0 else { return UUID().uuidString }
+        return String(cString: bytes)
+    }
+
+    private func persistRecoveryJournal() {
+        if originalMappings.isEmpty {
+            recoveryDefaults.removeObject(forKey: Self.journalKey)
+        } else if let data = try? JSONEncoder().encode(RecoveryJournal(bootID: bootID, mappings: originalMappings)) {
+            recoveryDefaults.set(data, forKey: Self.journalKey)
+        }
+        recoveryDefaults.synchronize()
     }
 
     @discardableResult
@@ -182,16 +216,21 @@ final class RemoteVoiceFunctionMapper {
                 let currentPower = current.first {
                     $0.source == RemoteVoiceFunctionMappingPolicy.suppressedRemotePowerKey.source
                 }
+                let currentVoice = current.first {
+                    $0.source == RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source
+                }
+                // Recover older unjournaled sessions without saving our own output as input.
                 originalMappings[registryID] = OriginalMappings(
-                    voice: current.first {
-                        $0.source == RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source
-                    },
+                    voice: [RemoteVoiceFunctionMappingPolicy.remoteVoiceKey,
+                            RemoteVoiceFunctionMappingPolicy.neutralRemoteVoiceKey].contains(currentVoice)
+                        ? nil : currentVoice,
                     power: currentPower == RemoteVoiceFunctionMappingPolicy.suppressedRemotePowerKey
                         ? nil
                         : currentPower
                 )
                 newlyStoredRegistryIDs.insert(registryID)
             }
+            persistRecoveryJournal() // Persist before changing a system HID property.
             let desired = RemoteVoiceFunctionMappingPolicy.applying(
                 to: current,
                 voiceMapping: neutralizeVoiceKey
@@ -264,10 +303,12 @@ final class RemoteVoiceFunctionMapper {
             )
             if service.setMappings(restored) {
                 restoredCount += 1
+                originalMappings.removeValue(forKey: registryID)
             }
         }
 
-        originalMappings.removeAll()
+        // Offline or failed services remain journaled for the next reconnect/launch.
+        persistRecoveryJournal()
         resetAppliedState()
         AppLogger.shared.write("VOICE FN MAPPING restored=\(restoredCount)")
     }
@@ -292,6 +333,7 @@ final class RemoteVoiceFunctionMapper {
         newlyStoredRegistryIDs
             .subtracting(registryIDsNeedingRestore)
             .forEach { originalMappings.removeValue(forKey: $0) }
+        persistRecoveryJournal()
         resetAppliedState()
         AppLogger.shared.write(
             "VOICE FN MAPPING rollback matched=\(matchedCount) applied=\(appliedIndices.count) " +

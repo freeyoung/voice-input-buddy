@@ -1260,6 +1260,8 @@ final class AppSettings: ObservableObject {
 
     func restartOnboarding() {
         discardOnboardingVoiceTrial()
+        verifiedVoiceToolBinding = nil
+        defaults.removeObject(forKey: Keys.firstUseEvents)
         onboardingVoiceTool = .unselected
         onboardingRemoteAvailability = .unselected
         onboardingControlMethod = .unselected

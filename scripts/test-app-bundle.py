@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise app assembly twice with a fixture compiler and signing failures."""
+import json
 import os
 from pathlib import Path
 import shutil
@@ -18,6 +19,7 @@ class AppBundleTests(unittest.TestCase):
         shutil.copy2(SOURCE / 'scripts/build-app.sh', self.root / 'scripts/build-app.sh')
         for name in ['architecture.sh','thin-framework.py']:
             shutil.copy2(SOURCE / 'scripts' / name, self.root / 'scripts' / name)
+        shutil.copy2(SOURCE / 'scripts/generate-common-phrases.py', self.root / 'scripts/generate-common-phrases.py')
         shutil.copy2(SOURCE / 'scripts/verify-onboarding-resources.py', self.root / 'scripts/verify-onboarding-resources.py')
         shutil.copytree(SOURCE / 'Resources', self.root / 'Resources')
         (self.root / 'Sources/VoiceInputBuddy').mkdir(parents=True)
@@ -55,6 +57,9 @@ class AppBundleTests(unittest.TestCase):
         result = self.build()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue((self.app / 'Contents/Resources/retired.txt').exists())
+        phrases = json.loads((self.app / 'Contents/Resources/CommonPhrases.json').read_text())
+        self.assertEqual(len(phrases['entries']), 12)
+        self.assertEqual(phrases['bindings']['ok'], 'builtin-001')
         resource.unlink()
         (self.app / 'Contents/Frameworks/Retired.framework').mkdir()
         result = self.build()

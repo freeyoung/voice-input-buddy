@@ -380,6 +380,7 @@ public final class AppleRemotePacketLoggerClient: @unchecked Sendable {
         state = .stopped
         didEmitAuthorized = false
         invalidateConnection()
+        releaseAuthorization()
         emit(.failed(failure))
     }
 
@@ -455,9 +456,7 @@ public final class AppleRemotePacketLoggerClient: @unchecked Sendable {
             AuthorizationRightGet($0, &definition)
         }
         if lookupStatus == errAuthorizationDenied {
-            let rule: CFDictionary = [
-                "class" as CFString: "allow" as CFString,
-            ] as CFDictionary
+            let rule = temporaryAuthorizationRule(bundleIdentifier: Bundle.main.bundleIdentifier)
             let description = (Locale.preferredLanguages.first ?? "en").hasPrefix("zh")
                 ? "允许语音搭子接收 Apple Remote 蓝牙音频。"
                 : "Allow VoiceInputBuddy to receive Bluetooth audio from your Apple Remote."
@@ -518,7 +517,15 @@ public final class AppleRemotePacketLoggerClient: @unchecked Sendable {
         return .granted(.init(reference: authorization, createdRule: createdRule))
     }
 
-    private static func authorizationRuleIsStrongEnough(_ definition: CFDictionary) -> Bool {
+    static func temporaryAuthorizationRule(bundleIdentifier: String?) -> CFDictionary {
+        [
+            "class": "user", "group": "admin", "authenticate-user": true,
+            "shared": false, "timeout": 0,
+            "identifier": bundleIdentifier ?? trustedTemporaryOwnerIdentifier,
+        ] as CFDictionary
+    }
+
+    static func authorizationRuleIsStrongEnough(_ definition: CFDictionary) -> Bool {
         let values = definition as NSDictionary
         guard values["class"] as? String == "user",
               values["group"] as? String == "admin",

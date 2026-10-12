@@ -224,6 +224,7 @@ final class VoiceFnTapSessionController {
             remoteEnded = true
             return true
         case .idle:
+            releaseFunctionKeyIfNeeded()
             runIdleCompletions()
             return false
         }
@@ -419,6 +420,7 @@ final class VoiceFnTapSessionController {
         suppressAudioUntilRemoteStop = suppressUntilRemoteStop
         switch phase {
         case .idle:
+            releaseFunctionKeyIfNeeded()
             runIdleCompletions()
         case .starting:
             generation &+= 1
@@ -518,7 +520,7 @@ final class VoiceFnTapSessionController {
     }
 
     private func runIdleCompletions() {
-        guard phase == .idle, !suppressAudioUntilRemoteStop else { return }
+        guard phase == .idle, !functionKeyIsPressed, !suppressAudioUntilRemoteStop else { return }
         let completions = idleCompletions
         idleCompletions.removeAll()
         completions.forEach { $0() }
