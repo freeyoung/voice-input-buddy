@@ -733,7 +733,7 @@
 "onboarding.voice_tool.guide.microphone_hint" = "Confirm the microphone choice in step 3 before continuing.";
 "onboarding.voice_tool.guide.microphone_detail" = "In %@ → Voice Input settings, choose “%@” as the microphone. Set this in the voice app itself.";
 "onboarding.voice_tool.guide.match_shortcut" = "Set the voice shortcut to %@ to match this setup. The screenshot shows the installed app's current settings.";
-"onboarding.voice_tool.guide.screenshot.doubao_microphone" = "In Doubao → Voice Input → Microphone, select Voice Input Buddy Mic.";
+"onboarding.voice_tool.guide.screenshot.doubao_input_microphone" = "In Doubao → Voice Input → Microphone, select Voice Input Buddy Mic.";
 "onboarding.voice_tool.guide.select_step" = "Click a step on the right to view its setup instructions.";
 "onboarding.voice_tool.guide.select_doubao" = "Select Doubao";
 "onboarding.voice_tool.guide.configure_doubao" = "Set Fn as Doubao’s voice shortcut";

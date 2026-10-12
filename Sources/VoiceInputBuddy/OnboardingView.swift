@@ -1193,9 +1193,8 @@ struct OnboardingView: View {
     private func onboardingGuideScreenshot(resourceName: String, focusRect: CGRect? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let image = onboardingGuideImage(resourceName: resourceName) {
-                onboardingGuidePreview(image: image, focusRect: focusRect ?? (resourceName == "doubao-settings"
-                    ? CGRect(x: 0.325, y: 0.383, width: 0.648, height: 0.30) : nil))
-                    .frame(maxWidth: .infinity, maxHeight: resourceName.contains("microphone") ? 150 : 220)
+                onboardingGuidePreview(image: image, focusRect: guideFocusRect(for: resourceName) ?? focusRect)
+                    .frame(maxWidth: .infinity, maxHeight: resourceName.contains("settings") ? 260 : resourceName.contains("microphone") ? 150 : 220)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay {
                         RoundedRectangle(cornerRadius: 10)
@@ -1224,6 +1223,23 @@ struct OnboardingView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private func guideFocusRect(for resourceName: String) -> CGRect? {
+        guard let url = VoiceInputBuddyResourceBundle.onboardingImageURL(
+            named: resourceName, isDark: colorScheme == .dark,
+            in: VoiceInputBuddyResourceBundle.mainOrDevelopment
+        ), ["jpg", "jpeg"].contains(url.pathExtension.lowercased()) else { return nil }
+        // These bounds follow the annotations in the replacement screenshots.
+        switch resourceName {
+        case "doubao-menu": return CGRect(x: 0, y: 0.06, width: 1, height: 0.57)
+        case "weixin-input-menu": return CGRect(x: 0.01, y: 0.055, width: 0.69, height: 0.33)
+        case "doubao-settings": return CGRect(x: 0.28, y: 0.11, width: 0.70, height: 0.73)
+        case "weixin-input-settings": return CGRect(x: 0.31, y: 0.33, width: 0.67, height: 0.51)
+        case "doubao-input-microphone": return CGRect(x: 0.23, y: 0.245, width: 0.54, height: 0.52)
+        case "weixin-input-microphone": return CGRect(x: 0.59, y: 0.525, width: 0.40, height: 0.325)
+        default: return nil
         }
     }
 
@@ -1979,8 +1995,7 @@ struct OnboardingView: View {
                 )
             } else if settings.onboardingVoiceTool == .doubao {
                 onboardingGuideScreenshot(
-                    resourceName: "doubao-microphone",
-                    focusRect: CGRect(x: 0.239, y: 0.249, width: 0.52, height: 0.50)
+                    resourceName: "doubao-input-microphone"
                 )
             }
 
@@ -3350,13 +3365,10 @@ struct OnboardingView: View {
     }
 
     private func onboardingGuideImage(resourceName: String) -> NSImage? {
-        let appearance = colorScheme == .dark ? "dark" : "light"
-        let bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment
-        guard let url = bundle.url(
-            forResource: "\(resourceName)-\(appearance)",
-            withExtension: "png",
-            subdirectory: "Onboarding"
-        ) ?? bundle.url(forResource: "\(resourceName)-light", withExtension: "png", subdirectory: "Onboarding") else {
+        guard let url = VoiceInputBuddyResourceBundle.onboardingImageURL(
+            named: resourceName, isDark: colorScheme == .dark,
+            in: VoiceInputBuddyResourceBundle.mainOrDevelopment
+        ) else {
             return nil
         }
         return NSImage(contentsOf: url)
