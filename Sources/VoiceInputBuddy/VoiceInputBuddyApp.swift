@@ -656,20 +656,13 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     private func versionMenuItem() -> NSMenuItem {
-        let shortVersion = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? localization.text("common.value.unknown")
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
-        let title = build.map {
-            String(
-                format: localization.text("app.version_with_build"),
-                locale: localization.locale,
-                arguments: [shortVersion, $0]
-            )
-        } ?? String(
+        let version = (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String)
+            ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+            ?? localization.text("common.value.unknown")
+        let title = String(
             format: localization.text("app.version"),
             locale: localization.locale,
-            arguments: [shortVersion]
+            arguments: [version]
         )
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
@@ -993,9 +986,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
-        let shortVersion = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? localization.text("common.value.unknown")
+        let shortVersion = (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String)
+            ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+            ?? localization.text("common.value.unknown")
         let alert = NSAlert()
         alert.messageText = localization.text("app.name")
         alert.informativeText = String(
@@ -1156,9 +1149,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     private func showUpdateCompletedAlert() {
         guard let window = settingsWindowController?.window else { return }
-        let version = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? localization.text("common.value.unknown")
+        let version = (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String)
+            ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+            ?? localization.text("common.value.unknown")
         let alert = NSAlert()
         alert.messageText = localization.text("update.completed.title")
         alert.informativeText = String(

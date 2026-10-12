@@ -539,7 +539,7 @@
 "status_item.state.disconnected" = "%@: No devices connected";
 "status_item.state.connected" = "%@: Device connected";
 "status_item.state.streaming" = "%@: Voice active";
-"about.alert.description_with_version" = "Version %1$@\nWireless voice and shortcut controls for Xiaomi Bluetooth Remote 2 Pro.";
+"about.alert.description_with_version" = "Version %1$@\nConnect a remote to voice input tools with microphone audio routing and customizable button shortcuts.";
 "common.action.ok" = "OK";
 "common.action.copy_link" = "Copy Link";
 "common.status.copied" = "Copied";
@@ -558,7 +558,7 @@
 "settings.section.login" = "Me";
 "settings.section.transcripts" = "Reflections";
 "about.page.subtitle" = "View version, updates, language, and app display options";
-"about.app.description" = "Wireless voice and shortcut controls for Xiaomi Bluetooth Remote 2 Pro.";
+"about.app.description" = "Connect a remote to voice input tools with microphone audio routing and customizable button shortcuts.";
 "about.app_support.title" = "App & Support";
 "about.preferences.show_dock_icon" = "Show app icon in the Dock";
 "about.preferences.show_dock_icon_help" = "When hidden, Voice Input Buddy remains available from the menu bar.";
@@ -729,7 +729,7 @@
 "onboarding.voice_key.migration.detail" = "First-time setup uses Fn/Globe so the input method configuration stays consistent. After setup, you can switch back to Left or Right Command or Option in the main settings.";
 "onboarding.voice_tool.guide.title" = "Set up your voice app";
 "onboarding.voice_tool.guide.detail" = "Review every step for the selected app. Voice Input Buddy never changes third-party settings.";
-"onboarding.voice_tool.guide.continue_hint" = "Review and click every step on the right first.";
+"onboarding.voice_tool.guide.continue_hint" = "View each setup step on the right before continuing.";
 "onboarding.voice_tool.guide.microphone_hint" = "Confirm the microphone choice in step 3 before continuing.";
 "onboarding.voice_tool.guide.microphone_detail" = "In %@ → Voice Input settings, choose “%@” as the microphone. Set this in the voice app itself.";
 "onboarding.voice_tool.guide.match_shortcut" = "Set the voice shortcut to %@ to match this setup. The screenshot shows the installed app's current settings.";
@@ -1213,3 +1213,8 @@
 "onboarding.control_source.bluetooth_unavailable.title" = "Other Bluetooth voice devices";
 
 "onboarding.control_source.unsupported" = "Not supported yet";
+
+"onboarding.voice_tool.guide.open_voicecursor" = "Open VoiceCursor";
+"onboarding.voice_tool.guide.open_voicecursor.detail" = "Open VoiceCursor → Settings → General to configure its hotkey and microphone.";
+"onboarding.voice_tool.guide.screenshot.voicecursor_setting_fn" = "In VoiceCursor → General → Hotkeys, set Dictation to Fn.";
+"onboarding.voice_tool.guide.screenshot.voicecursor_setting_mic" = "In VoiceCursor → Audio → Microphone, choose Voice Input Buddy Mic.";

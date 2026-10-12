@@ -49,7 +49,7 @@ for name in sorted(names):
     files.append(light)
     dark = image_path(name, 'dark')
     # New local captures are light only; the view falls back to that real capture.
-    if dark is not None or name not in {'doubao-input-microphone', 'weixin-input-microphone'}:
+    if dark is not None or name not in {'doubao-input-microphone', 'weixin-input-microphone', 'voicecursor-setting-fn', 'voicecursor-setting-mic'}:
         assert dark is not None, f'Missing dark screenshot: {name}'
         files.append(dark)
 files.append(resources / 'BuddyRemoteIllustration.png')

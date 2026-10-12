@@ -10,7 +10,7 @@ struct ProductBoundaryTests {
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
         let bundle = try #require(Bundle(path: resources.path))
         let paired = ["doubao-menu", "doubao-settings", "weixin-input-menu", "weixin-input-settings"]
-        let microphone = ["doubao-input-microphone", "weixin-input-microphone"]
+        let microphone = ["doubao-input-microphone", "weixin-input-microphone", "voicecursor-setting-fn", "voicecursor-setting-mic"]
         for name in paired + microphone {
             let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(named: name, isDark: false, in: bundle))
             #expect(url.lastPathComponent == "\(name)-light.jpg")
@@ -209,18 +209,23 @@ struct ProductBoundaryTests {
         ))
     }
 
-    @Test func inputToolRequiresMicrophoneSetupBeforeIndependentVoiceTest() {
+    @Test func inputToolRequiresViewedStepsButNoMicrophoneCheckbox() {
         let passed = OnboardingCapabilities(
             voiceSessionStarted: true, voiceSamplesReceived: true,
             voiceSessionEnded: true, transcriptionAppeared: true
         )
         #expect(!OnboardingFlowPolicy.canContinue(
-            from: .voiceTool, voiceTool: .weixin, capabilities: passed
+            from: .voiceTool, voiceTool: .unselected, capabilities: passed
         ))
-        #expect(OnboardingFlowPolicy.canContinue(
-            from: .voiceTool, voiceTool: .weixin,
-            voiceToolMicrophoneConfirmed: true, capabilities: passed
-        ))
+        for tool in [OnboardingVoiceTool.doubao, .weixin, .vokie, .voicecursor, .typeless, .other] {
+            #expect(!OnboardingFlowPolicy.canContinue(
+                from: .voiceTool, voiceTool: tool, capabilities: OnboardingCapabilities()
+            ))
+            #expect(OnboardingFlowPolicy.canContinue(
+                from: .voiceTool, voiceTool: tool,
+                voiceToolGuideStepsCompleted: true, capabilities: OnboardingCapabilities()
+            ))
+        }
         // Step 7 verifies the input result and has no configuration confirmations.
         #expect(OnboardingFlowPolicy.canContinue(
             from: .voiceTest, voiceTool: .weixin, capabilities: passed
@@ -229,13 +234,13 @@ struct ProductBoundaryTests {
         incomplete.voiceSamplesReceived = false
         #expect(!OnboardingFlowPolicy.canContinue(
             from: .voiceTest, voiceTool: .weixin,
-            voiceToolMicrophoneConfirmed: true, capabilities: incomplete
+            capabilities: incomplete
         ))
         var typed = passed
         typed.manualTranscriptInputObserved = true
         #expect(!OnboardingFlowPolicy.canContinue(
             from: .voiceTest, voiceTool: .weixin,
-            voiceToolMicrophoneConfirmed: true, capabilities: typed
+            capabilities: typed
         ))
     }
 
