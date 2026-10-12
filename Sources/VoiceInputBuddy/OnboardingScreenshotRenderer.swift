@@ -85,7 +85,7 @@ enum OnboardingScreenshotRenderer {
         let screenshotAppearance = try ScreenshotAppearance(environmentValue: appearanceName)
         let screenshotLanguage = try ScreenshotLanguage(
             environmentValue: ProcessInfo.processInfo.environment[
-                "REMOTE_MIC_ONBOARDING_SCREENSHOT_LANGUAGE"
+                "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_LANGUAGE"
             ]
         )
         try FileManager.default.createDirectory(
@@ -102,31 +102,31 @@ enum OnboardingScreenshotRenderer {
         let settings = AppSettings(defaults: defaults)
         settings.applicationLanguage = screenshotLanguage.appLanguage
         let requestedVoiceTool = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_VOICE_TOOL"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_VOICE_TOOL"
         ].flatMap(OnboardingVoiceTool.init(rawValue:))
         let requestedVoiceKeyMode = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_VOICE_KEY_MODE"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_VOICE_KEY_MODE"
         ].flatMap(VoiceKeyMode.init(rawValue:))
         let requestedGuideStep = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_GUIDE_STEP"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_GUIDE_STEP"
         ].flatMap(Int.init)
         let requestedControlMethod = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_CONTROL_METHOD"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_CONTROL_METHOD"
         ].flatMap(OnboardingControlMethod.init(rawValue:))
         let requestedControlSource = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_CONTROL_SOURCE"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_CONTROL_SOURCE"
         ].flatMap(OnboardingControlSource.init(rawValue:))
         let requestedAppleRemoteGeneration = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_APPLE_REMOTE_GENERATION"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_APPLE_REMOTE_GENERATION"
         ].flatMap(OnboardingAppleRemoteGeneration.init(rawValue:))
         let systemFunctionKeyAvailable = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_SYSTEM_FN_AVAILABLE"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_SYSTEM_FN_AVAILABLE"
         ].map { $0 != "0" } ?? true
         let allVoiceToolsUnavailable = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_ALL_VOICE_TOOLS_UNAVAILABLE"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_ALL_VOICE_TOOLS_UNAVAILABLE"
         ] == "1"
         let remoteInputDiagnostic = switch ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_REMOTE_INPUT"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_REMOTE_INPUT"
         ] {
         case "voice":
             FirstUseRemoteInputDiagnostic(
@@ -150,7 +150,7 @@ enum OnboardingScreenshotRenderer {
             )
         }
         let screenshotAudioName = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_ONBOARDING_SCREENSHOT_AUDIO_NAME"
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_AUDIO_NAME"
         ] == "legacy" ? DoubaoAudioDevicePolicy.legacyDeviceName : DoubaoAudioDevicePolicy.deviceName
         let screenshotAudioDevices = [
             AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: screenshotAudioName),

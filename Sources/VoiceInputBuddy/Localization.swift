@@ -22,7 +22,7 @@ enum VoiceInputBuddyResourceBundle {
     private static var candidates: [URL] {
         var urls: [URL] = []
         if let explicitPath = ProcessInfo.processInfo.environment[
-            "REMOTE_MIC_RESOURCE_ROOT"
+            "VOICE_INPUT_BUDDY_RESOURCE_ROOT"
         ], !explicitPath.isEmpty {
             urls.append(URL(fileURLWithPath: explicitPath, isDirectory: true))
         }

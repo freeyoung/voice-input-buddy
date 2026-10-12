@@ -86,7 +86,7 @@ extension VirtualAudioDeviceDiagnosticKind {
     static func classify(_ device: AudioDeviceInfo?) -> Self {
         guard let device else { return .unavailable }
         if device.uid == "BuddyMic2ch_UID" || device.name == "Voice Input Buddy Mic" {
-            return .miRemoteV2ch
+            return .buddyMic
         }
         if device.uid == "BlackHole2ch_UID" || device.name == "BlackHole 2ch" {
             return .blackHole2ch
@@ -126,7 +126,7 @@ enum VirtualAudioSelectionRecoveryPolicy {
     ) -> VirtualAudioSelectionRecoveryDecision {
         let supported = availableDevices.filter {
             switch VirtualAudioDeviceDiagnosticKind.classify($0) {
-            case .miRemoteV2ch, .blackHole2ch: return true
+            case .buddyMic, .blackHole2ch: return true
             case .other, .unavailable: return false
             }
         }
@@ -306,7 +306,7 @@ enum CoreAudioDeviceCatalog {
     ) -> VirtualAudioDeviceAudibilitySnapshot {
         guard let device else { return .init() }
         let kind = VirtualAudioDeviceDiagnosticKind.classify(device)
-        guard kind == .miRemoteV2ch || kind == .blackHole2ch else { return .init() }
+        guard kind == .buddyMic || kind == .blackHole2ch else { return .init() }
         return withPropertyLock {
             virtualAudioAudibilitySnapshotLocked(for: device.id)
         }
@@ -316,7 +316,7 @@ enum CoreAudioDeviceCatalog {
         _ device: AudioDeviceInfo
     ) -> VirtualAudioDeviceAudibilityRepairResult {
         let kind = VirtualAudioDeviceDiagnosticKind.classify(device)
-        guard kind == .miRemoteV2ch || kind == .blackHole2ch else {
+        guard kind == .buddyMic || kind == .blackHole2ch else {
             return .init()
         }
 

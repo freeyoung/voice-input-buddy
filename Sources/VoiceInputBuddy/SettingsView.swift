@@ -4256,7 +4256,7 @@ private enum CompatibilityButtonStyle {
 
 private enum SettingsVisualRenderingPolicy {
     static let isScreenshotHarness = ProcessInfo.processInfo.environment[
-        "REMOTE_MIC_SETTINGS_SCREENSHOT_DIR"
+        "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_DIR"
     ] != nil
 
     static var usesNativeGlass: Bool { !isScreenshotHarness }
@@ -4896,7 +4896,7 @@ private enum ConfigurationFilePanel {
         panel.title = title
         panel.prompt = prompt
         panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Remote-Mic-Settings.json"
+        panel.nameFieldStringValue = "Voice-Input-Buddy-Settings.json"
         panel.canCreateDirectories = true
         return panel.runModal() == .OK ? panel.url : nil
     }

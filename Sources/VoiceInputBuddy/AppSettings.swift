@@ -343,15 +343,12 @@ final class AppSettings: ObservableObject {
         static let onboardingVerifiedVoiceBinding = "onboarding.verifiedVoiceBinding"
         static let onboardingStagedVoiceBinding = "onboarding.stagedVoiceBinding"
         static let onboardingTrialSnapshot = "onboarding.trialSnapshot"
-        static let onboardingAgentConfigurationPending = "onboarding.agentConfigurationPending"
         static let onboardingMigrationVersion = "onboarding.migrationVersion"
         static let onboardingInstallStateMigrationVersion = "onboarding.installStateMigrationVersion"
         static let firstUseEvents = "onboarding.diagnostics.events"
         static let firstUseStepStartedAt = "onboarding.diagnostics.stepStartedAt"
         static let firstUseLastSignature = "onboarding.diagnostics.lastSignature"
     }
-
-    static let agentConfigurationPendingKey = Keys.onboardingAgentConfigurationPending
 
     private let defaults: UserDefaults
 
@@ -1212,7 +1209,6 @@ final class AppSettings: ObservableObject {
         self.stagedVoiceToolBinding = nil
         defaults.removeObject(forKey: Keys.onboardingStagedVoiceBinding)
         defaults.removeObject(forKey: Keys.onboardingTrialSnapshot)
-        defaults.removeObject(forKey: Keys.onboardingAgentConfigurationPending)
         AppLogger.shared.write(
             "ONBOARDING BINDING verified tool=\(verified.tool.rawValue) " +
                 "gesture=\(verified.gestureMode.rawValue) " +
@@ -1229,7 +1225,6 @@ final class AppSettings: ObservableObject {
               ) else {
             stagedVoiceToolBinding = nil
             defaults.removeObject(forKey: Keys.onboardingStagedVoiceBinding)
-            defaults.removeObject(forKey: Keys.onboardingAgentConfigurationPending)
             defaults.removeObject(forKey: Keys.onboardingTrialSnapshot)
             return
         }
@@ -1239,7 +1234,6 @@ final class AppSettings: ObservableObject {
         stagedVoiceToolBinding = nil
         defaults.removeObject(forKey: Keys.onboardingStagedVoiceBinding)
         defaults.removeObject(forKey: Keys.onboardingTrialSnapshot)
-        defaults.removeObject(forKey: Keys.onboardingAgentConfigurationPending)
         AppLogger.shared.write("ONBOARDING BINDING discarded reason=trial_not_verified")
     }
 
@@ -1279,14 +1273,6 @@ final class AppSettings: ObservableObject {
         defaults.removeObject(forKey: Keys.firstUseLastSignature)
     }
 
-    /// Re-enters the real verification page without clearing the user's saved device,
-    /// mappings, audio choice, or other onboarding selections.
-    func prepareOnboardingForAgentConfiguration() {
-        discardOnboardingVoiceTrial()
-        onboardingCompletedVersion = 0
-        onboardingStep = .voiceTest
-    }
-
     func consumePendingOnboardingVoiceKeyMigration() -> VoiceKeyMode? {
         let pending = pendingOnboardingVoiceKeyMigration
         pendingOnboardingVoiceKeyMigration = nil
@@ -1294,7 +1280,6 @@ final class AppSettings: ObservableObject {
     }
 
     private static func restoreInterruptedOnboardingTrial(in defaults: UserDefaults) {
-        guard !defaults.bool(forKey: Keys.onboardingAgentConfigurationPending) else { return }
         guard let data = defaults.data(forKey: Keys.onboardingTrialSnapshot),
               let snapshot = try? JSONDecoder().decode(
                 OnboardingVoiceConfigurationSnapshot.self,
