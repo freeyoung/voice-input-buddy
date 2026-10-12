@@ -539,7 +539,7 @@
 "status_item.state.disconnected" = "%@: No devices connected";
 "status_item.state.connected" = "%@: Device connected";
 "status_item.state.streaming" = "%@: Voice active";
-"about.alert.description_with_version" = "Version %1$@\nConnect a remote to voice input tools with microphone audio routing and customizable button shortcuts.";
+"about.alert.description_with_version" = "Version %1$@\nTurn your remote into a voice typing buddy. Speak instead of typing, and keep everyday actions a button away.";
 "common.action.ok" = "OK";
 "common.action.copy_link" = "Copy Link";
 "common.status.copied" = "Copied";
@@ -558,7 +558,7 @@
 "settings.section.login" = "Me";
 "settings.section.transcripts" = "Reflections";
 "about.page.subtitle" = "View version, updates, language, and app display options";
-"about.app.description" = "Connect a remote to voice input tools with microphone audio routing and customizable button shortcuts.";
+"about.app.description" = "Turn your remote into a voice typing buddy. Speak instead of typing, and keep everyday actions a button away.";
 "about.app_support.title" = "App & Support";
 "about.preferences.show_dock_icon" = "Show app icon in the Dock";
 "about.preferences.show_dock_icon_help" = "When hidden, Voice Input Buddy remains available from the menu bar.";

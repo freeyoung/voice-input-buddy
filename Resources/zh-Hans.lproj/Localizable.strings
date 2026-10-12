@@ -539,7 +539,7 @@
 "status_item.state.disconnected" = "%@：未连接设备";
 "status_item.state.connected" = "%@：设备已连接";
 "status_item.state.streaming" = "%@：正在传输语音";
-"about.alert.description_with_version" = "版本 %1$@\n将遥控设备连接到语音输入工具，提供麦克风音频路由和自定义按键快捷操作。";
+"about.alert.description_with_version" = "版本 %1$@\n让遥控器成为你的语音输入搭子，轻松说话打字，一键操作常用功能。";
 "common.action.ok" = "好";
 "common.action.copy_link" = "复制链接";
 "common.status.copied" = "已复制";
@@ -558,7 +558,7 @@
 "settings.section.login" = "我的";
 "settings.section.transcripts" = "回眸";
 "about.page.subtitle" = "查看版本、更新、语言和应用显示选项";
-"about.app.description" = "将遥控设备连接到语音输入工具，提供麦克风音频路由和自定义按键快捷操作。";
+"about.app.description" = "让遥控器成为你的语音输入搭子，轻松说话打字，一键操作常用功能。";
 "about.app_support.title" = "应用与支持";
 "about.preferences.show_dock_icon" = "在 Dock 中显示应用图标";
 "about.preferences.show_dock_icon_help" = "关闭后仍可通过菜单栏图标打开语音搭子。";
