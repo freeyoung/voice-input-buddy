@@ -30,12 +30,28 @@ def cleanup(directory):
     state_file = directory / 'state.json'
     if not state_file.exists():
         return
-    state = json.loads(state_file.read_text())
     try:
-        run(['security', 'list-keychains', '-d', 'user', '-s', *state['search_list']])
-    finally:
-        run(['security', 'delete-keychain', state['keychain']])
+        state = json.loads(state_file.read_text())
+        restore = ['security', 'list-keychains', '-d', 'user', '-s', *state['search_list']]
+        delete = ['security', 'delete-keychain', state['keychain']]
+    except (OSError, ValueError, KeyError, TypeError):
+        print('Warning: signing cleanup state could not be read; runner disposal will remove temporary material.', file=sys.stderr)
+        return
+    failed = False
+    for command, operation in [(restore, 'restore the keychain search list'),
+                               (delete, 'delete the temporary signing keychain')]:
+        try:
+            run(command)
+        except Exception:
+            failed = True
+            # Cleanup is best effort on an ephemeral runner, with no sensitive output.
+            print(f'Warning: could not {operation}; cleanup can be retried before runner disposal.', file=sys.stderr)
+    if failed:
+        return  # Preserve state for retry, without failing a completed build.
+    try:
         state_file.unlink()
+    except OSError:
+        print('Warning: signing cleanup state could not be removed; runner disposal will remove it.', file=sys.stderr)
 
 
 def setup(directory):

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Exercise identity validation, secret redaction and CI keychain cleanup."""
 import base64
+import contextlib
 import importlib.util
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -44,6 +46,8 @@ class ReleaseSigningTests(unittest.TestCase):
         self.environment = Path(directory.name) / 'github-env'
         self.commands = []
         self.fail_import = False
+        self.fail_delete = False
+        self.fail_restore = False
         self.real_run = signing.run
         self.addCleanup(mock.patch.stopall)
         mock.patch.object(signing, 'CERTIFICATE', self.certificate).start()
@@ -62,6 +66,10 @@ class ReleaseSigningTests(unittest.TestCase):
             return b'    "/fixture/login.keychain-db"\n    "/fixture/system.keychain"\n'
         if arguments[1] == 'import' and self.fail_import:
             raise RuntimeError('security failed (exit 1)')
+        if arguments[1] == 'delete-keychain' and self.fail_delete:
+            raise RuntimeError('fixture-password must not appear in warnings')
+        if arguments[1] == 'list-keychains' and '-s' in arguments and self.fail_restore:
+            raise RuntimeError('fixture-password must not appear in warnings')
         return b''
 
     def test_setup_reuses_identity_without_trust_changes_and_cleanup_restores_search_list(self):
@@ -120,6 +128,39 @@ class ReleaseSigningTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'security failed'):
             signing.setup(self.directory)
         self.assertEqual(self.commands[-1][1], 'delete-keychain')
+        self.assertFalse((self.directory / 'identity.p12').exists())
+        self.assertFalse(self.environment.exists())
+
+    def test_cleanup_failure_does_not_fail_job_and_retains_state_for_retry(self):
+        self.directory = self.directory.with_name('voice-input-buddy-signing')
+        signing.setup(self.directory)
+        self.fail_delete = True
+        warnings = io.StringIO()
+        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.directory.parent)}), \
+                mock.patch.object(signing.sys, 'argv', ['release-signing-keychain.py', 'cleanup']), \
+                contextlib.redirect_stderr(warnings):
+            self.assertEqual(signing.main(), 0)
+        self.assertIn('delete the temporary signing keychain', warnings.getvalue())
+        self.assertNotIn('fixture-password', warnings.getvalue())
+        self.assertTrue((self.directory / 'state.json').exists())
+        self.fail_delete = False
+        signing.cleanup(self.directory)
+        self.assertFalse((self.directory / 'state.json').exists())
+
+    def test_restore_failure_still_attempts_keychain_deletion(self):
+        signing.setup(self.directory)
+        self.fail_restore = True
+        with contextlib.redirect_stderr(io.StringIO()):
+            signing.cleanup(self.directory)
+        self.assertEqual(self.commands[-1][1], 'delete-keychain')
+        self.assertTrue((self.directory / 'state.json').exists())
+
+    def test_cleanup_failure_does_not_mask_setup_error(self):
+        self.fail_import = True
+        self.fail_delete = True
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaisesRegex(RuntimeError, '^security failed \\(exit 1\\)$'):
+                signing.setup(self.directory)
         self.assertFalse((self.directory / 'identity.p12').exists())
         self.assertFalse(self.environment.exists())
 
