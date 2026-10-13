@@ -160,6 +160,10 @@ extension AppSettings {
         guard configuration.gainDB.isFinite, (0...24).contains(configuration.gainDB) else {
             throw AppConfigurationError.invalidValues
         }
+        let profiles = configuration.customApplicationProfiles ?? []
+        guard Set(profiles.map(\.id)).count == profiles.count else {
+            throw AppConfigurationError.invalidValues
+        }
         return configuration
     }
 }

@@ -91,7 +91,7 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 
 这次重组有明确的访问控制取舍：按主应用源码中的 private/fileprivate 声明统计（含 private(set)，不计注释和字符串），初版由 1,903 处减至 1,289 处，约 614 处放宽为 internal。复核后恢复了 5 个只在 AppSettings 主文件写入的 setter，并把向导的焦点 modifier 收回使用它的文件为 private，目前为 1,295 处。private(set) 从原来的 122 处变为 78 处：仍有 44 个属性因所属类型的跨文件扩展确实写入而使用 internal setter。
 
-恢复 private(set) 的属性为 lastKnownAudioDeviceUID、totalButtonPressCount、totalVoiceDuration、voiceSessionRanking 和 corruptedSettingKeys。这些 setter 已通过编译器检查，没有其他文件的写入。其他 internal setter 并不是独立模块边界；同一 target 的任何文件技术上都能写它们。页面应通过状态所有者的操作方法请求变化，避免直接改写连接、音频和向导状态。若以后需要更强的编译期隔离，应将状态与操作一起封装到独立服务或 target，不能把目录拆分当作这种隔离。
+恢复 private(set) 的属性为 lastKnownAudioDeviceUID 和 corruptedSettingKeys。这些 setter 已通过编译器检查，没有其他文件的写入。其他 internal setter 并不是独立模块边界；同一 target 的任何文件技术上都能写它们。页面应通过状态所有者的操作方法请求变化，避免直接改写连接、音频和向导状态。若以后需要更强的编译期隔离，应将状态与操作一起封装到独立服务或 target，不能把目录拆分当作这种隔离。
 
 向导专用的焦点 modifier 直接在导航页面使用，不再给整个模块的 View 增加扩展方法。
 

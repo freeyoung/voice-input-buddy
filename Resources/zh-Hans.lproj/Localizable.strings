@@ -710,7 +710,6 @@
 "onboarding.voice_tool.guide.open_other.detail" = "启动你准备使用的语音工具，并确认它支持语音输入。";
 "onboarding.voice_tool.guide.configure_other" = "把语音键设为 Fn";
 "onboarding.voice_tool.guide.configure_other.detail" = "在工具自己的设置中，把语音输入快捷键设为 Fn。";
-"onboarding.voice_tool.guide.select_microphone" = "选择相同的麦克风";
 "onboarding.voice_tool.guide.select_microphone.detail" = "在语音工具中选择与语音搭子音频页相同的麦克风。";
 "onboarding.voice_tool.guide.release_system_fn" = "去除系统 Fn 占用";
 "onboarding.voice_tool.guide.release_wechat_fn" = "清空微信 App 的 Fn 快捷键";

@@ -7,6 +7,13 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
 resources = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'Resources'
+# Check declarations before plist parsing, which silently collapses duplicate keys.
+for strings in sorted(resources.glob('*.lproj/Localizable.strings')):
+    keys = re.findall(r'^\s*"([^"\n]+)"\s*=', strings.read_text(), re.MULTILINE)
+    seen = set()
+    for key in keys:
+        assert key not in seen, f'Duplicate localization key {key}: {strings}'
+        seen.add(key)
 app_sources = root / 'Sources/VoiceInputBuddy'
 assert list((app_sources / 'Onboarding').rglob('*.swift')), 'No onboarding sources found; resource checks cannot be skipped'
 setup_sources = sorted(app_sources.rglob('*.swift'))

@@ -53,6 +53,7 @@ struct CommonPhraseArchive: Codable, Equatable {
 
 final class CommonPhraseStore: ObservableObject {
     enum StoreError: Error { case invalidData, unavailable }
+    static let maximumImportBytes = 4_000_000
     static let buttons: [RemoteButton] = [.ok, .left, .up, .right, .down]
     static let exportWebsite = "https://github.com/zfdang/voice-input-buddy"
     static let exportGitHub = "https://github.com/zfdang/voice-input-buddy"
@@ -146,10 +147,24 @@ final class CommonPhraseStore: ObservableObject {
         try persist(action: "reorder") { candidate }
     }
 
+    static func decodedImport(_ data: Data) throws -> CommonPhraseArchive {
+        guard data.count <= maximumImportBytes else { throw StoreError.invalidData }
+        let candidate = try JSONDecoder().decode(CommonPhraseArchive.self, from: data)
+        try candidate.validate()
+        return candidate
+    }
+
+    static func readImport(from url: URL) throws -> CommonPhraseArchive {
+        try decodedImport(ConfigurationFileReader.read(from: url, maximumBytes: maximumImportBytes))
+    }
+
     func importData(_ data: Data) throws {
+        try importArchive(Self.decodedImport(data))
+    }
+
+    func importArchive(_ archive: CommonPhraseArchive) throws {
         try persist(action: "import") {
-            guard data.count <= 4_000_000 else { throw StoreError.invalidData }
-            var candidate = try JSONDecoder().decode(CommonPhraseArchive.self, from: data)
+            var candidate = archive
             try candidate.validate()
             // Imported edits and retired built-ins are user content. Keep them
             // when a later launch refreshes the bundled, unmodified entries.

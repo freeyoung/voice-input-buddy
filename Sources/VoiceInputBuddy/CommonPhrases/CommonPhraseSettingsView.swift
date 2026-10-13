@@ -15,6 +15,7 @@ struct CommonPhraseSettingsView: View {
     @State private var englishText = ""
     @State private var englishLabel = ""
     @State private var messageKey: String?
+    @State private var importing = false
     @State private var fileOperation: UInt64 = 0
     @State private var selectionOperation: UInt64 = 0
     private var english: Bool { localization.locale.language.languageCode?.identifier == "en" }
@@ -56,12 +57,17 @@ struct CommonPhraseSettingsView: View {
                 .padding(.horizontal, 22).padding(.bottom, 22)
             }
         }
+        .disabled(importing)
         .font(.system(size: 13)).textFieldStyle(.roundedBorder)
         .onAppear {
             if selectedID == nil { select(store.archive.entries.first) }
             AppLogger.shared.write("COMMON_PHRASES EDITOR phase=opened result=visible")
         }
-        .onDisappear { AppLogger.shared.write("COMMON_PHRASES EDITOR phase=closed result=hidden") }
+        .onDisappear {
+            fileOperation &+= 1 // A file read completing after navigation must not change settings.
+            importing = false
+            AppLogger.shared.write("COMMON_PHRASES EDITOR phase=closed result=hidden")
+        }
     }
 
     private func assignmentColumn(diameter: CGFloat) -> some View {
@@ -280,6 +286,7 @@ struct CommonPhraseSettingsView: View {
     }
 
     @ViewBuilder private var backupButtons: some View {
+        if importing { ProgressView().controlSize(.small) }
         Button(localization.text("common_phrases.import")) { importPhrases() }
             .controlSize(.large).fixedSize()
         Button(localization.text("common_phrases.export")) { exportPhrases() }
@@ -338,12 +345,20 @@ struct CommonPhraseSettingsView: View {
             AppLogger.shared.write("COMMON_PHRASES IMPORT operation_id=\(id) phase=completed result=cancelled reason=user_cancelled")
             return
         }
-        let imported = perform {
-            try store.importData(Data(contentsOf: url))
-            selectedButton = nil
-            select(store.archive.entries.first)
+        importing = true
+        Task { @MainActor in
+            let result = await Task.detached(priority: .userInitiated) {
+                Result { try CommonPhraseStore.readImport(from: url) }
+            }.value
+            guard fileOperation == id else { return }
+            importing = false
+            let imported = perform {
+                try store.importArchive(result.get())
+                selectedButton = nil
+                select(store.archive.entries.first)
+            }
+            AppLogger.shared.write("COMMON_PHRASES IMPORT operation_id=\(id) phase=completed result=\(imported ? "saved" : "failed") reason=\(imported ? "validated" : "invalid_data_or_io")")
         }
-        AppLogger.shared.write("COMMON_PHRASES IMPORT operation_id=\(id) phase=completed result=\(imported ? "saved" : "failed") reason=\(imported ? "validated" : "invalid_data_or_io")")
     }
 
     private func exportPhrases() {

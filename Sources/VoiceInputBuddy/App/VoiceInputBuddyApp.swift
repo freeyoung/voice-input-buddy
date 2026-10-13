@@ -841,6 +841,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     func feedURLString(for updater: SPUUpdater) -> String? {
         let includePreRelease = model.settings.checksForPreReleaseUpdates
+        #if DEBUG
         if let testFeed = UpdateFeedResolver.testInjectedFeed(
             environment: ProcessInfo.processInfo.environment,
             assetName: updateFeedSelection.appcastAssetName,
@@ -848,6 +849,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         ) {
             return testFeed.url.absoluteString
         }
+        #endif
         if includePreRelease, let resolvedUpdateFeedURLString {
             return resolvedUpdateFeedURLString
         }
@@ -1041,27 +1043,31 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             guard let self else { return }
             updateInformation.beginChecking(timeoutEnabled: purpose.usesInformationTimeout)
             let includePreRelease = model.settings.checksForPreReleaseUpdates
+            #if DEBUG
             let testFeed = UpdateFeedResolver.testInjectedFeed(
                 environment: ProcessInfo.processInfo.environment,
                 assetName: updateFeedSelection.appcastAssetName,
                 includePreRelease: includePreRelease
             )
+            let source = testFeed == nil ? "cloudflare_channel" : "ui_test"
+            #else
+            let source = "cloudflare_channel"
+            #endif
             resolvedUpdateFeedURLString = nil
             if includePreRelease {
-                let resolution: UpdateFeedResolver.FeedResolution
+                var resolution = UpdateFeedResolver.FeedResolution(stable: nil, preview: nil)
+                #if DEBUG
                 if let testFeed {
-                    resolution = UpdateFeedResolver.FeedResolution(
-                        stable: nil,
-                        preview: testFeed
-                    )
-                } else if let stableURL = updateFeedSelection.validatedStableFeedURL,
-                          let previewURL = updateFeedSelection.validatedPreReleaseFeedURL {
+                    resolution = UpdateFeedResolver.FeedResolution(stable: nil, preview: testFeed)
+                }
+                #endif
+                if resolution.selected == nil,
+                   let stableURL = updateFeedSelection.validatedStableFeedURL,
+                   let previewURL = updateFeedSelection.validatedPreReleaseFeedURL {
                     resolution = await UpdateFeedResolver.resolvePreviewFeed(
                         stableURL: stableURL,
                         previewURL: previewURL
                     )
-                } else {
-                    resolution = UpdateFeedResolver.FeedResolution(stable: nil, preview: nil)
                 }
                 guard !Task.isCancelled else { return }
                 guard let selectedFeed = resolution.selected else {
@@ -1079,7 +1085,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                         "stable_version=\(resolution.stable?.version ?? "unknown") " +
                         "preview_version=\(resolution.preview?.version ?? "unknown") " +
                         "selected_channel=\(selectedFeed.isPreRelease ? "preview" : "stable") " +
-                        "source=\(testFeed == nil ? "cloudflare_channel" : "ui_test")"
+                        "source=\(source)"
                 )
             } else {
                 guard updateFeedSelection.feedURLString(checksForPreReleaseUpdates: false) != nil else {

@@ -1740,36 +1740,7 @@ enum KeyboardInjector {
         arguments: [String],
         timeout: TimeInterval
     ) -> CmuxCommandResult {
-        let process = Process()
-        let standardOutput = Pipe()
-        let completion = DispatchSemaphore(value: 0)
-        process.executableURL = executableURL
-        process.arguments = arguments
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = standardOutput
-        process.standardError = FileHandle.nullDevice
-        process.terminationHandler = { _ in completion.signal() }
-
-        do {
-            try process.run()
-        } catch {
-            return CmuxCommandResult(terminationStatus: -1, standardOutput: Data(), timedOut: false)
-        }
-
-        if completion.wait(timeout: .now() + timeout) == .timedOut {
-            process.terminate()
-            if completion.wait(timeout: .now() + .milliseconds(100)) == .timedOut, process.isRunning {
-                Darwin.kill(process.processIdentifier, SIGKILL)
-                _ = completion.wait(timeout: .now() + .milliseconds(100))
-            }
-            return CmuxCommandResult(terminationStatus: -1, standardOutput: Data(), timedOut: true)
-        }
-
-        return CmuxCommandResult(
-            terminationStatus: process.terminationStatus,
-            standardOutput: standardOutput.fileHandleForReading.readDataToEndOfFile(),
-            timedOut: false
-        )
+        BoundedCommandRunner.run(executableURL: executableURL, arguments: arguments, timeout: timeout)
     }
 
     private static func axAttribute(_ element: AXUIElement, attribute: String) -> CFTypeRef? {
