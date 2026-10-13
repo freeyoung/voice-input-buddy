@@ -125,7 +125,7 @@ final class XiaomiBluetoothBridge: NSObject {
 
     private let settings: AppSettings
     private weak var delegate: XiaomiBluetoothBridgeDelegate?
-    private let targetIdentifier: UUID?
+    private(set) var targetIdentifier: UUID?
     private let excludedIdentifiers: () -> Set<UUID>
     /// 已被判定为「别的产品」的标识；本桥此后一律不再连接，也不再走扫描回退。
     private var rejectedIdentifiers = Set<UUID>()
@@ -196,6 +196,21 @@ final class XiaomiBluetoothBridge: NSObject {
 
     var deviceIdentifier: UUID? {
         peripheral?.identifier ?? targetIdentifier
+    }
+
+    /// Pin a discovery bridge to its verified device before it becomes a registered bridge.
+    /// This identity survives peripheral teardown and must bypass discovery exclusions.
+    @discardableResult
+    func bindVerifiedIdentity(_ identifier: UUID) -> Bool {
+        guard targetIdentifier == nil || targetIdentifier == identifier else { return false }
+        targetIdentifier = identifier
+        return true
+    }
+
+    func acceptsCandidateIdentifier(_ identifier: UUID) -> Bool {
+        guard !rejectedIdentifiers.contains(identifier) else { return false }
+        if let targetIdentifier { return identifier == targetIdentifier }
+        return !excludedIdentifiers().contains(identifier)
     }
 
     /// Refresh the system snapshot without changing the bridge's connection or audio state.
@@ -500,8 +515,7 @@ final class XiaomiBluetoothBridge: NSObject {
             }
             // 逐个过准入：第一台被拒绝（别的产品）时继续看下一台，而不是整批放弃。
             for candidate in connectedCandidates
-            where !excludedIdentifiers().contains(candidate.identifier)
-                && !rejectedIdentifiers.contains(candidate.identifier) {
+            where acceptsCandidateIdentifier(candidate.identifier) {
                 if adopt(
                     candidate,
                     using: central,
@@ -1231,8 +1245,7 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
         guard let generation = centralGeneration,
               lifecycle == .scanning(generation),
               self.peripheral == nil,
-              !excludedIdentifiers().contains(peripheral.identifier),
-              !rejectedIdentifiers.contains(peripheral.identifier)
+              acceptsCandidateIdentifier(peripheral.identifier)
         else { return }
         adopt(
             peripheral,
