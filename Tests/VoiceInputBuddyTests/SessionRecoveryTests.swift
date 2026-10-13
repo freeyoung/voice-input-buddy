@@ -200,8 +200,8 @@ struct SessionRecoveryTests {
 
 
 
-    @Test func controlMethodDiagnosticsStillCheckPermissions() {
-        let context = FirstUseDiagnosticContext(step: .controlMethod, capabilities: .init(), hasSelectedAudioUID: false)
+    @Test func environmentDiagnosticsStillCheckPermissions() {
+        let context = FirstUseDiagnosticContext(step: .permissions, capabilities: .init(), hasSelectedAudioUID: false)
         #expect(context.failureReason == .bluetoothPermissionDenied)
     }
 

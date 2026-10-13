@@ -361,11 +361,8 @@ struct FirstUseDiagnosticContext: Equatable {
 
     var failureReason: FirstUseFailureReason? {
         switch step {
-        case .welcome, .voiceTool, .remoteAvailability:
+        case .voiceTool, .remoteAvailability:
             return nil
-        case .controlMethod:
-            if controlMethod == .unselected { return nil }
-            fallthrough
         case .permissions:
             if !capabilities.bluetoothGranted {
                 return .bluetoothPermissionDenied

@@ -139,7 +139,7 @@ enum OnboardingScreenshotRenderer {
             FirstUseRemoteInputDiagnostic()
         }
         let controlMethod = requestedControlMethod ?? .physicalRemote
-        let controlSource = requestedControlSource ?? .migrated(from: controlMethod)
+        let controlSource = requestedControlSource ?? .defaultSource(for: controlMethod)
         if let requestedVoiceKeyMode {
             settings.voiceKeyMode = requestedVoiceKeyMode
         }
@@ -251,20 +251,7 @@ enum OnboardingScreenshotRenderer {
     private static func pages(
         for controlMethod: OnboardingControlMethod
     ) -> [(OnboardingStep, String)] {
-        var steps: [OnboardingStep] = [
-            .welcome,
-            .remoteAvailability,
-        ]
-        steps.append(contentsOf: [
-            .permissions,
-            .remote,
-            .audio,
-            .voiceTool,
-            .voiceTest,
-            .controls,
-            .complete,
-        ])
-        return steps.enumerated().map { index, step in
+        return OnboardingStep.visibleCases.enumerated().map { index, step in
             let number = String(format: "%02d", index + 1)
             return (step, "\(number)-\(filenameComponent(for: step)).png")
         }
@@ -272,10 +259,8 @@ enum OnboardingScreenshotRenderer {
 
     private static func filenameComponent(for step: OnboardingStep) -> String {
         switch step {
-        case .welcome: return "welcome"
         case .voiceTool: return "voice-tool"
         case .remoteAvailability: return "control-source"
-        case .controlMethod: return "control-method"
         case .permissions: return "permissions"
         case .remote: return "remote"
         case .audio: return "audio"

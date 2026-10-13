@@ -1,10 +1,8 @@
 import Foundation
 
 enum OnboardingStep: String, CaseIterable, Codable {
-    case welcome
     case voiceTool
     case remoteAvailability
-    case controlMethod
     case permissions
     case remote
     case audio
@@ -13,23 +11,14 @@ enum OnboardingStep: String, CaseIterable, Codable {
     case complete
 
     /// Match the main navigation: environment, connection, buttons, then integration.
-    /// Legacy pages remain decodable for interrupted setup sessions.
     static let visibleCases: [Self] = [
         .permissions, .remoteAvailability, .remote, .audio, .controls, .voiceTool,
         .voiceTest, .complete,
     ]
 
-    var normalized: Self {
-        switch self {
-        case .welcome: return .permissions
-        case .controlMethod: return .remoteAvailability
-        default: return self
-        }
-    }
-
     var requiresRuntime: Bool {
         switch self {
-        case .welcome, .remoteAvailability, .controlMethod:
+        case .remoteAvailability:
             return false
         case .permissions, .remote, .audio, .voiceTool, .voiceTest, .controls, .complete:
             return true
@@ -37,13 +26,13 @@ enum OnboardingStep: String, CaseIterable, Codable {
     }
 
     var previous: OnboardingStep? {
-        let step = normalized
+        let step = self
         guard let index = Self.visibleCases.firstIndex(of: step), index > 0 else { return nil }
         return Self.visibleCases[index - 1]
     }
 
     var next: OnboardingStep? {
-        let step = normalized
+        let step = self
         guard let index = Self.visibleCases.firstIndex(of: step), index + 1 < Self.visibleCases.count else {
             return nil
         }
@@ -51,7 +40,7 @@ enum OnboardingStep: String, CaseIterable, Codable {
     }
 
     var progress: Double {
-        let step = normalized
+        let step = self
         guard let index = Self.visibleCases.firstIndex(of: step), Self.visibleCases.count > 1 else {
             return 0
         }
@@ -70,7 +59,7 @@ enum OnboardingPhase: String, CaseIterable {
 
     static func phase(for step: OnboardingStep) -> OnboardingPhase {
         switch step {
-        case .welcome, .remoteAvailability, .controlMethod:
+        case .remoteAvailability:
             return .prepare
         case .permissions, .remote, .audio, .voiceTool:
             return .setup
@@ -387,7 +376,7 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    var legacyControlMethod: OnboardingControlMethod {
+    var controlMethod: OnboardingControlMethod {
         switch self {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return .physicalRemote
@@ -400,7 +389,7 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    static func migrated(from method: OnboardingControlMethod) -> Self {
+    static func defaultSource(for method: OnboardingControlMethod) -> Self {
         switch method {
         case .physicalRemote: return .xiaomiRemote
         case .iPhoneApp: return .appleCompanion
@@ -769,15 +758,10 @@ enum OnboardingFlowPolicy {
         capabilities: OnboardingCapabilities
     ) -> Bool {
         switch step {
-        case .welcome:
-            return true
         case .voiceTool:
             return voiceTool != .unselected && voiceToolGuideStepsCompleted
         case .remoteAvailability:
             return remoteAvailability != .unselected
-        case .controlMethod:
-            return remoteAvailability == .noRemote &&
-                (controlMethod == .iPhoneApp || controlMethod == .webRemote)
         case .permissions:
             // Environment setup must work before a control device is selected.
             return capabilities.bluetoothGranted &&
@@ -833,7 +817,7 @@ enum OnboardingFlowPolicy {
                 remoteAvailability: remoteAvailability,
                 controlMethod: controlMethod
             ) {
-                return remoteAvailability == .noRemote ? .controlMethod : .remoteAvailability
+                return .remoteAvailability
             }
             if (controlMethod.requiresBluetoothPermission && !capabilities.bluetoothGranted) ||
                 (controlMethod.requiresInputMonitoringPermission &&

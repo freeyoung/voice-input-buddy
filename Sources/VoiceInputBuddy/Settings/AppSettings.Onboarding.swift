@@ -3,9 +3,8 @@ import Foundation
 
 extension AppSettings {
     func setOnboardingStep(_ step: OnboardingStep) {
-        let normalizedStep = step.normalized
-        guard !isOnboardingComplete, onboardingStep != normalizedStep else { return }
-        onboardingStep = normalizedStep
+        guard !isOnboardingComplete, onboardingStep != step else { return }
+        onboardingStep = step
     }
 
     func recordFirstUseEvent(
@@ -89,7 +88,6 @@ extension AppSettings {
     func setOnboardingControlSource(_ source: OnboardingControlSource) {
         guard onboardingControlSource != source else { return }
         onboardingControlSource = source
-        onboardingControlMethod = source.legacyControlMethod
         switch source {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             onboardingRemoteAvailability = .hasRemote
@@ -197,12 +195,8 @@ extension AppSettings {
     }
 
     func setOnboardingControlMethod(_ controlMethod: OnboardingControlMethod) {
-        if onboardingControlSource == .unselected ||
-            onboardingControlSource.legacyControlMethod != controlMethod {
-            onboardingControlSource = .migrated(from: controlMethod)
-        }
         guard onboardingControlMethod != controlMethod else { return }
-        onboardingControlMethod = controlMethod
+        setOnboardingControlSource(.defaultSource(for: controlMethod))
     }
 
     func setOnboardingRemoteAvailability(_ availability: OnboardingRemoteAvailability) {
@@ -222,7 +216,6 @@ extension AppSettings {
         defaults.removeObject(forKey: Keys.firstUseEvents)
         onboardingVoiceTool = .unselected
         onboardingRemoteAvailability = .unselected
-        onboardingControlMethod = .unselected
         onboardingControlSource = .unselected
         onboardingAppleRemoteGeneration = nil
         onboardingVoiceBindingPreference = .documentedDefault

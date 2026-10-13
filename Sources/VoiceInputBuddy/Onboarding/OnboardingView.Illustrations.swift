@@ -28,12 +28,10 @@ extension OnboardingView {
                         inputMethodGuide(for: settings.onboardingVoiceTool)
                             .frame(maxWidth: 440)
                             .padding(.horizontal, 28)
-                    } else if settings.onboardingStep == .welcome || settings.onboardingStep == .voiceTool {
+                    } else if settings.onboardingStep == .voiceTool {
                         welcomeIllustration
                     } else if settings.onboardingStep == .remoteAvailability {
                         selectedControlSourceIllustration
-                    } else if settings.onboardingStep == .controlMethod {
-                        controlMethodIllustration
                     } else if settings.onboardingStep == .complete {
                         completeIllustration
                     } else {
