@@ -39,16 +39,16 @@ class InstallationActionsTests(unittest.TestCase):
         self.assertNotEqual(self.remove(link, 'com.zfdang.voice-input-buddy.mic').returncode, 0)
         self.assertTrue(owned.exists())
 
-    def test_installation_removes_old_filename_but_preserves_new_driver(self):
+    def test_installation_preserves_current_driver_and_other_bundles(self):
         hal = self.root / 'Library/Audio/Plug-Ins/HAL'
-        old = self.bundle(hal / 'BuddyMic2ch.driver', 'com.zfdang.voice-input-buddy.mic')
+        other = self.bundle(hal / 'OtherMicrophone.driver', 'com.example.microphone')
         new = self.bundle(hal / 'VoiceInputBuddyMic.driver', 'com.zfdang.voice-input-buddy.mic')
         staging = self.root / 'package-scripts'; staging.mkdir()
         for source in [self.library, SCRIPTS / 'driver-package/preinstall']:
             shutil.copy2(source, staging / source.name)
         result = subprocess.run(['bash', str(staging / 'preinstall'), 'package.pkg', '/', str(self.root)], capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(old.exists()); self.assertTrue(new.exists())
+        self.assertTrue(other.exists()); self.assertTrue(new.exists())
 
     def test_cleanup_only_removes_this_products_personal_data(self):
         for relative in ['Preferences/com.zfdang.voice-input-buddy.plist',
