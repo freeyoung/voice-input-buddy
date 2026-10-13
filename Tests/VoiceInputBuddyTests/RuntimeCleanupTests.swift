@@ -149,7 +149,9 @@ struct KeyboardEventFilteringTests {
     }
 
     @Test func injectedKeysDoNotConsumeRemoteSuppression() throws {
-        let suppressor = KeyboardEventSuppressor()
+        // This checks event ownership, not expiry. AppKit event creation can take
+        // longer than the 180 ms pending window on a busy build machine.
+        let suppressor = KeyboardEventSuppressor(uptime: { 0 })
         let event = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 38, keyDown: true))
         suppressor.arm(nativeEvents: [.keyboard(keyCode: 38)], edge: .down)
         event.setIntegerValueField(.eventSourceUserData, value: KeyboardInjector.syntheticEventMarker)

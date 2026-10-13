@@ -266,7 +266,8 @@ struct InputLifecycleRegressionTests {
         let profile = UUID()
         let monitor = HIDRemoteMonitor(settings: settings, profileID: profile,
             eventSuppressor: filter, ownsEventSuppressor: false,
-            runtimePermissions: { true }, diagnosticLogger: { _ in },
+            runtimePermissions: { true }, nativeSuppressionAvailable: { true },
+            diagnosticLogger: { _ in },
             appSwitcherKeyStatePoster: { code, down, _ in
                 if down && (code == 123 || code == 124) { selections.append(code) }
                 return true

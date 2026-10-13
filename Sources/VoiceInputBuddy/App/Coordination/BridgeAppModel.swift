@@ -739,7 +739,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         completedUpdateHIDRecoveryWorkItem = nil
         audioStartupGeneration &+= 1
         audioDeviceRefreshGeneration &+= 1
-        let shouldStopAudioOnPreparationQueue = audioStartupPending
         audioStartupPending = false
         audioRecoveryGeneration &+= 1
         audioRecoveryWorkItem?.cancel()
@@ -788,13 +787,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         isAudioOutputReady = false
         virtualAudioReleaseGeneration &+= 1
         pendingVirtualAudioRelease = nil
-        if shouldStopAudioOnPreparationQueue {
-            audioPreparationQueue.async { [weak self] in
-                self?.audioOutput.stop()
-            }
-        } else {
-            audioOutput.stop()
-        }
+        // Stop is serialized with configurations on the engine queue. Enumeration no
+        // longer allocates audio resources, so a delayed preparation-queue stop is unsafe.
+        audioOutput.stop()
         voiceFunctionMapper.restore()
         if let terminationObserver {
             NotificationCenter.default.removeObserver(terminationObserver)

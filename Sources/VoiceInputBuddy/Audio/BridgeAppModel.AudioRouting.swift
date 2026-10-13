@@ -28,88 +28,78 @@ extension BridgeAppModel {
     func startAudioSubsystem() {
         audioStartupGeneration &+= 1
         let generation = audioStartupGeneration
-        let selectedDeviceUID = settings.selectedAudioDeviceUID
-        let rememberedDeviceUID = settings.lastKnownAudioDeviceUID
-        let hasHistoricalAudioConfiguration = settings.hasHistoricalAudioConfiguration
         audioStartupPending = true
         AppLogger.shared.write("AUDIO STARTUP scheduled id=\(generation)")
+        // Device enumeration is the only work on this queue. Route ownership is decided
+        // on the main actor after enumeration, using the user's current selection.
         audioPreparationQueue.async { [weak self] in
-            guard let self else { return }
             let devices = CoreAudioDeviceCatalog.outputDevices()
-            let devicesDiagnostic = Self.audioDevicesDiagnostic(devices)
-            AppLogger.shared.write("AUDIO DEVICES startup id=\(generation) \(devicesDiagnostic)")
-            let selection = VirtualAudioSelectionRecoveryPolicy.resolve(
-                selectedUID: selectedDeviceUID,
-                rememberedUID: rememberedDeviceUID,
-                availableDevices: devices,
-                hasHistoricalConfiguration: hasHistoricalAudioConfiguration
-            )
-            if selection.source != .currentSelection {
-                let phase = selection.uid == nil ? "skipped" : "candidate"
-                AppLogger.shared.write(
-                    "AUDIO SELECTION RECOVERY phase=\(phase) source=\(selection.source.rawValue) " +
-                        "reason=\(selection.reason?.rawValue ?? "none") " +
-                        "kind=\(selection.kind.rawValue) " +
-                        "supported_candidates=\(selection.supportedCandidateCount) " +
-                        "historical=\(hasHistoricalAudioConfiguration)"
-                )
-            }
-            AppLogger.shared.write(
-                "AUDIO REBIND begin reason=startup state={\(self.audioOutput.diagnosticState())}"
-            )
-            self.audioOutput.configureAsync(deviceUID: selection.uid ?? "") { [weak self] configured in
-                guard let self else { return }
-                let audioStatus = self.audioOutput.status
-                let isAudioOutputReady = self.audioOutput.isReadyForTestTone
-                let testToneStatus = isAudioOutputReady
-                    ? LocalizedMessage("audio.test_tone.ready")
-                    : LocalizedMessage("audio.output.none_or_unavailable")
-                let outputState = self.audioOutput.diagnosticState()
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    guard self.started, self.audioStartupGeneration == generation else {
-                        self.audioPreparationQueue.async { [weak self] in
-                            self?.audioOutput.stop()
-                        }
-                        return
-                    }
-                    if configured,
-                       selection.source != .currentSelection,
-                       let recoveredUID = selection.uid,
-                       self.settings.selectedAudioDeviceUID.isEmpty {
-                        self.settings.selectedAudioDeviceUID = recoveredUID
-                        AppLogger.shared.write(
-                            "AUDIO SELECTION RECOVERY phase=completed result=restored " +
-                            "source=\(selection.source.rawValue) kind=\(selection.kind.rawValue)"
-                        )
-                    } else if !configured, selection.source != .currentSelection {
-                        AppLogger.shared.write(
-                            "AUDIO SELECTION RECOVERY phase=failed result=not_restored " +
-                                "source=\(selection.source.rawValue) reason=configure_failed " +
-                                "kind=\(selection.kind.rawValue)"
-                        )
-                    }
-                    self.audioStartupPending = false
-                    self.publishAudioDevices(devices)
-                    self.audioStatus = audioStatus
-                    self.isAudioOutputReady = isAudioOutputReady
-                    self.testToneStatus = testToneStatus
-                    self.startObservingAudioHardware()
-                    if self.systemAudioSuspensionState.isSuspended {
-                        AppLogger.shared.write(
-                            "SYSTEM AUDIO startup_release reasons=\(self.systemAudioSuspensionState.diagnostic) " +
-                                "state={\(outputState)}"
-                        )
-                        self.releaseVirtualAudioOutputIfUnused(reason: "startup_system_suspended")
-                    }
-                    self.startBluetoothConnections()
-                    AppLogger.shared.write(
-                        "AUDIO REBIND finished reason=startup success=\(configured) status=\(audioStatus.key) " +
-                            "state={\(outputState)}"
-                    )
-                }
+            let diagnostic = Self.audioDevicesDiagnostic(devices)
+            AppLogger.shared.write("AUDIO DEVICES startup id=\(generation) \(diagnostic)")
+            DispatchQueue.main.async { [weak self] in
+                self?.prepareAudioStartup(generation: generation, devices: devices)
             }
         }
+    }
+
+    func prepareAudioStartup(generation: UInt64, devices: [AudioDeviceInfo],
+        configureOutput: ((String, @escaping (Bool) -> Void) -> Void)? = nil) {
+        guard started, audioStartupGeneration == generation else { return }
+        let selection = VirtualAudioSelectionRecoveryPolicy.resolve(
+            selectedUID: settings.selectedAudioDeviceUID,
+            rememberedUID: settings.lastKnownAudioDeviceUID,
+            availableDevices: devices,
+            hasHistoricalConfiguration: settings.hasHistoricalAudioConfiguration
+        )
+        if selection.source != .currentSelection {
+            AppLogger.shared.write(
+                "AUDIO SELECTION RECOVERY phase=\(selection.uid == nil ? "skipped" : "candidate") " +
+                    "source=\(selection.source.rawValue) reason=\(selection.reason?.rawValue ?? "none") " +
+                    "kind=\(selection.kind.rawValue) supported_candidates=\(selection.supportedCandidateCount)"
+            )
+        }
+        audioConfigurationGeneration &+= 1
+        let configurationGeneration = audioConfigurationGeneration
+        let configure = configureOutput ?? { self.audioOutput.configureAsync(deviceUID: $0, completion: $1) }
+        configure(selection.uid ?? "") { [weak self] configured in
+            DispatchQueue.main.async { [weak self] in
+                self?.finishAudioStartup(generation: generation,
+                    configurationGeneration: configurationGeneration, configured: configured,
+                    selection: selection, devices: devices)
+            }
+        }
+    }
+
+    func finishAudioStartup(generation: UInt64, configurationGeneration: UInt64,
+        configured: Bool, selection: VirtualAudioSelectionRecoveryDecision, devices: [AudioDeviceInfo]) {
+        // stop() owns teardown. An old completion must never tear down a newer route.
+        guard started, audioStartupGeneration == generation else { return }
+        if audioConfigurationGeneration == configurationGeneration {
+            if configured, selection.source != .currentSelection,
+               let recoveredUID = selection.uid, settings.selectedAudioDeviceUID.isEmpty {
+                settings.selectedAudioDeviceUID = recoveredUID
+                AppLogger.shared.write(
+                    "AUDIO SELECTION RECOVERY phase=completed result=restored " +
+                        "source=\(selection.source.rawValue) kind=\(selection.kind.rawValue)"
+                )
+            }
+            audioStatus = audioOutput.status
+            isAudioOutputReady = audioOutput.isReadyForTestTone
+            testToneStatus = isAudioOutputReady
+                ? LocalizedMessage("audio.test_tone.ready")
+                : LocalizedMessage("audio.output.none_or_unavailable")
+        }
+        audioStartupPending = false
+        publishAudioDevices(devices)
+        startObservingAudioHardware()
+        if systemAudioSuspensionState.isSuspended {
+            releaseVirtualAudioOutputIfUnused(reason: "startup_system_suspended")
+        }
+        startBluetoothConnections()
+        AppLogger.shared.write(
+            "AUDIO REBIND finished reason=startup success=\(configured) status=\(audioStatus.key) " +
+                "state={\(audioOutput.diagnosticState())}"
+        )
     }
 
     private func publishAudioDevices(_ devices: [AudioDeviceInfo]) {
