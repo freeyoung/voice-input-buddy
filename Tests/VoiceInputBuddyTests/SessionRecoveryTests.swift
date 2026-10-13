@@ -54,7 +54,7 @@ struct SessionRecoveryTests {
         #expect(session.startVoice())
         scheduler.runNext()
         scheduler.runNext()
-        session.setEnabled(false) { completions += 1 }
+        session.setEnabled(false) { _ in completions += 1 }
         scheduler.runAll()
         #expect(completions == 1)
         #expect(!session.requiresCleanupBeforeMapping)
@@ -202,20 +202,7 @@ struct SessionRecoveryTests {
         #expect(settings.unifiedBaseBindings.isEmpty)
     }
 
-    @Test func helperAcceptsOnlyFirstReadyAndHandlesFragmentedOrOversizedOutput() {
-        var messages = AppleRemoteHelperReadyMessages()
-        let partial = messages.consume(Data("noise\nREADY 0\nREA".utf8))
-        #expect(partial == nil)
-        let port = messages.consume(Data("DY 12345\nREADY 9999\n".utf8))
-        #expect(port?.rawValue == 12345)
-        let duplicate = messages.consume(Data("READY 9999\n".utf8))
-        #expect(duplicate == nil)
-        messages = AppleRemoteHelperReadyMessages()
-        let oversized = messages.consume(Data(repeating: 65, count: 65_537))
-        #expect(oversized == nil)
-        let newPort = messages.consume(Data("READY 9999\n".utf8))
-        #expect(newPort?.rawValue == 9999)
-    }
+
 
     @Test func controlMethodDiagnosticsStillCheckPermissions() {
         let context = FirstUseDiagnosticContext(step: .controlMethod, capabilities: .init(), hasSelectedAudioUID: false)

@@ -7,22 +7,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension SettingsView {
-    var webRemoteSessionView: some View {
-        WebRemoteSessionView(
-            model: model,
-            localization: WebRemoteSessionLocalization(
-                locale: localization.locale,
-                text: localization.text
-            ),
-            membershipRequiredView: membershipFeature.membershipRequiredView(remoteAuthorizationDenied: true) {
-                isWebRemoteSessionPresented = false
-                selectedSection = .membership
-                membershipFeature.refreshIfNeeded()
-            },
-            onDiagnostic: { AppLogger.shared.write($0) }
-        )
-    }
-
     var sidebar: some View {
         VStack(spacing: 0) {
             WindowDragArea()

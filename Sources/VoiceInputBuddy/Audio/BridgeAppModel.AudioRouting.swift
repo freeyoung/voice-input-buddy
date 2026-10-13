@@ -269,24 +269,6 @@ extension BridgeAppModel {
                         "ready=\(self.isAudioOutputReady) selected_available=\(self.selectedAudioDeviceIsAvailable) " +
                         "state={\(self.audioOutput.diagnosticState())}"
                 )
-                let publicReason: String
-                if reason.contains("voice") {
-                    publicReason = "voice_start"
-                } else if reason.contains("test_tone") {
-                    publicReason = "test_tone"
-                } else if reason.contains("startup") {
-                    publicReason = "startup"
-                } else {
-                    publicReason = "recovery"
-                }
-                self.recordPublicDiagnosticEvent(
-                    component: "audio",
-                    action: "configure",
-                    phase: "completed",
-                    result: configured && self.isAudioOutputReady ? "ready" : "failed",
-                    reason: publicReason,
-                    source: "app"
-                )
                 completion(configured)
             }
         }
@@ -376,7 +358,7 @@ extension BridgeAppModel {
                 AppLogger.shared.write("AUDIO RECOVERY ignored reason=\(reason) detail=\(details) no_selected_device")
                 return
             }
-            guard details != "properties=default_input" else {
+            guard !AudioHardwareChangeProperties(details: details).affectsOnlyDefaultInput else {
                 self.refreshAudioDevices()
                 AppLogger.shared.write(
                     "AUDIO RECOVERY ignored reason=\(reason) detail=\(details) explicit_output_unchanged"

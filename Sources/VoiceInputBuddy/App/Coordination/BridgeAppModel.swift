@@ -444,10 +444,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         audioOutput.onConfigurationChange = { [weak self] in
             self?.scheduleAudioRecovery(reason: "engine_configuration_change")
         }
-        phoneRemoteServer.isIdentityTrusted = { [weak self] fingerprint in
-            guard let self, self.membershipFeature.canStartCompanionConnection else { return false }
-            return self.settings.isPhoneIdentityTrusted(fingerprint)
-        }
         phoneRemoteServer.onConnectionStateChange = { [weak self] connected in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -533,10 +529,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             DispatchQueue.main.async {
                 self?.receivePhoneAudio(samples, source: .nearbyPhone)
             }
-        }
-        watchBluetoothServer.isIdentityTrusted = { [weak self] fingerprint in
-            guard let self, self.membershipFeature.canStartCompanionConnection else { return false }
-            return self.settings.isPhoneIdentityTrusted(fingerprint)
         }
         watchBluetoothServer.onConnectionStateChange = { [weak self] connected in
             DispatchQueue.main.async {

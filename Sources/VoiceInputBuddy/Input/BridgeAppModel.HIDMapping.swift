@@ -42,7 +42,8 @@ extension BridgeAppModel {
             settings.voiceFnTapModeEnabled = requestedFnTapMode
         }
         if !requestedFnTapMode, voiceFnTapSession.requiresCleanupBeforeMapping {
-            voiceFnTapSession.setEnabled(false) { [weak self] in
+            voiceFnTapSession.setEnabled(false) { [weak self] cleaned in
+                guard cleaned else { return }
                 self?.applyHIDSettings(
                     allowVoiceKeyModeFallback: allowVoiceKeyModeFallback,
                     restartSiriRemote: restartSiriRemote

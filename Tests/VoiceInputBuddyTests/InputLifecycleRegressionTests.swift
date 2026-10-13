@@ -32,7 +32,7 @@ struct InputLifecycleRegressionTests {
         operations.removeFirst()()
         operations.removeFirst()()
         #expect(session.requiresCleanupBeforeMapping)
-        session.setEnabled(false) { callbacks += 1 }
+        session.setEnabled(false) { _ in callbacks += 1 }
         #expect(callbacks == 0)
         allowRelease = true
         session.suspend()
@@ -134,6 +134,27 @@ struct InputLifecycleRegressionTests {
             #expect(filter.handle(type: .keyUp, event: nativeUp))
         }
         #expect(selections == [124, 123, 124])
+        monitor.disconnectSimulatedDevice()
+    }
+
+    @Test func rejectedActionDoesNotDisableMonitorWhilePermissionsRemainValid() {
+        let (values, name) = defaults()
+        defer { values.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: values)
+        settings.customMappingEnabled = true
+        let profile = UUID()
+        var actions: [RemoteButton] = []
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: profile,
+            runtimePermissions: { true }, actionPerformer: { button, _, _ in
+                actions.append(button)
+                return button != .right
+            }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: profile)
+        for button: RemoteButton? in [.right, nil, .left] {
+            let usage = button?.hidUsage ?? 0
+            monitor.handleSimulatedReport(reportID: 1, data: Data([UInt8(usage & 255), UInt8(usage >> 8)]))
+        }
+        #expect(actions == [.right, .left])
         monitor.disconnectSimulatedDevice()
     }
 

@@ -99,6 +99,7 @@ extension BridgeAppModel {
 
     func refreshHIDAfterPermissionChange() {
         let current = HIDPermissionSnapshot.current
+        if current.accessibilityGranted { voiceFnTapSession.retryCleanupAfterPermissionRecovery() }
         guard HIDPermissionRecoveryPolicy.shouldReapplySettings(
             started: started,
             customMappingEnabled: settings.customMappingEnabled,
@@ -115,22 +116,7 @@ extension BridgeAppModel {
                 "accessibility=\(previous?.accessibilityGranted ?? false)->\(current.accessibilityGranted) " +
                 "recovery=apply_settings"
         )
-        recordPublicDiagnosticEvent(
-            component: "permission",
-            action: "input_monitoring",
-            phase: "observed",
-            result: current.inputMonitoringGranted ? "granted" : "denied",
-            reason: "status_changed",
-            source: "app"
-        )
-        recordPublicDiagnosticEvent(
-            component: "permission",
-            action: "accessibility",
-            phase: "observed",
-            result: current.accessibilityGranted ? "granted" : "denied",
-            reason: "status_changed",
-            source: "app"
-        )
+
         applyHIDSettings()
     }
 

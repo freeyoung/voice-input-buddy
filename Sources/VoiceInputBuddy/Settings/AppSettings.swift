@@ -512,10 +512,7 @@ final class AppSettings: ObservableObject {
             rawValue: defaults.string(forKey: Keys.appIconIdentifier)
                 ?? AppIconIdentifier.standard.rawValue
         )
-        appIconIdentifier = storedAppIcon == .facetedDuck ? .standard : storedAppIcon
-        if storedAppIcon == .facetedDuck {
-            defaults.set(AppIconIdentifier.standard.rawValue, forKey: Keys.appIconIdentifier)
-        }
+        appIconIdentifier = storedAppIcon
         showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil
             ? true
             : defaults.bool(forKey: Keys.showDockIcon)
@@ -673,10 +670,10 @@ final class AppSettings: ObservableObject {
             enabled: experimentalContinuousRecordingEnabled,
             backup: continuousRecordingPowerBindingBackup
         )
-        if let data = defaults.data(forKey: "unifiedBaseBindings") {
-            do { unifiedBaseBindings = try JSONDecoder().decode([UnifiedButtonBinding].self, from: data) }
-            catch { corruptedKeys.append("unifiedBaseBindings") }
-        }
+        unifiedBaseBindings = Self.decodeSetting(
+            [UnifiedButtonBinding].self, forKey: "unifiedBaseBindings",
+            from: defaults, corrupted: &corruptedKeys
+        ) ?? []
         corruptedSettingKeys = corruptedKeys
     }
 

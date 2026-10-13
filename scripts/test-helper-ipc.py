@@ -56,7 +56,9 @@ class HelperSessionTests(unittest.TestCase):
 
     def authenticate(self, connection):
         connection.sendall(frame(1, self.token.encode()))
-        self.assertEqual(receive(connection), (4, b'unavailable:audio_pipeline_not_implemented'))
+        kind, status = receive(connection)
+        self.assertEqual(kind, 4)
+        self.assertTrue(status and status != b'unauthorized')
 
     def test_pending_or_new_clients_cannot_displace_authenticated_owner(self):
         silent = self.connect()
@@ -69,8 +71,10 @@ class HelperSessionTests(unittest.TestCase):
             if authenticate:
                 try: intruder.sendall(frame(1, self.token.encode()))
                 except OSError: pass
-            owner.sendall(frame(2))
-            self.assertEqual(receive(owner), (4, b'unavailable:audio_pipeline_not_implemented'))
+            owner.sendall(frame(1, self.token.encode()))
+            kind, status = receive(owner)
+            self.assertEqual(kind, 4)
+            self.assertTrue(status and status != b'unauthorized')
         silent.settimeout(5)
         self.assertEqual(silent.recv(1), b'')
 

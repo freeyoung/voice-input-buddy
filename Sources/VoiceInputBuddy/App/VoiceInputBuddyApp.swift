@@ -368,7 +368,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        guard let request = urls.lazy.compactMap(VoiceInputBuddyDeepLinkRequest.parse).first else {
+        guard let request = urls.lazy.compactMap(VoiceInputBuddyDeepLinkRequest.parse).first(where: \.mayActivateSettings) else {
             return
         }
         AppLogger.shared.write(

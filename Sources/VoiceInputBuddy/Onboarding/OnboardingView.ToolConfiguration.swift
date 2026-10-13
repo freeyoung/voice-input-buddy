@@ -29,7 +29,8 @@ extension OnboardingView {
 
     func refreshSelectedVoiceToolRuntimeState() {
         let tool = settings.onboardingVoiceTool
-        voiceToolRuntimeState[tool] = OnboardingInputSourceSwitcher.runtimeState(for: tool)
+        let state = OnboardingInputSourceSwitcher.runtimeState(for: tool)
+        if voiceToolRuntimeState[tool] != state { voiceToolRuntimeState[tool] = state }
     }
 
     func selectControlSource(_ source: OnboardingControlSource) {
@@ -170,6 +171,7 @@ extension OnboardingView {
 
     func refreshSystemFunctionKeyUsage() {
         guard systemFunctionKeyAvailableOverride == nil else { return }
-        systemFunctionKeyUsage = OnboardingSystemFunctionKeyUsage.current
+        let usage = OnboardingSystemFunctionKeyUsage.current
+        if systemFunctionKeyUsage != usage { systemFunctionKeyUsage = usage }
     }
 }

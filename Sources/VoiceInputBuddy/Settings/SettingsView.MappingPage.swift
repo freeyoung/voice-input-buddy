@@ -57,47 +57,6 @@ extension SettingsView {
         saveMappingBinding(configured, button: button, trigger: trigger)
     }
 
-    private var mappingProfileSelector: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(localization.text("button_mapping.editing_profile")).font(.system(size: 13, weight: .semibold))
-                Spacer()
-                if let active = macroFeature.activeMappingProfileID(device: settings.selectedRemoteProfileID),
-                   let profile = macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).first(where: { $0.id == active }) {
-                    Text(localization.text("button_mapping.active_profile") + "：" + profile.name)
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                } else {
-                    Text(localization.text("button_mapping.active_profile") + "：" + localization.text("button_mapping.base_profile"))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    Button(localization.text("button_mapping.base_profile")) { editingMappingProfileID = nil }
-                        .tint(editingMappingProfileID == nil ? .accentColor : .secondary)
-                    ForEach(macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID)) { profile in
-                        Button(profile.name) { editingMappingProfileID = profile.id; shortcutCaptureTarget = nil }
-                            .tint(editingMappingProfileID == profile.id ? .accentColor : .secondary)
-                    }
-                }.buttonStyle(.bordered)
-            }
-        }
-        .onAppear { macroFeature.prepareMappingDevice(settings.selectedRemoteProfileID) }
-        .onChange(of: macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).map(\.id)) { _, ids in
-            if let profile = editingMappingProfileID, !ids.contains(profile) {
-                editingMappingProfileID = nil
-                shortcutCaptureTarget = nil
-            }
-        }
-        .onChange(of: settings.selectedRemoteProfileID) { _, _ in
-            macroFeature.prepareMappingDevice(settings.selectedRemoteProfileID)
-            if let profile = editingMappingProfileID,
-               !macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).contains(where: { $0.id == profile }) {
-                editingMappingProfileID = nil
-            }
-        }
-    }
-
     @ViewBuilder
     func mappingInheritanceControl(button: RemoteButton, trigger: ButtonTrigger) -> some View {
             if let profile = editingMappingProfileID {

@@ -15,15 +15,7 @@ extension BridgeAppModel {
                 "MOBILE VOICE start_rejected reason=busy requested=\(source.logName) " +
                     "active=\(activeMobileVoiceSource?.logName ?? "none")"
             )
-            recordPublicDiagnosticEvent(
-                operationID: operationID,
-                component: "voice",
-                action: "session",
-                phase: "rejected",
-                result: "busy",
-                reason: "busy",
-                source: source.logName
-            )
+
             return .busy
         }
         cancelVirtualAudioReleaseIfPending(trigger: "mobile_voice_start_\(source.logName)")
@@ -35,15 +27,7 @@ extension BridgeAppModel {
             AppLogger.shared.write(
                 "MOBILE VOICE start_rejected reason=function_key requested=\(source.logName)"
             )
-            recordPublicDiagnosticEvent(
-                operationID: operationID,
-                component: "voice",
-                action: "session",
-                phase: "failed",
-                result: "failed",
-                reason: "voice_key_press_failed",
-                source: source.logName
-            )
+
             releaseVirtualAudioOutputIfUnused(reason: "mobile_voice_function_key_failed")
             return .unavailable
         }
@@ -58,15 +42,7 @@ extension BridgeAppModel {
         activeMobileVoiceOperationID = operationID
         activeMobileVoiceStartedAt = Date()
         scheduleMobileVoiceNoAudioRecoveryIfNeeded(source: source)
-        recordPublicDiagnosticEvent(
-            operationID: operationID,
-            component: "voice",
-            action: "session",
-            phase: "started",
-            result: "accepted",
-            reason: "voice_start",
-            source: source.logName
-        )
+
         AppLogger.shared.write("MOBILE VOICE started source=\(source.logName)")
         return .started
     }
@@ -178,14 +154,7 @@ extension BridgeAppModel {
                 "MOBILE VOICE stop_ignored requested=\(source.logName) " +
                     "active=\(activeMobileVoiceSource?.logName ?? "none")"
             )
-            recordPublicDiagnosticEvent(
-                component: "voice",
-                action: "session",
-                phase: "rejected",
-                result: "inactive",
-                reason: "stop_without_active_session",
-                source: source.logName
-            )
+
             return
         case let .ignoredAlreadyStopping(cancelledPendingRestart):
             if cancelledPendingRestart {
@@ -219,19 +188,6 @@ extension BridgeAppModel {
                     self.cancelMobileVoiceNoAudioRecoveryTimer()
                     self.releaseVoiceKeyIfNeeded(owner: .mobile, forceSoftware: true)
                     self.endVoiceSessionIfNeeded()
-                    if let operationID = self.activeMobileVoiceOperationID {
-                        self.recordVoiceSessionCompletion(
-                            operationID: operationID,
-                            source: source.logName,
-                            remoteModelFamily: nil,
-                            startedAt: self.activeMobileVoiceStartedAt,
-                            receivedSamples: self.mobileVoiceAudioSignalMetrics.sampleCount,
-                            failureCount: self.mobileVoiceAudioEnqueueFailureCount +
-                                self.mobileVoiceAudioSourceMismatchCount +
-                                (outcome == .forced ? 1 : 0),
-                            stopReason: "voice_stop"
-                        )
-                    }
                     self.activeMobileVoiceOperationID = nil
                     self.activeMobileVoiceStartedAt = nil
                     AppLogger.shared.write("MOBILE VOICE stopped source=\(source.logName)")
@@ -240,18 +196,6 @@ extension BridgeAppModel {
                     self.cancelMobileVoiceNoAudioRecoveryTimer()
                     self.releaseVoiceKeyIfNeeded(owner: .mobile, forceSoftware: true)
                     self.endVoiceSessionIfNeeded()
-                    if let operationID = self.activeMobileVoiceOperationID {
-                        self.recordVoiceSessionCompletion(
-                            operationID: operationID,
-                            source: source.logName,
-                            remoteModelFamily: nil,
-                            startedAt: self.activeMobileVoiceStartedAt,
-                            receivedSamples: self.mobileVoiceAudioSignalMetrics.sampleCount,
-                            failureCount: self.mobileVoiceAudioEnqueueFailureCount +
-                                self.mobileVoiceAudioSourceMismatchCount,
-                            stopReason: "voice_stop"
-                        )
-                    }
                     self.activeMobileVoiceOperationID = nil
                     self.activeMobileVoiceStartedAt = nil
                     AppLogger.shared.write("MOBILE VOICE stopped source=\(source.logName)")

@@ -3,7 +3,6 @@ import Foundation
 
 struct AppIconIdentifier: RawRepresentable, Hashable, Identifiable, Codable {
     static let standard = AppIconIdentifier(rawValue: "standard")
-    static let facetedDuck = AppIconIdentifier(rawValue: "faceted-duck")
 
     let rawValue: String
 
@@ -30,18 +29,7 @@ struct AppIconOption: Identifiable {
     let image: NSImage
 }
 
-private struct BundledAppIconDefinition {
-    let id: AppIconIdentifier
-    let resourceName: String
-    let titleKey: String
-    let contentScale: CGFloat
-}
-
 struct AppIconCatalog {
-    // Register future icons here with a stable semantic ID and a matching
-    // Resources/AppIcons/<resourceName>.png file.
-    private static let bundledDefinitions: [BundledAppIconDefinition] = []
-
     let options: [AppIconOption]
 
     init(standardImage: NSImage, additionalOptions: [AppIconOption] = []) {
@@ -66,34 +54,14 @@ struct AppIconCatalog {
         ) ?? NSApplication.shared.applicationIconImage ?? NSImage(
             size: NSSize(width: 512, height: 512)
         )
-        let additionalOptions = bundledDefinitions.compactMap { definition in
-            image(
-                named: definition.resourceName,
-                extension: "png",
-                subdirectory: "AppIcons",
-                in: resourceBundle
-            ).map { sourceImage in
-                AppIconOption(
-                    id: definition.id,
-                    titleKey: definition.titleKey,
-                    image: applicationIconImage(
-                        sourceImage,
-                        contentScale: definition.contentScale
-                    )
-                )
-            }
-        }
-        return AppIconCatalog(
-            standardImage: standardImage,
-            additionalOptions: additionalOptions
-        )
+        return AppIconCatalog(standardImage: standardImage)
     }
 
     func resolvedIdentifier(for requestedIdentifier: AppIconIdentifier) -> AppIconIdentifier {
         if options.contains(where: { $0.id == requestedIdentifier }) {
             return requestedIdentifier
         }
-        return options.contains { $0.id == .facetedDuck } ? .facetedDuck : .standard
+        return .standard
     }
 
     func image(for requestedIdentifier: AppIconIdentifier) -> NSImage {
@@ -103,37 +71,6 @@ struct AppIconCatalog {
     private func option(for requestedIdentifier: AppIconIdentifier) -> AppIconOption {
         let identifier = resolvedIdentifier(for: requestedIdentifier)
         return options.first { $0.id == identifier } ?? options[0]
-    }
-
-    static func applicationIconImage(
-        _ sourceImage: NSImage,
-        contentScale: CGFloat
-    ) -> NSImage {
-        let clampedScale = min(max(contentScale, 0.1), 1)
-        guard clampedScale < 1 else { return sourceImage }
-
-        let result = NSImage(size: sourceImage.size, flipped: false) { canvas in
-            NSGraphicsContext.current?.imageInterpolation = .high
-            let contentSize = NSSize(
-                width: canvas.width * clampedScale,
-                height: canvas.height * clampedScale
-            )
-            let contentRect = NSRect(
-                x: canvas.midX - contentSize.width / 2,
-                y: canvas.midY - contentSize.height / 2,
-                width: contentSize.width,
-                height: contentSize.height
-            )
-            sourceImage.draw(
-                in: contentRect,
-                from: NSRect(origin: .zero, size: sourceImage.size),
-                operation: .sourceOver,
-                fraction: 1
-            )
-            return true
-        }
-        result.isTemplate = sourceImage.isTemplate
-        return result
     }
 
     private static func image(

@@ -1016,6 +1016,7 @@ final class XiaomiBluetoothBridge: NSObject {
         pendingSync = nil
         decoder.reset()
         lastStopAt = nil
+        microphoneOpened = true
         guard !streaming else { return }
         streaming = true
         delegate?.bluetoothBridgeDidStartVoice(self)
