@@ -4,7 +4,7 @@ import Foundation
 extension AppSettings {
     func exportedConfigurationData() throws -> Data {
         let configuration = PersonalizedConfiguration(
-            formatVersion: unifiedBaseBindings.isEmpty ? 1 : 2,
+            formatVersion: PersonalizedConfiguration.currentFormatVersion,
             gainDB: gainDB,
             selectedAudioDeviceUID: selectedAudioDeviceUID,
             customMappingEnabled: customMappingEnabled,

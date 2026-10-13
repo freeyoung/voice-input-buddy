@@ -54,10 +54,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var webRemoteState: WebRemoteSessionState = .disabled
     @Published var voiceShortcutStatus = LocalizedMessage("voice_button.status.preparing")
     @Published var voiceKeyCompatibilityWarning: VoiceKeyCompatibilityWarning?
-    @Published private(set) var diagnosticUploadStatus = LocalizedMessage("diagnostics.upload.ready")
-    @Published private(set) var isSendingDiagnosticLogs = false
     let audioOutput = VirtualAudioOutput()
-    private let diagnosticLogUploader: DiagnosticLogUploader
 
     func isOnboardingControlSourceConnected(_ source: OnboardingControlSource) -> Bool {
         switch source {
@@ -371,8 +368,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         loginItemService: LoginItemService = LoginItemService(),
         rc003VoiceExtensionTestEnabled: Bool =
             ProcessInfo.processInfo.arguments.contains("--rc003-voice-extension-test") ||
-            (Bundle.main.object(forInfoDictionaryKey: "RC003VoiceExtensionTestEnabled") as? Bool == true),
-        diagnosticLogUploader: DiagnosticLogUploader = .shared
+            (Bundle.main.object(forInfoDictionaryKey: "RC003VoiceExtensionTestEnabled") as? Bool == true)
     ) {
         self.settings = settings
         self.commonPhraseStore = commonPhraseStore
@@ -381,7 +377,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         self.membershipFeature = membershipFeature
         self.loginItemService = loginItemService
         self.rc003VoiceExtensionTestEnabled = rc003VoiceExtensionTestEnabled
-        self.diagnosticLogUploader = diagnosticLogUploader
         if settings.siriRemoteEnabled, settings.siriRemoteNeedsUserAction {
             siriRemoteAudioStatus = "unavailable:authorization_user_action_required"
         }
@@ -396,7 +391,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             }
         }
         commonPhrases.onWillOpen = { [weak self] in self?.cancelPendingCommonPhraseButtonActions() }
-        self.diagnosticLogUploader.setPrivateEventProvider(membershipFeature)
         audioDevices = initialAudioDevices
         hidEventSuppressor.onSystemDisabled = { [weak self] in
             // Stop mapping as well: an unseized remote must not inject actions without filtering.

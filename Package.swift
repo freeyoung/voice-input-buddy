@@ -9,10 +9,6 @@ let package = Package(
             name: "VoiceInputBuddy",
             targets: ["VoiceInputBuddy"]
         ),
-        .executable(
-            name: "AppleRemoteHCIService",
-            targets: ["AppleRemoteHCIService"]
-        ),
     ],
     dependencies: [.package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4")],
     targets: [
@@ -20,7 +16,7 @@ let package = Package(
         .target(name: "BuddyRemoteUI", dependencies: ["BuddyRemoteCore"], path: "Sources/PublicRemoteCompatibility/UI"),
         .executableTarget(
             name: "VoiceInputBuddy",
-            dependencies: ["AudioExceptionGuard", "AppleRemoteHCIProtocol", "BuddyRemoteCore", "BuddyRemoteUI", .product(name: "Sparkle", package: "Sparkle")],
+            dependencies: ["AudioExceptionGuard", "BuddyRemoteCore", "BuddyRemoteUI", .product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/VoiceInputBuddy",
 
             linkerSettings: [
@@ -32,41 +28,7 @@ let package = Package(
             path: "Sources/AudioExceptionGuard",
             publicHeadersPath: "include"
         ),
-        .target(
-            name: "AppleRemoteAudioCore",
-            path: "Sources/AppleRemoteAudioCore"
-        ),
-        .target(
-            name: "AppleRemoteHCIProtocol",
-            path: "Sources/AppleRemoteHCIProtocol"
-        ),
-        .target(
-            name: "AppleRemotePacketLogger",
-            dependencies: ["AppleRemoteAudioCore", "AppleRemoteHCIProtocol"],
-            path: "Sources/AppleRemotePacketLogger",
-            linkerSettings: [
-                .linkedFramework("Security"),
-            ]
-        ),
-        .executableTarget(
-            name: "VoiceInputBuddyAppleRemoteAudioCapture",
-            dependencies: ["AppleRemoteAudioCore", "AppleRemotePacketLogger"],
-            path: "Sources/AppleRemoteAudioCapture",
-            linkerSettings: [
-                .linkedFramework("IOKit"),
-                .linkedFramework("Network"),
-                .linkedFramework("Security"),
-            ]
-        ),
-        .executableTarget(
-            name: "AppleRemoteHCIService",
-            dependencies: ["AppleRemoteHCIProtocol"],
-            path: "Sources/AppleRemoteHCIService",
-            linkerSettings: [
-                .linkedFramework("Security"),
-            ]
-        ),
-        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy", "AppleRemoteAudioCore", "AppleRemotePacketLogger", "AppleRemoteHCIProtocol"], path: "Tests/VoiceInputBuddyTests"),
+        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy"], path: "Tests/VoiceInputBuddyTests"),
     ],
     swiftLanguageModes: [.v5]
 )

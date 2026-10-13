@@ -37,6 +37,8 @@ struct OnboardingVoiceConfigurationSnapshot: Codable {
 }
 
 struct PersonalizedConfiguration: Codable {
+    static let currentFormatVersion = 2
+
     let formatVersion: Int
     let gainDB: Double
     let selectedAudioDeviceUID: String

@@ -266,7 +266,7 @@ struct PortableDeviceMappingTests {
                                                  profileID: destinationID).action == .commandCopy)
     }
 
-    @Test func legacySingleDeviceExportStillWorks() throws {
+    @Test func missingExportSelectionReportsUnknownDeviceScope() throws {
         var suites: [String] = []
         defer { suites.forEach { UserDefaults.standard.removePersistentDomain(forName: $0) } }
         let source = try settings(&suites)
@@ -278,8 +278,8 @@ struct PortableDeviceMappingTests {
         payload.removeValue(forKey: "selectedMappingProfileID")
         let destination = try settings(&suites)
         try destination.importConfiguration(from: JSONSerialization.data(withJSONObject: payload))
-        #expect(destination.configuredBaseAction(for: .ok, trigger: .singleClick).action == .commandCopy)
-        #expect(destination.configurationImportNotice == nil)
+        #expect(destination.configuredBaseAction(for: .ok, trigger: .singleClick).action == .returnKey)
+        #expect(destination.configurationImportNotice?.rejectedEntryStorageKeys == ["unifiedBaseBindings"])
     }
 
     @Test func unrelatedUnknownDeviceScopesAreReported() throws {

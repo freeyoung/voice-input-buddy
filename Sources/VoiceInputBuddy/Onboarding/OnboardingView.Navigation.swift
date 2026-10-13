@@ -10,7 +10,7 @@ extension OnboardingView {
         VStack(spacing: 14) {
             HStack(alignment: .top, spacing: 8) {
                 ForEach(Array(OnboardingStep.visibleCases.enumerated()), id: \.element.rawValue) { index, step in
-                    let current = step == settings.onboardingStep.normalized
+                    let current = step == settings.onboardingStep
                     let completed = step.progress < settings.onboardingStep.progress
                     VStack(spacing: 7) {
                         Text(completed ? "✓" : "\(index + 1)")
@@ -124,13 +124,9 @@ extension OnboardingView {
     @ViewBuilder
     private var stepContent: some View {
         switch settings.onboardingStep {
-        case .welcome:
-            permissionsContent
         case .voiceTool:
             voiceToolContent
         case .remoteAvailability:
-            remoteAvailabilityContent
-        case .controlMethod:
             remoteAvailabilityContent
         case .permissions:
             permissionsContent
@@ -144,23 +140,6 @@ extension OnboardingView {
             controlsContent
         case .complete:
             completeContent
-        }
-    }
-
-    private var welcomeContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            onboardingTitle("onboarding.welcome.title")
-            Text(verbatim: localization.text("onboarding.welcome.detail"))
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 12) {
-                featureLine("waveform", "onboarding.welcome.feature.voice")
-                featureLine("rectangle.and.hand.point.up.left", "onboarding.welcome.feature.controls")
-                featureLine("checkmark.shield", "onboarding.welcome.feature.verify")
-            }
-            .padding(.top, 10)
         }
     }
 

@@ -1,8 +1,6 @@
 import AppKit
 import Foundation
 import Testing
-import AppleRemoteAudioCore
-import AppleRemoteHCIProtocol
 @testable import VoiceInputBuddy
 
 private final class RecoveryTask: HIDRemoteScheduledTask {
@@ -91,8 +89,7 @@ struct SessionRecoveryTests {
     @Test func rejectionOnlyClearsItsOwnPendingAudio() {
         let pending = BluetoothPendingAudioStart()
         let owner = UUID()
-        pending.identifier = owner
-        pending.audio.begin()
+        pending.begin(for: owner)
         let accepted = pending.audio.appendIfWaiting([1, 2, 3])
         #expect(accepted)
         #expect(!pending.cancel(ifOwnedBy: UUID()))
@@ -179,7 +176,7 @@ struct SessionRecoveryTests {
         #expect(writes == before)
     }
 
-    @Test func legacyImportPreservesApplicationLibraryButReplacesMappingOverrides() throws {
+    @Test func partialImportPreservesApplicationLibraryButReplacesMappingOverrides() throws {
         let (values, name) = defaults()
         defer { values.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: values)
@@ -191,7 +188,6 @@ struct SessionRecoveryTests {
         var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
         object.removeValue(forKey: "customApplicationProfiles")
         object.removeValue(forKey: "unifiedBaseBindings")
-        object["formatVersion"] = 1
         try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
         #expect(settings.customApplicationProfiles == [profile])
         #expect(settings.unifiedBaseBindings.isEmpty)
@@ -204,18 +200,10 @@ struct SessionRecoveryTests {
 
 
 
-    @Test func controlMethodDiagnosticsStillCheckPermissions() {
-        let context = FirstUseDiagnosticContext(step: .controlMethod, capabilities: .init(), hasSelectedAudioUID: false)
+    @Test func environmentDiagnosticsStillCheckPermissions() {
+        let context = FirstUseDiagnosticContext(step: .permissions, capabilities: .init(), hasSelectedAudioUID: false)
         #expect(context.failureReason == .bluetoothPermissionDenied)
     }
 
-    @Test func failedLeaseRestoreRemainsRetryable() throws {
-        enum Failure: Error { case test }
-        var state = AppleRemoteHCILeaseState()
-        state.acquire(enable: {})
-        #expect(throws: Failure.test) { try state.release(restore: { throw Failure.test }) }
-        #expect(state.activeLeaseCount == 1)
-        state.release(restore: {})
-        #expect(state.activeLeaseCount == 0)
-    }
+
 }

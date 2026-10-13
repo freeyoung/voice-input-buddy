@@ -11,11 +11,7 @@ extension AppSettings {
     ) -> [UnifiedButtonBinding] {
         let bindings = configuration.unifiedBaseBindings ?? []
         let localIDs = Set(remoteDeviceProfiles.map(\.id))
-        let scopedIDs = Set(bindings.compactMap(\.remoteProfileID))
-        // Older version-2 exports did not record their selection. A single
-        // device scope is unambiguous; never guess among several device scopes.
-        let sourceSelection = configuration.selectedMappingProfileID ??
-            (scopedIDs.count == 1 ? scopedIDs.first : nil)
+        let sourceSelection = configuration.selectedMappingProfileID
         let globals = bindings.filter { $0.remoteProfileID == nil }
         let scoped = bindings.filter { $0.remoteProfileID != nil }
         var imported: [UnifiedButtonBinding] = []
@@ -154,7 +150,7 @@ extension AppSettings {
             throw AppConfigurationError.fileTooLarge
         }
         let configuration = try JSONDecoder().decode(PersonalizedConfiguration.self, from: data)
-        guard [1, 2].contains(configuration.formatVersion) else {
+        guard configuration.formatVersion == PersonalizedConfiguration.currentFormatVersion else {
             throw AppConfigurationError.unsupportedVersion
         }
         guard configuration.gainDB.isFinite, (0...24).contains(configuration.gainDB) else {

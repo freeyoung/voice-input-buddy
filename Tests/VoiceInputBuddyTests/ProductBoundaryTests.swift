@@ -250,20 +250,22 @@ struct ProductBoundaryTests {
         ))
     }
 
-    @Test @MainActor func wizardStartsWithEnvironmentAndMigratesLegacyWelcome() throws {
+    @Test @MainActor func wizardStartsWithEnvironmentAndUsesOnlyCurrentSteps() throws {
         let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
         #expect(settings.onboardingStep == .permissions)
         #expect(settings.onboardingControlMethod == .unselected)
+        settings.setOnboardingControlSource(.xiaomiRemote)
+        #expect(AppSettings(defaults: defaults).onboardingControlMethod == .physicalRemote)
         #expect(OnboardingStep.permissions.previous == nil)
         #expect(OnboardingStep.permissions.next == .remoteAvailability)
         #expect(OnboardingStep.remoteAvailability.next == .remote)
         #expect(OnboardingStep.audio.next == .controls)
         #expect(OnboardingStep.controls.next == .voiceTool)
-        defaults.set("welcome", forKey: "onboarding.step")
-        #expect(AppSettings(defaults: defaults).onboardingStep == .permissions)
+        #expect(OnboardingStep(rawValue: "welcome") == nil)
+        #expect(OnboardingStep(rawValue: "controlMethod") == nil)
         settings.completeOnboarding()
         settings.restartOnboarding()
         #expect(settings.onboardingStep == .permissions)
@@ -280,13 +282,5 @@ struct ProductBoundaryTests {
         ))
     }
 
-    @Test func diagnosticsCannotSendEvenWithAConfiguredLegacyService() {
-        var sends = 0
-        let uploader = DiagnosticLogUploader(
-            configurationStateProvider: { .configured },
-            sender: { _ in sends += 1 }
-        )
-        #expect(uploader.uploadSynchronously() == .failure(.serviceNotConfigured))
-        #expect(sends == 0)
-    }
+
 }

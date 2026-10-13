@@ -139,7 +139,7 @@ enum OnboardingScreenshotRenderer {
             FirstUseRemoteInputDiagnostic()
         }
         let controlMethod = requestedControlMethod ?? .physicalRemote
-        let controlSource = requestedControlSource ?? .migrated(from: controlMethod)
+        let controlSource = requestedControlSource ?? .defaultSource(for: controlMethod)
         if let requestedVoiceKeyMode {
             settings.voiceKeyMode = requestedVoiceKeyMode
         }
@@ -150,11 +150,8 @@ enum OnboardingScreenshotRenderer {
                 requestedAppleRemoteGeneration ?? .generation7
             )
         }
-        let screenshotAudioName = ProcessInfo.processInfo.environment[
-            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_AUDIO_NAME"
-        ] == "legacy" ? DoubaoAudioDevicePolicy.legacyDeviceName : DoubaoAudioDevicePolicy.deviceName
         let screenshotAudioDevices = [
-            AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: screenshotAudioName),
+            AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
             AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
         ]
         let model = BridgeAppModel(
@@ -254,20 +251,7 @@ enum OnboardingScreenshotRenderer {
     private static func pages(
         for controlMethod: OnboardingControlMethod
     ) -> [(OnboardingStep, String)] {
-        var steps: [OnboardingStep] = [
-            .welcome,
-            .remoteAvailability,
-        ]
-        steps.append(contentsOf: [
-            .permissions,
-            .remote,
-            .audio,
-            .voiceTool,
-            .voiceTest,
-            .controls,
-            .complete,
-        ])
-        return steps.enumerated().map { index, step in
+        return OnboardingStep.visibleCases.enumerated().map { index, step in
             let number = String(format: "%02d", index + 1)
             return (step, "\(number)-\(filenameComponent(for: step)).png")
         }
@@ -275,10 +259,8 @@ enum OnboardingScreenshotRenderer {
 
     private static func filenameComponent(for step: OnboardingStep) -> String {
         switch step {
-        case .welcome: return "welcome"
         case .voiceTool: return "voice-tool"
         case .remoteAvailability: return "control-source"
-        case .controlMethod: return "control-method"
         case .permissions: return "permissions"
         case .remote: return "remote"
         case .audio: return "audio"

@@ -3,12 +3,10 @@ import Foundation
 enum DoubaoAudioDevicePolicy {
     static let deviceUID = "BuddyMic2ch_UID"
     static let deviceName = "Voice Input Buddy Mic"
-    static let legacyDeviceName = "Voice Input Buddy"
 
     static func device(in devices: [AudioDeviceInfo]) -> AudioDeviceInfo? {
-        // Prefer the stable UID, even if a physical device has the same name.
+        // A display name can be shared by unrelated devices; only the driver UID proves identity.
         devices.first { $0.uid == deviceUID }
-            ?? devices.first { $0.name == legacyDeviceName }
     }
 
     static func status(in devices: [AudioDeviceInfo]) -> LocalizedMessage {

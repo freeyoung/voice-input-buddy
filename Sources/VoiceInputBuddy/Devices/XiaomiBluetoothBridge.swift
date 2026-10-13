@@ -483,58 +483,43 @@ final class XiaomiBluetoothBridge: NSObject {
         else { return }
         resetPeripheral()
 
-        if reconnectPolicy.allowsCachedTargetRetrieval,
-           let identifier = targetIdentifier,
-           let saved = central.retrievePeripherals(withIdentifiers: [identifier]).first {
-            // 已保存身份不再无条件采纳：早先版本把别的产品（Chromecast Remote）误存成 Xiaomi
-            // 档案后，只按 UUID 连接会让这个错误一直重连、并且和私有 Chromecast 包抢同一台设备。
-            // 被拒绝时不 return：按「设备不在」继续走既有扫描/重试路径，不新增状态分支。
-            if adopt(
-                saved,
-                using: central,
-                generation: generation,
-                source: "target_identifier",
-                advertisesVoiceService: true,
-                advertisedName: nil,
-                usesCachedTarget: true
-            ) {
-                return
-            }
-        }
-
-        if targetIdentifier == nil {
-            // ATVV 服务是通用服务，可能同时命中多台遥控器。这里把候选连名字一起记一行：
-            // 否则「取回了候选但名字不符」与「根本没取回候选」在日志里完全一样，无法二分。
-            let connectedCandidates = central.retrieveConnectedPeripherals(withServices: [serviceUUID])
-            if !connectedCandidates.isEmpty {
-                AppLogger.shared.write(
-                    "BLE SYSTEM CONNECTED CANDIDATES count=\(connectedCandidates.count) "
-                        + "names="
-                        + connectedCandidates.map { $0.name ?? "unknown" }.joined(separator: ",")
-                )
-            }
-            // 逐个过准入：第一台被拒绝（别的产品）时继续看下一台，而不是整批放弃。
-            for candidate in connectedCandidates
-            where acceptsCandidateIdentifier(candidate.identifier) {
-                if adopt(
+        BluetoothDiscoverySequence.run(
+            cachedTarget: { () -> CBPeripheral? in
+                guard reconnectPolicy.allowsCachedTargetRetrieval,
+                      let identifier = targetIdentifier else { return nil }
+                return central.retrievePeripherals(withIdentifiers: [identifier]).first
+            },
+            connectedCandidates: {
+                let candidates = central.retrieveConnectedPeripherals(withServices: [serviceUUID])
+                if !candidates.isEmpty {
+                    AppLogger.shared.write(
+                        "BLE SYSTEM CONNECTED CANDIDATES count=\(candidates.count) names=" +
+                            candidates.map { $0.name ?? "unknown" }.joined(separator: ",")
+                    )
+                }
+                return candidates
+            },
+            adopt: { candidate, source in
+                guard acceptsCandidateIdentifier(candidate.identifier) else { return false }
+                return adopt(
                     candidate,
                     using: central,
                     generation: generation,
-                    source: "connected_peripheral",
+                    source: source.rawValue,
                     advertisesVoiceService: true,
-                    advertisedName: nil
-                ) {
-                    return
-                }
+                    advertisedName: nil,
+                    usesCachedTarget: source == .cachedTarget
+                )
+            },
+            scan: {
+                state = .scanning
+                central.scanForPeripherals(
+                    withServices: nil,
+                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
+                )
+                AppLogger.shared.write("BLE SCANNING")
             }
-        }
-
-        state = .scanning
-        central.scanForPeripherals(
-            withServices: nil,
-            options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
-        AppLogger.shared.write("BLE SCANNING")
     }
 
     /// 三条发现路径——已保存标识、系统已连接设备、扫描广播——**必须共用这一份判定**。

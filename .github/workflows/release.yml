@@ -47,9 +47,6 @@ jobs:
           python3 scripts/test-appcast.py
           python3 scripts/test-pages-update-feeds.py
           python3 scripts/test-update-signature.py
-          swift build --disable-keychain --product VoiceInputBuddyAppleRemoteAudioCapture
-          python3 scripts/test-helper-ipc.py "$(swift build --disable-keychain --show-bin-path)/VoiceInputBuddyAppleRemoteAudioCapture"
-          swift build --disable-keychain --product AppleRemoteHCIService
           swift test --disable-keychain
       - name: Build app, driver, and standalone uninstaller
         run: |

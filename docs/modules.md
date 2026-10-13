@@ -1,6 +1,6 @@
 # 模块清单
 
-第三方项目及历史技术参考列在 [README References](../README.md#references)，版权、许可证与固定版本记录见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。实际构建目标以 [Package.swift](../Package.swift) 为准。
+第三方项目及历史技术参考列在 [README References](../README.md#references)，版权、许可证与固定版本记录见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。历史 Apple 音频捕获、PacketLogger 和 HCI helper 的源码与构建目标已删除。实际构建目标以 [Package.swift](../Package.swift) 为准。
 
 ## SwiftPM 模块
 
@@ -10,11 +10,6 @@
 | BuddyRemoteCore | 公开设备兼容接口 |
 | BuddyRemoteUI | 公开兼容 UI |
 | AudioExceptionGuard | 音频异常保护的 Objective-C 边界 |
-| AppleRemoteAudioCore | 历史 Apple 遥控器音频处理代码 |
-| AppleRemoteHCIProtocol | 历史 HCI 辅助协议与消息类型 |
-| AppleRemotePacketLogger | 历史 PacketLogger 客户端 |
-| AppleRemoteHCIService | 单独声明的辅助执行目标，不随当前 PKG 分发 |
-| AppleRemoteAudioCapture | 单独声明的音频捕获目标，不随当前 PKG 分发 |
 | VoiceInputBuddyTests | 协议、生命周期与产品边界测试 |
 | Sparkle | 第三方 macOS 更新框架 |
 
@@ -34,6 +29,8 @@ VoiceInputBuddyMic.driver 基于固定版本 BlackHole 源码构建，使用独�
 
 本轮保留这些类型作为后续解耦的过渡层：`BridgeAppModel`、设置和向导状态、公开兼容 UI 仍引用它们。删除需要同步整理状态与存储设置，不在端口校验和链接命名修复中一并进行。它们不是当前产品支持的功能，也没有恢复上游会员或授权服务的计划。
 
-`MembershipFeatureIntegration` 是禁用的本地空桩：会员入口和环境设置不显示，手机连接与 Web Remote 授权能力为 false，创建远程会话授权固定返回 unavailable，诊断上传接口不提供记录。当前设置页不使用手机连接面板，向导不提供手机 / Web Remote 选择。不得仅通过显示入口或修改这些开关来宣称支持；若以后实现，需要独立设计公开服务、隐私边界与端到端测试。
+`MembershipFeatureIntegration` 是禁用的本地空桩：会员入口和环境设置不显示，手机连接与 Web Remote 授权能力为 false，创建远程会话授权固定返回 unavailable。当前设置页不使用手机连接面板，向导不提供手机 / Web Remote 选择。不得仅通过显示入口或修改这些开关来宣称支持；若以后实现，需要独立设计公开服务、隐私边界与端到端测试。
 
 未来移除时，应一并清理客户端、UI、状态和设置迁移，并保留小米遥控器连接、按键映射与语音输入的回归验证。`references/` 是忽略的本地研究笔记目录，正式参考链接列在 README；`dist/` 是忽略的本地构建输出，不属于版本库源码。
+
+诊断只写本地日志；上传器、私有上传协议和待上传事件队列已删除。

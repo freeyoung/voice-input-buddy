@@ -40,7 +40,6 @@ final class AppLogger: PublicDiagnosticEventSink {
         category: "AppLogger"
     )
     private static let defaultMaximumFileSize: UInt64 = 10 * 1_024 * 1_024
-    private static let maximumPublicEvents = 256
     private static let fileHeader = Data("Voice Input Buddy runtime log (UTF-8)\n".utf8)
 
     private let queue = DispatchQueue(label: "VoiceInputBuddy.logger")
@@ -55,8 +54,6 @@ final class AppLogger: PublicDiagnosticEventSink {
     private var oversizedRecordWasReported = false
     private var fileLoggingStopped = false
     private var nextSequence: UInt64 = 0
-    private var publicEvents: [PublicDiagnosticEvent] = []
-    private let publicEventStore: PublicDiagnosticEventStore?
 
     private convenience init() {
         let fileManager = FileManager.default
@@ -73,7 +70,6 @@ final class AppLogger: PublicDiagnosticEventSink {
             ),
             metadata: .current(),
             fileManager: fileManager,
-            publicEventStore: nil, // No configured diagnostic upload service.
             isEnabled: loggingEnabled
         )
     }
@@ -87,7 +83,6 @@ final class AppLogger: PublicDiagnosticEventSink {
         retirementHandler: RetirementHandler? = nil,
         now: @escaping () -> Date = Date.init,
         reportFailure: ((String) -> Void)? = nil,
-        publicEventStore: PublicDiagnosticEventStore? = nil,
         isEnabled: Bool = true
     ) {
         self.logURL = logURL
@@ -104,7 +99,6 @@ final class AppLogger: PublicDiagnosticEventSink {
         self.reportFailure = reportFailure ?? { message in
             Self.systemLogger.error("\(message, privacy: .public)")
         }
-        self.publicEventStore = publicEventStore
 
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -205,51 +199,13 @@ final class AppLogger: PublicDiagnosticEventSink {
         }
     }
 
-    /// Retains upload-approved events across launches and writes the text log. The private transport never reads the local file.
+    /// Structured diagnostics use the same local-only log as other runtime messages.
     func record(_ event: PublicDiagnosticEvent) {
-        guard isEnabled else { return }
-        queue.async { [weak self] in
-            guard let self else { return }
-            if let publicEventStore = self.publicEventStore, event.isApprovedForUpload {
-                do { try publicEventStore.append(event) }
-                catch {
-                    self.publicEvents.append(event)
-                    self.diagnose("public_event_store_write_failed", error: error)
-                }
-            } else {
-                self.publicEvents.append(event)
-            }
-            if self.publicEvents.count > Self.maximumPublicEvents {
-                self.publicEvents.removeFirst(self.publicEvents.count - Self.maximumPublicEvents)
-            }
-            self.appendRecord(message: event.canonicalLine, date: self.now())
-        }
+        write(event.canonicalLine)
     }
 
     func write(publicEvent: PublicDiagnosticEvent) {
         record(publicEvent)
-    }
-
-    func publicDiagnosticEvents() -> [PublicDiagnosticEvent] {
-        guard isEnabled else { return [] }
-        return queue.sync {
-            guard let publicEventStore else { return publicEvents }
-            let stored = publicEventStore.pending()
-            let pending = stored + publicEvents.filter { $0.isApprovedForUpload && !stored.contains($0) }
-            return Array(pending.suffix(Self.maximumPublicEvents))
-        }
-    }
-
-    func markPublicDiagnosticEventsUploaded(_ uploadedEvents: [PublicDiagnosticEvent]) {
-        guard isEnabled, !uploadedEvents.isEmpty else { return }
-        queue.sync {
-            do { try publicEventStore?.acknowledge(uploadedEvents) }
-            catch { diagnose("public_event_store_acknowledge_failed", error: error) }
-            for uploadedEvent in uploadedEvents {
-                guard let index = publicEvents.firstIndex(of: uploadedEvent) else { continue }
-                publicEvents.remove(at: index)
-            }
-        }
     }
 
     func flush() {

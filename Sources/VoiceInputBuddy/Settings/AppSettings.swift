@@ -16,7 +16,6 @@ final class AppSettings: ObservableObject {
         static let secondaryButtonBindings = "secondaryButtonBindings"
         static let buttonRapidPressEnabled = "buttonRapidPressEnabled"
         static let customApplicationProfiles = "customApplicationProfiles"
-        static let peripheralIdentifier = "peripheralIdentifier"
         static let remoteDeviceProfiles = "remoteDeviceProfiles"
         static let selectedRemoteProfileID = "selectedRemoteProfileID"
         static let applicationLanguage = "applicationLanguage"
@@ -41,7 +40,6 @@ final class AppSettings: ObservableObject {
         static let onboardingCompletedVersion = "onboarding.completedVersion"
         static let onboardingStep = "onboarding.step"
         static let onboardingRemoteAvailability = "onboarding.remoteAvailability"
-        static let onboardingControlMethod = "onboarding.controlMethod"
         static let onboardingControlSource = "onboarding.controlSource"
         static let onboardingAppleRemoteGeneration = "onboarding.appleRemoteGeneration"
         static let onboardingVoiceTool = "onboarding.voiceTool"
@@ -278,10 +276,8 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    @Published var onboardingControlMethod: OnboardingControlMethod {
-        didSet {
-            defaults.set(onboardingControlMethod.rawValue, forKey: Keys.onboardingControlMethod)
-        }
+    var onboardingControlMethod: OnboardingControlMethod {
+        onboardingControlSource.controlMethod
     }
 
     @Published var onboardingControlSource: OnboardingControlSource {
@@ -338,16 +334,6 @@ final class AppSettings: ObservableObject {
     var hasHistoricalAudioConfiguration: Bool {
         isOnboardingComplete || firstUseEvents.contains {
             ($0.kind == .passed && $0.step == .audio) || $0.kind == .completed
-        }
-    }
-
-    var peripheralIdentifier: UUID? {
-        get {
-            guard let raw = defaults.string(forKey: Keys.peripheralIdentifier) else { return nil }
-            return UUID(uuidString: raw)
-        }
-        set {
-            defaults.set(newValue?.uuidString, forKey: Keys.peripheralIdentifier)
         }
     }
 
@@ -560,50 +546,19 @@ final class AppSettings: ObservableObject {
             defaults.stringArray(forKey: Keys.trustedPhoneIdentityFingerprints) ?? []
         )
         onboardingCompletedVersion = defaults.integer(forKey: Keys.onboardingCompletedVersion)
-        let persistedOnboardingStep = defaults.string(forKey: Keys.onboardingStep)
-            .flatMap(OnboardingStep.init(rawValue:))
-            ?? .welcome
-        // Older builds persisted a separate control-method page. The new flow owns
-        // both physical and companion choices on the control-source page, so resume
-        // those interrupted sessions there without discarding the selected source.
-        onboardingStep = persistedOnboardingStep.normalized
-        let persistedControlMethod = defaults.string(forKey: Keys.onboardingControlMethod)
-            .flatMap(OnboardingControlMethod.init(rawValue:))
-            ?? (persistedOnboardingStep == .welcome ||
-                persistedOnboardingStep == .voiceTool ||
-                persistedOnboardingStep == .remoteAvailability ||
-                persistedOnboardingStep == .controlMethod
-                ? .unselected
-                : .physicalRemote)
-        onboardingControlMethod = persistedControlMethod
-        onboardingControlSource = defaults.string(forKey: Keys.onboardingControlSource)
+        onboardingStep = defaults.string(forKey: Keys.onboardingStep)
+            .flatMap(OnboardingStep.init(rawValue:)) ?? .permissions
+        let persistedControlSource = defaults.string(forKey: Keys.onboardingControlSource)
             .flatMap(OnboardingControlSource.init(rawValue:))
-            ?? OnboardingControlSource.migrated(from: persistedControlMethod)
+            .flatMap { OnboardingBuildCapabilities.availableControlSources.contains($0) ? $0 : nil }
+            ?? .unselected
+        onboardingControlSource = persistedControlSource
         onboardingAppleRemoteGeneration = defaults.string(
             forKey: Keys.onboardingAppleRemoteGeneration
         ).flatMap(OnboardingAppleRemoteGeneration.init(rawValue:))
-        onboardingRemoteAvailability = defaults.string(
-            forKey: Keys.onboardingRemoteAvailability
-        )
-            .flatMap(OnboardingRemoteAvailability.init(rawValue:))
-            ?? {
-                switch persistedControlMethod {
-                case .physicalRemote:
-                    return .hasRemote
-                case .iPhoneApp, .webRemote:
-                    return .noRemote
-                case .unselected:
-                    return .unselected
-                }
-            }()
-        let persistedOnboardingVoiceTool = defaults.string(forKey: Keys.onboardingVoiceTool)
-        if persistedOnboardingVoiceTool == "chatterfly" {
-            defaults.set(OnboardingVoiceTool.unselected.rawValue, forKey: Keys.onboardingVoiceTool)
-            AppLogger.shared.write("ONBOARDING VOICE_TOOL migrated_from=chatterfly to=unselected")
-        }
-        onboardingVoiceTool = persistedOnboardingVoiceTool
-            .flatMap(OnboardingVoiceTool.init(rawValue:))
-            ?? .unselected
+        onboardingRemoteAvailability = persistedControlSource == .unselected ? .unselected : .hasRemote
+        onboardingVoiceTool = defaults.string(forKey: Keys.onboardingVoiceTool)
+            .flatMap(OnboardingVoiceTool.init(rawValue:)) ?? .unselected
         onboardingVoiceBindingPreference = defaults.string(
             forKey: Keys.onboardingVoiceBindingPreference
         )
@@ -622,13 +577,6 @@ final class AppSettings: ObservableObject {
             forKey: Keys.onboardingStagedVoiceBinding,
             from: defaults,
             corrupted: &corruptedKeys
-        )
-        let legacyMappings = RemoteDeviceMappings(
-            buttonBindings: buttonBindings,
-            buttonShortcuts: buttonShortcuts,
-            buttonApplicationProfileIDs: buttonApplicationProfileIDs,
-            secondaryButtonBindings: secondaryButtonBindings,
-            buttonRapidPressEnabled: buttonRapidPressEnabled
         )
         if
             let decoded = Self.decodeSetting(
@@ -658,13 +606,6 @@ final class AppSettings: ObservableObject {
                 secondaryButtonBindings = selected.mappings.parsedSecondaryButtonBindings
                 buttonRapidPressEnabled = selected.mappings.parsedButtonRapidPressEnabled
             }
-        } else {
-            let migrated = RemoteDeviceProfile(
-                bluetoothIdentifier: defaults.string(forKey: Keys.peripheralIdentifier).flatMap(UUID.init(uuidString:)),
-                mappings: legacyMappings
-            )
-            remoteDeviceProfiles = [migrated]
-            selectedRemoteProfileID = migrated.id
         }
         applyContinuousRecordingExperimentState(
             enabled: experimentalContinuousRecordingEnabled,

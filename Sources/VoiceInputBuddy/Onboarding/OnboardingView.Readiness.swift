@@ -255,7 +255,6 @@ extension OnboardingView {
 
     var primaryActionKey: String {
         switch settings.onboardingStep {
-        case .welcome: return "onboarding.action.start"
         case .complete: return "onboarding.action.open_app"
         default: return "onboarding.action.continue"
         }
