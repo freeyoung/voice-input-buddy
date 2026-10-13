@@ -43,6 +43,19 @@ swift test --disable-keychain
 ./scripts/build-driver.sh
 ```
 
+### 单元测试
+
+测试按数据持久化、输入事件、异步操作生命周期、权限状态、音频状态和协议边界组织。新增行为应同时覆盖成功、失败、取消及旧回调送达后的结果，不能只检查实现是否调用了某个方法。
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --enable-code-coverage --disable-keychain
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test -c release --disable-keychain
+```
+
+覆盖率报告位于 `.build/debug/codecov/VoiceInputBuddy.json`。按文件检查未覆盖的行为，尤其是错误处理与资源释放；文件覆盖率包含系统适配代码，不能把模拟状态机的通过当作真实系统权限或硬件操作的验证。
+
+异步边界测试使用可控调度器，显式送达已经取消的旧回调，不依赖睡眠等待。权限轮询、快捷键发送与输入目标测试注入状态和事件接收器，不修改真实权限、发送系统按键或切换其他应用。常用语插入使用独立的临时剪贴板；持久化和文件锁测试使用独立 UserDefaults 域及临时目录，不读取或修改用户的日常剪贴板和应用设置。诊断事件保留测试仅验证本地存储，不启用上传。
+
 开发 App 位于 `dist/Voice Input Buddy.app`，驱动位于 `dist/VoiceInputBuddyMic.driver`。App 构建按架构使用独立的 `.build/app-arm64` 与 `.build/app-x86_64` 目录，避免 SwiftPM 缓存混用。Release 与一体安装包的复现步骤见 [发布流程](releases.md)。
 
 本地 `scripts/build-app.sh` 与发布 workflow 共用 Git 版本计算：最近提交在 Asia/Singapore 的日期与完整历史提交数生成 `vYY-MM-DD.NNN`。设置页显示该标记；macOS 的数字版本及构建号分别写入 `CFBundleShortVersionString` 与 `CFBundleVersion`。本地源码有未提交修改时，版本仍对应当前 HEAD，不能把它当作正式发布源码标识。
