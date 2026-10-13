@@ -41,6 +41,7 @@ final class AppLogger: PublicDiagnosticEventSink {
     )
     private static let defaultMaximumFileSize: UInt64 = 10 * 1_024 * 1_024
     private static let maximumPublicEvents = 256
+    private static let fileHeader = Data("Voice Input Buddy runtime log (UTF-8)\n".utf8)
 
     private let queue = DispatchQueue(label: "VoiceInputBuddy.logger")
     private let formatter: ISO8601DateFormatter
@@ -97,7 +98,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             build: Self.stableToken(metadata.build)
         )
         self.archiveCount = max(0, archiveCount)
-        self.maximumFileSize = max(1, maximumFileSize)
+        self.maximumFileSize = max(UInt64(Self.fileHeader.count), maximumFileSize)
         self.fileManager = fileManager
         self.now = now
         self.reportFailure = reportFailure ?? { message in
@@ -133,7 +134,7 @@ final class AppLogger: PublicDiagnosticEventSink {
                     throw POSIXError(.EIO)
                 }
                 sessionDescriptor = descriptor
-                try appendAtomically(Data("Voice Input Buddy runtime log (UTF-8)\n".utf8))
+                try appendAtomically(Self.fileHeader)
                 do { try retireOldSessions(archiveCount: max(0, archiveCount), handler: retirementHandler) }
                 catch { diagnose("session_retirement_failed", error: error) }
             }
@@ -318,7 +319,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             let record = Data(line.utf8)
             let appended = try withExclusiveLogLock {
                 let existingSize = fileSize(at: logURL)
-                guard UInt64(record.count) <= maximumFileSize else {
+                guard UInt64(record.count) + UInt64(Self.fileHeader.count) <= maximumFileSize else {
                     if !oversizedRecordWasReported { reportFailure("log_record_too_large") }
                     oversizedRecordWasReported = true
                     return false
@@ -361,6 +362,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             throw POSIXError(.EIO)
         }
         sessionDescriptor = descriptor
+        try appendAtomically(Self.fileHeader)
         try retireOldSessions(archiveCount: archiveCount, handler: nil)
     }
 

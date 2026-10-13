@@ -131,6 +131,40 @@ struct SessionRecoveryRegressionTests {
         #expect(answers == [false, false, true])
     }
 
+    @Test func successfulExplicitReleaseClearsExhaustedRecoveryGate() {
+        let clock = LifecycleClock()
+        var allowRelease = false
+        var answers: [Bool] = []
+        let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
+            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { $0 || allowRelease },
+            enqueueAudio: { _ in }, drainAudio: { _, done in done() }, onFailure: { _ in })
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 100)
+        session.setEnabled(false) { answers.append($0) }
+        clock.advance(to: 7100)
+        #expect(session.releaseRecoveryBlocked)
+        #expect(answers == [false])
+        allowRelease = true
+        // Explicit cleanup also retries key-up, without the permission-recovery entry point.
+        session.setEnabled(false) { answers.append($0) }
+        #expect(!session.releaseRecoveryBlocked)
+        #expect(!session.requiresCleanupBeforeMapping)
+        #expect(answers == [false, true])
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+    }
+
+    @Test func unmappedHIDUsageDoesNotAllocateRecoveryTimer() {
+        let clock = LifecycleClock()
+        let monitor = HIDRemoteMonitor(settings: AppSettings(defaults: defaults()),
+            profileID: nil, scheduler: clock, runtimePermissions: { true },
+            actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: UUID())
+        monitor.handleSimulatedReport(reportID: 1, data: Data([0xff, 0xff]))
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+        monitor.disconnectSimulatedDevice()
+    }
+
     @Test(arguments: [ButtonAction.arrowRight, .commandCopy])
     func everyHeldUsageExpiresEvenForRepeatsAndGestures(action: ButtonAction) {
         let clock = LifecycleClock()

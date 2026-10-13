@@ -837,14 +837,15 @@ final class HIDRemoteMonitor {
 
     private func refreshUsageExpiry(_ usage: UInt16) {
         usageExpiryTimers.removeValue(forKey: usage)?.cancel()
+        guard let button = RemoteButton.usageMap[usage] else { return }
         usageExpiryTimers[usage] = scheduler.schedule(
             afterMilliseconds: HIDRemoteTiming.missingReleaseTimeoutMilliseconds,
             repeatingEveryMilliseconds: nil
         ) { [weak self] in
-            guard let self, let button = RemoteButton.usageMap[usage],
-                  self.activeUsages.contains(usage) || self.nonRepeatablePressedButtons.contains(button) else { return }
-            self.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
+            guard let self else { return }
             self.usageExpiryTimers.removeValue(forKey: usage)?.cancel()
+            guard self.activeUsages.contains(usage) || self.nonRepeatablePressedButtons.contains(button) else { return }
+            self.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
             self.repeatTimers.removeValue(forKey: usage)?.cancel()
             self.doubleClickTimers.removeValue(forKey: button)?.cancel()
             self.longPressTimers.removeValue(forKey: button)?.cancel()

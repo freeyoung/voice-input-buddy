@@ -66,7 +66,7 @@ let package = Package(
                 .linkedFramework("Security"),
             ]
         ),
-        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy", "BuddyRemoteCore", "BuddyRemoteUI", "AudioExceptionGuard", "AppleRemoteAudioCore", "AppleRemotePacketLogger", "AppleRemoteHCIProtocol"], path: "Tests/VoiceInputBuddyTests"),
+        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy", "AppleRemoteAudioCore", "AppleRemotePacketLogger", "AppleRemoteHCIProtocol"], path: "Tests/VoiceInputBuddyTests"),
     ],
     swiftLanguageModes: [.v5]
 )

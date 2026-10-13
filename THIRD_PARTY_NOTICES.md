@@ -36,7 +36,7 @@ The Xiaomi RC003 ATVV UUIDs, microphone command behavior, IMA/DVI ADPCM decoding
 - Reference revision: `3da8bc74cc840c3e048448de203586cd24108f6a`
 - License: GNU General Public License v3.0 or later (`GPL-3.0-or-later`)
 
-The Apple Siri Remote A2854 vendor/product identifiers, HID usage table, dynamically loaded `MultitouchSupport` ABI, small external touch-surface selection rule, and initial circular-scroll tuning were informed by this project. The upstream remote-mic-app implementation reimplements the adapter and lifecycle routing; it does not include the upstream DriverKit components or virtual audio implementation.
+The Apple Siri Remote A2854 vendor/product identifiers, HID usage table, and initial circular-scroll tuning were informed by this project. The current implementation uses public Apple frameworks and does not include the upstream private touch adapter, DriverKit components, or virtual audio implementation.
 
 ## SiriRemoteForge
 

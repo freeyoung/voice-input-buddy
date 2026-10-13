@@ -527,6 +527,7 @@ final class VoiceFnTapSessionController {
             keyReleaseRetryTask = nil
             nextKeyReleaseRetryDelay = 1
             failedKeyReleaseAttempts = 0
+            releaseRecoveryBlocked = false
         } else if keyReleaseRetryTask == nil {
             failedKeyReleaseAttempts += 1
             if failedKeyReleaseAttempts >= maximumKeyReleaseAttempts {
