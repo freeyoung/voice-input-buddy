@@ -19,7 +19,24 @@ Release 只附这三个 PKG，不额外上传 SHA 文件、TXT 更新摘要、ap
 
 旧开发版本若放在其他目录，应退出旧版并改用 `/Applications/Voice Input Buddy.app`，避免同时运行两个副本。首次安装和更新后请核对系统权限。
 
-当前自动发布使用临时 ad-hoc App/驱动签名，PKG 未经 Developer ID Installer 签名和 Apple 公证。Release 说明会如实标注，系统可能阻止安装，更新也可能使输入监控与辅助功能授权失效。此流程没有关闭 Gatekeeper、修改系统安全策略或复用上游发布密钥。正式签名与公证需要后续配置本项目自己的凭据。
+main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经 Developer ID Installer 签名和 Apple 公证。Release 说明会如实标注，系统仍可能阻止安装。此流程没有关闭 Gatekeeper、添加受信任根证书、修改证书信任设置或复用上游发布密钥。Developer ID 签名与公证需要后续配置本项目自己的凭据。
+
+## 固定发布签名身份
+
+证书和私钥只生成一次，后续每个架构、每个 Release 都复用同一份。公开证书位于 `scripts/signing/release-certificate.pem`；其 SHA-1 指纹为 `68D4550C06E7AF5EFCA5CDB454967F7B0E97F9A0`，有效期至 2036-10-10。指纹用于选择签名身份；证书本身使用 RSA 3072 和 SHA-256。证书、Bundle ID 和 designated requirement 共同保持应用跨版本身份，不把身份绑定到每次变化的程序内容哈希。
+
+仓库 Secrets：
+
+- `MACOS_SIGNING_P12_BASE64`：带私钥的、密码加密的 PKCS#12 文件，以 Base64 编码保存。
+- `MACOS_SIGNING_P12_PASSWORD`：PKCS#12 导出密码。
+
+两者都由 `gh secret set` 通过标准输入上传。私钥、PKCS#12 和密码不得进入 Git、产物或日志，应另行安全备份。Base64 不是加密。不要在构建中生成新证书，或用同名的新证书替代丢失的原证书。
+
+只有 main 的 push 构建导入身份；PR 构建不读取这两个 Secrets，仍使用 ad-hoc 签名。`release-signing-keychain.py setup` 先校验 Secrets 中的证书与仓库公开证书一致，再创建 runner 的临时 Keychain，仅允许签名工具读取私钥。`CODE_SIGN_IDENTITY` 指定证书指纹，`CODE_SIGN_KEYCHAIN` 指定临时 Keychain。此 Keychain 仅临时加入搜索列表，不添加任何证书信任设置；签名结束后 `always()` 清理恢复搜索列表、删除 Keychain，导入用的 PKCS#12 文件则在 setup 结束时立即删除。缺少 Secrets、证书不匹配或签名失败均停止发布，不降级到 ad-hoc 签名。
+
+打包前，`verify-release-signing.py` 校验 App 和驱动确实由固定证书签名，并具有绑定各自 Bundle ID 与证书指纹的固定 designated requirement。Sparkle 的更新包签名仍使用独立的 `SPARKLE_PRIVATE_KEY`，职责不同，不替换它。
+
+首次安装此固定身份的版本时可能需要重新授予输入监控和辅助功能权限。跨版本权限保留仍需真机验收：在固定证书签名的版本 A 中授予权限，再正常升级到同一证书签名的版本 B，确认系统权限检查、遥控器按键和语音输入均可用。签名校验成功不代表这条升级路径已经验收。
 
 ## 本地复现
 
