@@ -23,6 +23,8 @@ main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经
 
 ## 固定发布签名身份
 
+证书生成、备份及自己的 GitHub 仓库配置步骤见 [构建与固定签名证书](build-and-signing.md)。
+
 证书和私钥只生成一次，后续每个架构、每个 Release 都复用同一份。公开证书位于 `scripts/signing/release-certificate.pem`；其 SHA-1 指纹为 `68D4550C06E7AF5EFCA5CDB454967F7B0E97F9A0`，有效期至 2036-10-10。指纹用于选择签名身份；证书本身使用 RSA 3072 和 SHA-256。证书、Bundle ID 和 designated requirement 共同保持应用跨版本身份，不把身份绑定到每次变化的程序内容哈希。
 
 仓库 Secrets：

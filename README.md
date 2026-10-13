@@ -68,6 +68,7 @@ The tool must accept the virtual microphone and expose a usable voice shortcut. 
 - [Interface and troubleshooting](docs/interface.md)
 - [Website and deployment](docs/website.md)
 - [Development and builds](docs/development.md)
+- [Builds and fixed signing certificates](docs/build-and-signing.md)
 - [Releases and installers](docs/releases.md)
 - [Architecture and scope](docs/architecture.md)
 - [Privacy and testing](docs/privacy-and-testing.md)

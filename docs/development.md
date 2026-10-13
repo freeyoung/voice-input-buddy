@@ -1,5 +1,7 @@
 # macOS 开发与驱动
 
+首次构建、为自己的发布生成固定证书及设置 GitHub Secrets，请先阅读 [构建与固定签名证书](build-and-signing.md)。普通本地构建不需要本项目的发布私钥。
+
 SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建，不接受上游私有包环境变量。构建时使用 --disable-keychain，避免公开二进制依赖扫描登录钥匙串。
 
 开发 App：运行 scripts/build-app.sh，输出 dist/Voice Input Buddy.app。首次设置会请求需要的权限，蓝牙权限描述位于 Resources/Info.plist。应用身份为 com.zfdang.voice-input-buddy，设置和系统权限与原产品独立。
