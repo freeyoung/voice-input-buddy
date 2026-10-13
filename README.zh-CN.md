@@ -68,6 +68,7 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 - [界面与常见问题](docs/interface.md)
 - [官网与部署](docs/website.md)
 - [开发与构建](docs/development.md)
+- [构建与固定签名证书](docs/build-and-signing.md)
 - [发布与安装包说明](docs/releases.md)
 - [架构与产品范围](docs/architecture.md)
 - [隐私与验证记录](docs/privacy-and-testing.md)

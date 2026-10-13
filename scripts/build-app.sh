@@ -45,7 +45,7 @@ if [[ -n "${RELEASE_BUNDLE_VERSION:-}" ]]; then
 fi
 /usr/libexec/PlistBuddy -c "Set :SUFeedURL https://voice.zfdang.com/appcast-$RELEASE_ARCH_LABEL.xml" "$app/Contents/Info.plist"
 python3 scripts/verify-onboarding-resources.py "$app/Contents/Resources"
-codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$app"
+"$root/scripts/sign-bundle.sh" "$app"
 # Publish only after the fresh bundle passes resource validation and signing.
 # Failed builds leave the previous usable app untouched.
 rm -rf "$destination"

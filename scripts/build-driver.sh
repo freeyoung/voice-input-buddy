@@ -45,5 +45,5 @@ fi
 cp "$root/Resources/AppIcon.icns" "$driver/Contents/Resources/BlackHole.icns"
 cp "$source/LICENSE" "$driver/Contents/Resources/BlackHole-LICENSE"
 
-codesign --force --deep --sign "${CODE_SIGN_IDENTITY:--}" "$root/dist/VoiceInputBuddyMic.driver"
+"$root/scripts/sign-bundle.sh" "$root/dist/VoiceInputBuddyMic.driver"
 printf 'Driver source: %s\nInclude this source and patch alongside driver releases.\n' "$source"
