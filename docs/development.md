@@ -54,7 +54,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test -c release -
 
 覆盖率报告位于 `.build/debug/codecov/VoiceInputBuddy.json`。按文件检查未覆盖的行为，尤其是错误处理与资源释放；文件覆盖率包含系统适配代码，不能把模拟状态机的通过当作真实系统权限或硬件操作的验证。
 
-异步边界测试使用可控调度器，显式送达已经取消的旧回调，不依赖睡眠等待。权限轮询、快捷键发送与输入目标测试注入状态和事件接收器，不修改真实权限、发送系统按键或切换其他应用。常用语插入使用独立的临时剪贴板；持久化和文件锁测试使用独立 UserDefaults 域及临时目录，不读取或修改用户的日常剪贴板和应用设置。诊断事件保留测试仅验证本地存储，不启用上传。
+异步边界测试使用可控调度器，显式送达已经取消的旧回调，不依赖睡眠等待。权限轮询、快捷键发送与输入目标测试注入状态和事件接收器，不修改真实权限、发送系统按键或切换其他应用。常用语插入使用独立的临时剪贴板；持久化和文件锁测试使用独立 UserDefaults 域及临时目录，不读取或修改用户的日常剪贴板和应用设置。结构化诊断测试仅验证本地日志；没有诊断上传和待上传事件存储。
 
 开发 App 位于 `dist/Voice Input Buddy.app`，驱动位于 `dist/VoiceInputBuddyMic.driver`。App 构建按架构使用独立的 `.build/app-arm64` 与 `.build/app-x86_64` 目录，避免 SwiftPM 缓存混用。Release 与一体安装包的复现步骤见 [发布流程](releases.md)。
 
@@ -72,7 +72,7 @@ App 打包先在临时目录组装全新的 bundle，资源检查和签名成功
 
 实验性 Apple 遥控器音频辅助进程的每次启动令牌通过匿名 stdin 管道传递，不放在命令行参数或环境变量中。启动时只接受固定长度的 UUID 及换行，缺失、截断或无效令牌会在创建 IPC 服务前退出。该辅助进程仍不纳入当前发行 App。
 
-SwiftPM 使用 Swift 6.2 工具链，语言模式暂为 Swift 5。这是现有并发边界的迁移状态，并不代表已经通过 Swift 6 严格并发检查。切换语言模式需要单独审查事件 tap、蓝牙回调、音频队列和 MainActor 的隔离，不能以一次 manifest 修改代替并发验证。PacketLogger 库与音频捕获执行目标使用独立源码目录，测试显式声明导入的模块；CI 显式编译两个历史 helper，但不安装或以 root 执行它们。
+SwiftPM 使用 Swift 6.2 工具链，语言模式暂为 Swift 5。这是现有并发边界的迁移状态，并不代表已经通过 Swift 6 严格并发检查。切换语言模式需要单独审查事件 tap、蓝牙回调、音频队列和 MainActor 的隔离，不能以一次 manifest 修改代替并发验证。历史 Apple 音频捕获、PacketLogger 与 HCI helper 已移除；CI 只构建当前产品。
 
 HID 原始映射在改写前一次性原子写入 `~/Library/Application Support/VoiceInputBuddy/HIDMappingRecovery.json`。记录绑定本机启动会话；UUID 不可用时用系统启动时间识别，同样无法识别或写入失败时拒绝改写 HID。离线或恢复失败时保留记录，下次重连/启动继续恢复；不恢复到用户后来主动更改的映射。
 
@@ -80,7 +80,7 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 
 事件 tap 的非独占降级模式无法可靠区分相同键码的设备。为避免遥控器快速点击在 HID 释放后才送达的原生 down 造成两次动作，保留 180 毫秒的待匹配 down/up；这也存在同窗口内误吞物理键盘同键码的取舍。不能单用 held 计数过滤，否则会恢复快速点击重复动作的问题。残留 held 状态设置 30 秒上限；独占 HID 路径优先，降级路径仍需实际设备验收。
 
-蓝牙 `.withResponse` 命令采用有界串行队列，成功 ACK 才发下一条；错误或五秒超时清队列并重连。入队成功只表示接受命令，ATVV 通知才确认实际音频流。实验性 Apple helper 只接受每次启动的第一条有效 READY，回调绑定具体进程与连接，旧实例不能影响新实例。
+蓝牙 `.withResponse` 命令采用有界串行队列，成功 ACK 才发下一条；错误或五秒超时清队列并重连。入队成功只表示接受命令，ATVV 通知才确认实际音频流。
 
 共享日志器不再创建持久化的公开诊断上传队列；没有配置上传服务。运行日志以 UTF-8 文本保存在 `~/Library/Logs/VoiceInputBuddy/`，无需公钥或解密工具，用户可以自行查看；每个文件限制为 10 MiB，达到上限会在当前会话内轮转，最多保留五份旧日志，跳过仍在使用的日志及符号链接。日志不保存录音或识别正文，也不会上传。菜单“显示日志”会先刷新日志，再定位到当前 `.log` 文件。常用语 JSON 由 `scripts/generate-common-phrases.py` 从 Markdown 编辑源生成，打包测试校验生成资源确实存在。
 
@@ -123,7 +123,6 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 The public macOS product currently supports Xiaomi remotes. Phone, watch, Web Remote,
 Siri Remote and Chromecast adapters are dormant scaffolding, not supported connections.
 Their management panels are deliberately absent from the shipped connection page.
-AppleRemoteHCIService and VoiceInputBuddyAppleRemoteAudioCapture are experimental build
-targets used by protocol tests; build-app.sh does not bundle or install these helpers.
+Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
 Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
 Screenshot fixture entry points are debug-only.

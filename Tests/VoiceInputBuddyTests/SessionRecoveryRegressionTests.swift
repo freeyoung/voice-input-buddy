@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import AppleRemoteAudioCore
 @testable import VoiceInputBuddy
 
 private final class LifecycleTask: HIDRemoteScheduledTask {
@@ -325,31 +324,4 @@ struct SessionRecoveryRegressionTests {
         if case .immediate = coordinator(protected: false, text: "Search").waitUntilReady(completion: { _ in }) {} else { Issue.record("Explicit search typing rejected") }
     }
 
-    private func record(_ payload: [UInt8], boundary: UInt16 = 2) -> Data {
-        let handle = UInt16(1) | boundary << 12
-        let acl: [UInt8] = [UInt8(handle & 255), UInt8(handle >> 8), UInt8(payload.count & 255), UInt8(payload.count >> 8)] + payload
-        let length = UInt32(9 + acl.count)
-        return Data([UInt8(length >> 24), UInt8((length >> 16) & 255), UInt8((length >> 8) & 255), UInt8(length & 255)] + Array(repeating: 0, count: 8) + [3] + acl)
-    }
-
-    @Test func malformedPacketFloodRemainsBoundedAndResynchronizes() {
-        let parser = AppleRemotePklgVoiceExtractor()
-        #expect(parser.ingest(Data(repeating: 255, count: 2 * 1024 * 1024)).isEmpty)
-        #expect(parser.bufferedByteCount <= 3)
-        let payload: [UInt8] = [10, 0, 4, 0, 0x1B, 0x33, 0, 0, 0, 1, 2, 2, 0xB8, 0]
-        #expect(parser.ingest(record(payload)).count == 1)
-        #expect(parser.bufferedByteCount == 0)
-    }
-
-    @Test func aclContinuationOverflowDiscardsAssemblyAndValidFragmentsStillWork() {
-        let parser = AppleRemotePklgVoiceExtractor()
-        #expect(parser.ingest(record([1, 0, 4, 0])).isEmpty)
-        #expect(parser.pendingACLByteCount == 4)
-        #expect(parser.ingest(record(Array(repeating: 0, count: 64), boundary: 1)).isEmpty)
-        #expect(parser.pendingACLByteCount == 0)
-        let payload: [UInt8] = [10, 0, 4, 0, 0x1B, 0x33, 0, 0, 0, 1, 2, 2, 0xB8, 0]
-        #expect(parser.ingest(record(Array(payload.prefix(8)))).isEmpty)
-        #expect(parser.ingest(record(Array(payload.dropFirst(8)), boundary: 1)).count == 1)
-        #expect(parser.pendingACLByteCount == 0)
-    }
 }

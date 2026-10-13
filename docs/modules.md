@@ -1,6 +1,6 @@
 # 模块清单
 
-第三方项目及历史技术参考列在 [README References](../README.md#references)，版权、许可证与固定版本记录见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。实际构建目标以 [Package.swift](../Package.swift) 为准。
+第三方项目及历史技术参考列在 [README References](../README.md#references)，版权、许可证与固定版本记录见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。历史 Apple 音频捕获、PacketLogger 和 HCI helper 的源码与构建目标已删除。实际构建目标以 [Package.swift](../Package.swift) 为准。
 
 ## SwiftPM 模块
 
@@ -10,11 +10,6 @@
 | BuddyRemoteCore | 公开设备兼容接口 |
 | BuddyRemoteUI | 公开兼容 UI |
 | AudioExceptionGuard | 音频异常保护的 Objective-C 边界 |
-| AppleRemoteAudioCore | 历史 Apple 遥控器音频处理代码 |
-| AppleRemoteHCIProtocol | 历史 HCI 辅助协议与消息类型 |
-| AppleRemotePacketLogger | 历史 PacketLogger 客户端 |
-| AppleRemoteHCIService | 单独声明的辅助执行目标，不随当前 PKG 分发 |
-| AppleRemoteAudioCapture | 单独声明的音频捕获目标，不随当前 PKG 分发 |
 | VoiceInputBuddyTests | 协议、生命周期与产品边界测试 |
 | Sparkle | 第三方 macOS 更新框架 |
 

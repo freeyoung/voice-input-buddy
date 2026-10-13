@@ -1,8 +1,6 @@
 import AppKit
 import Foundation
 import Testing
-import AppleRemoteAudioCore
-import AppleRemoteHCIProtocol
 @testable import VoiceInputBuddy
 
 private final class RecoveryTask: HIDRemoteScheduledTask {
@@ -208,13 +206,5 @@ struct SessionRecoveryTests {
         #expect(context.failureReason == .bluetoothPermissionDenied)
     }
 
-    @Test func failedLeaseRestoreRemainsRetryable() throws {
-        enum Failure: Error { case test }
-        var state = AppleRemoteHCILeaseState()
-        state.acquire(enable: {})
-        #expect(throws: Failure.test) { try state.release(restore: { throw Failure.test }) }
-        #expect(state.activeLeaseCount == 1)
-        state.release(restore: {})
-        #expect(state.activeLeaseCount == 0)
-    }
+
 }

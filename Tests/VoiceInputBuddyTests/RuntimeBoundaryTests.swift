@@ -82,25 +82,6 @@ struct RuntimeBoundaryTests {
         #expect(empty.action == .customShortcut && empty.shortcut == nil)
     }
 
-    @Test func hciTimeoutAndFailurePermitRetryAndIgnoreLateCallbacks() {
-        var timeouts: [() -> Void] = []
-        var replies: [(Bool, String) -> Void] = []
-        var results: [AppleRemoteHCIConfigurationClient.Result] = []
-        let client = AppleRemoteHCIConfigurationClient(scheduleTimeout: { timeouts.append($0) }, requestPreparation: { _, reply in replies.append(reply) })
-        client.prepare { results.append($0) }
-        timeouts[0]()
-        #expect(results == [.failed("hci_helper_timed_out")])
-        client.prepare { results.append($0) }
-        #expect(replies.count == 2)
-        replies[0](true, "late_success")
-        replies[1](false, "rejected")
-        #expect(results == [.failed("hci_helper_timed_out"), .failed("rejected")])
-        client.prepare { results.append($0) }
-        #expect(replies.count == 3)
-        replies[2](true, "ready")
-        #expect(results.last == .ready)
-        client.stop()
-    }
 
     @Test func corruptedMappingsAreReportedAndPreservedWhileDefaultsRecover() {
         let (defaults, name) = values()
@@ -160,21 +141,6 @@ struct RuntimeBoundaryTests {
         #expect(stops.take(pending: ["second"]).isEmpty)
     }
 
-    @Test func hciDisconnectionAfterReadyAllowsAnotherPreparation() async {
-        var connections: [NSXPCConnection] = []
-        let client = AppleRemoteHCIConfigurationClient(scheduleTimeout: { _ in }, requestPreparation: { connection, reply in
-            connections.append(connection)
-            reply(true, "ready")
-        })
-        client.prepare { #expect($0 == .ready) }
-        connections[0].invalidationHandler?()
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async { continuation.resume() }
-        }
-        client.prepare { #expect($0 == .ready) }
-        #expect(connections.count == 2)
-        client.stop()
-    }
 
     @Test func mappingToggleRestoresOnlyItsOwnDeviceProfileButtonAndGesture() {
         let device = UUID(), profile = UUID()

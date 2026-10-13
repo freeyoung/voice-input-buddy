@@ -2,7 +2,6 @@ import AppKit
 import Foundation
 import Testing
 @testable import VoiceInputBuddy
-@testable import AppleRemotePacketLogger
 
 @Suite("Input lifecycle regressions")
 @MainActor
@@ -397,14 +396,6 @@ struct InputLifecycleRegressionTests {
         #expect(!filter.handle(type: type, event: up))
     }
 
-    @Test func packetLoggerRuleRequiresFreshAdminAuthentication() {
-        let rule = AppleRemotePacketLoggerClient.temporaryAuthorizationRule(bundleIdentifier: "com.zfdang.VoiceInputBuddy")
-        #expect(AppleRemotePacketLoggerClient.authorizationRuleIsStrongEnough(rule))
-        #expect(!AppleRemotePacketLoggerClient.authorizationRuleIsStrongEnough(["class": "allow"] as CFDictionary))
-        var weakened = rule as! [String: Any]
-        weakened["authenticate-user"] = false
-        #expect(!AppleRemotePacketLoggerClient.authorizationRuleIsStrongEnough(weakened as CFDictionary))
-    }
 
     @Test func volumeActionsUseInjectedPoster() {
         var keys: [Int32] = []
