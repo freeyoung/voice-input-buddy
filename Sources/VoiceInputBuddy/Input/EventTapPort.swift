@@ -11,6 +11,26 @@ import Foundation
 /// 两处 tap 创建点（`KeyboardEventSuppressor` 与 `ShortcutCaptureMonitor`）共用本类型，
 /// 避免同一释放逻辑被分别实现后再次分叉。
 enum EventTapPort {
+    /// Return from the WindowServer callback before checking TCC or recovering a tap.
+    /// A queued recovery must not revive a port stopped or replaced in the meantime.
+    static func deferRecovery(
+        type: CGEventType,
+        dispatch: (@escaping () -> Void) -> Void,
+        isCurrent: @escaping () -> Bool,
+        permissionsGranted: @escaping () -> Bool,
+        enable: @escaping () -> Void,
+        stop: @escaping () -> Void
+    ) {
+        dispatch {
+            guard isCurrent() else { return }
+            guard type == .tapDisabledByTimeout, permissionsGranted() else {
+                stop()
+                return
+            }
+            enable()
+        }
+    }
+
     /// 把已创建的 tap 端口接入主 RunLoop 并启用。
     static func activate(port: CFMachPort, source: CFRunLoopSource) {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)

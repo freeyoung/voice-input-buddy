@@ -122,7 +122,7 @@ final class CommonPhraseInserter {
               NSWorkspace.shared.frontmostApplication?.processIdentifier == processID
         else { return "target_changed" }
         let application = AXUIElementCreateApplication(processID)
-        AXUIElementSetMessagingTimeout(application, 0.25)
+        AccessibilityMessaging.prepareQueries()
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
               let focused, CFGetTypeID(focused) == AXUIElementGetTypeID()

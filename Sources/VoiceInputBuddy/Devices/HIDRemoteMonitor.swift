@@ -286,6 +286,7 @@ final class HIDRemoteMonitor {
     deinit { stop() }
 
     func stop() {
+        if ownsEventSuppressor { eventSuppressor.stop() }
         permissionPollSubscription?.cancel()
         permissionPollSubscription = nil
         if let manager {
@@ -297,7 +298,10 @@ final class HIDRemoteMonitor {
             )
         }
         resetInputState()
-        if ownsEventSuppressor { eventSuppressor.stop() }
+        let closingDeviceCount = probedDevices.count + (activeDevice == nil ? 0 : 1)
+        if manager != nil || closingDeviceCount > 0 {
+            diagnosticLogger("HID TEARDOWN phase=begin devices=\(closingDeviceCount) manager=\(manager != nil)")
+        }
         probedDevices.forEach {
             IOHIDDeviceClose($0, IOOptionBits(kIOHIDOptionsTypeNone))
         }
@@ -316,6 +320,7 @@ final class HIDRemoteMonitor {
         )
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         self.manager = nil
+        diagnosticLogger("HID TEARDOWN phase=completed")
     }
 
     fileprivate func deviceDidMatch(result: IOReturn, device: IOHIDDevice) {
@@ -597,6 +602,7 @@ final class HIDRemoteMonitor {
         }
         guard runtimePermissionsAreValid() else {
             diagnosticLogger("HID REPORT rejected reason=runtime_permission_revoked source=simulated")
+            releaseForRevokedPermissions()
             return
         }
         parseAndProcess(reportID: reportID, data: data, source: "simulated")
@@ -1412,6 +1418,9 @@ final class HIDRemoteMonitor {
     }
 
     private func releaseForRevokedPermissions() {
+        // This may be a shared tap. No monitor can safely filter input after revocation.
+        eventSuppressor.stop()
+        diagnosticLogger("HID TEARDOWN reason=permission_revoked filter=stopped")
         stop()
         updateStatus(LocalizedMessage("button_mapping.permission.system_expired"))
         AppLogger.shared.write("HID RELEASED permission_revoked")

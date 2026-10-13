@@ -13,6 +13,10 @@ extension BridgeAppModel {
     ) {
         let permissionSnapshot = HIDPermissionSnapshot.current
         appliedHIDPermissionSnapshot = permissionSnapshot
+        if !permissionSnapshot.inputMonitoringGranted || !permissionSnapshot.accessibilityGranted {
+            // Detach input filtering before voice/HID configuration touches system services.
+            stopHIDMonitors()
+        }
         if !permissionSnapshot.accessibilityGranted {
             _ = releaseVoiceKeyIfNeeded()
         }
@@ -285,11 +289,12 @@ extension BridgeAppModel {
     }
 
     func stopHIDMonitors() {
+        // Detach the blocking event tap before any synchronous IOKit close.
+        hidEventSuppressor.stop()
         hidMonitors.values.forEach { $0.stop() }
         discoveryHIDMonitor?.stop()
         hidMonitors.removeAll()
         discoveryHIDMonitor = nil
-        hidEventSuppressor.stop()
         activeRemoteButtons = []
     }
 

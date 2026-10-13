@@ -13,6 +13,140 @@ struct InputLifecycleRegressionTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
+    @Test func interruptedMonitoringRecoversEvenWhenCachedPermissionsNeverChanged() {
+        for granted in [false, true] {
+            let snapshot = HIDPermissionSnapshot(inputMonitoringGranted: granted, accessibilityGranted: granted)
+            let shouldRecover = HIDPermissionRecoveryPolicy.shouldReapplySettings(
+                started: true, customMappingEnabled: true, monitoringInterrupted: true,
+                previous: snapshot, current: snapshot)
+            #expect(shouldRecover == granted)
+        }
+    }
+
+    @Test func systemDisabledSharedFilterAlsoStopsDeviceMappings() {
+        let (values, name) = defaults()
+        defer { values.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: values)
+        settings.customMappingEnabled = true
+        let model = BridgeAppModel(settings: settings)
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: nil,
+            eventSuppressor: model.hidEventSuppressor, ownsEventSuppressor: false,
+            runtimePermissions: { true }, actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: UUID())
+        var resets = 0
+        monitor.onInputReset = { _ in resets += 1 }
+        model.hidMonitors["test"] = monitor
+        model.activeRemoteButtons = [.right]
+        model.hidEventSuppressor.onSystemDisabled?()
+        #expect(resets == 1)
+        #expect(model.hidMonitors.isEmpty)
+        #expect(model.activeRemoteButtons.isEmpty)
+        monitor.onInputReset = nil
+    }
+
+    @Test(arguments: [VoiceKeyMode.function, .leftCommand, .rightOption])
+    func deniedVoiceReleaseKeepsLatchUntilSuccessfulRetry(mode: VoiceKeyMode) {
+        let (values, name) = defaults()
+        defer { values.removePersistentDomain(forName: name) }
+        let model = BridgeAppModel(settings: AppSettings(defaults: values))
+        _ = model.voiceKeyLatch.transition(streaming: true, owner: .bluetooth)
+        model.heldVoiceKeyMode = mode
+        var attempts = 0
+        let denied = model.releaseVoiceKeyIfNeeded { actualMode in
+            attempts += 1
+            #expect(actualMode == mode)
+            return false
+        }
+        #expect(!denied)
+        #expect(attempts == 1)
+        #expect(model.voiceKeyLatch.isHeld)
+        #expect(model.heldVoiceKeyMode == mode)
+        let recovered = model.releaseVoiceKeyIfNeeded { _ in attempts += 1; return true }
+        #expect(recovered)
+        #expect(attempts == 2)
+        #expect(!model.voiceKeyLatch.isHeld)
+        #expect(model.heldVoiceKeyMode == nil)
+    }
+
+    @Test func deniedFilterStartDoesNotCreateTapAndClearsPendingSuppression() throws {
+        let filter = KeyboardEventSuppressor(uptime: { 0 }, permissionsGranted: { false })
+        filter.arm(button: .right, edge: .down)
+        #expect(!filter.start())
+        #expect(!filter.isRunning)
+        let event = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 124, keyDown: true))
+        #expect(!filter.handle(type: .keyDown, event: event))
+    }
+
+    @Test func accessibilityTraversalStopsOnEitherNodeOrTimeBudget() {
+        var now: TimeInterval = 10
+        var budget = AccessibilityTraversalBudget(maximumNodes: 2, uptime: { now })
+        func admit() -> Bool { budget.admitNode() }
+        #expect(admit())
+        #expect(admit())
+        #expect(!admit())
+        budget = AccessibilityTraversalBudget(maximumNodes: 5_000, uptime: { now })
+        #expect(admit())
+        now = 11
+        #expect(!admit())
+        now = 100
+        #expect(!admit())
+    }
+
+    @Test(arguments: [CGEventType.tapDisabledByTimeout, .tapDisabledByUserInput])
+    func tapRecoveryReturnsBeforePermissionChecksAndDoesNotReviveStoppedPorts(type: CGEventType) {
+        var work: [() -> Void] = []
+        var current = true
+        var permissionChecks = 0, enables = 0, stops = 0
+        EventTapPort.deferRecovery(type: type, dispatch: { work.append($0) },
+            isCurrent: { current }, permissionsGranted: { permissionChecks += 1; return true },
+            enable: { enables += 1 }, stop: { stops += 1 })
+        #expect(permissionChecks == 0 && enables == 0 && stops == 0)
+        current = false
+        work.removeFirst()()
+        #expect(permissionChecks == 0 && enables == 0 && stops == 0)
+    }
+
+    @Test(arguments: [false, true])
+    func timeoutRecoveryRequiresPermissionAndUserDisableNeverRestarts(granted: Bool) {
+        var work: [() -> Void] = []
+        var enables = 0, stops = 0, checks = 0
+        for type in [CGEventType.tapDisabledByTimeout, .tapDisabledByUserInput] {
+            EventTapPort.deferRecovery(type: type, dispatch: { work.append($0) },
+                isCurrent: { true }, permissionsGranted: { checks += 1; return granted },
+                enable: { enables += 1 }, stop: { stops += 1 })
+            work.removeFirst()()
+        }
+        #expect(checks == 1)
+        #expect(enables == (granted ? 1 : 0))
+        #expect(stops == (granted ? 1 : 2))
+    }
+
+    @Test func revokedPermissionsClearSharedFilterBeforeInputReset() throws {
+        let (values, name) = defaults()
+        defer { values.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: values)
+        settings.customMappingEnabled = true
+        var granted = true
+        let filter = KeyboardEventSuppressor(uptime: { 0 })
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: nil,
+            eventSuppressor: filter, ownsEventSuppressor: false, runtimePermissions: { granted },
+            actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: UUID())
+        let event = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 124, keyDown: true))
+        filter.arm(button: .right, edge: .down)
+        #expect(filter.handle(type: .keyDown, event: event))
+        event.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        #expect(filter.handle(type: .keyDown, event: event))
+        var resets = 0
+        monitor.onInputReset = { _ in
+            resets += 1
+            #expect(!filter.handle(type: .keyDown, event: event))
+        }
+        granted = false
+        monitor.handleSimulatedReport(reportID: 1, data: Data([0, 0]))
+        #expect(resets == 1)
+    }
+
     @Test func failedFnReleaseDoesNotReportCleanupCompleteOrReenter() {
         var operations: [() -> Void] = []
         var allowRelease = false

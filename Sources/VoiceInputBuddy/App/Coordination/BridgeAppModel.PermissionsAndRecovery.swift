@@ -99,6 +99,11 @@ extension BridgeAppModel {
 
     func refreshHIDAfterPermissionChange() {
         let current = HIDPermissionSnapshot.current
+        // Permission polling can stop before the saved snapshot changes. Recover a deferred
+        // key-up whenever permission is available and the voice session has already ended.
+        if current.accessibilityGranted, !isStreaming, voiceKeyLatch.isHeld {
+            _ = releaseVoiceKeyIfNeeded()
+        }
         if current.accessibilityGranted { voiceFnTapSession.retryCleanupAfterPermissionRecovery() }
         guard HIDPermissionRecoveryPolicy.shouldReapplySettings(
             started: started,
@@ -106,6 +111,7 @@ extension BridgeAppModel {
             voiceKeyMode: settings.voiceKeyMode,
             voiceFnTapModeEnabled: settings.voiceFnTapModeEnabled,
             softwareVoiceKeyHeld: voiceKeyLatch.isHeld,
+            monitoringInterrupted: hidStatus.key == "button_mapping.permission.system_expired",
             previous: appliedHIDPermissionSnapshot,
             current: current
         ) else { return }

@@ -31,9 +31,16 @@ final class KeyboardEventSuppressor {
     private var heldEventCounts: [RemoteNativeEvent: Int] = [:]
     private var heldUntil: [RemoteNativeEvent: TimeInterval] = [:]
     private var suppressedDowns = Set<RemoteNativeEvent>()
+    private let permissionsGranted: () -> Bool
     private let uptime: () -> TimeInterval
 
-    init(uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+    init(
+        uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        permissionsGranted: @escaping () -> Bool = {
+            HIDRemoteMonitor.isInputMonitoringGranted && KeyboardInjector.isAccessibilityTrusted
+        }
+    ) {
+        self.permissionsGranted = permissionsGranted
         self.uptime = uptime
     }
 
@@ -45,6 +52,7 @@ final class KeyboardEventSuppressor {
             pendingEvents.removeAll { $0.event == event }
         }
     }
+    private var tapRecoveryGeneration = 0
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     /// 最近 arm 过的事件（带过期时刻），仅用于诊断日志：只有与这些事件相关的
@@ -52,9 +60,14 @@ final class KeyboardEventSuppressor {
     private var recentArmed: [(event: RemoteNativeEvent, until: TimeInterval)] = []
 
     private(set) var isRunning = false
+    var onSystemDisabled: (() -> Void)?
 
     @discardableResult
     func start() -> Bool {
+        guard permissionsGranted() else {
+            stop()
+            return false
+        }
         if isRunning { return true }
 
         let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue) |
@@ -92,6 +105,7 @@ final class KeyboardEventSuppressor {
     deinit { stop() }
 
     func stop() {
+        tapRecoveryGeneration += 1
         lock.lock()
         pendingEvents.removeAll()
         heldEventCounts.removeAll()
@@ -159,8 +173,21 @@ final class KeyboardEventSuppressor {
 
     func handle(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let eventTap {
-                CGEvent.tapEnable(tap: eventTap, enable: true)
+            tapRecoveryGeneration += 1
+            let generation = tapRecoveryGeneration
+            if let port = eventTap {
+                EventTapPort.deferRecovery(type: type,
+                    dispatch: { DispatchQueue.main.async(execute: $0) },
+                    isCurrent: { [weak self] in
+                        self?.tapRecoveryGeneration == generation && self?.eventTap === port
+                    },
+                    permissionsGranted: { [weak self] in self?.permissionsGranted() == true },
+                    enable: { CGEvent.tapEnable(tap: port, enable: true) },
+                    stop: { [weak self] in
+                        self?.stop()
+                        self?.onSystemDisabled?()
+                        AppLogger.shared.write("HID FILTER stopped reason=system_disabled_or_permission_revoked")
+                    })
             }
             return false
         }
