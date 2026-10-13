@@ -13,6 +13,20 @@ struct InputLifecycleRegressionTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
+    @Test func accessibilityTimeoutFailureIsReportedWithoutRetries() {
+        var attempts = 0
+        var messages: [String] = []
+        let result = AccessibilityMessaging.configureTimeout(
+            install: { attempts += 1; return .invalidUIElement }, reportFailure: { messages.append($0) })
+        #expect(result == .invalidUIElement)
+        #expect(attempts == 1)
+        #expect(messages == ["AX TIMEOUT configuration_failed code=\(result.rawValue)"])
+        messages.removeAll()
+        let successful = AccessibilityMessaging.configureTimeout(install: { .success }, reportFailure: { messages.append($0) })
+        #expect(successful == .success)
+        #expect(messages.isEmpty)
+    }
+
     @Test func interruptedMonitoringRecoversEvenWhenCachedPermissionsNeverChanged() {
         for granted in [false, true] {
             let snapshot = HIDPermissionSnapshot(inputMonitoringGranted: granted, accessibilityGranted: granted)
@@ -41,6 +55,13 @@ struct InputLifecycleRegressionTests {
         #expect(resets == 1)
         #expect(model.hidMonitors.isEmpty)
         #expect(model.activeRemoteButtons.isEmpty)
+        #expect(model.hidMonitoringInterrupted)
+        // UI messages can change independently; recovery uses the explicit interruption flag.
+        model.hidStatus = LocalizedMessage("button_mapping.status.system_managed")
+        let granted = HIDPermissionSnapshot(inputMonitoringGranted: true, accessibilityGranted: true)
+        #expect(HIDPermissionRecoveryPolicy.shouldReapplySettings(
+            started: true, customMappingEnabled: true,
+            monitoringInterrupted: model.hidMonitoringInterrupted, previous: granted, current: granted))
         monitor.onInputReset = nil
     }
 
@@ -107,7 +128,7 @@ struct InputLifecycleRegressionTests {
     }
 
     @Test(arguments: [false, true])
-    func timeoutRecoveryRequiresPermissionAndUserDisableNeverRestarts(granted: Bool) {
+    func bothTapDisableNotificationsRecoverOnlyWithPermission(granted: Bool) {
         var work: [() -> Void] = []
         var enables = 0, stops = 0, checks = 0
         for type in [CGEventType.tapDisabledByTimeout, .tapDisabledByUserInput] {
@@ -116,9 +137,9 @@ struct InputLifecycleRegressionTests {
                 enable: { enables += 1 }, stop: { stops += 1 })
             work.removeFirst()()
         }
-        #expect(checks == 1)
-        #expect(enables == (granted ? 1 : 0))
-        #expect(stops == (granted ? 1 : 2))
+        #expect(checks == 2)
+        #expect(enables == (granted ? 2 : 0))
+        #expect(stops == (granted ? 0 : 2))
     }
 
     @Test func revokedPermissionsClearSharedFilterBeforeInputReset() throws {
@@ -138,6 +159,8 @@ struct InputLifecycleRegressionTests {
         event.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
         #expect(filter.handle(type: .keyDown, event: event))
         var resets = 0
+        var interruptions = 0
+        monitor.onMonitoringInterrupted = { interruptions += 1 }
         monitor.onInputReset = { _ in
             resets += 1
             #expect(!filter.handle(type: .keyDown, event: event))
@@ -145,6 +168,7 @@ struct InputLifecycleRegressionTests {
         granted = false
         monitor.handleSimulatedReport(reportID: 1, data: Data([0, 0]))
         #expect(resets == 1)
+        #expect(interruptions == 1)
     }
 
     @Test func failedFnReleaseDoesNotReportCleanupCompleteOrReenter() {

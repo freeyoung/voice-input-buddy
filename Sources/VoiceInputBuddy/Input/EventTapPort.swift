@@ -23,7 +23,8 @@ enum EventTapPort {
     ) {
         dispatch {
             guard isCurrent() else { return }
-            guard type == .tapDisabledByTimeout, permissionsGranted() else {
+            guard type == .tapDisabledByTimeout || type == .tapDisabledByUserInput,
+                  permissionsGranted() else {
                 stop()
                 return
             }

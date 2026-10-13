@@ -14,7 +14,8 @@ extension BridgeAppModel {
         let permissionSnapshot = HIDPermissionSnapshot.current
         appliedHIDPermissionSnapshot = permissionSnapshot
         if !permissionSnapshot.inputMonitoringGranted || !permissionSnapshot.accessibilityGranted {
-            // Detach input filtering before voice/HID configuration touches system services.
+            // Detach input filtering before system calls and the Fn-cleanup early return below.
+            // The later startHIDMonitors() teardown cannot protect that early-return path.
             stopHIDMonitors()
         }
         if !permissionSnapshot.accessibilityGranted {
@@ -255,6 +256,7 @@ extension BridgeAppModel {
             : nil
         guard settings.customMappingEnabled || backOnlyMode else {
             hidStatus = LocalizedMessage("button_mapping.status.system_managed")
+            hidMonitoringInterrupted = false // No monitoring is requested by the current configuration.
             return
         }
         if settings.customMappingEnabled { _ = hidEventSuppressor.start() }
@@ -276,6 +278,11 @@ extension BridgeAppModel {
             )
         }
         startHIDDiscoveryIfNeeded(allowBackOnly: backOnlyMode)
+        let monitors = Array(hidMonitors.values) + (discoveryHIDMonitor.map { [$0] } ?? [])
+        if !monitors.isEmpty, monitors.allSatisfy({ $0.isMonitoring }),
+           !settings.customMappingEnabled || hidEventSuppressor.isRunning {
+            hidMonitoringInterrupted = false
+        }
     }
 
     func cancelButtonMappingInteractions(device: UUID?) {
@@ -353,6 +360,7 @@ extension BridgeAppModel {
         monitor.onRuntimeButton = { [weak self] profileID, button, phase in
             self?.commonPhrases.handle(button, phase: phase, source: Self.commonPhraseHIDSource(profileID)) == true
         }
+        monitor.onMonitoringInterrupted = { [weak self] in self?.hidMonitoringInterrupted = true }
         monitor.onInputReset = { [weak self] profileID in
             self?.commonPhrases.reset(source: Self.commonPhraseHIDSource(profileID))
         }

@@ -34,7 +34,7 @@ enum HIDPermissionRecoveryPolicy {
                   customMappingEnabled ||
                       voiceKeyMode.requiresAccessibility ||
                       voiceFnTapModeEnabled ||
-                      softwareVoiceKeyHeld
+                      softwareVoiceKeyHeld || monitoringInterrupted
               ),
               let previous
         else { return false }

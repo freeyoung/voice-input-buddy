@@ -209,6 +209,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var bluetoothVoiceTraceRoute = "none"
     var bluetoothVoiceTailDiagnostics = BluetoothVoiceTailDiagnostics()
     let hidEventSuppressor = KeyboardEventSuppressor()
+    var hidMonitoringInterrupted = false
     var hidMonitors: [String: HIDRemoteMonitor] = [:]
     var discoveryHIDMonitor: HIDRemoteMonitor?
     lazy var siriRemoteFeature = SiriRemoteFeatureIntegration(
@@ -400,13 +401,14 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         hidEventSuppressor.onSystemDisabled = { [weak self] in
             // Stop mapping as well: an unseized remote must not inject actions without filtering.
             guard let self else { return }
+            self.hidMonitoringInterrupted = true
             self.stopHIDMonitors()
             let permissions = HIDPermissionSnapshot.current
             self.appliedHIDPermissionSnapshot = permissions
             self.hidStatus = LocalizedMessage(
                 !permissions.inputMonitoringGranted ? "button_mapping.permission.input_monitoring_required" :
                     (!permissions.accessibilityGranted ? "button_mapping.permission.accessibility_required" :
-                        "button_mapping.status.system_managed")
+                        "button_mapping.status.interrupted")
             )
         }
         appleRemoteAppSwitcherSession.setDiagnosticLogger { [weak self] message in

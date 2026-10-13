@@ -42,6 +42,7 @@
 "audio.compatibility.device_detected" = "%1$@ detected";
 "audio.compatibility.device_not_detected" = "%1$@ was not found";
 "button_mapping.status.system_managed" = "Buttons are handled natively by macOS";
+"button_mapping.status.interrupted" = "Button mapping paused; return to the app to retry";
 "button_mapping.permission.input_monitoring_required" = "Allow Input Monitoring to use remote buttons.";
 "button_mapping.permission.accessibility_required" = "Allow Accessibility to run button actions.";
 "button_mapping.error.remote_read_failed" = "Unable to read the remote (error %1$@)";

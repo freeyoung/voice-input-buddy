@@ -111,6 +111,8 @@ final class HIDRemoteMonitor {
     var onRuntimeButton: ((UUID?, RemoteButton, RemoteButtonPhase) -> Bool)?
     var claimsRuntimeButton: ((UUID?, RemoteButton) -> Bool)?
     var onInputReset: ((UUID?) -> Void)?
+    var onMonitoringInterrupted: (() -> Void)?
+    var isMonitoring: Bool { manager != nil }
     var onInternalAction: ((UUID?, ButtonAction) -> Void)?
 
     init(
@@ -299,7 +301,11 @@ final class HIDRemoteMonitor {
         }
         resetInputState()
         let closingDeviceCount = probedDevices.count + (activeDevice == nil ? 0 : 1)
-        if manager != nil || closingDeviceCount > 0 {
+        let hasIOKitResources = manager != nil || closingDeviceCount > 0
+        defer {
+            if hasIOKitResources { diagnosticLogger("HID TEARDOWN phase=completed") }
+        }
+        if hasIOKitResources {
             diagnosticLogger("HID TEARDOWN phase=begin devices=\(closingDeviceCount) manager=\(manager != nil)")
         }
         probedDevices.forEach {
@@ -320,7 +326,6 @@ final class HIDRemoteMonitor {
         )
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         self.manager = nil
-        diagnosticLogger("HID TEARDOWN phase=completed")
     }
 
     fileprivate func deviceDidMatch(result: IOReturn, device: IOHIDDevice) {
@@ -1422,6 +1427,7 @@ final class HIDRemoteMonitor {
         eventSuppressor.stop()
         diagnosticLogger("HID TEARDOWN reason=permission_revoked filter=stopped")
         stop()
+        onMonitoringInterrupted?()
         updateStatus(LocalizedMessage("button_mapping.permission.system_expired"))
         AppLogger.shared.write("HID RELEASED permission_revoked")
     }

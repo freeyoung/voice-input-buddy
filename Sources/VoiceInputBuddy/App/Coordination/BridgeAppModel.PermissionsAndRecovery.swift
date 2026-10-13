@@ -111,7 +111,7 @@ extension BridgeAppModel {
             voiceKeyMode: settings.voiceKeyMode,
             voiceFnTapModeEnabled: settings.voiceFnTapModeEnabled,
             softwareVoiceKeyHeld: voiceKeyLatch.isHeld,
-            monitoringInterrupted: hidStatus.key == "button_mapping.permission.system_expired",
+            monitoringInterrupted: hidMonitoringInterrupted,
             previous: appliedHIDPermissionSnapshot,
             current: current
         ) else { return }
