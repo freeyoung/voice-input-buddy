@@ -49,8 +49,18 @@ extension BridgeAppModel {
     }
 
     func registerBluetoothBridgeIfNeeded(_ bridge: XiaomiBluetoothBridge) -> UUID? {
-        guard let identifier = bluetoothIdentifier(for: bridge),
-              bridge.bindVerifiedIdentity(identifier) else { return nil }
+        guard let identifier = bluetoothIdentifier(for: bridge) else {
+            AppLogger.shared.write(
+                "REMOTE PROFILE phase=completed result=rejected reason=missing_identifier"
+            )
+            return nil
+        }
+        guard bridge.bindVerifiedIdentity(identifier) else {
+            AppLogger.shared.write(
+                "REMOTE PROFILE phase=completed result=rejected reason=identity_mismatch"
+            )
+            return nil
+        }
         let existingProfileID = settings.profileID(forBluetoothIdentifier: identifier)
         let profileID = existingProfileID ?? settings.registerBluetoothRemote(identifier: identifier)
         if discoveryBluetoothBridge === bridge {

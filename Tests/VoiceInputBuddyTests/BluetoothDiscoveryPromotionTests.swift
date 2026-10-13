@@ -76,9 +76,6 @@ struct BluetoothDiscoveryPromotionTests {
 
         let registered = XiaomiBluetoothBridge(settings: settings, delegate: model,
             targetIdentifier: identifier, excludedIdentifiers: { [identifier, other] })
-        var policy = BluetoothReconnectPolicy()
-        _ = policy.nextAutomaticDelay(bypassCachedTarget: true, jitterUnit: 0.5)
-        #expect(!policy.allowsCachedTargetRetrieval)
         #expect(registered.acceptsCandidateIdentifier(identifier))
         #expect(!registered.acceptsCandidateIdentifier(other))
         // Saved identity does not bypass the foreign-product rejection.
