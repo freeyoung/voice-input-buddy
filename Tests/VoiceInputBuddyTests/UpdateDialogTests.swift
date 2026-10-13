@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Sparkle
 import Testing
 @testable import VoiceInputBuddy
@@ -21,17 +21,17 @@ struct UpdateDialogTests {
         var cancellations = 0
         driver.showUserInitiatedUpdateCheck { cancellations += 1 }
         #expect(driver.title == "Checking for updates…")
-        #expect(driver.detail.contains("Git commits: 70"))
+        #expect(driver.versionRows == [.init(label: "Installed version", version: "v26-10-12.070")])
         language.select(.simplifiedChinese)
         #expect(driver.title == "正在检查更新…")
-        #expect(driver.detail.contains("Git 提交数：70"))
+        #expect(driver.versionRows == [.init(label: "当前版本", version: "v26-10-12.070")])
         #expect(driver.actionTitles == ["取消"])
         driver.performAction(at: 0)
         driver.performAction(at: 0)
         #expect(cancellations == 1)
     }
 
-    @Test func foundVersionAndBuildStayLocalizedAndInstallChoiceIsExplicit() throws {
+    @Test func foundVersionsStaySeparateAndInstallChoiceIsExplicit() throws {
         let suite = "update-dialog-" + UUID().uuidString
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
         let language = try localization(suite)
@@ -40,11 +40,11 @@ struct UpdateDialogTests {
             currentVersion: .init(version: "v26-10-12.070", commitCount: "70"), presentsWindows: false)
         var choices: [SPUUserUpdateChoice] = []
         driver.showAvailableUpdate(.init(version: "v26-10-12.073", commitCount: "73")) { choices.append($0) }
-        #expect(driver.detail.contains("v26-10-12.073 (Git commits: 73)"))
+        #expect(driver.versionRows.map(\.version) == ["v26-10-12.070", "v26-10-12.073"])
         #expect(choices.isEmpty)
         language.select(.simplifiedChinese)
-        #expect(driver.detail.contains("v26-10-12.073（Git 提交数：73）"))
-        #expect(driver.detail.contains("v26-10-12.070（Git 提交数：70）"))
+        #expect(driver.versionRows.map(\.label) == ["当前版本", "更新版本"])
+        #expect(driver.actionTitles == ["稍后提醒", "跳过此版本", "下载更新"])
         driver.performAction(at: 2)
         driver.performAction(at: 2)
         #expect(choices == [.install])
@@ -61,7 +61,8 @@ struct UpdateDialogTests {
                             userInfo: [NSLocalizedDescriptionKey: "Untranslated system message"])
         driver.showUpdaterError(error) { acknowledgements += 1 }
         #expect(driver.title == "更新未能完成")
-        #expect(driver.detail.contains("-1009"))
+        #expect(driver.diagnostic?.contains("-1009") == true)
+        #expect(driver.actionTitles == ["关闭"])
         #expect(!driver.detail.contains("Untranslated system message"))
         driver.performAction(at: 0)
         driver.performAction(at: 0)
@@ -76,7 +77,7 @@ struct UpdateDialogTests {
         let driver = LocalizedUpdateUserDriver(localization: language, presentsWindows: false)
         var choices: [SPUUserUpdateChoice] = []
         driver.showReady(toInstallAndRelaunch: { choices.append($0) })
-        #expect(driver.actionTitles == ["Cancel Installation", "Install Later", "Install and Relaunch"])
+        #expect(driver.actionTitles == ["Cancel Install", "Install Later", "Install and Restart"])
         driver.performAction(at: 1)
         driver.performAction(at: 1)
         #expect(choices == [.dismiss])
@@ -97,5 +98,130 @@ struct UpdateDialogTests {
         #expect(driver.actionTitles.isEmpty)
         driver.dismissUpdateInstallation()
         #expect(cancellations == 0)
+    }
+
+    @Test func latestVersionClaimRequiresAnExactInstalledVersionMatch() throws {
+        let suite = "update-current-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let language = try localization(suite)
+        language.select(.simplifiedChinese)
+        let current = UpdateDialogVersion(version: "v26-10-13.111", commitCount: "111")
+        let driver = LocalizedUpdateUserDriver(localization: language, currentVersion: current, presentsWindows: false)
+        driver.showNoUpdate(latestVersion: nil, acknowledgement: {})
+        #expect(driver.title == "暂无可安装的更新")
+        driver.showNoUpdate(latestVersion: .init(version: "v26-10-14.112", commitCount: "112"), acknowledgement: {})
+        #expect(driver.title == "暂无可安装的更新")
+        #expect(driver.versionRows.count == 2)
+        driver.showNoUpdate(latestVersion: current, acknowledgement: {})
+        #expect(driver.title == "已是最新版本")
+        #expect(driver.versionRows.count == 1)
+        #expect(driver.actionTitles == ["关闭"])
+    }
+
+    @Test func installedAcknowledgementHasAnExplicitCompletionLabel() throws {
+        let suite = "update-installed-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let language = try localization(suite)
+        language.select(.simplifiedChinese)
+        let driver = LocalizedUpdateUserDriver(localization: language, presentsWindows: false)
+        var acknowledgements = 0
+        driver.showUpdateInstalledAndRelaunched(true) { acknowledgements += 1 }
+        #expect(driver.actionTitles == ["完成"])
+        driver.performAction(at: 0)
+        driver.performAction(at: 0)
+        #expect(acknowledgements == 1)
+    }
+
+    @Test func windowCloseDefersUpdatesAndAcknowledgesOnlyOnce() throws {
+        let suite = "update-close-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite), presentsWindows: false)
+        var choices: [SPUUserUpdateChoice] = []
+        driver.showAvailableUpdate(.init(version: "v26-10-14.112", commitCount: "112")) { choices.append($0) }
+        driver.closeWindow()
+        driver.closeWindow()
+        #expect(choices == [.dismiss])
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        driver.closeWindow()
+        driver.closeWindow()
+        #expect(choices == [.dismiss, .dismiss])
+        var acknowledgements = 0
+        driver.showNoUpdate(latestVersion: nil) { acknowledgements += 1 }
+        driver.closeWindow()
+        driver.closeWindow()
+        driver.showUpdaterError(NSError(domain: NSURLErrorDomain, code: -1009)) { acknowledgements += 1 }
+        driver.closeWindow()
+        driver.showUpdateInstalledAndRelaunched(true) { acknowledgements += 1 }
+        driver.closeWindow()
+        driver.closeWindow()
+        #expect(acknowledgements == 3)
+        var permission: SUUpdatePermissionResponse?
+        driver.show(SPUUpdatePermissionRequest()) { permission = $0 }
+        driver.closeWindow()
+        #expect(permission?.automaticUpdateChecks == false)
+        #expect(permission?.sendSystemProfile == false)
+    }
+
+    @Test func nativeCloseButtonCancelsDownloadAndHidesNoncancellableWork() throws {
+        let suite = "update-native-close-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite))
+        defer { driver.dismissUpdateInstallation() }
+        var cancellations = 0
+        driver.showUserInitiatedUpdateCheck { cancellations += 1 }
+        let checkingWindow = try #require(driver.window)
+        #expect(checkingWindow.standardWindowButton(.closeButton)?.isEnabled == true)
+        checkingWindow.performClose(nil)
+        #expect(cancellations == 1)
+        driver.showDownloadInitiated { cancellations += 1 }
+        let downloadWindow = try #require(driver.window)
+        downloadWindow.performClose(nil)
+        downloadWindow.performClose(nil)
+        #expect(cancellations == 2)
+        driver.showDownloadDidStartExtractingUpdate()
+        let extractionWindow = try #require(driver.window)
+        extractionWindow.performClose(nil)
+        #expect(!extractionWindow.isVisible)
+        driver.showExtractionReceivedProgress(0.5)
+        #expect(!extractionWindow.isVisible)
+        #expect(driver.window === extractionWindow)
+        var retries = 0
+        driver.showInstallingUpdate(withApplicationTerminated: false) { retries += 1 }
+        let installationWindow = try #require(driver.window)
+        installationWindow.performClose(nil)
+        #expect(!installationWindow.isVisible)
+        #expect(retries == 0)
+        driver.performAction(at: 0)
+        #expect(retries == 1)
+        #expect(cancellations == 2)
+    }
+
+    @Test(arguments: [AppLanguage.english, .simplifiedChinese])
+    func footerActionsFitTheDialogInBothLanguages(language: AppLanguage) throws {
+        let suite = "update-layout-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let localization = try localization(suite)
+        localization.select(language)
+        let driver = LocalizedUpdateUserDriver(localization: localization,
+            currentVersion: .init(version: "v26-10-13.111", commitCount: "111"), presentsWindows: false)
+        driver.showAvailableUpdate(.init(version: "v26-10-14.112", commitCount: "112")) { _ in }
+        driver.showReady(toInstallAndRelaunch: { _ in })
+        let content = driver.makeContentView()
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: content.preferredSize),
+            styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = content
+        content.layoutSubtreeIfNeeded()
+        var lastRight: CGFloat = 0
+        for button in content.actionButtons {
+            let rect = content.convert(button.alignmentRect(forFrame: button.bounds), from: button)
+            #expect(content.bounds.contains(rect))
+            #expect(rect.minX >= lastRight)
+            #expect(button.bounds.width >= button.intrinsicContentSize.width)
+            lastRight = rect.maxX
+        }
+        #expect(content.actionButtons.last?.keyEquivalent == "\r")
     }
 }

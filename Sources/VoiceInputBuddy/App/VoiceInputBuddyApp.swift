@@ -1178,13 +1178,14 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
             ?? localization.text("common.value.unknown")
         let alert = NSAlert()
+        alert.alertStyle = .informational
         alert.messageText = localization.text("update.completed.title")
         alert.informativeText = String(
             format: localization.text("update.completed.message"),
             locale: localization.locale,
             arguments: [version]
         )
-        alert.addButton(withTitle: localization.text("common.action.ok"))
+        alert.addButton(withTitle: localization.text("update.dialog.done"))
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         alert.beginSheetModal(for: window, completionHandler: nil)
