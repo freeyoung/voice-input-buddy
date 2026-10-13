@@ -11,16 +11,12 @@ struct UpdateDialogVersion: Equatable {
                 ?? bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
              commitCount: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown")
     }
-
-    func text(using localization: LocalizationStore) -> String {
-        LocalizedMessage("update.dialog.version", arguments: [version, commitCount]).text(using: localization)
-    }
 }
 
 /// Sparkle retains responsibility for verification, downloading and installation.
 /// Only its public user-interface callbacks are implemented here.
 @MainActor
-final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
+final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate {
     private struct Action {
         let key: String
         let completes: Bool
@@ -31,25 +27,59 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
     private let currentVersion: UpdateDialogVersion
     private let presentsWindows: Bool
     private var languageSubscription: AnyCancellable?
-    private var window: NSWindow?
+    private(set) var window: NSWindow?
     private var isPresented = false
     private var candidateVersion: UpdateDialogVersion?
     private var actions: [Action] = []
+    private var closeActionIndex: Int?
     private var detailArguments: [String] = []
-    private var detailKey = "update.dialog.current"
+    private var detailKey = "update.dialog.checking.detail"
     private var titleKey = "menu.check_for_updates"
     private var progress: Double?
     private var expectedLength: UInt64 = 0
     private var receivedLength: UInt64 = 0
 
+    private(set) var diagnostic: String?
+
     var title: String { localization.text(titleKey) }
-    var detail: String {
-        let versions = [currentVersion.text(using: localization)] +
-            (["update.dialog.found.detail", "update.dialog.not_found.latest.detail", "update.dialog.current_and_target"].contains(detailKey) ? [candidateVersion?.text(using: localization) ?? ""] : [])
-        return LocalizedMessage(detailKey, arguments: versions + detailArguments).text(using: localization)
+    var detail: String { LocalizedMessage(detailKey, arguments: detailArguments).text(using: localization) }
+    var versionRows: [UpdateDialogVersionRow] {
+        var rows = [UpdateDialogVersionRow(
+            label: localization.text(titleKey == "update.dialog.installed" && candidateVersion != nil
+                ? "update.dialog.previous_version" : "update.dialog.installed_version"),
+            version: currentVersion.version)]
+        if let candidateVersion, titleKey != "update.dialog.up_to_date" {
+            let labelKey = titleKey == "update.dialog.installed" ? "update.dialog.installed_version"
+                : titleKey == "update.dialog.not_found" ? "update.dialog.latest_version" : "update.dialog.available_version"
+            rows.append(.init(label: localization.text(labelKey), version: candidateVersion.version))
+        }
+        return rows
     }
     var actionTitles: [String] { actions.map { localization.text($0.key) } }
     var displayedProgress: Double? { progress }
+
+    private var progressText: String? {
+        guard titleKey == "update.dialog.downloading" else { return nil }
+        let format = ByteCountFormatStyle(style: .file).locale(localization.locale)
+        let received = format.format(Int64(clamping: receivedLength))
+        guard expectedLength > 0 else { return received }
+        let expected = format.format(Int64(clamping: expectedLength))
+        let percent = Int(min(1, Double(receivedLength) / Double(expectedLength)) * 100)
+        return "\(received) / \(expected) · \(percent)%"
+    }
+
+    private var statusStyle: (symbol: String, tint: NSColor) {
+        switch titleKey {
+        case "update.dialog.up_to_date", "update.dialog.installed": return ("checkmark.circle.fill", .systemGreen)
+        case "update.dialog.error": return ("exclamationmark.triangle.fill", .systemOrange)
+        case "update.dialog.found", "update.dialog.ready": return ("arrow.down.circle.fill", .controlAccentColor)
+        case "update.dialog.downloading": return ("arrow.down.to.line", .controlAccentColor)
+        case "update.dialog.extracting", "update.dialog.installing": return ("shippingbox", .controlAccentColor)
+        case "update.dialog.permission": return ("clock.arrow.circlepath", .controlAccentColor)
+        case "update.dialog.not_found": return ("info.circle", .secondaryLabelColor)
+        default: return ("arrow.triangle.2.circlepath", .controlAccentColor)
+        }
+    }
 
     init(localization: LocalizationStore, currentVersion: UpdateDialogVersion = .current(), presentsWindows: Bool = true) {
         self.localization = localization
@@ -61,79 +91,59 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
             .sink { [weak self] _ in self?.render() }
     }
 
-    private func present(_ title: String, detail: String = "update.dialog.current", arguments: [String] = [],
-                         progress: Double? = nil, actions: [Action] = []) {
+    private func present(_ title: String, detail: String? = nil, arguments: [String] = [],
+                         progress: Double? = nil, diagnostic: String? = nil, closeActionIndex: Int? = nil, actions: [Action] = []) {
         isPresented = true
         titleKey = title
-        detailKey = detail == "update.dialog.current" && candidateVersion != nil ? "update.dialog.current_and_target" : detail
+        detailKey = detail ?? title + ".detail"
         detailArguments = arguments
         self.progress = progress
+        self.diagnostic = diagnostic
         self.actions = actions
-        render()
+        self.closeActionIndex = closeActionIndex
+        render(activate: true)
     }
 
-    private func render() {
+    private func render(activate: Bool = false) {
         guard isPresented, presentsWindows else { return }
         if window == nil {
-            let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 250),
-                                 styleMask: [.titled, .miniaturizable], backing: .buffered, defer: false)
+            let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
+                                 styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             panel.isReleasedWhenClosed = false
+            panel.delegate = self
             panel.center()
             window = panel
         }
         guard let window else { return }
         window.title = localization.text("update.dialog.window")
-        let heading = NSTextField(wrappingLabelWithString: title)
-        heading.font = .systemFont(ofSize: 19, weight: .semibold)
-        let description = NSTextField(wrappingLabelWithString: detail)
-        description.font = .systemFont(ofSize: 13)
-        description.textColor = .secondaryLabelColor
-        let stack = NSStackView(views: [heading, description])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 16
-        for view in [heading, description] {
-            view.widthAnchor.constraint(equalToConstant: 412).isActive = true
+        let content = makeContentView()
+        window.contentView = content
+        window.setContentSize(content.preferredSize)
+        content.layoutSubtreeIfNeeded()
+        window.defaultButtonCell = content.actionButtons.last(where: { $0.keyEquivalent == "\r" })?.cell as? NSButtonCell
+        if activate {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
         }
-        if let progress {
-            let indicator = NSProgressIndicator()
-            indicator.style = .bar
-            indicator.isIndeterminate = progress < 0
-            indicator.minValue = 0
-            indicator.maxValue = 1
-            indicator.doubleValue = progress
-            indicator.widthAnchor.constraint(equalToConstant: 412).isActive = true
-            if indicator.isIndeterminate { indicator.startAnimation(nil) }
-            stack.addArrangedSubview(indicator)
-        }
-        let buttons = NSStackView()
-        buttons.spacing = 8
-        for (index, action) in actions.enumerated() {
+    }
+
+    func makeContentView() -> UpdateDialogContentView {
+        let buttons = actions.enumerated().map { index, action in
             let button = NSButton(title: localization.text(action.key), target: self, action: #selector(clicked(_:)))
             button.bezelStyle = .rounded
             button.tag = index
-            button.keyEquivalent = action.key == "common.action.cancel" ? "\u{1b}" : index == actions.count - 1 ? "\r" : ""
-            buttons.addArrangedSubview(button)
+            let isCancel = action.key == "common.action.cancel"
+            let isPrimary = index == actions.count - 1 && !isCancel
+            button.keyEquivalent = isCancel ? "\u{1b}" : isPrimary ? "\r" : ""
+            button.bezelColor = isPrimary ? .controlAccentColor : nil
+            return button
         }
-        stack.addArrangedSubview(buttons)
-        if candidateVersion != nil {
-            let history = NSButton(title: localization.text("update.dialog.history"), target: self, action: #selector(openHistory))
-            history.bezelStyle = .rounded
-            stack.addArrangedSubview(history)
-        }
-        let content = NSView()
-        content.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24),
-            stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 24),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -24),
-        ])
-        window.contentView = content
-        content.layoutSubtreeIfNeeded()
-        window.setContentSize(NSSize(width: max(460, stack.fittingSize.width + 48), height: max(250, stack.fittingSize.height + 48)))
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        let history = NSButton(title: localization.text("update.dialog.history"), target: self, action: #selector(openHistory))
+        let style = statusStyle
+        return UpdateDialogContentView(title: title, message: detail,
+            symbol: style.symbol, tint: style.tint, versions: versionRows,
+            progress: progress, progressText: progressText, diagnostic: diagnostic,
+            historyButton: history, actions: buttons)
     }
 
     @objc private func openHistory() {
@@ -149,8 +159,26 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
         action.handler()
     }
 
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender === window else { return true }
+        closeWindow()
+        // Keep ownership explicit: a reply may synchronously present the next stage.
+        return false
+    }
+
+    func closeWindow() {
+        guard isPresented else { return }
+        if let closeActionIndex {
+            performAction(at: closeActionIndex)
+        } else {
+            // Extraction and installation cannot be cancelled at this stage.
+            // Hide their UI while retaining state for Sparkle's focus callback.
+            window?.orderOut(nil)
+        }
+    }
+
     func show(_ request: SPUUpdatePermissionRequest, reply: @escaping (SUUpdatePermissionResponse) -> Void) {
-        present("update.dialog.permission", detail: "update.dialog.permission.detail", actions: [
+        present("update.dialog.permission", detail: "update.dialog.permission.detail", closeActionIndex: 0, actions: [
             Action(key: "update.dialog.manual_only", completes: true) {
                 reply(SUUpdatePermissionResponse(automaticUpdateChecks: false, sendSystemProfile: false))
             },
@@ -162,7 +190,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
 
     func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
         candidateVersion = nil
-        present("update.dialog.checking", progress: -1,
+        present("update.dialog.checking", progress: -1, closeActionIndex: 0,
                 actions: [Action(key: "common.action.cancel", completes: true, handler: cancellation)])
     }
 
@@ -172,7 +200,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
 
     func showAvailableUpdate(_ version: UpdateDialogVersion, reply: @escaping (SPUUserUpdateChoice) -> Void) {
         candidateVersion = version
-        present("update.dialog.found", detail: "update.dialog.found.detail",
+        present("update.dialog.found", detail: "update.dialog.found.detail", closeActionIndex: 0,
                 actions: [
             Action(key: "update.dialog.later", completes: true) { reply(.dismiss) },
             Action(key: "update.dialog.skip", completes: true) { reply(.skip) },
@@ -186,26 +214,35 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
     func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) {
         // An unavailable compatible update is not necessarily the latest installed version.
         if let item = (error as NSError).userInfo[SPULatestAppcastItemFoundKey] as? SUAppcastItem {
-            candidateVersion = UpdateDialogVersion(version: item.displayVersionString, commitCount: item.versionString)
+            showNoUpdate(latestVersion: .init(version: item.displayVersionString, commitCount: item.versionString),
+                         acknowledgement: acknowledgement)
         } else {
-            candidateVersion = nil
+            showNoUpdate(latestVersion: nil, acknowledgement: acknowledgement)
         }
-        present("update.dialog.not_found", detail: candidateVersion == nil
-                    ? "update.dialog.not_found.detail" : "update.dialog.not_found.latest.detail",
-                actions: [Action(key: "common.action.ok", completes: true, handler: acknowledgement)])
+    }
+
+    func showNoUpdate(latestVersion: UpdateDialogVersion?, acknowledgement: @escaping () -> Void) {
+        candidateVersion = latestVersion
+        let isCurrent = candidateVersion.map {
+            $0.commitCount == currentVersion.commitCount &&
+                UpdateVersion.normalized($0.version) != nil &&
+                UpdateVersion.normalized($0.version) == UpdateVersion.normalized(currentVersion.version)
+        } ?? false
+        present(isCurrent ? "update.dialog.up_to_date" : "update.dialog.not_found", closeActionIndex: 0,
+                actions: [Action(key: "update.dialog.close", completes: true, handler: acknowledgement)])
     }
 
     func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
         let error = error as NSError
-        present("update.dialog.error", detail: "update.dialog.error.detail",
-                arguments: [error.domain, String(error.code)],
-                actions: [Action(key: "common.action.ok", completes: true, handler: acknowledgement)])
+        present("update.dialog.error", diagnostic: LocalizedMessage("update.dialog.error_code",
+                    arguments: [error.domain, String(error.code)]).text(using: localization), closeActionIndex: 0,
+                actions: [Action(key: "update.dialog.close", completes: true, handler: acknowledgement)])
     }
 
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
         expectedLength = 0
         receivedLength = 0
-        present("update.dialog.downloading", progress: -1,
+        present("update.dialog.downloading", progress: -1, closeActionIndex: 0,
                 actions: [Action(key: "common.action.cancel", completes: true, handler: cancellation)])
     }
 
@@ -229,7 +266,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
     func showExtractionReceivedProgress(_ progress: Double) { self.progress = min(1, max(0, progress)); render() }
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        present("update.dialog.ready", actions: [
+        present("update.dialog.ready", closeActionIndex: 1, actions: [
             Action(key: "update.dialog.cancel_install", completes: true) { reply(.skip) },
             Action(key: "update.dialog.install_later", completes: true) { reply(.dismiss) },
             Action(key: "update.dialog.install_restart", completes: true) { reply(.install) },
@@ -237,17 +274,19 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
     }
 
     func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) {
-        present("update.dialog.installing", progress: -1,
+        present("update.dialog.installing", detail: applicationTerminated
+                    ? "update.dialog.installing.detail" : "update.dialog.waiting_for_quit.detail", progress: -1,
                 actions: applicationTerminated ? [] : [Action(key: "update.dialog.retry_quit", completes: false, handler: retryTerminatingApplication)])
     }
 
     func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
-        present("update.dialog.installed", actions: [Action(key: "common.action.ok", completes: true, handler: acknowledgement)])
+        present("update.dialog.installed", closeActionIndex: 0, actions: [Action(key: "update.dialog.done", completes: true, handler: acknowledgement)])
     }
 
     func dismissUpdateInstallation() {
         isPresented = false
         actions = []
+        closeActionIndex = nil
         window?.orderOut(nil)
         window = nil
     }
@@ -260,24 +299,69 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver {
         let suite = "voice-input-buddy.update-preview." + UUID().uuidString
         guard let defaults = UserDefaults(suiteName: suite) else { return true }
         defer { defaults.removePersistentDomain(forName: suite) }
-        let localization = LocalizationStore(settings: AppSettings(defaults: defaults))
+        let localization = LocalizationStore(settings: AppSettings(defaults: defaults),
+            resourceBundle: VoiceInputBuddyResourceBundle.mainOrDevelopment)
         localization.select(environment["VOICE_INPUT_BUDDY_UPDATE_UI_LANGUAGE"] == "en" ? .english : .simplifiedChinese)
         let application = NSApplication.shared
         application.setActivationPolicy(.regular)
         application.finishLaunching()
-        let driver = LocalizedUpdateUserDriver(localization: localization)
+        let current = UpdateDialogVersion(version: "v26-10-13.111", commitCount: "111")
+        let next = UpdateDialogVersion(version: "v26-10-14.112", commitCount: "112")
+        let appearance = environment["VOICE_INPUT_BUDDY_UPDATE_UI_APPEARANCE"] == "dark" ? "dark" : "light"
+        application.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
+        let driver = LocalizedUpdateUserDriver(localization: localization, currentVersion: current)
         let stop = { application.stop(nil) }
         switch stage {
         case "found":
-            driver.showAvailableUpdate(.init(version: "v26-10-12.073", commitCount: "73")) { _ in stop() }
+            driver.showAvailableUpdate(next) { _ in stop() }
         case "ready":
+            driver.showAvailableUpdate(next) { _ in stop() }
             driver.showReady(toInstallAndRelaunch: { _ in stop() })
         case "current":
-            driver.showUpdateNotFoundWithError(NSError(domain: "Preview", code: 0), acknowledgement: stop)
+            driver.showNoUpdate(latestVersion: current, acknowledgement: stop)
+        case "unavailable":
+            driver.showNoUpdate(latestVersion: next, acknowledgement: stop)
+        case "download":
+            driver.showAvailableUpdate(next) { _ in stop() }
+            driver.showDownloadInitiated(cancellation: stop)
+            driver.showDownloadDidReceiveExpectedContentLength(20_000_000)
+            driver.showDownloadDidReceiveData(ofLength: 8_400_000)
+        case "extracting":
+            driver.showAvailableUpdate(next) { _ in stop() }
+            driver.showDownloadDidStartExtractingUpdate()
+        case "installed":
+            driver.showAvailableUpdate(next) { _ in stop() }
+            driver.showUpdateInstalledAndRelaunched(true, acknowledgement: stop)
+        case "installing", "waiting_quit":
+            driver.showAvailableUpdate(next) { _ in stop() }
+            driver.showInstallingUpdate(withApplicationTerminated: stage == "installing",
+                                       retryTerminatingApplication: stop)
+        case "permission":
+            driver.show(SPUUpdatePermissionRequest(systemProfile: [])) { _ in stop() }
         case "error":
             driver.showUpdaterError(NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet), acknowledgement: stop)
         default:
             driver.showUserInitiatedUpdateCheck(cancellation: stop)
+        }
+        if let output = environment["VOICE_INPUT_BUDDY_UPDATE_UI_EXPORT_DIR"] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                guard let view = driver.window?.contentView?.superview else { application.stop(nil); return }
+                view.layoutSubtreeIfNeeded()
+                driver.window?.displayIfNeeded()
+                if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                    view.cacheDisplay(in: view.bounds, to: bitmap)
+                    if let data = bitmap.representation(using: .png, properties: [:]) {
+                        let directory = URL(fileURLWithPath: output, isDirectory: true)
+                        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                        let language = environment["VOICE_INPUT_BUDDY_UPDATE_UI_LANGUAGE"] == "en" ? "en" : "zh"
+                        try? data.write(to: directory.appendingPathComponent("\(stage)-\(language)-\(appearance).png"), options: .atomic)
+                    }
+                }
+                application.stop(nil)
+            }
+            application.run()
+            driver.dismissUpdateInstallation()
+            return true
         }
         let timer = Timer.scheduledTimer(withTimeInterval: 120, repeats: false) { _ in
             MainActor.assumeIsolated { application.stop(nil) }
