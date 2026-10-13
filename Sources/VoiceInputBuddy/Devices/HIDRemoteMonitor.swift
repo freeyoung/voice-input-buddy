@@ -71,6 +71,7 @@ final class HIDRemoteMonitor {
     private let ownsEventSuppressor: Bool
     private let scheduler: HIDRemoteScheduling
     private let permissionPoll: HIDPermissionPoll
+    private let nativeSuppressionAvailable: () -> Bool
     private let runtimePermissions: () -> Bool
     private let actionPerformer: (RemoteButton, ButtonTrigger, ConfiguredButtonAction) -> Bool
     private let nativeKeyStatePoster: KeyboardInjector.KeyStatePoster
@@ -127,6 +128,7 @@ final class HIDRemoteMonitor {
         runtimePermissions: @escaping () -> Bool = {
             HIDRemoteMonitor.isInputMonitoringGranted && KeyboardInjector.isAccessibilityTrusted
         },
+        nativeSuppressionAvailable: (() -> Bool)? = nil,
         actionPerformer: ((
             RemoteButton,
             ButtonTrigger,
@@ -156,6 +158,7 @@ final class HIDRemoteMonitor {
         self.scheduler = scheduler
         self.permissionPoll = permissionPoll
         self.runtimePermissions = runtimePermissions
+        self.nativeSuppressionAvailable = nativeSuppressionAvailable ?? { eventSuppressor.isRunning }
         self.nativeKeyStatePoster = appSwitcherKeyStatePoster
         self.appSwitcherSession = KeyboardInjector.AppSwitcherSession(
             keyStatePoster: appSwitcherKeyStatePoster
@@ -730,6 +733,13 @@ final class HIDRemoteMonitor {
                 continue
             }
 
+            // Observing a report is safe without a filter; injecting an additional action
+            // is not. Default native arrows retain their one-to-one passthrough path.
+            guard mappingDeliveryIsSafe || usesNativePassthrough else {
+                pauseForUnavailableNativeFilter()
+                continue
+            }
+
             // Discovery may associate an existing configured device during the callback.
             let hasSingleClickOverride = settings.configuredActionOverride?(
                 profileID, button, .singleClick
@@ -1122,6 +1132,11 @@ final class HIDRemoteMonitor {
                 self.releaseForRevokedPermissions()
                 return
             }
+            guard self.mappingDeliveryIsSafe else {
+                self.repeatTimers.removeValue(forKey: usage)?.cancel()
+                self.pauseForUnavailableNativeFilter()
+                return
+            }
             let configured = self.settings.configuredAction(
                 for: button, trigger: .singleClick, profileID: self.profileID
             )
@@ -1187,6 +1202,10 @@ final class HIDRemoteMonitor {
     ) -> Bool {
         guard runtimePermissionsAreValid() else {
             releaseForRevokedPermissions()
+            return false
+        }
+        guard mappingDeliveryIsSafe else {
+            pauseForUnavailableNativeFilter()
             return false
         }
         if overrideActionPerformer(profileID, button, trigger) {
@@ -1406,6 +1425,18 @@ final class HIDRemoteMonitor {
         resetGestureRecognition()
         activeUsages.removeAll()
         onActiveButtons?(profileID, [])
+    }
+
+    private var mappingDeliveryIsSafe: Bool {
+        activeDeviceIsSeized || nativeSuppressionAvailable()
+    }
+
+    private func pauseForUnavailableNativeFilter() {
+        if appSwitcherSession.isActive {
+            finishAppSwitcherLifecycle(reason: "native_filter_unavailable", confirmed: false)
+        }
+        let message = LocalizedMessage("button_mapping.error.filter_unavailable")
+        if status != message { updateStatus(message) }
     }
 
     private func runtimePermissionsAreValid() -> Bool {

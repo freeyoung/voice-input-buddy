@@ -38,6 +38,12 @@ enum UpdateFeedResolver {
     typealias FeedDataLoader = @Sendable (URL) async throws -> Data
 
     private static let maximumFeedSize = 1 * 1_024 * 1_024
+    private static let feedSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 30
+        return URLSession(configuration: configuration)
+    }()
 
     #if DEBUG
     static func testInjectedFeed(
@@ -100,18 +106,25 @@ enum UpdateFeedResolver {
         )
     }
 
-    private static func loadFeedData(from url: URL) async throws -> Data {
+    static func loadFeedData(from url: URL, session: URLSession = feedSession) async throws -> Data {
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 30
         request.setValue("VoiceInputBuddy", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (bytes, response) = try await session.bytes(for: request)
+        defer { bytes.task.cancel() }
         guard let response = response as? HTTPURLResponse,
               response.statusCode == 200,
-              data.count <= maximumFeedSize
-        else {
-            throw UpdateFeedResolutionError.invalidResponse
+              response.expectedContentLength <= Int64(maximumFeedSize)
+        else { throw UpdateFeedResolutionError.invalidResponse }
+        var data = Data()
+        for try await byte in bytes {
+            guard data.count < maximumFeedSize else {
+                throw UpdateFeedResolutionError.invalidResponse
+            }
+            data.append(byte)
         }
+        try Task.checkCancellation()
         return data
     }
 

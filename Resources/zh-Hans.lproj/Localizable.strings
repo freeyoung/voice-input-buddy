@@ -1222,3 +1222,5 @@
 "onboarding.voice_tool.guide.screenshot.weixin_input_microphone" = "微信输入法：选择语音搭子的麦克风";
 
 "voice_button.status.cleanup_failed" = "Fn 键释放失败，请恢复辅助功能权限后重试。";
+
+"button_mapping.error.filter_unavailable" = "按键映射已暂停，无法拦截遥控器原始按键。请重新检查遥控器输入后重试。";

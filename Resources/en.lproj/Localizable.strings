@@ -1221,3 +1221,5 @@
 "button_mapping.action.disable_restore_scope" = "Re-enabling restores the previous action while this settings window stays open. After closing it, a click uses the button default; double-click and long-press actions must be selected again.";
 
 "voice_button.status.cleanup_failed" = "Could not release Fn. Restore Accessibility permission and try again.";
+
+"button_mapping.error.filter_unavailable" = "Button mapping paused because original remote keys cannot be intercepted. Recheck remote input to retry.";

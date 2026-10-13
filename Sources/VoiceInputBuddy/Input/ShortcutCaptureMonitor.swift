@@ -32,6 +32,7 @@ final class ShortcutCaptureMonitor {
     private let dispatchCallback: CallbackDispatcher
     private let modifierIsPressed: (UInt16) -> Bool
     private let lock = NSLock()
+    private var captureGeneration: UInt64 = 0
     private var tapRecoveryGeneration = 0
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -94,6 +95,7 @@ final class ShortcutCaptureMonitor {
 
     func resetCaptureState() {
         lock.lock()
+        captureGeneration &+= 1
         didCapture = false
         pressedModifierKeyCodes = Set(StandaloneKeyboardModifier.allCases.map(\.keyCode).filter(modifierIsPressed))
         standaloneModifierCandidate = nil
@@ -102,6 +104,9 @@ final class ShortcutCaptureMonitor {
     }
 
     func stop() {
+        lock.lock()
+        captureGeneration &+= 1
+        lock.unlock()
         tapRecoveryGeneration += 1
         EventTapPort.release(port: eventTap, source: runLoopSource)
         runLoopSource = nil
@@ -150,16 +155,14 @@ final class ShortcutCaptureMonitor {
             return false
         }
         didCapture = true
+        let generation = captureGeneration
         pressedModifierKeyCodes.removeAll()
         standaloneModifierCandidate = nil
         modifierChordDetected = false
         lock.unlock()
 
         let shortcut = CustomKeyboardShortcut(event: nsEvent)
-        let capture = onCapture
-        dispatchCallback {
-            capture(shortcut)
-        }
+        dispatchCapture(shortcut, generation: generation)
         return true
     }
 
@@ -189,14 +192,11 @@ final class ShortcutCaptureMonitor {
             if shouldCapture {
                 didCapture = true
             }
+            let generation = captureGeneration
             lock.unlock()
 
             if shouldCapture {
-                let capture = onCapture
-                let shortcut = modifier.shortcut
-                dispatchCallback {
-                    capture(shortcut)
-                }
+                dispatchCapture(modifier.shortcut, generation: generation)
             }
             return true
         }
@@ -210,6 +210,17 @@ final class ShortcutCaptureMonitor {
         }
         lock.unlock()
         return true
+    }
+
+    private func dispatchCapture(_ shortcut: CustomKeyboardShortcut, generation: UInt64) {
+        dispatchCallback { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            let current = self.captureGeneration == generation
+            self.lock.unlock()
+            guard current else { return }
+            self.onCapture(shortcut)
+        }
     }
 
     deinit {
