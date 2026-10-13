@@ -1,6 +1,6 @@
 # 项目官网
 
-官网源文件位于 `pages/`，为无需构建的静态 HTML、CSS 和 JavaScript。默认首页 `index.html` 使用英文，`index.zh-CN.html` 使用中文；右上角可切换语言。两份内容与 README 中英文版本应一起更新。
+官网源文件位于 `pages/`，为无需构建的静态 HTML、CSS 和 JavaScript。默认首页 `index.html` 使用中文，英文页面位于 `index.en.html`；右上角可通过链接切换语言。仓库默认文档 `README.md` 使用中文，`README.en.md` 使用英文，并提供相互切换的链接。两份网页与 README 中英文版本应一起更新。
 
 沿用仓库已有 `.github/workflows/static.yml`：main 中的 `pages/**` 或该 workflow 更新时自动部署；也保留手动触发。发布任务仅上传 pages 目录，不上传 App 源码、构建目录或本地文件。
 
