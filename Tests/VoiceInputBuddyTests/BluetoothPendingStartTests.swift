@@ -5,6 +5,26 @@ import Testing
 @Suite("Bluetooth pending start isolation")
 @MainActor
 struct BluetoothPendingStartTests {
+    @Test func busyRemoteDoesNotRegisterOrSelectTheRejectedDevice() throws {
+        let suite = "bluetooth-busy-selection-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let model = BridgeAppModel(settings: settings)
+        let owner = UUID(), rejected = UUID()
+        let selected = settings.registerBluetoothRemote(identifier: owner)
+        settings.selectRemoteProfile(selected)
+        model.activeBluetoothVoiceDeviceIdentifier = owner
+        model.bluetoothVoiceActive = true
+        let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: rejected)
+        model.bluetoothBridgeDidStartVoice(bridge)
+        #expect(settings.selectedRemoteProfileID == selected)
+        #expect(settings.profileID(forBluetoothIdentifier: rejected) == nil)
+        #expect(model.activeBluetoothVoiceDeviceIdentifier == owner)
+        #expect(model.bluetoothVoiceActive)
+        #expect(model.pendingBluetoothVoiceStart.identifier == nil)
+    }
+
     @Test func oldConfigurationCompletionCannotConsumeRestartedAudio() {
         let pending = BluetoothPendingAudioStart()
         let device = UUID()

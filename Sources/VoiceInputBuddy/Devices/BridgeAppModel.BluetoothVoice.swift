@@ -43,7 +43,6 @@ extension BridgeAppModel {
             rc003VoiceExtensionActive &&
             rc003VoiceExtensionAwaitingReopen &&
             rc003VoiceExtensionBridge === bridge
-        let profileID = activateRemoteProfile(for: bridge)
         if let activeBluetoothVoiceDeviceIdentifier,
            activeBluetoothVoiceDeviceIdentifier != identifier {
             _ = bridge.requestMicrophoneClose()
@@ -52,6 +51,7 @@ extension BridgeAppModel {
 
             return
         }
+        let profileID = activateRemoteProfile(for: bridge)
         if settings.voiceKeyMode != .function || settings.voiceFnTapModeEnabled {
             applyHIDSettings(allowVoiceKeyModeFallback: false)
         }
