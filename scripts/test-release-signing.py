@@ -184,16 +184,17 @@ class ReleaseSigningTests(unittest.TestCase):
                          '--keychain', '/fixture/keychain with spaces', '/fixture/App With Spaces.app'])
 
     def test_verification_accepts_fixed_identity_and_rejects_content_hash_identity(self):
-        identity = 'a' * 40
+        identity = 'ABCDEF0123456789ABCDEF0123456789ABCDEF01'
+        normalized_identity = identity.lower()
         identifier = 'com.zfdang.voice-input-buddy'
         with mock.patch.object(verification.signing, 'fingerprint', return_value=identity), \
                 mock.patch.object(verification.signing, 'run') as verify_command:
             for label in [identifier, '"' + identifier + '"']:
-                output = f'designated => identifier {label} and certificate leaf = H"{identity}"\n'
+                output = f'designated => identifier {label} and certificate leaf = H"{normalized_identity}"\n'
                 result = subprocess.CompletedProcess(['codesign'], 0, stdout=output, stderr='')
                 with mock.patch.object(verification.subprocess, 'run', return_value=result):
                     verification.verify(Path('/fixture/app'), identifier)
-                self.assertIn('-R=identifier "' + identifier + '" and certificate leaf = H"' + identity + '"',
+                self.assertIn('-R=identifier "' + identifier + '" and certificate leaf = H"' + normalized_identity + '"',
                               verify_command.call_args.args[0])
             result = subprocess.CompletedProcess(['codesign'], 0, stdout='designated => cdhash H"abc"\n', stderr='')
             with mock.patch.object(verification.subprocess, 'run', return_value=result):
