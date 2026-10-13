@@ -150,11 +150,8 @@ enum OnboardingScreenshotRenderer {
                 requestedAppleRemoteGeneration ?? .generation7
             )
         }
-        let screenshotAudioName = ProcessInfo.processInfo.environment[
-            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_AUDIO_NAME"
-        ] == "legacy" ? DoubaoAudioDevicePolicy.legacyDeviceName : DoubaoAudioDevicePolicy.deviceName
         let screenshotAudioDevices = [
-            AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: screenshotAudioName),
+            AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
             AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
         ]
         let model = BridgeAppModel(

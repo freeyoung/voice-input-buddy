@@ -696,10 +696,9 @@ struct OnboardingCapabilities: Equatable {
 
 enum OnboardingAudioSelectionPolicy {
     private static let supportedUIDs = ["BuddyMic2ch_UID", "BlackHole2ch_UID"]
-    private static let supportedNames = ["Voice Input Buddy", "Voice Input Buddy Mic", "BlackHole 2ch"]
 
     static func isSupportedDevice(uid: String, name: String) -> Bool {
-        supportedUIDs.contains(uid) || supportedNames.contains(name)
+        supportedUIDs.contains(uid)
     }
 
     static func isSupportedDeviceSelected(
