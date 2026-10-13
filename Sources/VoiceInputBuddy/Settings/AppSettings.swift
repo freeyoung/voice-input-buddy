@@ -16,7 +16,6 @@ final class AppSettings: ObservableObject {
         static let secondaryButtonBindings = "secondaryButtonBindings"
         static let buttonRapidPressEnabled = "buttonRapidPressEnabled"
         static let customApplicationProfiles = "customApplicationProfiles"
-        static let peripheralIdentifier = "peripheralIdentifier"
         static let remoteDeviceProfiles = "remoteDeviceProfiles"
         static let selectedRemoteProfileID = "selectedRemoteProfileID"
         static let applicationLanguage = "applicationLanguage"
@@ -341,16 +340,6 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    var peripheralIdentifier: UUID? {
-        get {
-            guard let raw = defaults.string(forKey: Keys.peripheralIdentifier) else { return nil }
-            return UUID(uuidString: raw)
-        }
-        set {
-            defaults.set(newValue?.uuidString, forKey: Keys.peripheralIdentifier)
-        }
-    }
-
     /// Keys whose stored data existed but could not be decoded on the last load. The raw
     /// bytes are preserved under "<key>.corrupt" so a reset is recoverable and visible
     /// instead of looking like a first run.
@@ -623,13 +612,6 @@ final class AppSettings: ObservableObject {
             from: defaults,
             corrupted: &corruptedKeys
         )
-        let legacyMappings = RemoteDeviceMappings(
-            buttonBindings: buttonBindings,
-            buttonShortcuts: buttonShortcuts,
-            buttonApplicationProfileIDs: buttonApplicationProfileIDs,
-            secondaryButtonBindings: secondaryButtonBindings,
-            buttonRapidPressEnabled: buttonRapidPressEnabled
-        )
         if
             let decoded = Self.decodeSetting(
                 [RemoteDeviceProfile].self,
@@ -658,13 +640,6 @@ final class AppSettings: ObservableObject {
                 secondaryButtonBindings = selected.mappings.parsedSecondaryButtonBindings
                 buttonRapidPressEnabled = selected.mappings.parsedButtonRapidPressEnabled
             }
-        } else {
-            let migrated = RemoteDeviceProfile(
-                bluetoothIdentifier: defaults.string(forKey: Keys.peripheralIdentifier).flatMap(UUID.init(uuidString:)),
-                mappings: legacyMappings
-            )
-            remoteDeviceProfiles = [migrated]
-            selectedRemoteProfileID = migrated.id
         }
         applyContinuousRecordingExperimentState(
             enabled: experimentalContinuousRecordingEnabled,
