@@ -91,8 +91,7 @@ struct SessionRecoveryTests {
     @Test func rejectionOnlyClearsItsOwnPendingAudio() {
         let pending = BluetoothPendingAudioStart()
         let owner = UUID()
-        pending.identifier = owner
-        pending.audio.begin()
+        pending.begin(for: owner)
         let accepted = pending.audio.appendIfWaiting([1, 2, 3])
         #expect(accepted)
         #expect(!pending.cancel(ifOwnedBy: UUID()))

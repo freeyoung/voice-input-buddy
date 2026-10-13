@@ -30,8 +30,7 @@ extension BridgeAppModel {
         if !outputReadyAtStart {
             let shouldStartConfiguration = pendingBluetoothVoiceStart.identifier == nil
             if shouldStartConfiguration {
-                pendingBluetoothVoiceStart.identifier = identifier
-                pendingBluetoothVoiceStart.audio.begin()
+                pendingBluetoothVoiceStart.begin(for: identifier)
             }
         }
         if identifier == activeBluetoothVoiceDeviceIdentifier, bluetoothVoiceActive {
@@ -81,8 +80,7 @@ extension BridgeAppModel {
         }
         let pendingStartAudio: [Int16]
         if outputReadyAtStart, pendingBluetoothVoiceStart.identifier == identifier {
-            pendingStartAudio = pendingBluetoothVoiceStart.audio.drain()
-            pendingBluetoothVoiceStart.identifier = nil
+            pendingStartAudio = pendingBluetoothVoiceStart.drain()
         } else {
             pendingStartAudio = []
         }
@@ -155,13 +153,17 @@ extension BridgeAppModel {
             }
         }
         if !outputReadyAtStart {
+            guard let operationID = pendingBluetoothVoiceStart.operationID else { return }
             AppLogger.shared.write(
                 "SYSTEM AUDIO voice_start_recovery configured=pending " +
                     "suspended=\(systemAudioSuspensionState.isSuspended) " +
                     "reasons=\(systemAudioSuspensionState.diagnostic)"
             )
             ensureVirtualAudioOutputReady(reason: "bluetooth_voice_start") { [weak self, weak bridge] ready in
-                guard let self, self.pendingBluetoothVoiceStart.identifier == identifier else { return }
+                guard let self, self.started,
+                      self.pendingBluetoothVoiceStart.matches(
+                        identifier: identifier, operationID: operationID
+                      ) else { return }
                 guard let bridge else {
                     self.pendingBluetoothVoiceStart.cancel(ifOwnedBy: identifier)
                     self.pendingBluetoothVoiceStopRequested = false
@@ -170,8 +172,7 @@ extension BridgeAppModel {
                 }
                 let stopRequested = self.pendingBluetoothVoiceStopRequested
                 self.pendingBluetoothVoiceStopRequested = false
-                self.pendingBluetoothVoiceStart.identifier = nil
-                let bufferedAudio = self.pendingBluetoothVoiceStart.audio.drain()
+                let bufferedAudio = self.pendingBluetoothVoiceStart.drain()
                 guard ready else {
                     self.pendingBluetoothVoiceStart.audio.cancel()
                     _ = bridge.requestMicrophoneClose()
@@ -516,6 +517,7 @@ extension BridgeAppModel {
             }
             let identifier = bluetoothIdentifier(for: bridge)
             if let identifier {
+                cancelPendingBluetoothVoiceStart(for: identifier)
                 let hadBattery = pendingRemoteBatteryLevels.removeValue(forKey: identifier) != nil
                 let hadPower = pendingRemotePowerStates.removeValue(forKey: identifier) != nil
                 let hadModel = pendingRemoteModels.removeValue(forKey: identifier) != nil
@@ -540,6 +542,8 @@ extension BridgeAppModel {
                 }
                 bluetoothVoiceActive = false
                 activeBluetoothVoiceDeviceIdentifier = nil
+                pendingCommandVoiceAudio.cancel()
+                _ = voiceFnTapSession.stopVoice()
                 releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: false)
                 endVoiceSessionIfNeeded(flushAudio: false)
             }
