@@ -39,17 +39,19 @@ def cleanup(directory):
 
 
 def setup(directory):
+    state_file = directory / 'state.json'
+    if state_file.exists():
+        raise RuntimeError('Release signing is already prepared; refusing to replace the active keychain')
     encoded = os.environ.get('MACOS_SIGNING_P12_BASE64', '')
     password = os.environ.get('MACOS_SIGNING_P12_PASSWORD', '')
     if not encoded or not password:
         raise RuntimeError('Both macOS signing secrets are required for production releases')
     archive = base64.b64decode(encoded, validate=True)
-    directory.mkdir(mode=0o700)
+    directory.mkdir(mode=0o700, exist_ok=True)
     archive_file = directory / 'identity.p12'
     archive_file.write_bytes(archive)
     archive_file.chmod(0o600)
     keychain = str(directory / 'release.keychain-db')
-    state_file = directory / 'state.json'
     try:
         certificate = run(['openssl', 'pkcs12', '-in', str(archive_file), '-clcerts',
                            '-nokeys', '-passin', 'stdin'], input=(password + '\n').encode())

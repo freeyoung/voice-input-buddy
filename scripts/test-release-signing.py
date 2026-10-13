@@ -87,6 +87,27 @@ class ReleaseSigningTests(unittest.TestCase):
         self.assertFalse((self.directory / 'identity.p12').exists())
         self.assertFalse(self.environment.exists())
 
+    def test_repeated_setup_preserves_active_keychain_and_exported_environment(self):
+        signing.setup(self.directory)
+        state = (self.directory / 'state.json').read_bytes()
+        environment = self.environment.read_bytes()
+        commands = list(self.commands)
+        with self.assertRaisesRegex(RuntimeError, 'already prepared'):
+            signing.setup(self.directory)
+        self.assertEqual((self.directory / 'state.json').read_bytes(), state)
+        self.assertEqual(self.environment.read_bytes(), environment)
+        self.assertEqual(self.commands, commands)
+        self.assertFalse((self.directory / 'identity.p12').exists())
+
+    def test_setup_can_retry_after_failure_before_identity_creation(self):
+        with mock.patch.object(signing, 'CERTIFICATE', ROOT / 'scripts/signing/release-certificate.pem'):
+            with self.assertRaisesRegex(RuntimeError, 'does not match'):
+                signing.setup(self.directory)
+        self.assertTrue(self.directory.exists())
+        signing.setup(self.directory)
+        self.assertTrue((self.directory / 'state.json').exists())
+        self.assertEqual(self.environment.read_text().count('CODE_SIGN_IDENTITY='), 1)
+
     def test_missing_secrets_never_falls_back_to_adhoc_signing(self):
         mock.patch.dict(os.environ, {'MACOS_SIGNING_P12_PASSWORD': ''}).start()
         with self.assertRaisesRegex(RuntimeError, 'Both macOS signing secrets are required'):
