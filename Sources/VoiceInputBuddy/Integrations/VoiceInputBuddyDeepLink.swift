@@ -13,6 +13,8 @@ struct VoiceInputBuddyDeepLinkRequest: Equatable {
     let status: VoiceInputBuddyDeepLinkStatus?
     let reason: String?
 
+    var mayActivateSettings: Bool { source == "vokie" }
+
     static func parse(_ url: URL) -> Self? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               components.scheme?.lowercased() == "voice-input-buddy",

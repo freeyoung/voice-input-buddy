@@ -37,15 +37,7 @@ extension BridgeAppModel {
         if identifier == activeBluetoothVoiceDeviceIdentifier, bluetoothVoiceActive {
             cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM ignored_duplicate_start")
-            recordPublicDiagnosticEvent(
-                component: "voice",
-                action: "session",
-                phase: "rejected",
-                result: "duplicate",
-                reason: "duplicate_start",
-                source: "bluetooth",
-                remoteModelFamily: "xiaomi"
-            )
+
             return
         }
         let isRC003Continuation = rc003VoiceExtensionTestEnabled &&
@@ -58,15 +50,7 @@ extension BridgeAppModel {
             _ = bridge.requestMicrophoneClose()
             cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM rejected_busy")
-            recordPublicDiagnosticEvent(
-                component: "voice",
-                action: "session",
-                phase: "rejected",
-                result: "busy",
-                reason: "another_session_active",
-                source: "bluetooth",
-                remoteModelFamily: "xiaomi"
-            )
+
             return
         }
         if settings.voiceKeyMode != .function || settings.voiceFnTapModeEnabled {
@@ -83,15 +67,7 @@ extension BridgeAppModel {
                 "ATVV STREAM rejected reason=voice_key_not_neutralized " +
                     "mode=\(settings.voiceKeyMode.rawValue)"
             )
-            recordPublicDiagnosticEvent(
-                component: "voice",
-                action: "session",
-                phase: "rejected",
-                result: "failed",
-                reason: "voice_key_not_neutralized",
-                source: "bluetooth",
-                remoteModelFamily: "xiaomi"
-            )
+
             return
         }
         if outputReadyAtStart {
@@ -99,15 +75,7 @@ extension BridgeAppModel {
                 _ = bridge.requestMicrophoneClose()
                 cancelPendingBluetoothVoiceStart(for: identifier)
                 AppLogger.shared.write("ATVV STREAM rejected_audio_output")
-                recordPublicDiagnosticEvent(
-                    component: "voice",
-                    action: "session",
-                    phase: "rejected",
-                    result: "failed",
-                    reason: "audio_output_unavailable",
-                    source: "bluetooth",
-                    remoteModelFamily: "xiaomi"
-                )
+
                 return
             }
         }
@@ -135,15 +103,7 @@ extension BridgeAppModel {
             AppLogger.shared.write(
                 "ATVV STREAM rejected reason=voice_key mode=\(settings.voiceKeyMode.rawValue)"
             )
-            recordPublicDiagnosticEvent(
-                component: "voice",
-                action: "session",
-                phase: "rejected",
-                result: "failed",
-                reason: "voice_key_press_failed",
-                source: "bluetooth",
-                remoteModelFamily: "xiaomi"
-            )
+
             return
         }
         let model = profileID
@@ -162,16 +122,7 @@ extension BridgeAppModel {
         AppLogger.shared.write(
             "ATVV STREAM accepted trace=\(bluetoothVoiceTraceCounter) model=\(model.rawValue)"
         )
-        recordPublicDiagnosticEvent(
-            operationID: "voice_bluetooth_\(bluetoothVoiceTraceCounter)",
-            component: "voice",
-            action: "session",
-            phase: "started",
-            result: "accepted",
-            reason: "trigger_observed",
-            source: "bluetooth",
-            remoteModelFamily: "xiaomi"
-        )
+
         cancelVirtualAudioReleaseIfPending(trigger: "bluetooth_voice_start")
         if longRecordingRequested {
             longRecordingOpenTimer?.cancel()
@@ -350,30 +301,6 @@ extension BridgeAppModel {
         )
         audioOutput.logWhenPendingVoiceAudioDrains(
             context: "trace=\(traceID) model=\(bluetoothVoiceTraceModel.rawValue)"
-        )
-        let delivery = voiceAudioDeliveryDiagnosticSnapshot()
-        let publicVoiceResult: (phase: String, result: String, reason: String) =
-            bluetoothVoiceDecodedSampleCount == 0
-                ? ("failed", "failed", "no_samples")
-                : bluetoothVoiceEnqueueFailureCount > 0
-                    ? ("failed", "failed", "audio_enqueue_failed")
-                    : ("completed", "passed", "voice_stopped")
-        recordPublicDiagnosticEvent(
-            operationID: "voice_bluetooth_\(traceID)",
-            component: "voice",
-            action: "session",
-            phase: publicVoiceResult.phase,
-            result: publicVoiceResult.result,
-            reason: publicVoiceResult.reason,
-            source: "bluetooth",
-            remoteModelFamily: "xiaomi",
-            elapsedMS: durationMilliseconds,
-            receivedSamples: delivery.receivedSamples,
-            scheduledSamples: delivery.scheduledSamples,
-            playedSamples: delivery.playedSamples,
-            interruptedSamples: delivery.interruptedSamples,
-            pendingSamples: delivery.outputAtObservation.pendingSamples,
-            failureCount: delivery.enqueueFailures
         )
         activeBluetoothVoiceTraceID = nil
         bluetoothVoiceTraceStartedAt = nil
@@ -565,43 +492,10 @@ extension BridgeAppModel {
         connectedRemoteProfileIDs.contains(profileID)
     }
 
-    private static func publicBluetoothConnectionState(
-        _ state: BluetoothBridgeState
-    ) -> (phase: String, result: String, reason: String) {
-        switch state {
-        case .stopped:
-            return ("stopped", "stopped", "bridge_stopped")
-        case .bluetoothUnavailable:
-            return ("failed", "unavailable", "bluetooth_unavailable")
-        case .scanning:
-            return ("started", "pending", "scanning")
-        case .connecting:
-            return ("started", "pending", "connecting")
-        case .discovering:
-            return ("started", "pending", "discovering")
-        case .ready:
-            return ("completed", "connected", "ready")
-        case .reconnecting:
-            return ("started", "pending", "reconnecting")
-        case .failed:
-            return ("failed", "failed", "bridge_failed")
-        }
-    }
-
     func bluetoothBridge(
         _ bridge: XiaomiBluetoothBridge,
         didChange state: BluetoothBridgeState
     ) {
-        let publicState = Self.publicBluetoothConnectionState(state)
-        recordPublicDiagnosticEvent(
-            component: "remote",
-            action: "connection",
-            phase: publicState.phase,
-            result: publicState.result,
-            reason: publicState.reason,
-            source: "bluetooth",
-            remoteModelFamily: "xiaomi"
-        )
         let bridgeObjectID = ObjectIdentifier(bridge)
         let previousState = bluetoothBridgeStates[bridgeObjectID]
         let shouldReapplyHIDSettings = Self.shouldReapplyHIDSettings(
@@ -637,7 +531,7 @@ extension BridgeAppModel {
                     remotePowerStates.removeValue(forKey: profileID)
                 }
             }
-            let voiceWasActive = identifier == activeBluetoothVoiceDeviceIdentifier
+            let voiceWasActive = BluetoothVoiceDeviceOwnershipPolicy.matches(identifier, active: activeBluetoothVoiceDeviceIdentifier)
             if voiceWasActive {
                 if rc003VoiceExtensionTestEnabled,
                    rc003VoiceExtensionActive,
@@ -668,7 +562,7 @@ extension BridgeAppModel {
                 )
             }
         } else {
-            voiceFnTapSession.suspend { [weak self] in
+            voiceFnTapSession.suspend { [weak self] _ in
                 self?.releaseVirtualAudioOutputIfUnused(reason: "bluetooth_not_ready")
             }
         }

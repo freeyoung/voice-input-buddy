@@ -85,18 +85,6 @@ extension BridgeAppModel {
                 "APPLE REMOTE VOICE phase=failed result=audio_capture_retry_exhausted " +
                     "attempts=\(appleRemoteVoiceCaptureRetryAttempt)"
             )
-            if let operationID = activeAppleRemoteVoiceOperationID {
-                recordPublicDiagnosticEvent(
-                    operationID: operationID,
-                    component: "voice",
-                    action: "session",
-                    phase: "failed",
-                    result: "failed",
-                    reason: "audio_capture_retry_exhausted",
-                    source: "bluetooth",
-                    remoteModelFamily: "apple_remote"
-                )
-            }
             return
         }
         let attempt = appleRemoteVoiceCaptureRetryAttempt
@@ -113,18 +101,6 @@ extension BridgeAppModel {
                         "retry_attempt=\(attempt + 1) audio_source=apple_remote_microphone " +
                         "route=BuddyMic2ch"
                 )
-                if let operationID = self.activeAppleRemoteVoiceOperationID {
-                    self.recordPublicDiagnosticEvent(
-                        operationID: operationID,
-                        component: "voice",
-                        action: "session",
-                        phase: "started",
-                        result: "accepted",
-                        reason: "voice_start_retry",
-                        source: "bluetooth",
-                        remoteModelFamily: "apple_remote"
-                    )
-                }
                 return
             }
             AppLogger.shared.write(
@@ -177,17 +153,6 @@ extension BridgeAppModel {
                 "audio_samples=\(appleRemoteAudioSampleCount) " +
                 "enqueue_failures=\(appleRemoteAudioEnqueueFailureCount) route=BuddyMic2ch"
         )
-        if let operationID = activeAppleRemoteVoiceOperationID {
-            recordVoiceSessionCompletion(
-                operationID: operationID,
-                source: "bluetooth",
-                remoteModelFamily: "apple_remote",
-                startedAt: activeAppleRemoteVoiceStartedAt,
-                receivedSamples: appleRemoteAudioSampleCount,
-                failureCount: appleRemoteAudioEnqueueFailureCount + (released ? 0 : 1),
-                stopReason: reason
-            )
-        }
         activeAppleRemoteVoiceOperationID = nil
         activeAppleRemoteVoiceStartedAt = nil
         if !deferredDevices.isEmpty {
@@ -392,16 +357,7 @@ extension BridgeAppModel {
                 AppLogger.shared.write(
                     "APPLE REMOTE VOICE phase=failed result=audio_output_unavailable route=BuddyMic2ch"
                 )
-                recordPublicDiagnosticEvent(
-                    operationID: operationID,
-                    component: "voice",
-                    action: "session",
-                    phase: "failed",
-                    result: "failed",
-                    reason: "audio_output_unavailable",
-                    source: "bluetooth",
-                    remoteModelFamily: "apple_remote"
-                )
+
                 return
             }
         }
@@ -420,16 +376,7 @@ extension BridgeAppModel {
             AppLogger.shared.write(
                 "APPLE REMOTE VOICE phase=failed result=voice_key_press_failed"
             )
-            recordPublicDiagnosticEvent(
-                operationID: operationID,
-                component: "voice",
-                action: "session",
-                phase: "failed",
-                result: "failed",
-                reason: "voice_key_press_failed",
-                source: "bluetooth",
-                remoteModelFamily: "apple_remote"
-            )
+
             return
         }
         beginVoiceSessionIfNeeded()
@@ -455,16 +402,7 @@ extension BridgeAppModel {
             "APPLE REMOTE VOICE phase=started result=triggered audio_capture=requested " +
                 "audio_source=apple_remote_microphone route=BuddyMic2ch"
         )
-        recordPublicDiagnosticEvent(
-            operationID: operationID,
-            component: "voice",
-            action: "session",
-            phase: "started",
-            result: "accepted",
-            reason: "voice_start",
-            source: "bluetooth",
-            remoteModelFamily: "apple_remote"
-        )
+
         if !outputReadyAtStart, shouldStartConfiguration {
             AppLogger.shared.write(
                 "SYSTEM AUDIO voice_start_recovery configured=pending " +

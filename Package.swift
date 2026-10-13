@@ -20,7 +20,7 @@ let package = Package(
         .target(name: "BuddyRemoteUI", dependencies: ["BuddyRemoteCore"], path: "Sources/PublicRemoteCompatibility/UI"),
         .executableTarget(
             name: "VoiceInputBuddy",
-            dependencies: ["AudioExceptionGuard", "AppleRemoteSupport", "AppleRemoteAudioCore", "AppleRemoteHCIProtocol", "AppleRemotePacketLogger", "BuddyRemoteCore", "BuddyRemoteUI", .product(name: "Sparkle", package: "Sparkle")],
+            dependencies: ["AudioExceptionGuard", "AppleRemoteHCIProtocol", "BuddyRemoteCore", "BuddyRemoteUI", .product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/VoiceInputBuddy",
 
             linkerSettings: [
@@ -31,15 +31,6 @@ let package = Package(
             name: "AudioExceptionGuard",
             path: "Sources/AudioExceptionGuard",
             publicHeadersPath: "include"
-        ),
-        .target(
-            name: "AppleRemoteSupport",
-            path: "Sources/AppleRemoteSupport",
-            publicHeadersPath: "include",
-            linkerSettings: [
-                .linkedFramework("CoreFoundation"),
-                .linkedFramework("IOKit"),
-            ]
         ),
         .target(
             name: "AppleRemoteAudioCore",

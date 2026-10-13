@@ -25,7 +25,8 @@ extension BridgeAppModel {
             return
         }
         settings.voiceFnTapModeEnabled = false
-        voiceFnTapSession.setEnabled(false) { [weak self] in
+        voiceFnTapSession.setEnabled(false) { [weak self] cleaned in
+            guard cleaned else { return }
             self?.applyHIDSettings(restartSiriRemote: false)
         }
     }
@@ -74,7 +75,8 @@ extension BridgeAppModel {
         preferredInputSourceMonitor.endVoiceSession()
         if mode != .function {
             settings.voiceFnTapModeEnabled = false
-            voiceFnTapSession.setEnabled(false) { [weak self] in
+            voiceFnTapSession.setEnabled(false) { [weak self] cleaned in
+                guard cleaned else { return }
                 guard let self else { return }
                 self.settings.voiceKeyMode = mode
                 self.applyHIDSettings(restartSiriRemote: false)
@@ -125,6 +127,11 @@ extension BridgeAppModel {
     }
 
     func handleVoiceFnTapFailure(_ failure: VoiceFnTapFailure) {
+        if voiceFnTapSession.releaseRecoveryBlocked {
+            voiceShortcutStatus = LocalizedMessage("voice_button.status.cleanup_failed")
+            AppLogger.shared.write("VOICE FN TAP cleanup blocked reason=accessibility_unavailable")
+            return
+        }
         AppLogger.shared.write("VOICE FN TAP failed reason=\(failure.rawValue) fallback=hardware_fn")
         settings.voiceFnTapModeEnabled = false
         voiceFnTapSession.setEnabled(false)

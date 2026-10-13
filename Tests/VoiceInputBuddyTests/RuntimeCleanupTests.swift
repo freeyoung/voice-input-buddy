@@ -11,7 +11,7 @@ struct DiagnosticLogRetentionTests {
         return url
     }
 
-    @Test func sizeLimitStopsRepeatedFailureReports() throws {
+    @Test func oversizedRecordsReportOnceAndDoNotDisableLaterLogging() throws {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }
         var failures: [String] = []
@@ -19,8 +19,51 @@ struct DiagnosticLogRetentionTests {
         let logger = AppLogger(logURL: url, maximumFileSize: 512,
                                reportFailure: { failures.append($0) })
         for _ in 0..<20 { logger.writeSynchronously(String(repeating: "x", count: 600), at: Date()) }
-        #expect(failures == ["log_size_limit_reached"])
+        #expect(failures == ["log_record_too_large"])
+        logger.writeSynchronously("logging continues", at: Date())
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("logging continues"))
         #expect(try Data(contentsOf: url).count <= 512)
+    }
+
+    @Test func recordMustFitAlongsideHeaderAndLaterWritesStillWork() throws {
+        let root = try directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var failures: [String] = []
+        let url = root.appendingPathComponent("voiceinputbuddy.app-test.log")
+        let logger = AppLogger(logURL: url, maximumFileSize: 512,
+                               reportFailure: { failures.append($0) })
+        let date = Date(timeIntervalSince1970: 0)
+        logger.writeSynchronously("x", at: date)
+        let lines = try String(contentsOf: url, encoding: .utf8).split(separator: "\n")
+        let headerBytes = lines[0].utf8.count + 1
+        let recordPrefixBytes = lines[1].utf8.count // Remove x, add newline: same count.
+        // This record fits by itself, but would exceed the file cap together with its header.
+        logger.writeSynchronously(String(repeating: "z", count: 513 - headerBytes - recordPrefixBytes), at: date)
+        #expect(failures == ["log_record_too_large"])
+        logger.writeSynchronously("still available", at: date)
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("still available"))
+        #expect(!text.contains("zzz"))
+        #expect(text.utf8.count <= 512)
+    }
+
+    @Test func sizeLimitRotatesAndRetainsBoundedPrivateLogsDuringSession() throws {
+        let root = try directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("voiceinputbuddy.app-test.log")
+        let logger = AppLogger(logURL: url, maximumFileSize: 512, archiveCount: 2)
+        for index in 0..<30 {
+            logger.writeSynchronously("message-\(index) " + String(repeating: "x", count: 100), at: Date())
+        }
+        let logs = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil).filter { $0.pathExtension == "log" }
+        #expect(logs.count == 3)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("message-29"))
+        for file in logs {
+            #expect(try Data(contentsOf: file).count <= 512)
+            #expect(try String(contentsOf: file, encoding: .utf8).hasPrefix("Voice Input Buddy runtime log (UTF-8)\n"))
+            let mode = try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? NSNumber
+            #expect(mode?.intValue == 0o600)
+        }
     }
 
     @Test func textLogNeedsNoKeyAndPreservesUnicodeWithoutInjectedLines() throws {

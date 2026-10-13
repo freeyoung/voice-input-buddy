@@ -59,7 +59,7 @@ struct SessionRecoveryRegressionTests {
         session.setEnabled(true)
         #expect(session.startVoice())
         clock.advance(to: 100)
-        session.setEnabled(false) { completions += 1 }
+        session.setEnabled(false) { _ in completions += 1 }
         #expect(completions == 0)
         #expect(session.requiresCleanupBeforeMapping)
         canRelease = true
@@ -80,13 +80,17 @@ struct SessionRecoveryRegressionTests {
         session.setEnabled(true)
         #expect(session.startVoice())
         clock.advance(to: 100)
-        for due: UInt64 in [1100, 3100, 7100, 15100, 31100, 61100, 91100] {
+        for due: UInt64 in [1100, 3100, 7100] {
             let pending = clock.tasks.filter { $0.action != nil }
             #expect(pending.count == 1)
             #expect(pending.first?.due == due)
             clock.advance(to: due)
         }
+        #expect(session.releaseRecoveryBlocked)
+        #expect(session.requiresCleanupBeforeMapping)
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
         canRelease = true
+        session.retryCleanupAfterPermissionRecovery()
         clock.advance(to: 121100)
         #expect(!session.requiresCleanupBeforeMapping)
         #expect(clock.tasks.allSatisfy { $0.action == nil })
@@ -98,6 +102,96 @@ struct SessionRecoveryRegressionTests {
         #expect(clock.tasks.filter { $0.action != nil }.map(\.due) == [122200])
         canRelease = true
         clock.advance(to: 122200)
+    }
+
+    @Test func exhaustedReleaseRetriesAnswerFailureWithoutPretendingCleanupSucceeded() {
+        let clock = LifecycleClock()
+        var allowRelease = false
+        var answers: [Bool] = []
+        let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
+            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { $0 || allowRelease },
+            enqueueAudio: { _ in }, drainAudio: { _, completion in completion() }, onFailure: { _ in })
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 100)
+        session.setEnabled(false) { answers.append($0) }
+        clock.advance(to: 7100)
+        #expect(answers == [false])
+        #expect(session.requiresCleanupBeforeMapping)
+        #expect(session.releaseRecoveryBlocked)
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+        clock.advance(to: 100000)
+        #expect(answers == [false])
+        session.setEnabled(false) { answers.append($0) }
+        #expect(answers == [false, false])
+        allowRelease = true
+        session.retryCleanupAfterPermissionRecovery()
+        #expect(!session.requiresCleanupBeforeMapping)
+        session.setEnabled(false) { answers.append($0) }
+        #expect(answers == [false, false, true])
+    }
+
+    @Test func successfulExplicitReleaseClearsExhaustedRecoveryGate() {
+        let clock = LifecycleClock()
+        var allowRelease = false
+        var answers: [Bool] = []
+        let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
+            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { $0 || allowRelease },
+            enqueueAudio: { _ in }, drainAudio: { _, done in done() }, onFailure: { _ in })
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 100)
+        session.setEnabled(false) { answers.append($0) }
+        clock.advance(to: 7100)
+        #expect(session.releaseRecoveryBlocked)
+        #expect(answers == [false])
+        allowRelease = true
+        // Explicit cleanup also retries key-up, without the permission-recovery entry point.
+        session.setEnabled(false) { answers.append($0) }
+        #expect(!session.releaseRecoveryBlocked)
+        #expect(!session.requiresCleanupBeforeMapping)
+        #expect(answers == [false, true])
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+    }
+
+    @Test func unmappedHIDUsageDoesNotAllocateRecoveryTimer() {
+        let clock = LifecycleClock()
+        let monitor = HIDRemoteMonitor(settings: AppSettings(defaults: defaults()),
+            profileID: nil, scheduler: clock, runtimePermissions: { true },
+            actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: UUID())
+        monitor.handleSimulatedReport(reportID: 1, data: Data([0xff, 0xff]))
+        #expect(clock.tasks.allSatisfy { $0.action == nil })
+        monitor.disconnectSimulatedDevice()
+    }
+
+    @Test(arguments: [ButtonAction.arrowRight, .commandCopy])
+    func everyHeldUsageExpiresEvenForRepeatsAndGestures(action: ButtonAction) {
+        let clock = LifecycleClock()
+        let prefs = defaults()
+        let settings = AppSettings(defaults: prefs)
+        settings.customMappingEnabled = true
+        settings.setAction(action, for: .right)
+        if action == .commandCopy {
+            settings.setBaseBinding(.init(action: .commandCopy, shortcut: nil), for: .right, trigger: .longPress, profileID: nil)
+        }
+        let profile = UUID()
+        var presses = 0, releases = 0
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: profile, scheduler: clock,
+            runtimePermissions: { true }, actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.onRuntimeButton = { _, _, phase in
+            if phase == .press { presses += 1 } else { releases += 1 }
+            return false
+        }
+        monitor.connectSimulatedDevice(fingerprint: "test", profileID: profile)
+        let usage = RemoteButton.right.hidUsage
+        let report = Data([UInt8(usage & 255), UInt8(usage >> 8)])
+        monitor.handleSimulatedReport(reportID: 1, data: report)
+        clock.advance(to: HIDRemoteTiming.missingReleaseTimeoutMilliseconds)
+        #expect(releases == 1)
+        monitor.handleSimulatedReport(reportID: 1, data: report)
+        #expect(presses == 2)
+        monitor.disconnectSimulatedDevice()
     }
 
     @Test func rejectedVoiceRequestsLogTheirActualReason() {

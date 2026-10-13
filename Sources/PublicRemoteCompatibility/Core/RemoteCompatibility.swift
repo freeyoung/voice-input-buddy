@@ -63,7 +63,6 @@ public final class PhoneRemoteServer: @unchecked Sendable {
 
     public var onApprovalRequested: ApprovalHandler?
     public var onApprovalCancelled: (() -> Void)?
-    public var isIdentityTrusted: ((String) -> Bool)?
     public var onCommand: ((RemoteButton, @escaping (Bool) -> Void) -> Void)?
     public var onButtonEvent:
         ((RemoteButton, RemoteButtonPhase, @escaping (Bool) -> Void) -> Void)?
@@ -104,7 +103,6 @@ public final class WatchBluetoothRemoteServer: @unchecked Sendable {
 
     public var onApprovalRequested: ApprovalHandler?
     public var onApprovalCancelled: (() -> Void)?
-    public var isIdentityTrusted: ((String) -> Bool)?
     public var onCommand: ((RemoteButton, @escaping (Bool) -> Void) -> Void)?
     public var onButtonEvent:
         ((RemoteButton, RemoteButtonPhase, @escaping (Bool) -> Void) -> Void)?

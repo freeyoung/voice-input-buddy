@@ -146,3 +146,11 @@ struct AppleRemoteButtonGestureKey: Hashable {
     let device: SiriRemoteDeviceIdentity
     let button: RemoteButton
 }
+
+/// Discovery events without an identity never own an active voice session.
+enum BluetoothVoiceDeviceOwnershipPolicy {
+    static func matches(_ identifier: UUID?, active: UUID?) -> Bool {
+        guard let identifier else { return false }
+        return identifier == active
+    }
+}

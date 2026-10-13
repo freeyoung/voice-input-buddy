@@ -1217,3 +1217,8 @@
 "button_mapping.unsupported_device" = "此遥控器目前尚未支持。请选择小米遥控器进行按键设置。";
 
 "button_mapping.action.disable_restore_scope" = "当前设置窗口内重新启用会还原之前的动作。关闭窗口后重新启用，将使用该按键的默认动作；双击和长按需要重新选择动作。";
+
+"onboarding.voice_tool.guide.screenshot.doubao_input_microphone" = "豆包输入法：选择语音搭子的麦克风";
+"onboarding.voice_tool.guide.screenshot.weixin_input_microphone" = "微信输入法：选择语音搭子的麦克风";
+
+"voice_button.status.cleanup_failed" = "Fn 键释放失败，请恢复辅助功能权限后重试。";

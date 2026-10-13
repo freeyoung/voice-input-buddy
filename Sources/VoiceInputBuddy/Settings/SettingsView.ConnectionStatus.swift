@@ -43,24 +43,12 @@ extension SettingsView {
         }
     }
 
-    func requestWebRemoteSession() {
-        openWebRemoteSession()
-    }
-
     func copyRepositoryLink() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         isRepositoryLinkCopied = pasteboard.writeObjects([
             AppLinks.githubRepository.absoluteString as NSString
         ])
-    }
-
-    private func openWebRemoteSession() {
-        if !model.webRemoteState.isEnabled {
-            model.enableWebRemoteConnection()
-        }
-        guard model.webRemoteState.isEnabled else { return }
-        isWebRemoteSessionPresented = true
     }
 
     var connectionTint: Color {

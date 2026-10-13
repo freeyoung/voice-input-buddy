@@ -658,7 +658,7 @@ enum VirtualAudioRecoveryPolicy {
         details: String,
         configurationHealthy: Bool
     ) -> Bool {
-        details == "properties=default_system_output" && configurationHealthy
+        AudioHardwareChangeProperties(details: details).selectors == ["default_system_output"] && configurationHealthy
     }
 }
 
@@ -934,6 +934,13 @@ final class VirtualAudioOutput {
             return false
         }
 
+        var accepted = false
+        defer {
+            if !accepted {
+                player.stop()
+                engine.stop()
+            }
+        }
         do {
             logStage("prepare_engine")
             engine.prepare()
@@ -957,9 +964,11 @@ final class VirtualAudioOutput {
             logStage("verify_output")
             refreshOutputStateOnEngineQueue()
             guard isReadyForTestTone else {
+                stopOnEngineQueue()
                 status = LocalizedMessage("audio.output.selected_unavailable")
                 return false
             }
+            accepted = true
             observeConfigurationChanges(for: engine)
             status = LocalizedMessage("audio.output.current_format", arguments: [device.name])
             logger(
@@ -1071,7 +1080,11 @@ final class VirtualAudioOutput {
             let isCurrent = generation == self.playbackGeneration
             self.playbackLock.unlock()
             // A preceding stop or explicit flush already accounted for an interrupted buffer.
-            guard isCurrent, let player = self.player else { return }
+            guard isCurrent else { return }
+            guard let player = self.player else {
+                self.stopOnEngineQueue()
+                return
+            }
             player.scheduleBuffer(
                 buffer,
                 at: nil,
@@ -1284,6 +1297,7 @@ final class VirtualAudioOutput {
     }
 
     private func stopOnEngineQueue() {
+        updateOutputState { $0.ready = false; $0.healthy = false; $0.engineRunning = false; $0.playerPlaying = false }
         playbackLock.lock()
         let interruptedContexts = pendingVoiceBufferCount > 0 ? pendingDrainLogContexts : []
         let interruptedBuffers = pendingVoiceBufferCount
@@ -1650,4 +1664,14 @@ final class VirtualAudioOutput {
                 "state={\(diagnosticState())}"
         )
     }
+}
+
+struct AudioHardwareChangeProperties {
+    let selectors: Set<String>
+    init(details: String) {
+        guard details.hasPrefix("properties=") else { selectors = []; return }
+        selectors = Set(details.dropFirst("properties=".count).split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
+    }
+    var affectsOnlyDefaultInput: Bool { selectors == ["default_input"] }
 }

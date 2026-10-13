@@ -59,12 +59,6 @@ struct OnboardingView: View {
     @State var lastLoggedSecureInputState: Bool?
     @State var aiPromptCopyResult: Bool?
 
-    @State private var permissionRefreshTimer = Timer.publish(
-        every: 1,
-        on: .main,
-        in: .common
-    ).autoconnect()
-
     init(
         model: BridgeAppModel,
         completeRuntimeReadyOverride: Bool? = nil,
@@ -121,15 +115,16 @@ struct OnboardingView: View {
             prepareForStep(settings.onboardingStep)
             refreshSecureInputState()
         }
-        .onReceive(permissionRefreshTimer) { _ in
-            guard settings.onboardingStep != .complete else { return }
-            refreshPermissionStates()
-            refreshSecureInputState()
-            if settings.onboardingStep == .voiceTool {
-                refreshSystemFunctionKeyUsage()
-            }
-            if settings.onboardingStep == .voiceTest {
-                refreshSelectedVoiceToolRuntimeState()
+        .task(id: settings.onboardingStep) { @MainActor in
+            while !Task.isCancelled, settings.onboardingStep != .complete {
+                let ready = bluetoothAuthorization == .allowedAlways && inputMonitoringGranted && accessibilityGranted
+                do { try await Task.sleep(for: .seconds(ready ? 5 : 1)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                refreshPermissionStates()
+                refreshSecureInputState()
+                if settings.onboardingStep == .voiceTool { refreshSystemFunctionKeyUsage() }
+                if settings.onboardingStep == .voiceTest { refreshSelectedVoiceToolRuntimeState() }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in

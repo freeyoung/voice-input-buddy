@@ -33,6 +33,7 @@ enum ConfigurationImportNoticeText {
 
     private static let itemKeysByStorageKey: [String: String] = [
         "buttonBindings": buttonMappingItemKey,
+        "unifiedBaseBindings": buttonMappingItemKey,
         "buttonShortcuts": buttonMappingItemKey,
         "buttonApplicationProfileIDs": buttonMappingItemKey,
         "secondaryButtonBindings": buttonMappingItemKey,
@@ -95,6 +96,7 @@ enum CorruptedSettingsNotice {
 
     private static let itemKeysByStorageKey: [String: String] = [
         "buttonBindings": buttonMappingItemKey,
+        "unifiedBaseBindings": buttonMappingItemKey,
         "buttonShortcuts": buttonMappingItemKey,
         "buttonApplicationProfileIDs": buttonMappingItemKey,
         "secondaryButtonBindings": buttonMappingItemKey,

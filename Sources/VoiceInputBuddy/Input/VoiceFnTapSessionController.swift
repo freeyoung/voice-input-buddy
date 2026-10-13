@@ -106,7 +106,10 @@ final class VoiceFnTapSessionController {
     private var functionKeyIsPressed = false
     private var keyReleaseRetryTask: VoiceFnTapScheduledTask?
     private var nextKeyReleaseRetryDelay: TimeInterval = 1
-    private var idleCompletions: [() -> Void] = []
+    private var idleCompletions: [(Bool) -> Void] = []
+    private var failedKeyReleaseAttempts = 0
+    private let maximumKeyReleaseAttempts = 4
+    private(set) var releaseRecoveryBlocked = false
     private var suppressAudioUntilRemoteStop = false
     private var drainOperationID: UInt64?
     private var drainStartedAtUptime: TimeInterval?
@@ -147,10 +150,10 @@ final class VoiceFnTapSessionController {
         if functionKeyIsPressed { _ = setFunctionKeyPressed(false) }
     }
 
-    func setEnabled(_ enabled: Bool, completion: (() -> Void)? = nil) {
+    func setEnabled(_ enabled: Bool, completion: ((Bool) -> Void)? = nil) {
         isEnabled = enabled
         if enabled {
-            completion?()
+            completion?(!requiresCleanupBeforeMapping)
             return
         }
         let hasSession = phase != .idle
@@ -161,7 +164,7 @@ final class VoiceFnTapSessionController {
         )
     }
 
-    func suspend(completion: (() -> Void)? = nil) {
+    func suspend(completion: ((Bool) -> Void)? = nil) {
         isSuspended = true
         terminateCurrentSession(
             remoteHasEnded: true,
@@ -172,6 +175,16 @@ final class VoiceFnTapSessionController {
 
     func resume() {
         isSuspended = false
+        retryCleanupAfterPermissionRecovery()
+    }
+
+    func retryCleanupAfterPermissionRecovery() {
+        guard releaseRecoveryBlocked else { return }
+        releaseRecoveryBlocked = false
+        failedKeyReleaseAttempts = 0
+        nextKeyReleaseRetryDelay = 1
+        _ = releaseFunctionKeyIfNeeded()
+        runIdleCompletions()
     }
 
     @discardableResult
@@ -275,7 +288,9 @@ final class VoiceFnTapSessionController {
         }
         logDrainTerminalIfNeeded(result: "cancelled", reason: "shutdown")
         resetSessionState()
-        runIdleCompletions()
+        keyReleaseRetryTask?.cancel()
+        keyReleaseRetryTask = nil
+        finishCleanupCompletions(success: !functionKeyIsPressed)
     }
 
     private func beginSession(preloaded: PendingVoice? = nil) {
@@ -436,7 +451,7 @@ final class VoiceFnTapSessionController {
     private func terminateCurrentSession(
         remoteHasEnded: Bool,
         suppressUntilRemoteStop: Bool,
-        completion: (() -> Void)?
+        completion: ((Bool) -> Void)?
     ) {
         if let completion {
             idleCompletions.append(completion)
@@ -511,7 +526,17 @@ final class VoiceFnTapSessionController {
             keyReleaseRetryTask?.cancel()
             keyReleaseRetryTask = nil
             nextKeyReleaseRetryDelay = 1
+            failedKeyReleaseAttempts = 0
+            releaseRecoveryBlocked = false
         } else if keyReleaseRetryTask == nil {
+            failedKeyReleaseAttempts += 1
+            if failedKeyReleaseAttempts >= maximumKeyReleaseAttempts {
+                releaseRecoveryBlocked = true
+                logger("VOICE FN TAP cleanup blocked reason=key_release_failed attempts=\(failedKeyReleaseAttempts)")
+                onFailure(.stopTapFailed)
+                finishCleanupCompletions(success: false)
+                return false
+            }
             // Keep the safety gate until a real key-up succeeds, but retry without
             // requiring a new voice event after Accessibility permission recovers.
             let delay = nextKeyReleaseRetryDelay
@@ -561,10 +586,15 @@ final class VoiceFnTapSessionController {
     }
 
     private func runIdleCompletions() {
+        if releaseRecoveryBlocked { finishCleanupCompletions(success: false); return }
         guard phase == .idle, !functionKeyIsPressed else { return }
+        finishCleanupCompletions(success: true)
+    }
+
+    private func finishCleanupCompletions(success: Bool) {
         let completions = idleCompletions
         idleCompletions.removeAll()
-        completions.forEach { $0() }
+        completions.forEach { $0(success) }
     }
 }
 

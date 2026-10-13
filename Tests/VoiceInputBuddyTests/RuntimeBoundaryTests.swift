@@ -3,11 +3,11 @@ import Foundation
 import Testing
 @testable import VoiceInputBuddy
 
-@Suite("Reviewed runtime boundaries")
+@Suite("Runtime boundaries")
 @MainActor
-struct ReviewRuntimeRegressionTests {
+struct RuntimeBoundaryTests {
     private func values() -> (UserDefaults, String) {
-        let name = "review-runtime-" + UUID().uuidString
+        let name = "runtime-boundary-" + UUID().uuidString
         return (UserDefaults(suiteName: name)!, name)
     }
 
@@ -236,6 +236,65 @@ struct ReviewRuntimeRegressionTests {
         _ = editor.configuration(disabling: true, current: .init(action: .commandCopy, shortcut: nil), scope: scope)
         let updated = ConfiguredButtonAction(action: .commandPaste, shortcut: nil)
         #expect(editor.configuration(disabling: false, current: updated, scope: scope) == updated)
+    }
+
+    @Test func unifiedMappingCorruptionIsPreservedAfterSavingNewMappings() {
+        let (defaults, name) = values()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let bad = Data("corrupt mappings".utf8)
+        defaults.set(bad, forKey: "unifiedBaseBindings")
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.corruptedSettingKeys.contains("unifiedBaseBindings"))
+        #expect(defaults.data(forKey: "unifiedBaseBindings.corrupt") == bad)
+        settings.setBaseBinding(.init(action: .commandCopy, shortcut: nil), for: .right, trigger: .singleClick, profileID: nil)
+        #expect(AppSettings(defaults: defaults).configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .commandCopy)
+        #expect(defaults.data(forKey: "unifiedBaseBindings.corrupt") == bad)
+    }
+
+    @Test func mergedHALChangesIgnoreOnlyPureDefaultInputChanges() {
+        #expect(AudioHardwareChangeProperties(details: "properties=default_input,default_input").affectsOnlyDefaultInput)
+        #expect(!AudioHardwareChangeProperties(details: "properties=devices,default_input").affectsOnlyDefaultInput)
+        #expect(!AudioHardwareChangeProperties(details: "engine_change").affectsOnlyDefaultInput)
+        #expect(VirtualAudioRecoveryPolicy.shouldIgnoreDefaultSystemOutputChange(details: "properties=default_system_output,default_system_output", configurationHealthy: true))
+        #expect(!VirtualAudioRecoveryPolicy.shouldIgnoreDefaultSystemOutputChange(details: "properties=devices,default_system_output", configurationHealthy: true))
+    }
+
+    @Test func unpairedDiscoveryDoesNotOwnVoiceSessionAndDeepLinksRejectUnknownSource() throws {
+        let device = UUID()
+        #expect(!BluetoothVoiceDeviceOwnershipPolicy.matches(nil, active: nil))
+        #expect(!BluetoothVoiceDeviceOwnershipPolicy.matches(nil, active: device))
+        #expect(!BluetoothVoiceDeviceOwnershipPolicy.matches(UUID(), active: device))
+        #expect(BluetoothVoiceDeviceOwnershipPolicy.matches(device, active: device))
+        for source in ["", "?source=unknown", "?source=vokie"] {
+            let request = try #require(VoiceInputBuddyDeepLinkRequest.parse(URL(string: "voice-input-buddy://launch" + source)!))
+            #expect(request.mayActivateSettings == (source == "?source=vokie"))
+        }
+    }
+
+    @Test func outputStopAnswersDrainAndRejectsLaterReservations() async {
+        let output = VirtualAudioOutput(logger: { _ in })
+        output.registerPendingVoiceBuffer()
+        let outcome = await withCheckedContinuation { continuation in
+            output.endSessionAfterDraining { (outcome: VirtualAudioDrainOutcome) in continuation.resume(returning: outcome) }
+            output.stop()
+        }
+        #expect(outcome == .forced)
+        #expect(output.diagnosticSnapshot(deliveryGeneration: 0).pendingBuffers == 0)
+        #expect(!output.enqueue(samples: [1, 2, 3]))
+        #expect(output.diagnosticSnapshot(deliveryGeneration: 0).pendingBuffers == 0)
+    }
+
+    @Test func failedAudioConfigurationReleasesReservationsAndReadiness() async {
+        let output = VirtualAudioOutput(logger: { _ in })
+        output.registerPendingVoiceBuffer()
+        let configured = await withCheckedContinuation { continuation in
+            output.configureAsync(deviceUID: "nonexistent-test-device-" + UUID().uuidString) {
+                continuation.resume(returning: $0)
+            }
+        }
+        #expect(!configured)
+        #expect(!output.isReadyForTestTone)
+        #expect(output.diagnosticSnapshot(deliveryGeneration: 0).pendingBuffers == 0)
     }
 
 }

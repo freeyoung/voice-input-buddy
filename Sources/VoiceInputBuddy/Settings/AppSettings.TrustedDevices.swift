@@ -11,7 +11,4 @@ extension AppSettings {
         trustedPhoneIdentityFingerprints.insert(fingerprint)
     }
 
-    func clearTrustedPhoneIdentities() {
-        trustedPhoneIdentityFingerprints.removeAll()
-    }
 }

@@ -45,8 +45,6 @@ struct SettingsView: View {
     @State var inputMonitoringGranted = HIDRemoteMonitor.isInputMonitoringGranted
     @State var accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
     @State var configurationStatus: ConfigurationStatus?
-    @State var isClearTrustedPhonesConfirmationPresented = false
-    @State var isWebRemoteSessionPresented = false
     @State var isRepositoryLinkCopied = false
     @State var isMappingPermissionAlertPresented = false
     @State var isWaitingForMappingPermissions = false
@@ -166,23 +164,6 @@ struct SettingsView: View {
             if !isVisible, selectedSection == .membership {
                 selectedSection = .about
             }
-        }
-        .sheet(isPresented: $isWebRemoteSessionPresented) {
-            webRemoteSessionView
-        }
-        .alert(
-            localization.text("connection.trusted_devices.clear_confirm.title"),
-            isPresented: $isClearTrustedPhonesConfirmationPresented
-        ) {
-            Button(
-                localization.text("connection.trusted_devices.clear"),
-                role: .destructive
-            ) {
-                settings.clearTrustedPhoneIdentities()
-            }
-            Button(localization.text("common.action.cancel"), role: .cancel) {}
-        } message: {
-            Text("connection.trusted_devices.clear_confirm.message")
         }
         .alert(
             localization.text("button_mapping.permission_prompt.title"),

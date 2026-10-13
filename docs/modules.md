@@ -10,7 +10,6 @@
 | BuddyRemoteCore | 公开设备兼容接口 |
 | BuddyRemoteUI | 公开兼容 UI |
 | AudioExceptionGuard | 音频异常保护的 Objective-C 边界 |
-| AppleRemoteSupport | 保留的 Apple 遥控器底层辅助代码 |
 | AppleRemoteAudioCore | 历史 Apple 遥控器音频处理代码 |
 | AppleRemoteHCIProtocol | 历史 HCI 辅助协议与消息类型 |
 | AppleRemotePacketLogger | 历史 PacketLogger 客户端 |

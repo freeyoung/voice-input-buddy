@@ -73,6 +73,7 @@ final class HIDRemoteMonitor {
     private let permissionPoll: HIDPermissionPoll
     private let runtimePermissions: () -> Bool
     private let actionPerformer: (RemoteButton, ButtonTrigger, ConfiguredButtonAction) -> Bool
+    private let nativeKeyStatePoster: KeyboardInjector.KeyStatePoster
     private let appSwitcherSession: KeyboardInjector.AppSwitcherSession
     private let overrideActionPerformer: (UUID?, RemoteButton, ButtonTrigger) -> Bool
     private let hasOverrideBinding: (UUID?, RemoteButton, ButtonTrigger) -> Bool
@@ -91,9 +92,9 @@ final class HIDRemoteMonitor {
     private var activeDeviceIsSeized = false
     private var activeUsages = Set<UInt16>()
     private var nativePassthroughUsages = Set<UInt16>()
+    private var usageExpiryTimers: [UInt16: HIDRemoteScheduledTask] = [:]
     private var repeatTimers: [UInt16: HIDRemoteScheduledTask] = [:]
     private var nonRepeatablePressedButtons = Set<RemoteButton>()
-    private var nonRepeatableExpiryTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
     private var nonRepeatableReleaseTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
     private var gestureRecognizer = RemoteButtonGestureRecognizer()
     private var doubleClickTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
@@ -153,6 +154,7 @@ final class HIDRemoteMonitor {
         self.scheduler = scheduler
         self.permissionPoll = permissionPoll
         self.runtimePermissions = runtimePermissions
+        self.nativeKeyStatePoster = appSwitcherKeyStatePoster
         self.appSwitcherSession = KeyboardInjector.AppSwitcherSession(
             keyStatePoster: appSwitcherKeyStatePoster
         )
@@ -658,6 +660,8 @@ final class HIDRemoteMonitor {
             )
         }
         activeUsages = usages
+        for usage in released { usageExpiryTimers.removeValue(forKey: usage)?.cancel() }
+        for usage in usages { refreshUsageExpiry(usage) }
         onActiveButtons?(profileID, RemoteButton.buttons(for: usages))
 
         for usage in pressed.sorted() {
@@ -831,14 +835,47 @@ final class HIDRemoteMonitor {
         }
     }
 
+    private func refreshUsageExpiry(_ usage: UInt16) {
+        usageExpiryTimers.removeValue(forKey: usage)?.cancel()
+        guard let button = RemoteButton.usageMap[usage] else { return }
+        usageExpiryTimers[usage] = scheduler.schedule(
+            afterMilliseconds: HIDRemoteTiming.missingReleaseTimeoutMilliseconds,
+            repeatingEveryMilliseconds: nil
+        ) { [weak self] in
+            guard let self else { return }
+            self.usageExpiryTimers.removeValue(forKey: usage)?.cancel()
+            guard self.activeUsages.contains(usage) || self.nonRepeatablePressedButtons.contains(button) else { return }
+            self.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
+            self.repeatTimers.removeValue(forKey: usage)?.cancel()
+            self.doubleClickTimers.removeValue(forKey: button)?.cancel()
+            self.longPressTimers.removeValue(forKey: button)?.cancel()
+            self.gestureRecognizer.cancel(button)
+            self.finishNonRepeatablePress(button)
+            if self.nativePassthroughUsages.remove(usage) != nil {
+                for event in button.nativeEvents {
+                    if case .keyboard(let code) = event {
+                        _ = self.nativeKeyStatePoster(code, false, [])
+                    }
+                }
+            } else if !self.activeDeviceIsSeized {
+                self.eventSuppressor.arm(button: button, edge: .up)
+            }
+            self.activeUsages.remove(usage)
+            _ = self.onRuntimeButton?(self.profileID, button, .release)
+            self.onActiveButtons?(self.profileID, RemoteButton.buttons(for: self.activeUsages))
+        }
+    }
+
     private func processBackOnly(usages: Set<UInt16>) {
         let pressed = usages.subtracting(activeUsages)
+        for usage in activeUsages.subtracting(usages) { usageExpiryTimers.removeValue(forKey: usage)?.cancel() }
         activeUsages = usages
+        for usage in usages { refreshUsageExpiry(usage) }
         onActiveButtons?(profileID, RemoteButton.buttons(for: usages))
         guard pressed.contains(RemoteButton.back.hidUsage) else { return }
         let configured = ConfiguredButtonAction(action: .deleteBackward, shortcut: nil)
         guard actionPerformer(.back, .singleClick, configured) else {
-            releaseForRevokedPermissions()
+            if !runtimePermissionsAreValid() { releaseForRevokedPermissions() }
             return
         }
         AppLogger.shared.write(
@@ -989,15 +1026,7 @@ final class HIDRemoteMonitor {
         }
         nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
         guard nonRepeatablePressedButtons.insert(button).inserted else { return false }
-        nonRepeatableExpiryTimers[button] = scheduler.schedule(
-            afterMilliseconds: HIDRemoteTiming.missingReleaseTimeoutMilliseconds, repeatingEveryMilliseconds: nil
-        ) { [weak self] in
-            self?.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
-            guard let self else { return }
-            self.finishNonRepeatablePress(button)
-            self.activeUsages = self.activeUsages.filter { RemoteButton.usageMap[$0] != button }
-            self.onActiveButtons?(self.profileID, RemoteButton.buttons(for: self.activeUsages))
-        }
+        refreshUsageExpiry(button.hidUsage)
         return true
     }
 
@@ -1041,7 +1070,6 @@ final class HIDRemoteMonitor {
     }
 
     func finishNonRepeatablePress(_ button: RemoteButton) {
-        nonRepeatableExpiryTimers.removeValue(forKey: button)?.cancel()
         nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
         nonRepeatablePressedButtons.remove(button)
     }
@@ -1188,8 +1216,9 @@ final class HIDRemoteMonitor {
             // A library rejection is not evidence of revoked Accessibility permission.
             // Preserve the held edge so duplicate reports cannot restart the action.
             if configured.action == .combinationAction { return false }
-            stop()
-            updateStatus(LocalizedMessage("button_mapping.permission.accessibility_expired"))
+            if !runtimePermissionsAreValid() {
+                releaseForRevokedPermissions()
+            }
             return false
         }
         AppLogger.shared.write(
@@ -1330,8 +1359,6 @@ final class HIDRemoteMonitor {
         repeatTimers.removeAll()
         nonRepeatableReleaseTimers.values.forEach { $0.cancel() }
         nonRepeatableReleaseTimers.removeAll()
-        nonRepeatableExpiryTimers.values.forEach { $0.cancel() }
-        nonRepeatableExpiryTimers.removeAll()
         nonRepeatablePressedButtons.removeAll()
         resetGestureRecognition()
         if appSwitcherSession.isActive { finishAppSwitcherLifecycle(reason: "common_phrases_opened", confirmed: false) }
@@ -1360,10 +1387,10 @@ final class HIDRemoteMonitor {
         repeatTimers.values.forEach { $0.cancel() }
         repeatTimers.removeAll()
         nativePassthroughUsages.removeAll()
+        usageExpiryTimers.values.forEach { $0.cancel() }
+        usageExpiryTimers.removeAll()
         nonRepeatableReleaseTimers.values.forEach { $0.cancel() }
         nonRepeatableReleaseTimers.removeAll()
-        nonRepeatableExpiryTimers.values.forEach { $0.cancel() }
-        nonRepeatableExpiryTimers.removeAll()
         nonRepeatablePressedButtons.removeAll()
         resetGestureRecognition()
         activeUsages.removeAll()
