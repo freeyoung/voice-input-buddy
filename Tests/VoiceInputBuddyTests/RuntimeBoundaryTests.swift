@@ -59,18 +59,35 @@ struct RuntimeBoundaryTests {
         monitor.disconnectSimulatedDevice()
     }
 
-    @Test func v1ImportReplacesExistingUnifiedOverrides() throws {
+    @Test func currentImportWithoutUnifiedBindingsClearsExistingOverrides() throws {
         let (defaults, name) = values()
         defer { defaults.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: defaults)
         var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
-        object["formatVersion"] = 1
         object.removeValue(forKey: "unifiedBaseBindings")
         settings.setBaseBinding(ConfiguredButtonAction(action: .commandQuit, shortcut: nil), for: .right, trigger: .singleClick, profileID: nil)
         #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick).action == .commandQuit)
         try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
         #expect(settings.unifiedBaseBindings.isEmpty)
         #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick).action == .arrowRight)
+    }
+
+    @Test func configurationUsesOneFormatAndRejectsOtherVersionsBeforeMutation() throws {
+        let (defaults, name) = values()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
+        #expect(object["formatVersion"] as? Int == PersonalizedConfiguration.currentFormatVersion)
+        settings.gainDB = 12
+        for version in [1, 3] {
+            object["formatVersion"] = version
+            do {
+                try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
+                Issue.record("Unsupported format was accepted")
+            } catch AppConfigurationError.unsupportedVersion {
+                #expect(settings.gainDB == 12)
+            }
+        }
     }
 
     @Test func disablingMappingRestoresPreviousActionAndSensibleDefaults() {

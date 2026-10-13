@@ -176,7 +176,7 @@ struct SessionRecoveryTests {
         #expect(writes == before)
     }
 
-    @Test func legacyImportPreservesApplicationLibraryButReplacesMappingOverrides() throws {
+    @Test func partialImportPreservesApplicationLibraryButReplacesMappingOverrides() throws {
         let (values, name) = defaults()
         defer { values.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: values)
@@ -188,7 +188,6 @@ struct SessionRecoveryTests {
         var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
         object.removeValue(forKey: "customApplicationProfiles")
         object.removeValue(forKey: "unifiedBaseBindings")
-        object["formatVersion"] = 1
         try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
         #expect(settings.customApplicationProfiles == [profile])
         #expect(settings.unifiedBaseBindings.isEmpty)
