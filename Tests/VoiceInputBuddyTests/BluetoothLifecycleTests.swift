@@ -385,12 +385,13 @@ struct BluetoothLifecycleTests {
         }
     }
 
-    @Test func unavailableBluetoothCancelsAWaitingReconnectAndReleasesTheManager() {
+    @Test(arguments: [BluetoothLifecyclePhase.waitingReconnect(12), .ready(12), .connecting(12), .awaitingCapabilities(12)])
+    func unavailableBluetoothCancelsReconnectAndReleasesTheManager(phase: BluetoothLifecyclePhase) {
         let generation: UInt64 = 12
 
         for event in [BluetoothCentralRecoveryEvent.unauthorized, .unsupported] {
             let transition = BluetoothCentralRecoveryPolicy.transition(
-                from: .waitingReconnect(generation),
+                from: phase,
                 generation: generation,
                 event: event,
                 shouldRun: true

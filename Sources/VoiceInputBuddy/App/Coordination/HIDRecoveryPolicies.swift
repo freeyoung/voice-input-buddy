@@ -25,6 +25,7 @@ enum HIDPermissionRecoveryPolicy {
         voiceKeyMode: VoiceKeyMode = .function,
         voiceFnTapModeEnabled: Bool = false,
         softwareVoiceKeyHeld: Bool = false,
+        monitoringInterrupted: Bool = false,
         previous: HIDPermissionSnapshot?,
         current: HIDPermissionSnapshot
     ) -> Bool {
@@ -33,11 +34,12 @@ enum HIDPermissionRecoveryPolicy {
                   customMappingEnabled ||
                       voiceKeyMode.requiresAccessibility ||
                       voiceFnTapModeEnabled ||
-                      softwareVoiceKeyHeld
+                      softwareVoiceKeyHeld || monitoringInterrupted
               ),
               let previous
         else { return false }
-        return previous != current
+        return previous != current || (monitoringInterrupted &&
+            current.inputMonitoringGranted && current.accessibilityGranted)
     }
 }
 

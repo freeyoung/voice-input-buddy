@@ -255,7 +255,11 @@ extension BridgeAppModel {
     }
 
     @discardableResult
-    func releaseVoiceKeyIfNeeded() -> Bool {
+    func releaseVoiceKeyIfNeeded(
+        releaseKey: (VoiceKeyMode) -> Bool = {
+            KeyboardInjector.setVoiceKeyPressed($0, isPressed: false)
+        }
+    ) -> Bool {
         guard voiceKeyLatch.isHeld else {
             heldVoiceKeyMode = nil
             pendingVoiceKeyMode = nil
@@ -273,20 +277,11 @@ extension BridgeAppModel {
             return true
         }
 
-        var forcedAfterPermissionChange = false
-        var released = KeyboardInjector.setVoiceKeyPressed(
-            heldVoiceKeyMode,
-            isPressed: false
-        )
-        if !released {
-            forcedAfterPermissionChange = true
-            released = KeyboardInjector.setVoiceKeyPressed(
-                heldVoiceKeyMode,
-                isPressed: false,
-                accessibilityTrusted: { true }
-            )
+        // A denied post must not erase the held-key safety state. Retry after permission recovery.
+        guard releaseKey(heldVoiceKeyMode) else {
+            AppLogger.shared.write("VOICE KEY cleanup deferred reason=release_failed mode=\(heldVoiceKeyMode.rawValue)")
+            return false
         }
-        guard released else { return false }
 
         voiceKeyLatch.reset()
         self.heldVoiceKeyMode = nil
@@ -299,8 +294,7 @@ extension BridgeAppModel {
         )
         AppLogger.shared.write(
             "VOICE KEY mode=\(heldVoiceKeyMode.rawValue) edge=up " +
-                "result=event_submitted target_response=unknown" +
-                (forcedAfterPermissionChange ? " forced_after_permission_change=true" : "")
+                "result=event_submitted target_response=unknown"
         )
         return true
     }

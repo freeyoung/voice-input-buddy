@@ -32,6 +32,7 @@ final class ShortcutCaptureMonitor {
     private let dispatchCallback: CallbackDispatcher
     private let modifierIsPressed: (UInt16) -> Bool
     private let lock = NSLock()
+    private var tapRecoveryGeneration = 0
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var didCapture = false
@@ -101,6 +102,7 @@ final class ShortcutCaptureMonitor {
     }
 
     func stop() {
+        tapRecoveryGeneration += 1
         EventTapPort.release(port: eventTap, source: runLoopSource)
         runLoopSource = nil
         eventTap = nil
@@ -108,8 +110,20 @@ final class ShortcutCaptureMonitor {
 
     func handle(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let eventTap {
-                CGEvent.tapEnable(tap: eventTap, enable: true)
+            tapRecoveryGeneration += 1
+            let generation = tapRecoveryGeneration
+            if let port = eventTap {
+                EventTapPort.deferRecovery(type: type,
+                    dispatch: { DispatchQueue.main.async(execute: $0) },
+                    isCurrent: { [weak self] in
+                        self?.tapRecoveryGeneration == generation && self?.eventTap === port
+                    },
+                    permissionsGranted: { [weak self] in self?.accessibilityTrusted() == true },
+                    enable: { CGEvent.tapEnable(tap: port, enable: true) },
+                    stop: { [weak self] in
+                        self?.stop()
+                        AppLogger.shared.write("SHORTCUT CAPTURE stopped reason=system_disabled_or_permission_revoked")
+                    })
             }
             return false
         }

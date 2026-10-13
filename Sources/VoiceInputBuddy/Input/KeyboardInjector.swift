@@ -921,6 +921,7 @@ enum KeyboardInjector {
         bundleIdentifier: String,
         attempt: Int
     ) -> Bool {
+        AccessibilityMessaging.prepareQueries()
         let applicationElement = AXUIElementCreateApplication(processIdentifier)
         let primary = AXUIElementSetAttributeValue(
             applicationElement,
@@ -1321,11 +1322,10 @@ enum KeyboardInjector {
             selectedContext: axBool(window, attribute: kAXSelectedAttribute) ?? false
         )]
         var visitedElements: [CFHashCode: [AXUIElement]] = [CFHash(window): [window]]
-        var visitedCount = 0
+        var budget = AccessibilityTraversalBudget(maximumNodes: maximumAccessibilityTraversalCount)
         var candidates: [(element: AXUIElement, snapshot: AccessibilityTextCandidate)] = []
 
-        while let current = stack.popLast(), visitedCount < maximumAccessibilityTraversalCount {
-            visitedCount += 1
+        while let current = stack.popLast(), budget.admitNode() {
             let ownContext = axSemanticText(current.element)
             let combinedContext = [current.context, ownContext]
                 .filter { !$0.isEmpty }
@@ -1773,6 +1773,7 @@ enum KeyboardInjector {
     }
 
     private static func axAttribute(_ element: AXUIElement, attribute: String) -> CFTypeRef? {
+        AccessibilityMessaging.prepareQueries()
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else {
             return nil

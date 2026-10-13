@@ -167,6 +167,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
         _ element: AXUIElement,
         attribute: CFString
     ) -> AXUIElement? {
+        AccessibilityMessaging.prepareQueries()
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success,
               let value,
@@ -176,6 +177,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
     }
 
     private static func axString(_ element: AXUIElement, attribute: CFString) -> String {
+        AccessibilityMessaging.prepareQueries()
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success else {
             return ""
@@ -184,6 +186,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
     }
 
     private static func axBool(_ element: AXUIElement, attribute: CFString) -> Bool? {
+        AccessibilityMessaging.prepareQueries()
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success else {
             return nil

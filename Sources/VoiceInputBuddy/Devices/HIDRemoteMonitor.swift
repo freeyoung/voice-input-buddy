@@ -111,6 +111,8 @@ final class HIDRemoteMonitor {
     var onRuntimeButton: ((UUID?, RemoteButton, RemoteButtonPhase) -> Bool)?
     var claimsRuntimeButton: ((UUID?, RemoteButton) -> Bool)?
     var onInputReset: ((UUID?) -> Void)?
+    var onMonitoringInterrupted: (() -> Void)?
+    var isMonitoring: Bool { manager != nil }
     var onInternalAction: ((UUID?, ButtonAction) -> Void)?
 
     init(
@@ -286,6 +288,7 @@ final class HIDRemoteMonitor {
     deinit { stop() }
 
     func stop() {
+        if ownsEventSuppressor { eventSuppressor.stop() }
         permissionPollSubscription?.cancel()
         permissionPollSubscription = nil
         if let manager {
@@ -297,7 +300,14 @@ final class HIDRemoteMonitor {
             )
         }
         resetInputState()
-        if ownsEventSuppressor { eventSuppressor.stop() }
+        let closingDeviceCount = probedDevices.count + (activeDevice == nil ? 0 : 1)
+        let hasIOKitResources = manager != nil || closingDeviceCount > 0
+        defer {
+            if hasIOKitResources { diagnosticLogger("HID TEARDOWN phase=completed") }
+        }
+        if hasIOKitResources {
+            diagnosticLogger("HID TEARDOWN phase=begin devices=\(closingDeviceCount) manager=\(manager != nil)")
+        }
         probedDevices.forEach {
             IOHIDDeviceClose($0, IOOptionBits(kIOHIDOptionsTypeNone))
         }
@@ -597,6 +607,7 @@ final class HIDRemoteMonitor {
         }
         guard runtimePermissionsAreValid() else {
             diagnosticLogger("HID REPORT rejected reason=runtime_permission_revoked source=simulated")
+            releaseForRevokedPermissions()
             return
         }
         parseAndProcess(reportID: reportID, data: data, source: "simulated")
@@ -1412,7 +1423,11 @@ final class HIDRemoteMonitor {
     }
 
     private func releaseForRevokedPermissions() {
+        // This may be a shared tap. No monitor can safely filter input after revocation.
+        eventSuppressor.stop()
+        diagnosticLogger("HID TEARDOWN reason=permission_revoked filter=stopped")
         stop()
+        onMonitoringInterrupted?()
         updateStatus(LocalizedMessage("button_mapping.permission.system_expired"))
         AppLogger.shared.write("HID RELEASED permission_revoked")
     }
