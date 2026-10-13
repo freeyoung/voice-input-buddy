@@ -711,7 +711,6 @@
 "onboarding.voice_tool.guide.open_other.detail" = "Start the app you want to use and confirm that it supports voice typing.";
 "onboarding.voice_tool.guide.configure_other" = "Set its voice shortcut to Fn";
 "onboarding.voice_tool.guide.configure_other.detail" = "In the app's settings, set its voice-typing shortcut to Fn.";
-"onboarding.voice_tool.guide.select_microphone" = "Choose the same microphone";
 "onboarding.voice_tool.guide.select_microphone.detail" = "In the voice app, choose the same microphone selected on Voice Input Buddy's audio page.";
 "onboarding.voice_tool.guide.release_system_fn" = "Set the macOS Fn action to Do Nothing";
 "onboarding.voice_tool.guide.release_wechat_fn" = "Clear WeChat app Fn shortcuts";

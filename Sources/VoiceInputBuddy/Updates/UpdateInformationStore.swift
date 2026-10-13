@@ -39,6 +39,7 @@ enum UpdateFeedResolver {
 
     private static let maximumFeedSize = 1 * 1_024 * 1_024
 
+    #if DEBUG
     static func testInjectedFeed(
         environment: [String: String],
         assetName: String,
@@ -58,6 +59,8 @@ enum UpdateFeedResolver {
         else { return nil }
         return ResolvedFeed(url: url, version: version, isPreRelease: true)
     }
+
+    #endif
 
     static func preferredFeed(
         stable: ResolvedFeed?,
