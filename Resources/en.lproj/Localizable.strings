@@ -452,12 +452,6 @@
 "diagnostics.logs.show_in_finder" = "Show Logs in Finder";
 "diagnostics.logs.copy_summary" = "Copy Diagnostic Summary";
 "diagnostics.logs.send" = "Send Diagnostics";
-"diagnostics.upload.ready" = "Diagnostic summaries are copied locally; nothing is uploaded.";
-"diagnostics.upload.sending" = "Sending diagnostic information…";
-"diagnostics.upload.success" = "Diagnostic events submitted: %1$@.";
-"diagnostics.upload.not_configured" = "Diagnostic service is not configured in this build.";
-"diagnostics.upload.no_logs" = "There is no diagnostic information to send.";
-"diagnostics.upload.failed" = "Sending failed. Check your network connection and try again.";
 "common.status.connected" = "Connected";
 "common.status.connecting" = "Connecting";
 "common.status.preparing" = "Preparing";

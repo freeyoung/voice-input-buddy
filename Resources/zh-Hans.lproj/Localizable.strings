@@ -452,12 +452,6 @@
 "diagnostics.logs.show_in_finder" = "在 Finder 中显示日志";
 "diagnostics.logs.copy_summary" = "复制诊断摘要";
 "diagnostics.logs.send" = "发送诊断信息";
-"diagnostics.upload.ready" = "诊断摘要仅在本机复制，不会上传。";
-"diagnostics.upload.sending" = "正在发送安全诊断事件…";
-"diagnostics.upload.success" = "已提交 %1$@ 条安全诊断事件。";
-"diagnostics.upload.not_configured" = "此版本尚未配置诊断服务。";
-"diagnostics.upload.no_logs" = "当前没有可发送的安全诊断事件。";
-"diagnostics.upload.failed" = "发送失败，请检查网络后重试。";
 "common.status.connected" = "已连接";
 "common.status.connecting" = "连接中";
 "common.status.preparing" = "准备中";

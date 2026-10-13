@@ -96,15 +96,9 @@ extension SettingsView {
                     Text("diagnostics.logs.last_entry")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                    Text(model.diagnosticUploadStatus.text(using: localization))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 8) {
-                    EmptyView()
-                        .compatibilityButtonStyle(.prominent)
-                        .disabled(model.isSendingDiagnosticLogs)
                     Button("diagnostics.logs.show_in_finder") { model.openLogFolder() }
                         .compatibilityButtonStyle(.standard)
                     Button("diagnostics.logs.copy_summary") { copySettingsDiagnosticSummary() }

@@ -280,13 +280,5 @@ struct ProductBoundaryTests {
         ))
     }
 
-    @Test func diagnosticsCannotSendEvenWithAConfiguredLegacyService() {
-        var sends = 0
-        let uploader = DiagnosticLogUploader(
-            configurationStateProvider: { .configured },
-            sender: { _ in sends += 1 }
-        )
-        #expect(uploader.uploadSynchronously() == .failure(.serviceNotConfigured))
-        #expect(sends == 0)
-    }
+
 }

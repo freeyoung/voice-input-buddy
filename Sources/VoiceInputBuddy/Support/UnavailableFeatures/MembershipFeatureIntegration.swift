@@ -113,11 +113,3 @@ final class MembershipFeatureIntegration: ObservableObject, @unchecked Sendable 
     }
 
 }
-extension MembershipFeatureIntegration: PrivateDiagnosticUploadProvider {
-    func pendingPrivateDiagnosticRecords() async -> [PrivateDiagnosticUploadRecord] {
-        return []
-    }
-
-    func markPrivateDiagnosticRecordsUploaded(_ recordIDs: Set<String>) async {
-    }
-}

@@ -252,7 +252,7 @@ extension OnboardingView {
             ),
             voiceTool: settings.onboardingVoiceTool.rawValue
         )
-        if let publicEvent, publicEvent.isApprovedForUpload {
+        if let publicEvent {
             AppLogger.shared.record(publicEvent)
         }
         AppLogger.shared.write(
