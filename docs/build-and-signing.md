@@ -98,6 +98,8 @@ chmod 644 scripts/signing/release-certificate.pem
     -noout -subject -dates -fingerprint -sha1
 ```
 
+公开 PEM 文件本身就是签名校验基准，脚本每次从它计算指纹。在自己的 fork 中替换证书时，也应同步更新 `docs/releases.md` 中展示的指纹和有效期；不要只改文档中的指纹。
+
 使用已登录的 GitHub CLI 上传两个 Secrets。下例通过标准输入传递内容，不在命令参数或输出中显示私钥与密码；不要开启 shell 的 `set -x`。
 
 ```bash
@@ -133,15 +135,19 @@ Base64 只是编码，保密依赖 GitHub Secrets。公开证书与 Secrets 中�
 
 1. 校验 PKCS#12 中的证书与仓库公开证书一致。
 2. 在 runner 创建临时 Keychain，导入身份并允许 `codesign` 使用私钥。
-3. 临时加入 Keychain 搜索列表，供 `codesign` 构建证书链；设置 `CODE_SIGN_IDENTITY` 和 `CODE_SIGN_KEYCHAIN`。
+3. 临时加入 Keychain 搜索列表，供 `codesign` 查找签名身份并构建证书链；即使指定 `--keychain`，搜索列表仍会参与。设置 `CODE_SIGN_IDENTITY` 和 `CODE_SIGN_KEYCHAIN`。
 4. 分别为 App、驱动签名；验证固定的 Bundle ID 与证书指纹身份规则。
-5. 立即删除导入用的身份包，并通过 `always()` 恢复搜索列表、删除临时 Keychain。
+5. setup 结束时立即删除导入用的身份包，并通过 `always()` 尝试恢复搜索列表、删除临时 Keychain。清理失败只记录不含敏感信息的警告，不阻断已经完成的构建；保留清理状态供重试，临时材料最终随 runner 回收。
+
+setup 会拒绝再次初始化已有活动状态，保留原 Keychain 和已写入 `GITHUB_ENV` 的变量，不重复追加。若先前失败尚未创建身份，则允许重用空目录重新尝试。
 
 此流程不调用 `add-trusted-cert` 或修改任何证书信任设置，也不要求用户安装或信任根证书。不要为解决签名查找失败去修改系统信任链。
 
 本地构建若已有可用签名身份，可设置 `CODE_SIGN_IDENTITY` 和 `CODE_SIGN_KEYCHAIN` 使用它；构建脚本本身不会导入或信任证书。无需固定身份的本地构建，使用默认 ad-hoc 即可。
 
 ## 验证与排错
+
+`security import` 没有通过标准输入传入导出密码的选项，因此调用 `security import ... -P <password>` 时，密码会短暂出现在该进程的命令行参数中。此 workflow 使用每个 job 独立的临时 GitHub-hosted runner，脚本刻意不打印命令参数或工具输出，以限制暴露范围。不要开启 `set -x`、输出完整进程参数或把含密码的命令复制到日志；不能据此认为可以安全打印参数。其他 `security` 子命令使用的临时 Keychain 密码也按同样原则处理。
 
 构建产物可直接检查：
 

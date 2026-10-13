@@ -34,7 +34,7 @@ main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经
 
 两者都由 `gh secret set` 通过标准输入上传。私钥、PKCS#12 和密码不得进入 Git、产物或日志，应另行安全备份。Base64 不是加密。不要在构建中生成新证书，或用同名的新证书替代丢失的原证书。
 
-只有 main 的 push 构建导入身份；PR 构建不读取这两个 Secrets，仍使用 ad-hoc 签名。`release-signing-keychain.py setup` 先校验 Secrets 中的证书与仓库公开证书一致，再创建 runner 的临时 Keychain，仅允许签名工具读取私钥。`CODE_SIGN_IDENTITY` 指定证书指纹，`CODE_SIGN_KEYCHAIN` 指定临时 Keychain。此 Keychain 仅临时加入搜索列表，不添加任何证书信任设置；签名结束后 `always()` 清理恢复搜索列表、删除 Keychain，导入用的 PKCS#12 文件则在 setup 结束时立即删除。缺少 Secrets、证书不匹配或签名失败均停止发布，不降级到 ad-hoc 签名。
+只有 main 的 push 构建导入身份；PR 构建不读取这两个 Secrets，仍使用 ad-hoc 签名。`release-signing-keychain.py setup` 先校验 Secrets 中的证书与仓库公开证书一致，再创建 runner 的临时 Keychain，仅允许签名工具读取私钥。`CODE_SIGN_IDENTITY` 指定证书指纹，`CODE_SIGN_KEYCHAIN` 指定临时 Keychain。此 Keychain 仅临时加入搜索列表，供签名身份查找和证书链构建，不添加任何证书信任设置；签名结束后 `always()` 尝试恢复搜索列表、删除 Keychain，清理失败仅告警并保留状态供重试，不阻断已完成的构建。导入用的 PKCS#12 文件在 setup 结束时立即删除。活动状态存在时拒绝重复 setup，保留原 Keychain 与环境变量。缺少 Secrets、证书不匹配或签名失败均停止发布，不降级到 ad-hoc 签名。
 
 打包前，`verify-release-signing.py` 校验 App 和驱动确实由固定证书签名，并具有绑定各自 Bundle ID 与证书指纹的固定 designated requirement。Sparkle 的更新包签名仍使用独立的 `SPARKLE_PRIVATE_KEY`，职责不同，不替换它。
 

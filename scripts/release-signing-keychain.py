@@ -86,7 +86,8 @@ def setup(directory):
              '-T', '/usr/bin/codesign'])
         run(['security', 'set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:',
              '-s', '-k', keychain_password, keychain])
-        # codesign consults the search list when constructing the certificate chain.
+        # codesign also consults the search list for identity lookup and chain construction,
+        # even when the signing command explicitly specifies --keychain.
         # This does not install a trusted root or change any certificate trust setting.
         run(['security', 'list-keychains', '-d', 'user', '-s', keychain, *search_list])
         with open(os.environ['GITHUB_ENV'], 'a') as environment:
