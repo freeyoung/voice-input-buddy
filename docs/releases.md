@@ -8,6 +8,12 @@
 
 App 的 CFBundleShortVersionString 为数字日期（例如 26.10.11），CFBundleVersion 为提交总数；安装包内部使用数字日期加提交总数。Git tag、Release 标题与下载文件采用完整 `vYY-MM-DD.NNN` 格式。
 
+## 更新摘要
+
+每次 workflow 先生成同一份版本变更，再供两种架构的 appcast 和 GitHub Release 使用。App 的“检查更新”从 appcast 的 description 读取这份摘要。Release 不再重复安装、卸载和证书长文，只保留相应文档与完整变化链接。
+
+基线是当前发布提交第一父链上最近的已发布正式 Release；排除草稿、预发布、当前提交标签和其他分支的 Release。使用第一父链上的合并 PR 标题，避免把 PR 和内部提交重复列出；squash 和直接提交也会保留。没有已发布基线时列出首次发布变化，未发布的 Git tag 不截断摘要。历史不完整或已发布标签无法解析时停止生成，避免静默遗漏变化。重跑已有 Release 仍不覆盖其内容。
+
 ## 安装包与源码
 
 - `Voice_Input_Buddy_vYY-MM-DD.NNN_macOS_arm64.pkg` / `*_macOS_intel.pkg`：App 与驱动的一体安装包。
@@ -19,7 +25,7 @@ Release 只附这三个 PKG，不额外上传 SHA 文件、TXT 更新摘要、ap
 
 旧开发版本若放在其他目录，应退出旧版并改用 `/Applications/Voice Input Buddy.app`，避免同时运行两个副本。首次安装和更新后请核对系统权限。
 
-main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经 Developer ID Installer 签名和 Apple 公证。Release 说明会如实标注，系统仍可能阻止安装。此流程没有关闭 Gatekeeper、添加受信任根证书、修改证书信任设置或复用上游发布密钥。Developer ID 签名与公证需要后续配置本项目自己的凭据。
+main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经 Developer ID Installer 签名和 Apple 公证。安装与签名限制在本文说明，Release 变更摘要链接到本文，系统仍可能阻止安装。此流程没有关闭 Gatekeeper、添加受信任根证书、修改证书信任设置或复用上游发布密钥。Developer ID 签名与公证需要后续配置本项目自己的凭据。
 
 ## 固定发布签名身份
 
