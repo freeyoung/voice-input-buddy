@@ -7,8 +7,6 @@ final class AppSettings: ObservableObject {
 
     enum Keys {
         static let gainDB = "gainDB"
-        static let selectedAudioDeviceUID = "selectedAudioDeviceUID"
-        static let lastKnownAudioDeviceUID = "lastKnownAudioDeviceUID"
         static let customMappingEnabled = "customMappingEnabled"
         static let buttonBindings = "buttonBindings"
         static let buttonShortcuts = "buttonShortcuts"
@@ -57,20 +55,13 @@ final class AppSettings: ObservableObject {
     let defaults: UserDefaults
 
     @Published var gainDB: Double {
-        didSet { defaults.set(gainDB, forKey: Keys.gainDB) }
-    }
-
-    @Published var selectedAudioDeviceUID: String {
         didSet {
-            defaults.set(selectedAudioDeviceUID, forKey: Keys.selectedAudioDeviceUID)
-            if !selectedAudioDeviceUID.isEmpty {
-                lastKnownAudioDeviceUID = selectedAudioDeviceUID
-                defaults.set(selectedAudioDeviceUID, forKey: Keys.lastKnownAudioDeviceUID)
-            }
+            defaults.set(gainDB, forKey: Keys.gainDB)
+            saveSelectedRemoteGain()
         }
     }
 
-    private(set) var lastKnownAudioDeviceUID: String
+    var selectedAudioDeviceUID: String { DoubaoAudioDevicePolicy.deviceUID }
 
     @Published var customMappingEnabled: Bool {
         didSet { defaults.set(customMappingEnabled, forKey: Keys.customMappingEnabled) }
@@ -336,12 +327,6 @@ final class AppSettings: ObservableObject {
         onboardingCompletedVersion >= Self.currentOnboardingVersion
     }
 
-    var hasHistoricalAudioConfiguration: Bool {
-        isOnboardingComplete || firstUseEvents.contains {
-            ($0.kind == .passed && $0.step == .audio) || $0.kind == .completed
-        }
-    }
-
     /// Keys whose stored data existed but could not be decoded on the last load. The raw
     /// bytes are preserved under "<key>.corrupt" so a reset is recoverable and visible
     /// instead of looking like a first run.
@@ -405,13 +390,6 @@ final class AppSettings: ObservableObject {
         gainDB = defaults.object(forKey: Keys.gainDB) == nil
             ? 10.0
             : defaults.double(forKey: Keys.gainDB)
-        let persistedAudioDeviceUID = defaults.string(forKey: Keys.selectedAudioDeviceUID) ?? ""
-        selectedAudioDeviceUID = persistedAudioDeviceUID
-        lastKnownAudioDeviceUID = defaults.string(forKey: Keys.lastKnownAudioDeviceUID) ?? persistedAudioDeviceUID
-        if defaults.string(forKey: Keys.lastKnownAudioDeviceUID) == nil,
-           !persistedAudioDeviceUID.isEmpty {
-            defaults.set(persistedAudioDeviceUID, forKey: Keys.lastKnownAudioDeviceUID)
-        }
         customMappingEnabled = defaults.bool(forKey: Keys.customMappingEnabled)
 
         if let decoded = Self.decodeSetting(
@@ -606,6 +584,7 @@ final class AppSettings: ObservableObject {
                 : decoded.first?.id
             if let selectedRemoteProfileID,
                let selected = decoded.first(where: { $0.id == selectedRemoteProfileID }) {
+                if let storedGain = selected.gainDB, storedGain.isFinite, (0...24).contains(storedGain) { gainDB = storedGain }
                 buttonBindings = Self.defaultBindings.merging(selected.mappings.parsedButtonBindings) {
                     _, saved in saved
                 }

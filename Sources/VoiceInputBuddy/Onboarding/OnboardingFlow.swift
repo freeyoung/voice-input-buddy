@@ -12,7 +12,7 @@ enum OnboardingStep: String, CaseIterable, Codable {
 
     /// Match the main navigation: environment, connection, buttons, then integration.
     static let visibleCases: [Self] = [
-        .permissions, .remoteAvailability, .remote, .audio, .controls, .voiceTool,
+        .permissions, .remoteAvailability, .remote, .controls, .audio, .voiceTool,
         .voiceTest, .complete,
     ]
 
@@ -683,7 +683,7 @@ struct OnboardingCapabilities: Equatable {
 }
 
 enum OnboardingAudioSelectionPolicy {
-    private static let supportedUIDs = ["BuddyMic2ch_UID", "BlackHole2ch_UID"]
+    private static let supportedUIDs = [DoubaoAudioDevicePolicy.deviceUID]
 
     static func isSupportedDevice(uid: String, name: String) -> Bool {
         supportedUIDs.contains(uid)
@@ -693,7 +693,7 @@ enum OnboardingAudioSelectionPolicy {
         selectedUID: String,
         availableSupportedUIDs: some Sequence<String>
     ) -> Bool {
-        !selectedUID.isEmpty && availableSupportedUIDs.contains(selectedUID)
+        selectedUID == DoubaoAudioDevicePolicy.deviceUID && availableSupportedUIDs.contains(selectedUID)
     }
 }
 
@@ -747,6 +747,10 @@ enum OnboardingFlowPolicy {
         !remoteConnected && remoteButtonObserved && !recoveryRequested
     }
 
+    static func shouldAdvanceDriverCheck(step: OnboardingStep, driverInstalled: Bool, outputReady: Bool) -> Bool {
+        step == .audio && driverInstalled && outputReady
+    }
+
     static func canContinue(
         from step: OnboardingStep,
         voiceTool: OnboardingVoiceTool,
@@ -771,7 +775,7 @@ enum OnboardingFlowPolicy {
         case .audio:
             return capabilities.microphoneDriverInstalled &&
                 capabilities.audioOutputSelected &&
-                (controlMethod.usesOnDemandAudioOutput || capabilities.audioReady)
+                capabilities.audioReady
         case .voiceTest:
             return capabilities.voiceSessionStarted &&
                 capabilities.voiceSamplesReceived &&

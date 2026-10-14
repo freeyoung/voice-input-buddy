@@ -1,0 +1,98 @@
+import Foundation
+import Testing
+@testable import VoiceInputBuddy
+
+@Suite("Remote gain and automatic driver setup")
+@MainActor
+struct RemoteGainAndDriverTests {
+    @Test func gainsPersistIndependentlyAndFollowTheRecordingDevice() throws {
+        let suite = "remote-gain-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let firstBluetooth = UUID(), secondBluetooth = UUID()
+        let first = settings.registerBluetoothRemote(identifier: firstBluetooth, model: .rc003)
+        let second = settings.registerBluetoothRemote(identifier: secondBluetooth, model: .chromecastVoiceRemote)
+        settings.selectRemoteProfile(first)
+        settings.setGainDB(6, for: first)
+        settings.setGainDB(18, for: second)
+        #expect(settings.gainDB == 6)
+        #expect(settings.gainDB(forBluetoothIdentifier: secondBluetooth) == 18)
+        settings.selectRemoteProfile(second)
+        #expect(settings.gainDB == 18)
+        #expect(settings.gainDB(forBluetoothIdentifier: firstBluetooth) == 6)
+        settings.gainDB = 12 // The voice-test slider edits only the selected remote.
+        #expect(settings.gainDB(for: first) == 6)
+        #expect(settings.gainDB(for: second) == 12)
+        for invalid in [Double.nan, .infinity, -1, 25] { settings.setGainDB(invalid, for: first) }
+        #expect(settings.gainDB(for: first) == 6)
+        let restored = AppSettings(defaults: defaults)
+        #expect(restored.gainDB(for: first) == 6)
+        #expect(restored.gainDB(for: second) == 12)
+        #expect(restored.gainDB == 12)
+        let exported = try settings.exportedConfigurationData()
+        restored.setGainDB(0, for: first)
+        restored.setGainDB(0, for: second)
+        try restored.importConfiguration(from: exported)
+        #expect(restored.gainDB(for: first) == 6)
+        #expect(restored.gainDB(for: second) == 12)
+        #expect(restored.configurationImportNotice == nil)
+    }
+
+    @Test func firstRemoteAdoptsThePreparedGainWithoutChangingLaterDeviceDefaults() throws {
+        let suite = "first-remote-gain-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.gainDB = 18
+        let first = settings.registerBluetoothRemote(identifier: UUID(), model: .rc003)
+        settings.selectRemoteProfile(first)
+        #expect(settings.gainDB(for: first) == 18)
+        let second = settings.registerBluetoothRemote(identifier: UUID(), model: .rc003)
+        settings.selectRemoteProfile(second)
+        #expect(settings.gainDB == 10)
+        #expect(settings.gainDB(for: first) == 18)
+    }
+
+    @Test func fixedOutputCannotBeOverriddenByStoredOrImportedSelection() throws {
+        let suite = "fixed-output-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("speaker", forKey: "selectedAudioDeviceUID")
+        defaults.set("BlackHole2ch_UID", forKey: "lastKnownAudioDeviceUID")
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
+        var payload = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
+        #expect(payload["selectedAudioDeviceUID"] == nil)
+        payload["selectedAudioDeviceUID"] = "speaker"
+        try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: payload))
+        #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
+        #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "speaker", name: DoubaoAudioDevicePolicy.deviceName))
+        #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "BlackHole2ch_UID", name: "BlackHole 2ch"))
+    }
+
+    @Test func driverStepRequiresAConfiguredOutputEvenForOnDemandSources() {
+        var capabilities = OnboardingCapabilities(microphoneDriverInstalled: true, audioOutputSelected: true)
+        for method in [OnboardingControlMethod.physicalRemote, .iPhoneApp, .webRemote] {
+            #expect(!OnboardingFlowPolicy.canContinue(from: .audio, voiceTool: .unselected,
+                controlMethod: method, capabilities: capabilities))
+        }
+        capabilities.audioReady = true
+        #expect(OnboardingFlowPolicy.canContinue(from: .audio, voiceTool: .unselected,
+            controlMethod: .webRemote, capabilities: capabilities))
+    }
+
+    @Test func driverCheckAdvancesOnlyWhenBothChecksPassAndKeepsButtonsBeforeDriver() {
+        for installed in [false, true] {
+            for ready in [false, true] {
+                #expect(OnboardingFlowPolicy.shouldAdvanceDriverCheck(step: .audio,
+                    driverInstalled: installed, outputReady: ready) == (installed && ready))
+                #expect(!OnboardingFlowPolicy.shouldAdvanceDriverCheck(step: .controls,
+                    driverInstalled: installed, outputReady: ready))
+            }
+        }
+        #expect(OnboardingStep.visibleCases[2] == .remote)
+        #expect(OnboardingStep.visibleCases[3] == .controls)
+        #expect(OnboardingStep.visibleCases[4] == .audio)
+    }
+}

@@ -102,16 +102,18 @@ extension OnboardingView {
                         .layoutPriority(1)
                 }
                 Spacer(minLength: 0)
-                onboardingActionButton(id: "continue", action: continueFlow) {
-                    Text(localization.text(primaryActionKey))
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(minWidth: 118)
-                        .fixedSize(horizontal: true, vertical: false)
+                if settings.onboardingStep != .audio {
+                    onboardingActionButton(id: "continue", action: continueFlow) {
+                        Text(localization.text(primaryActionKey))
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(minWidth: 118)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!canContinue)
+                    .accessibilityIdentifier("onboarding.continue")
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!canContinue)
-                .accessibilityIdentifier("onboarding.continue")
             }
             .padding(.top, 14)
         }

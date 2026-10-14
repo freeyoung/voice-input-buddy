@@ -45,44 +45,23 @@ extension BridgeAppModel {
     func prepareAudioStartup(generation: UInt64, devices: [AudioDeviceInfo],
         configureOutput: ((String, @escaping (Bool) -> Void) -> Void)? = nil) {
         guard started, audioStartupGeneration == generation else { return }
-        let selection = VirtualAudioSelectionRecoveryPolicy.resolve(
-            selectedUID: settings.selectedAudioDeviceUID,
-            rememberedUID: settings.lastKnownAudioDeviceUID,
-            availableDevices: devices,
-            hasHistoricalConfiguration: settings.hasHistoricalAudioConfiguration
-        )
-        if selection.source != .currentSelection {
-            AppLogger.shared.write(
-                "AUDIO SELECTION RECOVERY phase=\(selection.uid == nil ? "skipped" : "candidate") " +
-                    "source=\(selection.source.rawValue) reason=\(selection.reason?.rawValue ?? "none") " +
-                    "kind=\(selection.kind.rawValue) supported_candidates=\(selection.supportedCandidateCount)"
-            )
-        }
         audioConfigurationGeneration &+= 1
         let configurationGeneration = audioConfigurationGeneration
         let configure = configureOutput ?? { self.audioOutput.configureAsync(deviceUID: $0, completion: $1) }
-        configure(selection.uid ?? "") { [weak self] configured in
+        configure(settings.selectedAudioDeviceUID) { [weak self] configured in
             DispatchQueue.main.async { [weak self] in
                 self?.finishAudioStartup(generation: generation,
                     configurationGeneration: configurationGeneration, configured: configured,
-                    selection: selection, devices: devices)
+                    devices: devices)
             }
         }
     }
 
     func finishAudioStartup(generation: UInt64, configurationGeneration: UInt64,
-        configured: Bool, selection: VirtualAudioSelectionRecoveryDecision, devices: [AudioDeviceInfo]) {
+        configured: Bool, devices: [AudioDeviceInfo]) {
         // stop() owns teardown. An old completion must never tear down a newer route.
         guard started, audioStartupGeneration == generation else { return }
         if audioConfigurationGeneration == configurationGeneration {
-            if configured, selection.source != .currentSelection,
-               let recoveredUID = selection.uid, settings.selectedAudioDeviceUID.isEmpty {
-                settings.selectedAudioDeviceUID = recoveredUID
-                AppLogger.shared.write(
-                    "AUDIO SELECTION RECOVERY phase=completed result=restored " +
-                        "source=\(selection.source.rawValue) kind=\(selection.kind.rawValue)"
-                )
-            }
             audioStatus = audioOutput.status
             isAudioOutputReady = audioOutput.isReadyForTestTone
             testToneStatus = isAudioOutputReady
@@ -110,26 +89,6 @@ extension BridgeAppModel {
     private static func audioDevicesDiagnostic(_ devices: [AudioDeviceInfo]) -> String {
         "outputs={\(CoreAudioDeviceCatalog.outputDevicesDiagnostic(devices))} " +
             CoreAudioDeviceCatalog.routeDiagnostic()
-    }
-
-    var hasDoubaoAudioDevice: Bool {
-        DoubaoAudioDevicePolicy.device(in: audioDevices) != nil
-    }
-
-    func selectDoubaoAudioDevice() {
-        guard let device = DoubaoAudioDevicePolicy.device(in: audioDevices) else {
-            doubaoAudioStatus = LocalizedMessage(
-                "audio.compatibility.device_missing",
-                arguments: [DoubaoAudioDevicePolicy.deviceName]
-            )
-            return
-        }
-        settings.selectedAudioDeviceUID = device.uid
-        applyAudioSettings(reason: "doubao_device_selected")
-        doubaoAudioStatus = LocalizedMessage(
-            "audio.compatibility.device_selected",
-            arguments: [device.name]
-        )
     }
 
     func openDoubaoDriverInstructions(using localization: LocalizationStore) {

@@ -860,13 +860,13 @@
 "onboarding.web_remote.scan" = "用微信扫描小程序码";
 "onboarding.web_remote.retry" = "重新生成二维码";
 "onboarding.web_remote.button_detail" = "连接后，在 Voice Input Buddy 中按任意普通按键。";
-"onboarding.audio.title" = "选择虚拟音频设备";
-"onboarding.audio.detail" = "请选择 Voice Input Buddy。旧设备可选 Voice Input Buddy 或 BlackHole 2ch。扬声器不能用于语音输入。";
-"onboarding.audio.device_detail" = "请安装或启用 Voice Input Buddy，再重新检查。已有 Voice Input Buddy 或 BlackHole 2ch 可继续使用。";
+"onboarding.audio.title" = "检查虚拟麦克风驱动";
+"onboarding.audio.detail" = "自动检查驱动并配置 Voice Input Buddy Mic。检测成功后会自动进入下一步，无需选择设备。";
+"onboarding.audio.device_detail" = "请安装 Voice Input Buddy Mic 驱动，安装后仍未检测到设备时，请重启 Mac。";
 "onboarding.audio.no_devices" = "未检测到支持的虚拟音频设备";
 "onboarding.audio.selected" = "已选择 %1$@";
-"onboarding.audio.select_required" = "请选择支持的虚拟音频设备";
-"onboarding.audio.select_detail" = "从上方选择 Voice Input Buddy 或 BlackHole 2ch。";
+"onboarding.audio.select_required" = "未检测到 Voice Input Buddy Mic";
+"onboarding.audio.select_detail" = "请确认驱动已安装；如果设备仍未出现，请重启 Mac。";
 "onboarding.audio.refresh" = "重新检查";
 "onboarding.audio.on_demand_detail" = "手机开始语音时会自动连接所选设备；下一步将通过真实声音和文字进行验证。";
 "onboarding.voice_test.title" = "亲自说一句，确认真的能用";
@@ -929,7 +929,7 @@
 "onboarding.side.control_selected" = "控制方式已选择";
 "onboarding.side.button_received" = "控制按键已收到";
 "onboarding.side.device_found" = "支持的虚拟音频设备已检测";
-"onboarding.side.device_selected" = "虚拟音频设备已选中";
+"onboarding.side.device_selected" = "已自动指定 Voice Input Buddy Mic";
 "onboarding.side.audio_ready" = "音频输出正常";
 "onboarding.side.audio_on_demand" = "语音开始时连接音频";
 "onboarding.side.voice_key" = "语音键已按下并松开";
@@ -956,14 +956,14 @@
 "onboarding.recovery.remote.button_not_ready.title" = "还没有收到控制按键";
 "onboarding.recovery.remote.button_not_ready.detail" = "重新建立连接，然后按当前控制界面上的任意普通按键。";
 "onboarding.recovery.remote.button_not_ready.action" = "重新检测按键";
-"onboarding.recovery.audio.no_output_device.title" = "请选择虚拟音频设备";
-"onboarding.recovery.audio.no_output_device.detail" = "从上方选择 Voice Input Buddy 或 BlackHole 2ch。";
+"onboarding.recovery.audio.no_output_device.title" = "未检测到虚拟麦克风驱动";
+"onboarding.recovery.audio.no_output_device.detail" = "请安装 Voice Input Buddy Mic 驱动；安装后仍未出现时，请重启 Mac。";
 "onboarding.recovery.audio.no_output_device.action" = "重新检查设备";
-"onboarding.recovery.audio.selected_device_missing.title" = "请选择支持的虚拟音频设备";
-"onboarding.recovery.audio.selected_device_missing.detail" = "所选设备不可用。请改选 Voice Input Buddy 或 BlackHole 2ch。";
+"onboarding.recovery.audio.selected_device_missing.title" = "未检测到 Voice Input Buddy Mic";
+"onboarding.recovery.audio.selected_device_missing.detail" = "请确认驱动安装完成。程序会自动配置输出；如仍未检测到设备，请重启 Mac 或查看安装说明。";
 "onboarding.recovery.audio.selected_device_missing.action" = "刷新设备";
 "onboarding.recovery.audio.output_not_ready.title" = "语音输出还没有准备好";
-"onboarding.recovery.audio.output_not_ready.detail" = "重新连接所选设备，再重试音频设置。";
+"onboarding.recovery.audio.output_not_ready.detail" = "程序尚未能连接 Voice Input Buddy Mic。请重试检测；如果仍失败，请重启 Mac。";
 "onboarding.recovery.audio.output_not_ready.action" = "重试音频设置";
 "onboarding.recovery.voice.session_not_started.title" = "语音键还没有开始收音";
 "onboarding.recovery.voice.session_not_started.detail" = "先点一下输入框，再%@。";
@@ -1014,7 +1014,7 @@
 "settings.import_notice.separator" = "、";
 "settings.import_notice.item.button_mapping" = "遥控器按键映射";
 "settings.import_notice.item.custom_application" = "自定义应用动作";
-"settings.import_notice.item.audio_device" = "音频设备选择";
+"settings.import_notice.item.audio_gain" = "设备增益";
 "settings.import_notice.item.other" = "其他设置";
 "configuration.import.partial" = "已导入，部分内容未通过检查（详见「按键映射」页提示）";
 "settings.corrupted.title" = "部分设置读不出来，已经暂时换回默认设置";
@@ -1133,7 +1133,7 @@
 "settings.driver.detail" = "回环设备将遥控器音频传递给输入工具。";
 "settings.driver.installed" = "已检测到兼容麦克风";
 "settings.driver.missing" = "未检测到兼容麦克风";
-"settings.driver.reload_help" = "安装驱动后在此刷新设备；如果仍未出现，请重启 Mac。具体音频输出在“设备连接”中选择。";
+"settings.driver.reload_help" = "如果安装驱动后仍未检测到 Voice Input Buddy Mic，请重启 Mac，或查看安装说明。";
 "settings.integration.title" = "输入法与语音工具集成";
 "settings.integration.introduction" = "在这里配置接收遥控器音频与语音快捷键的工具。通过向导验证完整输入流程，避免设备已连接却仍无法输入。";
 "settings.integration.current" = "当前集成";
@@ -1154,7 +1154,7 @@
 "onboarding.step.remoteAvailability" = "准备设备";
 "onboarding.step.permissions" = "系统权限";
 "onboarding.step.remote" = "连接遥控器";
-"onboarding.step.audio" = "音频路由";
+"onboarding.step.audio" = "驱动检查";
 "onboarding.step.voiceTool" = "输入工具";
 "onboarding.step.voiceTest" = "语音测试";
 "onboarding.step.controls" = "按键测试";
@@ -1268,3 +1268,11 @@
 "remote.hid_binding.save" = "关联并继续";
 "remote.hid_binding.open" = "按键未识别？关联兼容遥控器";
 "onboarding.remote.choose_device" = "选择本次添加的遥控器";
+
+"audio.gain.per_device_help" = "增益单独保存，仅影响这台遥控器。";
+
+"settings.driver.fixed_output_help" = "所有设备共用此虚拟麦克风，程序会自动配置语音输出。";
+
+"onboarding.audio.automatic_ready" = "驱动与语音输出已就绪，即将进入下一步。";
+
+"onboarding.audio.checking" = "正在检查驱动与语音输出。";

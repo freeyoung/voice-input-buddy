@@ -186,12 +186,6 @@ enum OnboardingScreenshotRenderer {
         let renderedPages = pages(for: controlMethod)
 #endif
         for (step, filename) in renderedPages {
-            settings.selectedAudioDeviceUID = switch step {
-            case .voiceTool, .voiceTest, .controls, .complete:
-                DoubaoAudioDevicePolicy.deviceUID
-            default:
-                ""
-            }
             settings.setOnboardingStep(step)
             let actionProbe = OnboardingInteractionProbe(openURL: { _ in })
             let rootView = OnboardingView(

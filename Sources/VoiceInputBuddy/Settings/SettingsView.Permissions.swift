@@ -40,13 +40,15 @@ extension SettingsView {
         }
         return GlassPanel {
             VStack(alignment: .leading, spacing: 12) {
-                permissionRow(
-                    symbol: "mic.fill",
-                    title: localization.text("settings.driver.title"),
-                    detail: localization.text("settings.driver.detail"),
-                    state: installed ? .granted : .pending,
-                    actionTitle: localization.text("audio.action.refresh_devices")
-                ) { model.refreshAudioDevices() }
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Label("settings.driver.title", systemImage: "mic.fill").font(.headline)
+                        Text("settings.driver.detail").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("audio.action.refresh_devices") { model.refreshAudioDevices() }
+                        .compatibilityButtonStyle(.standard)
+                }
                 HStack {
                     Label(installed ? "settings.driver.installed" : "settings.driver.missing",
                           systemImage: installed ? "checkmark.circle.fill" : "exclamationmark.triangle")
@@ -57,6 +59,10 @@ extension SettingsView {
                     }
                     .compatibilityButtonStyle(.standard)
                 }
+                Label(DoubaoAudioDevicePolicy.deviceName, systemImage: "waveform")
+                    .font(.subheadline)
+                Text("settings.driver.fixed_output_help")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text("settings.driver.reload_help")
                     .font(.caption)
                     .foregroundStyle(.secondary)

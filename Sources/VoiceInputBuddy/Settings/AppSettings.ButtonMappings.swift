@@ -146,8 +146,11 @@ extension AppSettings {
         guard profileID != selectedRemoteProfileID,
               let profile = remoteDeviceProfiles.first(where: { $0.id == profileID })
         else { return }
+        let nextGain = profile.gainDB ?? (selectedRemoteProfileID == nil ? gainDB : 10)
+        saveSelectedRemoteGain()
         isLoadingRemoteProfile = true
         selectedRemoteProfileID = profileID
+        gainDB = nextGain
         buttonBindings = Self.defaultBindings.merging(profile.mappings.parsedButtonBindings) {
             _, saved in saved
         }
@@ -156,6 +159,30 @@ extension AppSettings {
         secondaryButtonBindings = profile.mappings.parsedSecondaryButtonBindings
         buttonRapidPressEnabled = profile.mappings.parsedButtonRapidPressEnabled
         isLoadingRemoteProfile = false
+    }
+
+    func gainDB(for profileID: UUID) -> Double {
+        guard let profile = remoteDeviceProfiles.first(where: { $0.id == profileID }) else { return 10 }
+        let value = profile.gainDB ?? (profileID == selectedRemoteProfileID ? gainDB : 10)
+        return value.isFinite ? min(24, max(0, value)) : 10
+    }
+
+    func gainDB(forBluetoothIdentifier identifier: UUID?) -> Double {
+        guard let identifier, let profileID = profileID(forBluetoothIdentifier: identifier) else { return gainDB }
+        return gainDB(for: profileID)
+    }
+
+    func setGainDB(_ value: Double, for profileID: UUID) {
+        guard value.isFinite, (0...24).contains(value),
+              let index = remoteDeviceProfiles.firstIndex(where: { $0.id == profileID }) else { return }
+        remoteDeviceProfiles[index].gainDB = value
+        if selectedRemoteProfileID == profileID { gainDB = value }
+    }
+
+    func saveSelectedRemoteGain() {
+        guard !isLoadingRemoteProfile, gainDB.isFinite, (0...24).contains(gainDB),
+              let index = remoteDeviceProfiles.firstIndex(where: { $0.id == selectedRemoteProfileID }) else { return }
+        remoteDeviceProfiles[index].gainDB = gainDB
     }
 
     var compatibleHIDBindings: [RemoteHIDBinding] {

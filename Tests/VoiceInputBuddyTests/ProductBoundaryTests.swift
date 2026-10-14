@@ -135,7 +135,6 @@ struct ProductBoundaryTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
-        settings.selectedAudioDeviceUID = "BuddyMic2ch_UID"
         settings.gainDB = 6
         settings.customMappingEnabled = true
         settings.completeOnboarding()
@@ -333,8 +332,9 @@ struct ProductBoundaryTests {
         #expect(OnboardingStep.permissions.previous == nil)
         #expect(OnboardingStep.permissions.next == .remoteAvailability)
         #expect(OnboardingStep.remoteAvailability.next == .remote)
-        #expect(OnboardingStep.audio.next == .controls)
-        #expect(OnboardingStep.controls.next == .voiceTool)
+        #expect(OnboardingStep.remote.next == .controls)
+        #expect(OnboardingStep.controls.next == .audio)
+        #expect(OnboardingStep.audio.next == .voiceTool)
         #expect(OnboardingStep(rawValue: "welcome") == nil)
         #expect(OnboardingStep(rawValue: "controlMethod") == nil)
         settings.completeOnboarding()

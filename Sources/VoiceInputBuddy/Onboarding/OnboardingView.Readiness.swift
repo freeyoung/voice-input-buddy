@@ -162,29 +162,7 @@ extension OnboardingView {
     }
 
     var onboardingAudioReady: Bool {
-        audioOutputSelected &&
-            (settings.onboardingControlMethod.usesOnDemandAudioOutput || model.isAudioOutputReady)
-    }
-
-    var selectedAudioDeviceTitle: String {
-        guard let selectedAudioDevice else {
-            return localization.text("onboarding.audio.select_required")
-        }
-        return LocalizedMessage(
-            "onboarding.audio.selected",
-            arguments: [selectedAudioDevice.name]
-        ).text(using: localization)
-    }
-
-    var selectedAudioDeviceDetail: String {
-        guard audioOutputSelected else {
-            return localization.text("onboarding.audio.select_detail")
-        }
-        if settings.onboardingControlMethod.usesOnDemandAudioOutput,
-           !model.isAudioOutputReady {
-            return localization.text("onboarding.audio.on_demand_detail")
-        }
-        return model.audioStatus.text(using: localization)
+        audioOutputSelected && model.isAudioOutputReady
     }
 
     var transcriptionAppeared: Bool {

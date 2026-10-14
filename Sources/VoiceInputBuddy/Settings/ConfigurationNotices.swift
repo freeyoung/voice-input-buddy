@@ -19,7 +19,7 @@ enum ConfigurationImportNoticeText {
     static let separatorKey = "settings.import_notice.separator"
     static let buttonMappingItemKey = "settings.import_notice.item.button_mapping"
     static let customApplicationItemKey = "settings.import_notice.item.custom_application"
-    static let audioDeviceItemKey = "settings.import_notice.item.audio_device"
+    static let audioGainItemKey = "settings.import_notice.item.audio_gain"
     static let otherItemKey = "settings.import_notice.item.other"
 
     /// Fixed display order, so the sentence reads the same no matter which order the import
@@ -27,7 +27,7 @@ enum ConfigurationImportNoticeText {
     private static let itemKeyOrder = [
         buttonMappingItemKey,
         customApplicationItemKey,
-        audioDeviceItemKey,
+        audioGainItemKey,
         otherItemKey,
     ]
 
@@ -40,7 +40,7 @@ enum ConfigurationImportNoticeText {
         "buttonRapidPressEnabled": buttonMappingItemKey,
         "continuousRecordingPowerBindingBackup": buttonMappingItemKey,
         "customApplicationProfiles": customApplicationItemKey,
-        "selectedAudioDeviceUID": audioDeviceItemKey,
+        "remoteGainDB": audioGainItemKey,
     ]
 
     /// Deduplicated, order-stable localization keys naming what was skipped.

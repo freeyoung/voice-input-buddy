@@ -31,9 +31,7 @@ struct RuntimeOperationLifecycleTests {
         defer { model.started = false }
         model.audioStartupGeneration = 2
         model.audioOutput.registerPendingVoiceBuffer()
-        let selection = VirtualAudioSelectionRecoveryPolicy.resolve(selectedUID: "",
-            rememberedUID: "", availableDevices: [], hasHistoricalConfiguration: false)
-        model.finishAudioStartup(generation: 1, configurationGeneration: 1, configured: false, selection: selection, devices: [])
+        model.finishAudioStartup(generation: 1, configurationGeneration: 1, configured: false, devices: [])
         // Wait for the actual production cleanup queue; no live HAL device is allocated.
         await withCheckedContinuation { continuation in
             model.audioPreparationQueue.async { continuation.resume() }
@@ -79,24 +77,22 @@ struct RuntimeOperationLifecycleTests {
         #expect(captures == 0)
     }
 
-    @Test func startupUsesSelectionMadeWhileEnumerationWasPending() throws {
+    @Test func startupAlwaysTargetsOwnedMicrophoneAndRejectsStaleEnumeration() throws {
         let name = "startup-selection-" + UUID().uuidString
         let values = try #require(UserDefaults(suiteName: name))
         defer { values.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: values)
-        settings.selectedAudioDeviceUID = "original"
         let model = BridgeAppModel(settings: settings)
         model.started = true
         defer { model.started = false }
         model.audioStartupGeneration = 2
         // Represents the main-actor handoff after a slow background enumeration.
-        settings.selectedAudioDeviceUID = "user-selected"
         var requests: [String] = []
         model.prepareAudioStartup(generation: 1, devices: [], configureOutput: { uid, _ in requests.append(uid) })
         #expect(requests.isEmpty)
         model.prepareAudioStartup(generation: 2, devices: [], configureOutput: { uid, _ in requests.append(uid) })
-        #expect(requests == ["user-selected"])
-        #expect(settings.selectedAudioDeviceUID == "user-selected")
+        #expect(requests == [DoubaoAudioDevicePolicy.deviceUID])
+        #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
         #expect(model.audioOutput.pendingVoiceBufferCountForDiagnostics == 0)
     }
 
