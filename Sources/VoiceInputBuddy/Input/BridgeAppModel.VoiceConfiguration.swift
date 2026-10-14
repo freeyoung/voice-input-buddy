@@ -7,6 +7,13 @@ import Foundation
 import BuddyRemoteCore
 
 extension BridgeAppModel {
+    var requiresOrderedVoiceFn: Bool {
+        OrderedVoiceActivationPolicy.needsSoftwareFn(
+            mode: settings.voiceKeyMode,
+            fnTapEnabled: settings.voiceFnTapModeEnabled,
+            preferredInputSourceID: settings.onboardingVoiceTool.preferredInputSourceID
+        )
+    }
     func setExperimentalContinuousRecordingEnabled(_ enabled: Bool) {
         if !enabled {
             stopLongRecording(reason: "feature_disabled")
@@ -151,7 +158,7 @@ extension BridgeAppModel {
     ) {
         let request = HIDPermissionGate.nextPermissionRequest(
             mappingEnabled: settings.customMappingEnabled,
-            voiceFnTapModeEnabled: voiceFnTapModeRequested ?? settings.voiceFnTapModeEnabled,
+            voiceFnTapModeEnabled: (voiceFnTapModeRequested ?? settings.voiceFnTapModeEnabled) || requiresOrderedVoiceFn,
             voiceKeyMode: voiceKeyModeRequested ?? settings.voiceKeyMode,
             inputMonitoringGranted: HIDRemoteMonitor.isInputMonitoringGranted,
             accessibilityGranted: KeyboardInjector.isAccessibilityTrusted

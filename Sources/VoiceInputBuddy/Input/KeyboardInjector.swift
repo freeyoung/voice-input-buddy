@@ -166,6 +166,12 @@ enum KeyboardInjector {
     }
 
     static let syntheticEventMarker: Int64 = 0x5849_414F
+    static let orderedVoiceEventMarker: Int64 = 0x5849_4156
+
+    static func isSyntheticEvent(_ event: CGEvent) -> Bool {
+        let marker = event.getIntegerValueField(.eventSourceUserData)
+        return marker == syntheticEventMarker || marker == orderedVoiceEventMarker
+    }
     static let contextualMenuKeyCode: CGKeyCode = 110
     static let functionKeyCode: CGKeyCode = 63
     static let leftCommandKeyCode: CGKeyCode = 55
@@ -238,7 +244,7 @@ enum KeyboardInjector {
         _ mode: VoiceKeyMode,
         isPressed: Bool,
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
-        keyStatePoster: KeyStatePoster = postKeyState
+        keyStatePoster: KeyStatePoster = postVoiceKeyState
     ) -> Bool {
         guard accessibilityTrusted() else { return false }
         let flags = isPressed ? mode.eventFlags : []
@@ -1820,11 +1826,20 @@ enum KeyboardInjector {
         isDown: Bool,
         flags: CGEventFlags
     ) -> Bool {
+        postMarkedKeyState(code: code, isDown: isDown, flags: flags, marker: syntheticEventMarker)
+    }
+
+    static func postVoiceKeyState(code: CGKeyCode, isDown: Bool, flags: CGEventFlags) -> Bool {
+        postMarkedKeyState(code: code, isDown: isDown, flags: flags, marker: orderedVoiceEventMarker)
+    }
+
+    private static func postMarkedKeyState(code: CGKeyCode, isDown: Bool,
+                                          flags: CGEventFlags, marker: Int64) -> Bool {
         guard let source = CGEventSource(stateID: .hidSystemState),
               let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: isDown)
         else { return false }
         event.flags = flags
-        event.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
+        event.setIntegerValueField(.eventSourceUserData, value: marker)
         event.post(tap: .cghidEventTap)
         return true
     }

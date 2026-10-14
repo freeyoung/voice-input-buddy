@@ -41,7 +41,13 @@ enum VoiceKeySessionPreservationPolicy {
         heldMode: VoiceKeyMode?,
         pendingMode: VoiceKeyMode?
     ) -> Bool {
-        (latchHeld && heldMode?.requiresAccessibility == true) ||
-            pendingMode?.requiresAccessibility == true
+        (latchHeld && heldMode != nil) || pendingMode != nil
+    }
+}
+
+enum OrderedVoiceActivationPolicy {
+    static func needsSoftwareFn(mode: VoiceKeyMode, fnTapEnabled: Bool,
+                               preferredInputSourceID: String?) -> Bool {
+        mode == .function && !fnTapEnabled && preferredInputSourceID != nil
     }
 }

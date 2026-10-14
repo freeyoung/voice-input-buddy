@@ -52,7 +52,7 @@ extension BridgeAppModel {
             return
         }
         let profileID = activateRemoteProfile(for: bridge)
-        if settings.voiceKeyMode != .function || settings.voiceFnTapModeEnabled {
+        if settings.voiceKeyMode != .function || settings.voiceFnTapModeEnabled || requiresOrderedVoiceFn {
             applyHIDSettings(allowVoiceKeyModeFallback: false)
         }
         guard Self.canStartBluetoothVoice(
@@ -60,7 +60,8 @@ extension BridgeAppModel {
             voiceFnTapModeEnabled: settings.voiceFnTapModeEnabled,
             isVoiceKeyNeutralized: voiceFunctionMapper.isVoiceKeyNeutralized,
             hasHardwareVoiceKey: bridge.identifiedModel?.isChromecastRemote != true,
-            accessibilityGranted: KeyboardInjector.isAccessibilityTrusted
+            accessibilityGranted: KeyboardInjector.isAccessibilityTrusted,
+            requiresOrderedFn: requiresOrderedVoiceFn
         ) else {
             _ = bridge.requestMicrophoneClose()
             cancelPendingBluetoothVoiceStart(for: identifier)
@@ -92,7 +93,8 @@ extension BridgeAppModel {
         bluetoothVoiceActive = true
         guard updateVoiceKeyState(
             streaming: true,
-            forceSoftware: bridge.identifiedModel?.isChromecastRemote == true && !settings.voiceFnTapModeEnabled,
+            forceSoftware: requiresOrderedVoiceFn ||
+                (bridge.identifiedModel?.isChromecastRemote == true && !settings.voiceFnTapModeEnabled),
             owner: .bluetooth
         ) else {
             _ = bridge.requestMicrophoneClose()

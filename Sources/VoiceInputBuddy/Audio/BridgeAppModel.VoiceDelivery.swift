@@ -147,7 +147,8 @@ extension BridgeAppModel {
     func updateVoiceKeyState(
         streaming: Bool,
         forceSoftware: Bool,
-        owner: VoiceFunctionKeyLatch.Owner
+        owner: VoiceFunctionKeyLatch.Owner,
+        keySetter: (VoiceKeyMode, Bool) -> Bool = { KeyboardInjector.setVoiceKeyPressed($0, isPressed: $1) }
     ) -> Bool {
         let mode = streaming
             ? settings.voiceKeyMode
@@ -155,7 +156,7 @@ extension BridgeAppModel {
         guard forceSoftware || !mode.usesHardwareMapping else { return true }
         if VoiceKeyPendingDownPolicy.shouldRejectStart(
             streaming: streaming,
-            pendingDown: pendingVoiceKeyMode != nil
+            pendingDown: pendingVoiceKeyMode != nil || voiceKeyActivationInProgress
         ) {
             AppLogger.shared.write(
                 "VOICE KEY start_rejected reason=pending_down owner=\(owner)"
@@ -169,7 +170,9 @@ extension BridgeAppModel {
             return true
         }
         let shouldHold = transition == .press
-        if shouldHold, mode != .function {
+        if shouldHold { voiceKeyActivationInProgress = true }
+        defer { if shouldHold { voiceKeyActivationInProgress = false } }
+        if shouldHold {
             pendingVoiceKeyMode = mode
             if owner == .bluetooth {
                 pendingCommandVoiceAudio.begin()
@@ -186,7 +189,7 @@ extension BridgeAppModel {
                 return false
             }
         }
-        if !shouldHold, mode != .function,
+        if !shouldHold,
            heldVoiceKeyMode == nil, pendingVoiceKeyMode != nil {
             pendingVoiceKeyMode = nil
             if owner == .bluetooth {
@@ -199,8 +202,8 @@ extension BridgeAppModel {
             )
             return true
         }
-        guard KeyboardInjector.setVoiceKeyPressed(mode, isPressed: shouldHold) else {
-            if shouldHold, mode != .function {
+        guard keySetter(mode, shouldHold) else {
+            if shouldHold {
                 pendingVoiceKeyMode = nil
                 if owner == .bluetooth {
                     pendingCommandVoiceAudio.cancel()
@@ -213,7 +216,7 @@ extension BridgeAppModel {
             )
             return false
         }
-        if mode != .function, !shouldHold {
+        if !shouldHold {
             preferredInputSourceMonitor.endVoiceSession()
         }
         if shouldHold {
@@ -279,9 +282,7 @@ extension BridgeAppModel {
 
         voiceKeyLatch.reset()
         self.heldVoiceKeyMode = nil
-        if heldVoiceKeyMode != .function {
-            preferredInputSourceMonitor.endVoiceSession()
-        }
+        preferredInputSourceMonitor.endVoiceSession()
         isVoiceTriggerEnabled = true
         voiceShortcutStatus = LocalizedMessage(
             "voice_button.status.\(heldVoiceKeyMode.rawValue)_released"

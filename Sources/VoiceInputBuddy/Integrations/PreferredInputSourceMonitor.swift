@@ -26,6 +26,7 @@ final class PreferredInputSourceMonitor {
     private var monitor: Any?
     private var functionKeyIsPressed = false
     private var explicitVoiceSessionActivationPending = false
+    private var explicitActivationGeneration: UInt64 = 0
     private var managedInputSourceSession: ManagedInputSourceSession?
     private static let activationTimeout: TimeInterval = 0.5
     private static let activationPollInterval: TimeInterval = 0.02
@@ -53,16 +54,28 @@ final class PreferredInputSourceMonitor {
         restoreInputSource: @escaping InputSourceRestorer = OnboardingInputSourceSwitcher.selectEnabledInputSource,
         waitForInputSourceActivation: @escaping InputSourceActivationWaiter = { target, current, shouldContinue in
             let deadline = Date().addingTimeInterval(PreferredInputSourceMonitor.activationTimeout)
-            while shouldContinue(), current() != target, Date() < deadline {
+            var selectedSince: Date?
+            while shouldContinue(), Date() < deadline {
+                if current() == target {
+                    if selectedSince == nil { selectedSince = Date() }
+                    // TIS selection can precede delivery to the focused input
+                    // client. Give the main run loop time to process activation.
+                    if Date().timeIntervalSince(selectedSince!) >= 0.05 { return true }
+                } else {
+                    selectedSince = nil
+                }
                 _ = RunLoop.main.run(
-                    mode: .common,
+                    mode: .default,
                     before: Date().addingTimeInterval(PreferredInputSourceMonitor.activationPollInterval)
                 )
             }
-            return shouldContinue() && current() == target
+            return false
         },
         installMonitor: @escaping MonitorInstaller = { handler in
             NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
+                // Ordered software voice sessions own their source lifecycle.
+                // A delayed global event must not create a second Fn owner.
+                guard shouldObserveFunctionEvent(marker: event.cgEvent?.getIntegerValueField(.eventSourceUserData) ?? 0) else { return }
                 handler(event.modifierFlags.contains(.function))
             }
         },
@@ -89,6 +102,7 @@ final class PreferredInputSourceMonitor {
     func stop(preservingExplicitVoiceSession: Bool = false) {
         if !preservingExplicitVoiceSession {
             explicitVoiceSessionActivationPending = false
+            explicitActivationGeneration &+= 1
         }
         finishManagedInputSourceSession(
             reason: "monitor_stop",
@@ -127,19 +141,27 @@ final class PreferredInputSourceMonitor {
         beginVoiceSession(reason: "function_key_down", owner: .functionKey)
     }
 
+    static func shouldObserveFunctionEvent(marker: Int64) -> Bool {
+        marker != KeyboardInjector.orderedVoiceEventMarker
+    }
+
     /// Starts the input-source session for a software-emitted voice key.
     /// Command keys do not produce the Fn `flagsChanged` event that the legacy
     /// monitor observes, so their lifecycle is driven explicitly by the voice
     /// session instead of by every ordinary Command press on the Mac keyboard.
     @discardableResult
     func beginVoiceSession() -> Bool {
+        explicitActivationGeneration &+= 1
+        let generation = explicitActivationGeneration
         explicitVoiceSessionActivationPending = true
-        defer { explicitVoiceSessionActivationPending = false }
+        defer {
+            if explicitActivationGeneration == generation { explicitVoiceSessionActivationPending = false }
+        }
         return beginVoiceSession(
             reason: "voice_session_start",
             owner: .explicitVoice,
             activationShouldContinue: { [weak self] in
-                self?.explicitVoiceSessionActivationPending == true
+                self?.explicitVoiceSessionActivationPending == true && self?.explicitActivationGeneration == generation
             }
         )
     }
@@ -147,6 +169,7 @@ final class PreferredInputSourceMonitor {
     /// Ends an input-source session previously started for a voice key.
     func endVoiceSession() {
         explicitVoiceSessionActivationPending = false
+        explicitActivationGeneration &+= 1
         finishManagedInputSourceSession(
             reason: "voice_session_end",
             owner: .explicitVoice
@@ -238,11 +261,12 @@ final class PreferredInputSourceMonitor {
         activationShouldContinue: () -> Bool,
         selectedVoiceTool: OnboardingVoiceTool
     ) -> Bool {
-        guard waitForInputSourceActivation(
+        let activated = waitForInputSourceActivation(
             targetInputSourceID,
             currentInputSourceID,
             activationShouldContinue
-        ) else {
+        )
+        guard activated, activationShouldContinue() else {
             let activationResult = activationShouldContinue()
                 ? "activation_timeout"
                 : "activation_cancelled"
@@ -250,6 +274,9 @@ final class PreferredInputSourceMonitor {
                 "VOICE INPUT source_prepare tool=\(selectedVoiceTool.rawValue) " +
                     "result=\(activationResult)"
             )
+            // Cancellation already released this owner. Do not alter a newer
+            // session that may have begun while the main run loop was pumped.
+            guard activationShouldContinue() else { return false }
             if var session = managedInputSourceSession {
                 session.activationPending = false
                 managedInputSourceSession = session
@@ -266,6 +293,7 @@ final class PreferredInputSourceMonitor {
         else { return false }
         session.activationPending = false
         managedInputSourceSession = session
+        logger("VOICE INPUT source_activation tool=\(selectedVoiceTool.rawValue) result=confirmed")
         return true
     }
 

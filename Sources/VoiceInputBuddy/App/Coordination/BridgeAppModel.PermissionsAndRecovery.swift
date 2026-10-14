@@ -29,9 +29,11 @@ extension BridgeAppModel {
         voiceFnTapModeEnabled: Bool = false,
         isVoiceKeyNeutralized: Bool,
         hasHardwareVoiceKey: Bool = true,
-        accessibilityGranted: Bool = false
+        accessibilityGranted: Bool = false,
+        requiresOrderedFn: Bool = false
     ) -> Bool {
         if !hasHardwareVoiceKey { return accessibilityGranted }
+        if requiresOrderedFn { return accessibilityGranted && isVoiceKeyNeutralized }
         return (mode == .function && !voiceFnTapModeEnabled) || isVoiceKeyNeutralized
     }
 
