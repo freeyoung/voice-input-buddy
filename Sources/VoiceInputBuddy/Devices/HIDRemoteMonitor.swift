@@ -67,7 +67,6 @@ enum HIDDeviceMatchDecision: Equatable {
 
 final class HIDRemoteMonitor {
     private let settings: AppSettings
-    private let confirmedGoogleFingerprints: () -> Set<String>
     private let allowsG9N9N: Bool
     private var currentReportIsGoogle = false
     var reportedModel: XiaomiRemoteModel { currentReportIsGoogle ? .chromecastVoiceRemote : .unknown }
@@ -122,7 +121,6 @@ final class HIDRemoteMonitor {
     init(
         settings: AppSettings,
         allowsG9N9N: Bool = false,
-        confirmedGoogleFingerprints: @escaping () -> Set<String> = { [] },
         profileID: UUID? = nil,
         targetFingerprint: String? = nil,
         excludedFingerprints: @escaping () -> Set<String> = { [] },
@@ -150,7 +148,6 @@ final class HIDRemoteMonitor {
     ) {
         self.settings = settings
         self.allowsG9N9N = allowsG9N9N
-        self.confirmedGoogleFingerprints = confirmedGoogleFingerprints
         self.profileID = profileID
         self.targetFingerprint = targetFingerprint
         self.excludedFingerprints = excludedFingerprints
@@ -953,15 +950,14 @@ final class HIDRemoteMonitor {
         return (xiaomi, google)
     }
 
-    static func confirmedGoogleDevice(identity: RemoteHIDIdentity, fingerprint: String,
-                                      profiles: [RemoteDeviceProfile], confirmedFingerprints: Set<String>) -> Bool {
-        guard confirmedFingerprints.contains(fingerprint) else { return false }
-        return profiles.contains { profile in
-            profile.model.isChromecastRemote && profile.hidFingerprint == fingerprint &&
-                profile.bluetoothIdentifier != nil &&
-                ((profile.compatibleHIDBinding?.identity == identity &&
-                    profile.compatibleHIDBinding?.fingerprint == fingerprint) ||
-                    (profile.compatibleHIDBinding == nil && identity == .chromecast))
+    static func matchesGoogleProtocol(identity: RemoteHIDIdentity, fingerprint: String,
+                                      profiles: [RemoteDeviceProfile]) -> Bool {
+        let matching = profiles.filter { $0.model.isChromecastRemote && $0.hidFingerprint == fingerprint }
+        if identity == .chromecast, matching.isEmpty { return true }
+        return matching.contains { profile in
+            (profile.compatibleHIDBinding?.identity == identity &&
+             profile.compatibleHIDBinding?.fingerprint == fingerprint) ||
+                (profile.compatibleHIDBinding == nil && identity == .chromecast)
         }
     }
 
@@ -974,8 +970,8 @@ final class HIDRemoteMonitor {
     private func isGoogleDevice(_ device: IOHIDDevice) -> Bool {
         guard let fingerprint = Self.fingerprint(for: device),
               let identity = RemoteHIDIdentity.read(from: device) else { return false }
-        return Self.confirmedGoogleDevice(identity: identity, fingerprint: fingerprint,
-            profiles: settings.remoteDeviceProfiles, confirmedFingerprints: confirmedGoogleFingerprints())
+        return Self.matchesGoogleProtocol(identity: identity, fingerprint: fingerprint,
+            profiles: settings.remoteDeviceProfiles)
     }
 
     static func shouldPromoteDiscoveryReport(usages: Set<UInt16>) -> Bool {

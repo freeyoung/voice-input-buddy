@@ -489,34 +489,23 @@ enum CoreAudioDeviceCatalog {
             byteCount: Int(size),
             alignment: MemoryLayout<AudioBufferList>.alignment
         )
+        raw.initializeMemory(as: UInt8.self, repeating: 0, count: Int(size))
+        let allocatedSize = size
         let list = raw.bindMemory(to: AudioBufferList.self, capacity: 1)
         defer { raw.deallocate() }
         guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, raw) == noErr else {
             return 0
         }
-        let bufferList = UnsafeMutableAudioBufferListPointer(
-            list
-        )
-        return bufferList.reduce(0) { $0 + Int($1.mNumberChannels) }
+        return channelCount(in: list, byteCount: Int(size), allocatedByteCount: Int(allocatedSize))
     }
 
-    private static func transportType(for deviceID: AudioDeviceID) -> AudioDevicePropertyID? {
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyTransportType,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var transportType = AudioDevicePropertyID(0)
-        var size = UInt32(MemoryLayout<AudioDevicePropertyID>.size)
-        guard AudioObjectGetPropertyData(
-            deviceID,
-            &address,
-            0,
-            nil,
-            &size,
-            &transportType
-        ) == noErr else { return nil }
-        return transportType
+    static func channelCount(in list: UnsafeMutablePointer<AudioBufferList>, byteCount: Int,
+                             allocatedByteCount: Int) -> Int {
+        guard byteCount <= allocatedByteCount, byteCount >= MemoryLayout<AudioBufferList>.size,
+              let bufferOffset = MemoryLayout<AudioBufferList>.offset(of: \.mBuffers),
+              Int(list.pointee.mNumberBuffers) <= (byteCount - bufferOffset) / MemoryLayout<AudioBuffer>.stride
+        else { return 0 }
+        return UnsafeMutableAudioBufferListPointer(list).reduce(0) { $0 + Int($1.mNumberChannels) }
     }
 
     private static func withPropertyLock<T>(_ operation: () -> T) -> T {
@@ -836,11 +825,9 @@ final class VirtualAudioOutput {
             return false
         }
 
-        logStage("connect_mixer")
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
         engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: sourceFormat)
 
         logStage("open_output_unit")
         guard let outputUnit = engine.outputNode.audioUnit else {
@@ -871,6 +858,9 @@ final class VirtualAudioOutput {
             )
             return false
         }
+
+        logStage("connect_mixer")
+        engine.connect(player, to: engine.mainMixerNode, format: sourceFormat)
 
         var accepted = false
         defer {
@@ -948,9 +938,8 @@ final class VirtualAudioOutput {
                 DispatchQueue.main.async { completion(false) }
                 return
             }
-            let scheduled = AudioPlayerNodeSafety.schedule(player, buffer: buffer) { callbackType in
-                completion(callbackType == .dataPlayedBack)
-            }
+            let scheduled = AudioPlayerNodeSafety.schedule(player, buffer: buffer,
+                completion: Self.testToneCompletion(completion))
             if !scheduled {
                 self.stopOnEngineQueue()
                 self.onConfigurationChange?()
@@ -958,6 +947,10 @@ final class VirtualAudioOutput {
             }
         }
         return true
+    }
+
+    static func testToneCompletion(_ completion: @escaping (Bool) -> Void) -> (AVAudioPlayerNodeCompletionCallbackType) -> Void {
+        { callbackType in DispatchQueue.main.async { completion(callbackType == .dataPlayedBack) } }
     }
 
     /// Flushes any buffer currently queued on the player node (including an in-flight test

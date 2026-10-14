@@ -97,32 +97,37 @@ struct BluetoothVoiceTailDiagnostics {
     static let sampleRate = 16_000
     static let maximumSampleCount = 4_800
 
-    private var recentSamples: [Int16] = []
+    private var storage = [Int16](repeating: 0, count: Self.maximumSampleCount)
+    private var writeIndex = 0
+    private var count = 0
     private var lastAudioUptime: TimeInterval?
 
+    private var recentSamples: [Int16] {
+        let start = (writeIndex + Self.maximumSampleCount - count) % Self.maximumSampleCount
+        return (0..<count).map { storage[(start + $0) % Self.maximumSampleCount] }
+    }
+
     mutating func reset() {
-        recentSamples.removeAll(keepingCapacity: true)
+        writeIndex = 0
+        count = 0
         lastAudioUptime = nil
     }
 
     mutating func append(_ samples: [Int16], at uptime: TimeInterval) {
         guard !samples.isEmpty else { return }
         lastAudioUptime = uptime
-        if samples.count >= Self.maximumSampleCount {
-            recentSamples = Array(samples.suffix(Self.maximumSampleCount))
-            return
+        for sample in samples.suffix(Self.maximumSampleCount) {
+            storage[writeIndex] = sample
+            writeIndex = (writeIndex + 1) % Self.maximumSampleCount
+            count = min(Self.maximumSampleCount, count + 1)
         }
-        let overflow = max(0, recentSamples.count + samples.count - Self.maximumSampleCount)
-        if overflow > 0 {
-            recentSamples.removeFirst(overflow)
-        }
-        recentSamples.append(contentsOf: samples)
     }
 
     func snapshot(at stopUptime: TimeInterval) -> BluetoothVoiceTailSnapshot {
+        let samples = recentSamples
         var metrics = WatchBluetoothAudioSignalMetrics()
-        metrics.append(recentSamples)
-        let finalWindowSamples = Array(recentSamples.suffix(Self.sampleRate / 10))
+        metrics.append(samples)
+        let finalWindowSamples = Array(samples.suffix(Self.sampleRate / 10))
         var finalWindowMetrics = WatchBluetoothAudioSignalMetrics()
         finalWindowMetrics.append(finalWindowSamples)
         return BluetoothVoiceTailSnapshot(

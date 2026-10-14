@@ -159,6 +159,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var lastObservedPowerState: RemotePowerState?
     private var subscribedUUIDs = Set<CBUUID>()
     private var scanSubscription: UUID?
+    private let scanWatchdog = BluetoothScanWatchdog()
     private var reconnectWorkItem: DispatchWorkItem?
     private var connectionTimeoutWorkItem: DispatchWorkItem?
     private var initializationTimeoutWorkItem: DispatchWorkItem?
@@ -419,6 +420,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     private func stopScan() {
+        scanWatchdog.cancel()
         if let scanSubscription { SharedBluetoothScanner.shared.unsubscribe(scanSubscription) }
         scanSubscription = nil
     }
@@ -567,6 +569,15 @@ final class XiaomiBluetoothBridge: NSObject {
                     _ = self.adopt(candidate, using: central, generation: generation, source: "shared_scan",
                         advertisesVoiceService: serviceMatch, advertisedName: advertisement.name)
                 }
+                scanWatchdog.arm(isCurrent: { [weak self, weak central] in
+                    guard let self, let central else { return false }
+                    return self.shouldRun && !self.systemSuspension.isSuspended &&
+                        self.central === central && self.lifecycle == .scanning(generation) &&
+                        self.peripheral == nil && central.state == .poweredOn
+                }, rediscover: { [weak self, weak central] in
+                    guard let self, let central else { return }
+                    self.discoverOrScan(using: central, generation: generation)
+                })
                 AppLogger.shared.write("BLE SCANNING")
             }
         )

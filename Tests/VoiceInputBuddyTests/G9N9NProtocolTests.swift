@@ -32,6 +32,16 @@ struct G9N9NProtocolTests {
         }
     }
 
+    @Test func multipleConsumerUsagesAndPaddingRemainOneAtomicReport() {
+        let expected: Set<UInt16> = [RemoteButton.up.hidUsage, RemoteButton.volumeUp.hidUsage]
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xe9, 0, 0, 0])) == expected)
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([2, 0x42, 0, 0xe9, 0])) == expected)
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0, 0, 0, 0])) == [])
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xff, 0xff])) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xe9])) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data()) == nil)
+    }
+
     @Test func noRemoteFamiliesProduceNoMatchingRequest() {
         #expect(HIDRemoteMonitor.deviceMatchingCriteria(includeXiaomi: false, includeGoogle: false).isEmpty)
     }

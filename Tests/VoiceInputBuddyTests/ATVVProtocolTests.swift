@@ -1,4 +1,5 @@
 import Foundation
+import BuddyRemoteCore
 import Testing
 @testable import VoiceInputBuddy
 
@@ -202,6 +203,28 @@ struct BluetoothVoiceTailDiagnosticsTests {
         #expect(snapshot.finalWindowNonZeroSampleCount == 0)
         #expect(snapshot.finalWindowPeak == 0)
         #expect(snapshot.finalWindowRMS == 0)
+    }
+
+    @Test func tailRingPreservesLatestSignalAndFinalWindowAcrossManyWraps() {
+        var diagnostics = BluetoothVoiceTailDiagnostics()
+        var allSamples: [Int16] = []
+        for batch in 0..<250 {
+            let samples = Array(repeating: Int16(batch - 125), count: 241)
+            allSamples += samples
+            diagnostics.append(samples, at: Double(batch))
+        }
+        var expected = WatchBluetoothAudioSignalMetrics()
+        expected.append(Array(allSamples.suffix(4800)))
+        var final = WatchBluetoothAudioSignalMetrics()
+        final.append(Array(allSamples.suffix(1600)))
+        let result = diagnostics.snapshot(at: 250)
+        #expect(result.sampleCount == 4800)
+        #expect(result.nonZeroSampleCount == expected.nonZeroSampleCount)
+        #expect(result.peak == expected.peak)
+        #expect(result.rms == expected.rms)
+        #expect(result.finalWindowRMS == final.rms)
+        #expect(result.finalWindowPeak == final.peak)
+        #expect(result.lastAudioAgeMilliseconds == 1000)
     }
 
     @Test func resetRemovesPriorSessionSignalAndTiming() {
