@@ -173,6 +173,20 @@ struct ProductBoundaryTests {
         #expect(AppSettings(defaults: defaults).applicationLanguage == .simplifiedChinese)
     }
 
+    @Test @MainActor func plannedRemoteIllustrationsLoadWithoutUsingTheXiaomiImage() throws {
+        let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
+        let bundle = try #require(Bundle(path: resources.path))
+        let planned = PlannedRemoteDevice.allCases.filter { !$0.isAvailable }
+        #expect(Set(planned.map(\.illustrationResource)).count == 3)
+        for device in planned {
+            #expect(device.illustrationResource != PlannedRemoteDevice.xiaomi.illustrationResource)
+            let url = try #require(bundle.url(forResource: device.illustrationResource, withExtension: "png"))
+            let image = try #require(NSImage(contentsOf: url))
+            #expect(image.size.width > 0 && image.size.height > image.size.width)
+        }
+    }
+
     @Test func deviceScopeKeepsGoogleModelsDistinctAndPlannedAdaptersUnavailable() {
         #expect(PlannedRemoteDevice.allCases == [
             .xiaomi, .chromecastG9N9N, .googleStreamerGY3LE, .siriRemote,

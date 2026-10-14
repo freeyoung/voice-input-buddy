@@ -732,7 +732,7 @@
 "onboarding.voice_tool.binding.evidence_verified" = "推荐";
 "onboarding.voice_tool.binding.evidence_pending" = "测试通过后保存";
 "onboarding.control_source.title" = "选择控制设备";
-"onboarding.control_source.detail" = "请选择当前支持的实体遥控器。标记“尚未支持”的设备暂不可选择。";
+"onboarding.control_source.detail" = "请选择当前支持的实体遥控器。计划支持的设备暂不可选择。";
 "onboarding.control_source.hardware" = "实体遥控器";
 "onboarding.control_source.alternatives" = "备用方式";
 "onboarding.control_source.more" = "更多控制方式";
@@ -1250,3 +1250,4 @@
 "remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
 "remote.catalog.siriRemote.title" = "Apple Siri Remote";
 "remote.catalog.planned" = "计划支持，尚未适配";
+"remote.catalog.illustration" = "设备外观示意图";

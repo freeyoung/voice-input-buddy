@@ -11,6 +11,16 @@ enum PlannedRemoteDevice: String, CaseIterable, Identifiable {
 
     var isAvailable: Bool { self == .xiaomi }
 
+    /// Original schematic artwork; not a photograph or evidence of device support.
+    var illustrationResource: String {
+        switch self {
+        case .xiaomi: return "BuddyRemoteIllustration"
+        case .chromecastG9N9N: return "ChromecastG9N9NIllustration"
+        case .googleStreamerGY3LE: return "GoogleStreamerGY3LEIllustration"
+        case .siriRemote: return "SiriRemoteA2854Illustration"
+        }
+    }
+
     var icon: String {
         self == .siriRemote ? "appletvremote.gen4.fill" : "antenna.radiowaves.left.and.right"
     }

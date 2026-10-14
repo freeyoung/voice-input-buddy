@@ -733,7 +733,7 @@
 "onboarding.voice_tool.binding.evidence_verified" = "Recommended";
 "onboarding.voice_tool.binding.evidence_pending" = "Saved after testing";
 "onboarding.control_source.title" = "Choose How to Control Your Mac";
-"onboarding.control_source.detail" = "Choose a supported physical remote. Devices marked “Not supported yet” cannot be selected.";
+"onboarding.control_source.detail" = "Choose a supported physical remote. Planned devices cannot be selected yet.";
 "onboarding.control_source.hardware" = "Physical remotes";
 "onboarding.control_source.alternatives" = "Alternatives";
 "onboarding.control_source.more" = "More control methods";
@@ -1249,3 +1249,4 @@
 "remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
 "remote.catalog.siriRemote.title" = "Apple Siri Remote";
 "remote.catalog.planned" = "Planned; adapter not available yet";
+"remote.catalog.illustration" = "Device schematic illustration";

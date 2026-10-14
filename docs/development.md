@@ -131,6 +131,8 @@ validated Xiaomi admission catalog remains separate, so a planned Google model
 cannot accidentally connect through the Xiaomi bridge. Third-party replacement
 remotes need individual validation.
 
+素材、官方外观参考与分型号适配计划见[遥控器准备说明](remote-device-preparation.md)。
+
 ### Google remote compatibility acceptance
 
 G9N9N and GY3LE identify the two Google product targets, not every replacement

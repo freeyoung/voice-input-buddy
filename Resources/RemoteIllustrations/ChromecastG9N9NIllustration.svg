@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="720" viewBox="0 0 240 720">
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<title>G9N9N — original schematic illustration</title>
+<style>text { font-family: sans-serif; font-weight: 600; text-anchor: middle; fill: #334155; }</style>
+<rect x="35" y="20" width="170" height="680" rx="42" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+<circle cx="120" cy="125" r="62" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+<circle cx="120" cy="125" r="30" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<circle cx="78" cy="255" r="24" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="78" y="261" font-size="16">‹</text>
+<circle cx="162" cy="255" r="24" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="162" y="261" font-size="16">MIC</text>
+<circle cx="78" cy="340" r="24" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="78" y="346" font-size="16">H</text>
+<circle cx="162" cy="340" r="24" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="162" y="346" font-size="16">M</text>
+<circle cx="78" cy="425" r="24" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="78" y="431" font-size="16">YT</text>
+<circle cx="162" cy="425" r="24" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="162" y="431" font-size="16">NF</text>
+<circle cx="78" cy="545" r="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="78" y="551" font-size="16">⏻</text>
+<circle cx="162" cy="545" r="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<text x="162" y="551" font-size="16">IN</text>
+<rect x="205" y="95" width="8" height="110" rx="4" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+<text x="120" y="650" font-size="14">G9N9N</text>
+</svg>

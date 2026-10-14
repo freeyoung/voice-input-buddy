@@ -40,24 +40,29 @@ extension OnboardingView {
 
             VStack(spacing: 8) {
                 ForEach(PlannedRemoteDevice.allCases.filter { !$0.isAvailable }) { device in
-                    unsupportedControlSourceCard(
-                        titleKey: device.titleKey,
-                        icon: device.icon
-                    )
+                    plannedDeviceCard(device)
                 }
             }
 
         }
     }
 
-    private func unsupportedControlSourceCard(titleKey: String, icon: String) -> some View {
+    private func plannedDeviceCard(_ device: PlannedRemoteDevice) -> some View {
         Button {} label: {
             HStack(spacing: 11) {
-                Image(systemName: icon)
-                    .font(.system(size: 21))
-                    .frame(width: 40, height: 40)
+                if let image = bundledRemoteImage(resourceName: device.illustrationResource) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 34, height: 76)
+                        .accessibilityLabel(localization.text("remote.catalog.illustration"))
+                } else {
+                    Image(systemName: device.icon)
+                        .font(.system(size: 21))
+                        .frame(width: 34, height: 76)
+                }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(localization.text(titleKey))
+                    Text(localization.text(device.titleKey))
                         .font(.system(size: 13, weight: .semibold))
                     Text(localization.text("remote.catalog.planned"))
                         .font(.system(size: 12))
@@ -72,7 +77,7 @@ extension OnboardingView {
         }
         .buttonStyle(.plain)
         .disabled(true)
-        .accessibilityIdentifier(titleKey)
+        .accessibilityIdentifier(device.titleKey)
     }
 
     private var availablePhysicalControlSources: [OnboardingControlSource] {
