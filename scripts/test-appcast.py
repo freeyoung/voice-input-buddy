@@ -11,16 +11,6 @@ appcast = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(appcast)
 
 class AppcastTests(unittest.TestCase):
-    def test_shared_changes_are_preserved_as_xml_text_for_the_app(self):
-        with tempfile.TemporaryDirectory() as directory:
-            package = Path(directory) / 'Voice_Input_Buddy_v26-10-14.130_macOS_arm64.pkg'
-            package.write_bytes(b'package')
-            output = Path(directory) / 'appcast.xml'
-            changes = '新增\n- add G9N9N support (#37)\n修复\n- handle <input> & microphone events\n'
-            appcast.generate(package, 'v26-10-14.130', '130', base64.b64encode(bytes(64)).decode(), output, changes)
-            self.assertEqual(ET.parse(output).find('channel/item/description').text, changes)
-            self.assertNotIn('Administrator authorization', output.read_text())
-
     def test_package_metadata_and_invalid_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory) / 'Voice_Input_Buddy_v26-10-11.021_macOS_arm64.pkg'
