@@ -31,8 +31,8 @@ The app decodes remote audio and sends it to a virtual microphone while triggeri
 Download `Voice_Input_Buddy_*.pkg` from [Releases](https://github.com/zfdang/voice-input-buddy/releases). One installer includes both the app and its virtual microphone driver.
 
 1. Install and open `/Applications/Voice Input Buddy.app`.
-2. Follow the guide to grant Bluetooth, Input Monitoring, and Accessibility permissions, and check that the driver is detected. The app follows your system language by default; you can choose English or Chinese on the first screen.
-3. Connect your remote. Select the **Voice Input Buddy Mic** microphone in your input tool.
+2. Follow the guide to grant Bluetooth, Input Monitoring, and Accessibility permissions. The app follows your system language by default; you can choose English or Chinese on the first screen.
+3. Select and connect your remote, test its buttons, and wait for the driver and fixed output checks to pass. Select **Voice Input Buddy Mic** in your input tool. The app uses this device automatically, without an output picker or fallback to BlackHole or speakers.
 4. Configure the tool's voice shortcut under **Integration**, then test it with the guide.
 5. Focus a text field, press the voice button to speak, and release to finish. Adjust the trigger behavior for tools that use separate start/stop taps.
 

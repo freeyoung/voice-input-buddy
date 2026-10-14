@@ -14,4 +14,4 @@
 
 本项目新图标由 scripts/generate-icon.swift 绘制，菜单栏图标由 scripts/generate-status-icons.swift 绘制，表达麦克风与硬件按钮，未使用原品牌图形。
 
-设置向导的 16 张浅色／深色操作截图来自上游 `Resources/Onboarding`，保留来源归属；未使用其受限 App Logo 或遥控器产品照片。遥控器图是基于本项目按键布局参考生成的无品牌写实渲染，未使用厂商产品照片。`scripts/generate-remote-layout-reference.swift` 仅生成坐标参考，不覆盖成品；按键位置与映射连线共用归一化坐标。提示词及维护说明见 [artwork.md](artwork.md)。构建及安装包检查会验证截图与示意图完整性。
+设置向导截图位于 `Resources/Onboarding`，包括从上游继承的图片以及本项目重新截取的微信、豆包和 VoiceCursor 浅色图片；保留上游图片的来源归属，不把全部现有截图都归为上游素材。未使用其受限 App Logo 或遥控器产品照片。小米遥控器图是基于本项目按键布局参考生成的无品牌写实渲染；Google 与 Siri Remote 使用原创 SVG 示意图及 PNG 缩略图，均未使用厂商产品照片。`scripts/generate-remote-layout-reference.swift` 仅生成小米布局参考，不覆盖成品；按键位置与映射连线共用归一化坐标。提示词及维护说明见 [artwork.md](artwork.md) 与 [示意图说明](../Resources/RemoteIllustrations/README.md)。构建及安装包检查会验证截图与示意图完整性。

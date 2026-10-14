@@ -1,7 +1,9 @@
 # First setup
 
-Open Voice Input Buddy and follow the wizard. Choose the Xiaomi remote, grant Bluetooth, Input Monitoring and Accessibility permissions when needed, pair the remote, choose a loopback audio device, configure your voice tool and test voice input and button mappings. Physical remote availability is required for hardware acceptance.
+Download the PKG for your Mac architecture from this project's GitHub Releases. It installs both the app and microphone driver. Open `/Applications/Voice Input Buddy.app`.
 
-This application routes remote audio and button actions. Speech recognition is performed by your chosen input tool. Statistics, transcript history and remote log upload are disabled.
+The initial guide follows Permissions, Prepare Device, Connect Remote, Button Test, Driver Check, Input Tool, Voice Test, and Complete. Grant Bluetooth, Input Monitoring, and Accessibility permissions as requested. Xiaomi RC001/RC003 and G9N9N can proceed to connection; G9N9N hardware acceptance is pending. GY3LE and Siri Remote cannot proceed to connection yet.
 
-See the virtual microphone setup guide for the separately built driver. This is a local development version; Windows and publicly notarized distribution are not available yet.
+The app automatically routes audio to **Voice Input Buddy Mic**, without a loopback output picker. Select that microphone in your input tool, then configure and test its voice shortcut. Buddy routes audio and buttons; your input tool performs recognition. Buddy does not collect usage statistics, save recordings or transcript history, or upload logs.
+
+Driver installation requires administrator authorization and briefly restarts audio. Current PKGs are unsigned and not notarized; the app and driver use a fixed self-signed identity. Windows is not implemented. More information: https://github.com/zfdang/voice-input-buddy/blob/main/docs/interface.md

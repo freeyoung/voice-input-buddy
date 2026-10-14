@@ -2,7 +2,7 @@
 
 官网源文件位于 `pages/`，为无需构建的静态 HTML、CSS 和 JavaScript。默认首页 `index.html` 使用中文，英文页面位于 `index.en.html`；右上角可通过链接切换语言。仓库默认文档 `README.md` 使用中文，`README.en.md` 使用英文，并提供相互切换的链接。两份网页与 README 中英文版本应一起更新。
 
-沿用仓库已有 `.github/workflows/static.yml`：main 中的 `pages/**` 或该 workflow 更新时自动部署；也保留手动触发。发布任务仅上传 pages 目录，不上传 App 源码、构建目录或本地文件。
+`.github/workflows/static.yml` 在 main 中的 `pages/**` 或该 workflow 更新时部署，也支持手动触发，以及 main 的安装包发布 workflow 成功完成后的部署。部署前通过 `scripts/prepare-pages-update-feeds.sh` 获取并校验已发布的更新源；验证失败时停止部署。仅上传 `pages/`，不上传 App 源码或构建目录；其中不应放入待提交以外的本地文件。
 
 `pages/CNAME` 为 `voice.zfdang.com`，GitHub Pages 仓库设置已选择 Actions 部署与此自定义域名。域名 DNS 应正确指向 GitHub Pages；TLS 证书和域名验证由 GitHub 与域名服务配置决定。部署完成前，本地预览不等于官网已上线。
 
@@ -12,7 +12,7 @@
 python3 -m http.server 8765 --directory pages
 ```
 
-页面中的麦克风演示仅改变本地显示，不申请麦克风权限、不录音、不发送网络请求。网站不使用分析或追踪脚本。官网的下载链接指向 GitHub 最新 Release，首次 Release 生成后即可下载。
+页面中的麦克风按钮示意仅改变本地显示，不申请麦克风权限、不录音，也不发起网络请求；页面及视频资源加载仍会产生正常 HTTP 请求。网站不使用分析或追踪脚本。下载链接指向 GitHub 最新 Release。
 
 中英文页面的 `#demo` 区域提供两分钟卡通视频。MP4、封面和可选中文字幕轨道位于
 `pages/assets/video/`，由 Pages 一起部署。视频为中文旁白与画内中文字幕；英文页面明确标注视频语言。
@@ -21,7 +21,7 @@ python3 -m http.server 8765 --directory pages
 
 视频的动画源文件与旁白位于 `scripts/demo-video/visuals.py` 和
 `scripts/demo-video/render.py`，更新时先对照当前程序界面。网页硬件区域列出四项设备，
-与输入工具列表并列展示。安装包未公证的提醒仅保留在网页文字说明中；视频不展示此提醒。
+与输入工具列表并列展示。网页硬件列表按宣传范围展示四项设备；实际适配、连接准入与验收状态以 README 和应用向导为准。操作说明须匹配当前界面：音频固定输出 Voice Input Buddy Mic，用户只需在输入工具中选择同名麦克风。安装包未公证的提醒仅保留在网页文字说明中；视频不展示此提醒。
 
 在 macOS 上重做视频（需要 `ffmpeg`、`ffprobe` 和系统中文字体）：
 
