@@ -135,7 +135,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         onFailure: { [weak self] failure in
             self?.handleVoiceFnTapFailure(failure)
         },
-        logger: { AppLogger.shared.write($0) }
+        logger: { AppLogger.shared.write($0) },
+        onIdle: { [weak self] in self?.flushPendingVoiceToolMappingRefresh() }
     )
     private var membershipAccessCancellable: AnyCancellable?
     private var voiceToolCancellable: AnyCancellable?
@@ -146,7 +147,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var voiceKeyLatch = VoiceFunctionKeyLatch()
     var heldVoiceKeyMode: VoiceKeyMode?
     var pendingVoiceKeyMode: VoiceKeyMode?
+    // Main-queue state; only input-source waits can pump/reenter that queue.
     var voiceKeyActivationInProgress = false
+    var pendingVoiceToolMappingRefresh = false
     var pendingCommandVoiceAudio = CommandVoiceActivationAudioBuffer()
     var voiceSessionID: UUID?
     var voiceAudioDeliveryGeneration = 0
@@ -423,9 +426,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             .dropFirst()
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                guard let self, self.started, !self.isStreaming,
-                      !self.voiceKeyLatch.isHeld else { return }
-                self.applyHIDSettings()
+                self?.voiceToolDidChange()
             }
         audioOutput.onConfigurationChange = { [weak self] in
             self?.scheduleAudioRecovery(reason: "engine_configuration_change")

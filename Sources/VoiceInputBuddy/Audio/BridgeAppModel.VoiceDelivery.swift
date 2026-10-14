@@ -95,7 +95,8 @@ extension BridgeAppModel {
         isStreaming = true
     }
 
-    func endVoiceSessionIfNeeded(flushAudio: Bool = true) {
+    func endVoiceSessionIfNeeded(flushAudio: Bool = true, applyPendingMappings: (() -> Void)? = nil) {
+        defer { flushPendingVoiceToolMappingRefresh(applyMappings: applyPendingMappings) }
         guard !bluetoothVoiceActive,
               appleRemoteVoiceDevices.isEmpty,
               !appleRemoteVoiceStopping,
@@ -144,6 +145,8 @@ extension BridgeAppModel {
     }
 
     @discardableResult
+    // Runs on the main queue. Input-source activation pumps its run loop and
+    // can reenter remote stop; the activation gate protects only that wait.
     func updateVoiceKeyState(
         streaming: Bool,
         forceSoftware: Bool,
@@ -170,8 +173,12 @@ extension BridgeAppModel {
             return true
         }
         let shouldHold = transition == .press
-        if shouldHold { voiceKeyActivationInProgress = true }
-        defer { if shouldHold { voiceKeyActivationInProgress = false } }
+        let ownsActivationGate = shouldHold && settings.onboardingVoiceTool.preferredInputSourceID != nil
+        if ownsActivationGate { voiceKeyActivationInProgress = true }
+        defer {
+            if ownsActivationGate { voiceKeyActivationInProgress = false }
+            flushPendingVoiceToolMappingRefresh()
+        }
         if shouldHold {
             pendingVoiceKeyMode = mode
             if owner == .bluetooth {
@@ -257,6 +264,7 @@ extension BridgeAppModel {
             KeyboardInjector.setVoiceKeyPressed($0, isPressed: false)
         }
     ) -> Bool {
+        defer { flushPendingVoiceToolMappingRefresh() }
         guard voiceKeyLatch.isHeld else {
             heldVoiceKeyMode = nil
             pendingVoiceKeyMode = nil

@@ -231,4 +231,56 @@ struct VoiceInputActivationTests {
         #expect(source == "previous")
         #expect(posts == [true, false])
     }
+    @Test func toolChangesRemainPendingUntilBothRecordingAndKeyCleanupEnd() throws {
+        let model = try model()
+        model.started = true
+        model.isStreaming = true
+        model.pendingVoiceToolMappingRefresh = true
+        var refreshes = 0
+        model.flushPendingVoiceToolMappingRefresh(applyMappings: { refreshes += 1 })
+        #expect(refreshes == 0)
+        model.settings.setOnboardingVoiceTool(.typeless)
+        _ = model.voiceKeyLatch.transition(streaming: true, owner: .bluetooth)
+        model.isStreaming = false
+        model.flushPendingVoiceToolMappingRefresh(applyMappings: { refreshes += 1 })
+        #expect(refreshes == 0)
+        #expect(model.pendingVoiceToolMappingRefresh)
+        model.voiceKeyLatch.reset()
+        model.isStreaming = true
+        model.endVoiceSessionIfNeeded(flushAudio: false, applyPendingMappings: { refreshes += 1 })
+        #expect(refreshes == 1)
+        #expect(!model.requiresOrderedVoiceFn)
+        #expect(!model.pendingVoiceToolMappingRefresh)
+        model.flushPendingVoiceToolMappingRefresh(applyMappings: { refreshes += 1 })
+        #expect(refreshes == 1)
+        model.started = false
+    }
+
+    @Test func lateSelectionReceivesAFullSettlingIntervalInTrackingMode() {
+        var time: TimeInterval = 0
+        var modes: [RunLoop.Mode] = []
+        let activated = PreferredInputSourceMonitor.waitForActivation(
+            target: "target", current: { time >= 0.49 ? "target" : "previous" }, shouldContinue: { true },
+            now: { time }, currentMode: { .eventTracking },
+            pump: { mode, _ in modes.append(mode); time += 0.01 })
+        #expect(activated)
+        #expect(time >= 0.54 && time <= 0.550000001)
+        #expect(modes.allSatisfy { $0 == .eventTracking })
+        #expect(PreferredInputSourceMonitor.activationRunLoopMode(.common) == .default)
+    }
+
+    @Test func selectionAfterDeadlineIsRejectedAndCancellationStopsTrackingPump() {
+        var time: TimeInterval = 0
+        let late = PreferredInputSourceMonitor.waitForActivation(
+            target: "target", current: { time >= 0.51 ? "target" : "previous" }, shouldContinue: { true },
+            now: { time }, currentMode: { .eventTracking }, pump: { _, _ in time += 0.01 })
+        #expect(!late)
+        time = 0
+        let cancelled = PreferredInputSourceMonitor.waitForActivation(
+            target: "target", current: { "previous" }, shouldContinue: { time < 0.1 },
+            now: { time }, currentMode: { .eventTracking }, pump: { _, _ in time += 0.01 })
+        #expect(!cancelled)
+        #expect(time < 0.12)
+    }
+
 }

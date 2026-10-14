@@ -94,6 +94,7 @@ final class VoiceFnTapSessionController {
     private let onFailure: (VoiceFnTapFailure) -> Void
     private let logger: (String) -> Void
     private let uptime: () -> TimeInterval
+    private let onIdle: () -> Void
 
     private(set) var phase: Phase = .idle
     private(set) var isEnabled = false
@@ -129,7 +130,8 @@ final class VoiceFnTapSessionController {
         drainAudio: @escaping AudioDrainer,
         onFailure: @escaping (VoiceFnTapFailure) -> Void,
         logger: @escaping (String) -> Void = { _ in },
-        uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+        uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        onIdle: @escaping () -> Void = {}
     ) {
         self.startDelay = startDelay
         self.tapDuration = tapDuration
@@ -142,6 +144,7 @@ final class VoiceFnTapSessionController {
         self.onFailure = onFailure
         self.logger = logger
         self.uptime = uptime
+        self.onIdle = onIdle
     }
 
     deinit {
@@ -589,6 +592,7 @@ final class VoiceFnTapSessionController {
         if releaseRecoveryBlocked { finishCleanupCompletions(success: false); return }
         guard phase == .idle, !functionKeyIsPressed else { return }
         finishCleanupCompletions(success: true)
+        if phase == .idle, !functionKeyIsPressed { onIdle() }
     }
 
     private func finishCleanupCompletions(success: Bool) {

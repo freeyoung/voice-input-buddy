@@ -7,6 +7,21 @@ import Foundation
 import BuddyRemoteCore
 
 extension BridgeAppModel {
+    // Main-queue lifecycle, like HID settings and the remote voice callbacks.
+    func voiceToolDidChange() {
+        pendingVoiceToolMappingRefresh = true
+        flushPendingVoiceToolMappingRefresh()
+    }
+
+    func flushPendingVoiceToolMappingRefresh(applyMappings: (() -> Void)? = nil) {
+        guard pendingVoiceToolMappingRefresh, started, !isStreaming,
+              !bluetoothVoiceActive, activeMobileVoiceSource == nil,
+              appleRemoteVoiceDevices.isEmpty, !appleRemoteVoiceStopping,
+              !voiceKeyLatch.isHeld, !voiceKeyActivationInProgress,
+              !voiceFnTapSession.requiresCleanupBeforeMapping else { return }
+        pendingVoiceToolMappingRefresh = false
+        if let applyMappings { applyMappings() } else { applyHIDSettings() }
+    }
     var requiresOrderedVoiceFn: Bool {
         OrderedVoiceActivationPolicy.needsSoftwareFn(
             mode: settings.voiceKeyMode,
