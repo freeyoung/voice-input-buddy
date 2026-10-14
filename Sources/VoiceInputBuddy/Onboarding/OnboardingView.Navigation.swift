@@ -76,6 +76,15 @@ extension OnboardingView {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .scrollIndicators(.visible)
 
+            if settings.onboardingStep == .voiceTool && !canContinue {
+                Text(verbatim: localization.text("onboarding.voice_tool.guide.continue_hint"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 14)
+            }
+
             HStack(alignment: .center, spacing: 16) {
                 if settings.onboardingStep == .permissions {
                     Picker(selection: Binding(
@@ -93,14 +102,6 @@ extension OnboardingView {
                     .accessibilityLabel(localization.text("about.preferences.language"))
                     .accessibilityIdentifier("onboarding.language")
                 }
-                if settings.onboardingStep == .voiceTool && !canContinue {
-                    Text(verbatim: localization.text("onboarding.voice_tool.guide.continue_hint"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .layoutPriority(1)
-                }
                 Spacer(minLength: 0)
                 if settings.canDismissOnboarding {
                     onboardingActionButton(id: "dismiss") {
@@ -111,8 +112,11 @@ extension OnboardingView {
                         model.applyHIDSettings()
                     } label: {
                         Text(localization.text("onboarding.action.dismiss"))
+                            .frame(minWidth: 92)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.large)
                     .disabled(model.isStreaming)
                     .accessibilityIdentifier("onboarding.dismiss")
                 }

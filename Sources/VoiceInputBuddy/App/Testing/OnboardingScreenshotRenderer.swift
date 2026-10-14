@@ -155,6 +155,17 @@ enum OnboardingScreenshotRenderer {
         ].flatMap(PlannedRemoteDevice.init(rawValue:)) {
             settings.selectOnboardingDevice(requestedDevice)
         }
+        let requestedPurpose = ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_PURPOSE"
+        ].flatMap(OnboardingPurpose.init(rawValue:)) ?? .initialSetup
+        if requestedPurpose != .initialSetup {
+            settings.completeOnboarding()
+            if requestedPurpose == .integration {
+                SettingsPageBehavior.beginIntegrationSetup(tool: settings.onboardingVoiceTool, settings: settings)
+            } else {
+                SettingsPageBehavior.beginDeviceSetup(settings: settings)
+            }
+        }
         let screenshotAudioDevices = [
             AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
             AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
@@ -181,7 +192,7 @@ enum OnboardingScreenshotRenderer {
             "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE_STEP"
         ].flatMap(OnboardingStep.init(rawValue:)) ?? .voiceTool
         let renderedPages: [(OnboardingStep, String)] = interactive
-            ? [(interactiveStep, "interactive.png")] : pages(for: controlMethod)
+            ? [(interactiveStep, "interactive.png")] : pages(for: controlMethod).filter { requestedPurpose.steps.contains($0.0) }
 #else
         let renderedPages = pages(for: controlMethod)
 #endif
