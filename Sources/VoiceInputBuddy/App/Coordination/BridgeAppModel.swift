@@ -307,6 +307,12 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var audioStartupGeneration: UInt64 = 0
     var audioDeviceRefreshGeneration: UInt64 = 0
     var audioStartupPending = false
+    typealias AudioHardwareListenerRemover = (
+        inout AudioObjectPropertyAddress, DispatchQueue, @escaping AudioObjectPropertyListenerBlock
+    ) -> OSStatus
+    var audioHardwareListenerRemover: AudioHardwareListenerRemover = { address, queue, listener in
+        AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
+    }
     let audioHardwareListenerQueue = DispatchQueue(label: "VoiceInputBuddy.audioHardware")
     var observedAudioHardwareAddresses: [AudioObjectPropertyAddress] = []
     var audioRecoveryWorkItem: DispatchWorkItem?
@@ -634,6 +640,12 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         AppLogger.shared.write(
             "APP START version=\(version) rc003_test=\(rc003VoiceExtensionTestEnabled)"
         )
+    }
+
+    deinit {
+        // Remove HAL registrations synchronously. Full stop also performs UI and
+        // asynchronous device operations, which do not belong in destruction.
+        stopObservingAudioHardware()
     }
 
     func stop() {

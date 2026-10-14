@@ -44,6 +44,47 @@ struct DestinationCoordinationTests {
         #expect(actions.isEmpty)
     }
 
+    @Test func directAsyncValidationPublishesResultBeforeCompletionAndIgnoresLateReplies() {
+        for sensitive in [false, true] {
+            let clock = ControlledTestScheduler()
+            var replies: [(VoiceInputDestinationSnapshot) -> Void] = []
+            var states: [VoiceInputDestinationState] = []
+            var results: [VoiceInputDestinationWaitResult] = []
+            let coordinator = VoiceInputDestinationCoordinator(schedule: clock.voiceSchedule,
+                querySnapshot: { replies.append($0) }, onStateChange: { states.append($0) })
+            _ = coordinator.waitUntilReady {
+                #expect(states.count == 1)
+                results.append($0)
+            }
+            let snapshot = VoiceInputDestinationSnapshot(bundleIdentifier: "editor", role: "AXTextArea", subrole: "",
+                enabled: true, editable: true, protectedContent: sensitive, semanticText: "Composer")
+            replies[0](snapshot)
+            #expect(states == [sensitive ? .cancelled(.sensitiveDestination) : .ready])
+            #expect(results == [sensitive ? .cancelled(.sensitiveDestination) : .ready])
+            replies[0](snapshot)
+            for task in clock.tasks { task.fire(includingCancelled: true) }
+            #expect(states.count == 1 && results.count == 1)
+        }
+    }
+
+    @Test func directAsyncTimeoutPublishesOnceAndCancellationStaysSilent() {
+        for cancelled in [false, true] {
+            let clock = ControlledTestScheduler()
+            var replies: [(VoiceInputDestinationSnapshot) -> Void] = []
+            var states: [VoiceInputDestinationState] = []
+            var results: [VoiceInputDestinationWaitResult] = []
+            let coordinator = VoiceInputDestinationCoordinator(schedule: clock.voiceSchedule,
+                querySnapshot: { replies.append($0) }, onStateChange: { states.append($0) })
+            let waiting = coordinator.waitUntilReady { results.append($0) }
+            if cancelled, case let .waiting(task) = waiting { task.cancel() }
+            clock.fire(afterMilliseconds: 5000)
+            replies[0](field())
+            for task in clock.tasks { task.fire(includingCancelled: true) }
+            #expect(states == (cancelled ? [] : [.cancelled(.timedOut)]))
+            #expect(results == (cancelled ? [] : [.cancelled(.timedOut)]))
+        }
+    }
+
     @Test func applicationSwitchWaitsForEditableDestinationAndCompletesOnce() {
         let clock = ControlledTestScheduler()
         var current = field()

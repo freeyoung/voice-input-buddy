@@ -287,12 +287,7 @@ extension BridgeAppModel {
 
     func stopObservingAudioHardware() {
         for var address in observedAudioHardwareAddresses {
-            _ = AudioObjectRemovePropertyListenerBlock(
-                AudioObjectID(kAudioObjectSystemObject),
-                &address,
-                audioHardwareListenerQueue,
-                audioHardwareListener
-            )
+            _ = audioHardwareListenerRemover(&address, audioHardwareListenerQueue, audioHardwareListener)
         }
         if !observedAudioHardwareAddresses.isEmpty {
             AppLogger.shared.write("AUDIO ROUTE_MONITOR stopped properties=\(Self.audioHardwarePropertyNames(for: observedAudioHardwareAddresses))")

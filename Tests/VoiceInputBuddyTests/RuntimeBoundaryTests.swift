@@ -1,4 +1,5 @@
 import AppKit
+import CoreAudio
 import Foundation
 import Testing
 @testable import VoiceInputBuddy
@@ -108,11 +109,41 @@ struct RuntimeBoundaryTests {
         #expect(settings.corruptedSettingKeys.contains("buttonBindings"))
         #expect(defaults.data(forKey: "buttonBindings.corrupt") == corrupt)
         #expect(settings.action(for: .right) == .arrowRight)
+        #expect(defaults.data(forKey: "buttonBindings") == nil)
+        let coldStart = AppSettings(defaults: defaults)
+        #expect(!coldStart.corruptedSettingKeys.contains("buttonBindings"))
+        #expect(coldStart.action(for: .right) == .arrowRight)
+        #expect(defaults.data(forKey: "buttonBindings.corrupt") == corrupt)
         settings.setAction(.commandCopy, for: .right)
         let recovered = AppSettings(defaults: defaults)
         #expect(!recovered.corruptedSettingKeys.contains("buttonBindings"))
         #expect(recovered.action(for: .right) == .commandCopy)
         #expect(defaults.data(forKey: "buttonBindings.corrupt") == corrupt)
+    }
+
+    @Test func modelDestructionRemovesHALListenersWithoutExplicitStopAndNeverRemovesTwice() {
+        for explicitlyStopped in [false, true] {
+            let (defaults, name) = values()
+            defer { defaults.removePersistentDomain(forName: name) }
+            var model: BridgeAppModel? = BridgeAppModel(settings: AppSettings(defaults: defaults), initialAudioDevices: [])
+            weak var released = model
+            let selectors: [AudioObjectPropertySelector] = [kAudioHardwarePropertyDevices,
+                kAudioHardwarePropertyDefaultInputDevice, kAudioHardwarePropertyDefaultOutputDevice,
+                kAudioHardwarePropertyDefaultSystemOutputDevice]
+            model?.observedAudioHardwareAddresses = selectors.map {
+                AudioObjectPropertyAddress(mSelector: $0, mScope: kAudioObjectPropertyScopeGlobal,
+                    mElement: kAudioObjectPropertyElementMain)
+            }
+            var removed: [AudioObjectPropertySelector] = []
+            model?.audioHardwareListenerRemover = { address, _, _ in
+                removed.append(address.mSelector)
+                return noErr
+            }
+            if explicitlyStopped { model?.stopObservingAudioHardware() }
+            model = nil
+            #expect(released == nil)
+            #expect(removed == selectors)
+        }
     }
 
     @Test func oversizedConfigurationIsRejectedBeforeReadingOrDecoding() throws {

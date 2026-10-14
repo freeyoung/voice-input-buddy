@@ -133,6 +133,19 @@ struct CompatibleRemoteBindingTests {
         #expect(RemoteHIDCandidate.identified(identity: alternate, expectedName: "", among: [candidate]) == nil)
     }
 
+    @Test func sameModelRemotesAreDisambiguatedByNameBeforeCheckingUniqueness() {
+        let first = RemoteHIDCandidate(binding: .init(identity: alternate, fingerprint: "first"), name: " Living Room ")
+        let second = RemoteHIDCandidate(binding: .init(identity: alternate, fingerprint: "second"), name: "Bedroom")
+        let candidates = [first, second]
+        #expect(RemoteHIDCandidate.identified(identity: alternate, expectedName: "living room", among: candidates) == first)
+        #expect(RemoteHIDCandidate.identified(identity: alternate, expectedName: " BEDROOM ", among: candidates) == second)
+        #expect(RemoteHIDCandidate.identified(identity: alternate, among: candidates) == nil)
+        #expect(RemoteHIDCandidate.identified(identity: alternate, expectedName: " ", among: candidates) == nil)
+        #expect(RemoteHIDCandidate.identified(identity: alternate, expectedName: "missing", among: candidates) == nil)
+        let duplicateName = RemoteHIDCandidate(binding: .init(identity: alternate, fingerprint: "third"), name: "Bedroom")
+        #expect(RemoteHIDCandidate.identified(identity: alternate, expectedName: "Bedroom", among: candidates + [duplicateName]) == nil)
+    }
+
     @Test func replacingWhitelistRestoresMappingsWhileOldServicesAreStillReachable() throws {
         let defaults = try #require(UserDefaults(suiteName: "compatible-mapper-" + UUID().uuidString))
         let original = HIDUsageMapping(source: RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source, destination: 99)

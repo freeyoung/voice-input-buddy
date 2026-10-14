@@ -350,6 +350,7 @@ final class AppSettings: ObservableObject {
             return try JSONDecoder().decode(type, from: data)
         } catch {
             defaults.set(data, forKey: "\(key).corrupt")
+            defaults.removeObject(forKey: key)
             corrupted.append(key)
             AppLogger.shared.write(
                 "SETTINGS decode_failed category=\(diagnosticSettingCategory(key)) " +

@@ -72,14 +72,14 @@ struct RemoteHIDCandidate: Identifiable, Equatable {
     }
 
     static func identified(identity: RemoteHIDIdentity, expectedName: String? = nil, among candidates: [Self]) -> Self? {
-        let matches = unambiguous(candidates).filter { $0.binding.identity == identity }
-        guard matches.count == 1, let candidate = matches.first else { return nil }
-        if let expectedName {
-            guard !expectedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  candidate.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .caseInsensitiveCompare(expectedName.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
-            else { return nil }
+        let normalizedName = expectedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let normalizedName, normalizedName.isEmpty { return nil }
+        let matches = unambiguous(candidates).filter { candidate in
+            guard candidate.binding.identity == identity else { return false }
+            guard let normalizedName else { return true }
+            return candidate.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(normalizedName) == .orderedSame
         }
-        return candidate
+        return matches.count == 1 ? matches.first : nil
     }
 }

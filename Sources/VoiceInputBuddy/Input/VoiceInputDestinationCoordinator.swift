@@ -348,13 +348,20 @@ final class VoiceInputDestinationCoordinator {
         let deadline = schedule(maximumWait) { [weak self] in
             guard let self, self.directValidationGeneration == token else { return }
             self.directValidationGeneration &+= 1
+            self.onStateChange(.cancelled(.timedOut))
             completion(.cancelled(.timedOut))
         }
         querySnapshot { [weak self] value in
             guard let self, self.directValidationGeneration == token else { return }
             self.directValidationGeneration &+= 1
             deadline.cancel()
-            completion(value.isSensitiveDestination ? .cancelled(.sensitiveDestination) : .ready)
+            let result: VoiceInputDestinationWaitResult = value.isSensitiveDestination
+                ? .cancelled(.sensitiveDestination) : .ready
+            switch result {
+            case .ready: self.onStateChange(.ready)
+            case let .cancelled(reason): self.onStateChange(.cancelled(reason))
+            }
+            completion(result)
         }
         return .waiting(VoiceFnTapScheduledTask { [weak self] in
             deadline.cancel()

@@ -421,7 +421,9 @@ final class XiaomiBluetoothBridge: NSObject {
 
     private func stopScan() {
         scanWatchdog.cancel()
-        if let scanSubscription { SharedBluetoothScanner.shared.unsubscribe(scanSubscription) }
+        if let scanSubscription {
+            MainActor.assumeIsolated { SharedBluetoothScanner.shared.unsubscribe(scanSubscription) }
+        }
         scanSubscription = nil
     }
 
@@ -551,23 +553,25 @@ final class XiaomiBluetoothBridge: NSObject {
             scan: {
                 state = .scanning
                 stopScan()
-                scanSubscription = SharedBluetoothScanner.shared.subscribe { [weak self, weak central] advertisement in
-                    guard let self, let central, self.central === central,
-                          !self.systemSuspension.isSuspended,
-                          self.lifecycle == .scanning(generation), self.peripheral == nil,
-                          self.acceptsCandidateIdentifier(advertisement.identifier) else { return }
-                    let serviceMatch = (advertisement.data[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?
-                        .contains(self.serviceUUID) == true
-                    let decision = VoiceRemoteAdmission.decide(identifier: advertisement.identifier,
-                        targetIdentifier: self.targetIdentifier, advertisesVoiceService: serviceMatch,
-                        name: advertisement.name, advertisedName: advertisement.name, allowsG9N9N: self.allowsG9N9N)
-                    switch decision {
-                    case .adoptSavedIdentity, .adoptRecognizedName: break
-                    default: return
+                scanSubscription = MainActor.assumeIsolated {
+                    SharedBluetoothScanner.shared.subscribe { [weak self, weak central] advertisement in
+                        guard let self, let central, self.central === central,
+                              !self.systemSuspension.isSuspended,
+                              self.lifecycle == .scanning(generation), self.peripheral == nil,
+                              self.acceptsCandidateIdentifier(advertisement.identifier) else { return }
+                        let serviceMatch = (advertisement.data[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?
+                            .contains(self.serviceUUID) == true
+                        let decision = VoiceRemoteAdmission.decide(identifier: advertisement.identifier,
+                            targetIdentifier: self.targetIdentifier, advertisesVoiceService: serviceMatch,
+                            name: advertisement.name, advertisedName: advertisement.name, allowsG9N9N: self.allowsG9N9N)
+                        switch decision {
+                        case .adoptSavedIdentity, .adoptRecognizedName: break
+                        default: return
+                        }
+                        guard let candidate = central.retrievePeripherals(withIdentifiers: [advertisement.identifier]).first else { return }
+                        _ = self.adopt(candidate, using: central, generation: generation, source: "shared_scan",
+                            advertisesVoiceService: serviceMatch, advertisedName: advertisement.name)
                     }
-                    guard let candidate = central.retrievePeripherals(withIdentifiers: [advertisement.identifier]).first else { return }
-                    _ = self.adopt(candidate, using: central, generation: generation, source: "shared_scan",
-                        advertisesVoiceService: serviceMatch, advertisedName: advertisement.name)
                 }
                 scanWatchdog.arm(isCurrent: { [weak self, weak central] in
                     guard let self, let central else { return false }
@@ -746,16 +750,8 @@ final class XiaomiBluetoothBridge: NSObject {
                   self.lifecycle == .connecting(generation)
             else { return }
             AppLogger.shared.write("BLE CONNECT TIMEOUT")
-            self.publishReconnectingState()
-            if let central = self.central,
-               let peripheral = self.peripheral,
-               peripheral.state != .disconnected {
-                central.cancelPeripheralConnection(peripheral)
-            }
-            let delay = self.nextAutomaticReconnectDelay(
-                bypassCachedTarget: self.currentAttemptUsesCachedTarget
-            )
-            self.finishAttempt(reconnectAfter: delay)
+            self.connectionTimeoutWorkItem = nil
+            self.scheduleReconnect(bypassCachedTarget: self.currentAttemptUsesCachedTarget)
         }
         connectionTimeoutWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)

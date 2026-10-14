@@ -1,7 +1,8 @@
 import CoreBluetooth
 
 /// One broadcast scan serves every offline remote; connections retain their own managers.
-final class SharedBluetoothScanner: NSObject, CBCentralManagerDelegate {
+@MainActor
+final class SharedBluetoothScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
     static let shared = SharedBluetoothScanner()
     struct Advertisement {
         let identifier: UUID
@@ -43,6 +44,7 @@ final class SharedBluetoothScanner: NSObject, CBCentralManagerDelegate {
     }
 }
 
+@MainActor
 final class BluetoothScanSubscriptions<Advertisement> {
     private var observers: [UUID: (Advertisement) -> Void] = [:]
     private let start: () -> Void
