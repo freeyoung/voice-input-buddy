@@ -245,4 +245,3 @@ def subtitle_chunks(narration):
 
 def stamp(seconds):
  ms=int(seconds*1000);return f'{ms//3600000:02}:{ms//60000%60:02}:{ms//1000%60:02},{ms%1000:03}'
-
