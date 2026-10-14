@@ -18,3 +18,19 @@ python3 -m http.server 8765 --directory pages
 `pages/assets/video/`，由 Pages 一起部署。视频为中文旁白与画内中文字幕；英文页面明确标注视频语言。
 播放器使用浏览器原生控制，支持全屏、拖动和下载，不自动播放，只预加载元数据，
 不依赖外部播放器或追踪服务。更新视频时同步更新封面、字幕和两种语言的介绍。
+
+视频的动画源文件与旁白位于 `scripts/demo-video/visuals.py` 和
+`scripts/demo-video/render.py`，更新时先对照当前程序界面。网页硬件区域列出四项设备，
+与输入工具列表并列展示。安装包未公证的提醒仅保留在网页文字说明中；视频不展示此提醒。
+
+在 macOS 上重做视频（需要 `ffmpeg`、`ffprobe` 和系统中文字体）：
+
+```bash
+python3 -m venv dist/videos/venv
+dist/videos/venv/bin/pip install Pillow edge-tts
+dist/videos/venv/bin/python scripts/demo-video/render.py
+```
+
+旁白采用 `zh-CN-XiaoxiaoNeural`，首次生成或文字变化时通过 Edge TTS 合成，
+相同文字的音频缓存在 `dist/videos/source/`。脚本同步生成两分钟 MP4、WebVTT 字幕和封面，
+直接写入 `pages/assets/video/`。完成后检查画面、字幕时间和声音，再提交这些资产。

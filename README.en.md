@@ -38,7 +38,7 @@ Download `Voice_Input_Buddy_*.pkg` from [Releases](https://github.com/zfdang/voi
 
 Configure other buttons under **Buttons**. To check the setup again, use **Run Setup Guide Again** at the top of Settings.
 
-Driver installation requires administrator authorization and briefly interrupts audio. Current installers are not Apple-notarized and may be blocked by macOS; updates can require renewed permissions. See [installation and release notes](docs/releases.md).
+Driver installation requires administrator authorization and briefly interrupts audio. Current installers are not Apple-notarized and may be blocked by macOS. See [installation and release notes](docs/releases.md).
 
 ## Which devices are supported?
 
