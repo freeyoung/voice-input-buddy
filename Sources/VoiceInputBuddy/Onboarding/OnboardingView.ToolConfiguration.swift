@@ -38,7 +38,6 @@ extension OnboardingView {
             settings.setOnboardingAppleRemoteGeneration(nil)
         }
         settings.setOnboardingControlSource(source)
-        showAlternativeControlSources = availableAlternativeControlSources.contains(source)
         if source.supportedGestureModes.count == 1 {
             settings.setOnboardingPreferredGesture(source.supportedGestureModes.first)
         } else {

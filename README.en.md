@@ -44,9 +44,12 @@ Driver installation requires administrator authorization and briefly interrupts 
 
 | Device | Status |
 | --- | --- |
-| Xiaomi Bluetooth Remote 2 Pro | Connection and buttons tested locally; audio operation confirmed by the user |
-| Compatible Xiaomi RC001 / RC003 series remotes | ATVV audio and button protocol support is included; individual models and firmware need testing |
-| Apple Siri Remote, generic Bluetooth/USB buttons, foot pedals | Not currently offered as supported devices |
+| Xiaomi Bluetooth Remote 2 Pro | Connection and buttons verified; audio confirmed by the user. Existing RC001 / RC003 protocol support is retained within the Xiaomi entry |
+| Google Chromecast Voice Remote (G9N9N) | Planned; adapter implementation and hardware validation pending |
+| Google TV Streamer Voice Remote (GY3LE) | Planned; adapter implementation and hardware validation pending |
+| Apple Siri Remote | Planned; adapter implementation and hardware validation pending |
+
+The device scope is limited to these four entries. Google hardware model numbers follow [Google's regulatory documentation](https://support.google.com/product-documentation/answer/4541589?hl=en). Third-party replacements require separate validation; a seller's “compatible with G9N9N” label does not establish support.
 
 Bluetooth pairing alone does not establish compatibility: the remote must use a supported button and audio protocol.
 

@@ -1162,11 +1162,8 @@
 "onboarding.step.controls" = "Button test";
 "onboarding.step.complete" = "Done";
 
-"onboarding.control_source.siri_unavailable.title" = "Apple Siri Remote";
 
-"onboarding.control_source.bluetooth_unavailable.title" = "Other Bluetooth voice devices";
 
-"onboarding.control_source.unsupported" = "Not supported yet";
 
 "onboarding.voice_tool.guide.open_voicecursor" = "Open VoiceCursor";
 "onboarding.voice_tool.guide.open_voicecursor.detail" = "Open VoiceCursor → Settings → General to configure its hotkey and microphone.";
@@ -1245,3 +1242,10 @@
 "update.dialog.latest_version" = "Latest on this channel";
 
 "update.dialog.previous_version" = "Previous version";
+
+// Four-device product scope. Planned entries cannot be selected in onboarding.
+"remote.catalog.xiaomi.title" = "Xiaomi Bluetooth Remote 2 Pro";
+"remote.catalog.chromecastG9N9N.title" = "Chromecast Voice Remote (G9N9N)";
+"remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
+"remote.catalog.siriRemote.title" = "Apple Siri Remote";
+"remote.catalog.planned" = "Planned; adapter not available yet";

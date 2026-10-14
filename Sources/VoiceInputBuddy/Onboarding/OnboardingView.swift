@@ -53,7 +53,6 @@ struct OnboardingView: View {
     @State var isCapturingVoiceShortcut = false
     @State var shortcutCaptureErrorKey: String?
     @State var vokieDeepLinkStatus: VoiceInputBuddyDeepLinkStatus?
-    @State var showAlternativeControlSources = false
     @State var secureInputActive: Bool?
     @State var secureInputWaitStartedAtUptime: TimeInterval?
     @State var lastLoggedSecureInputState: Bool?
@@ -82,11 +81,6 @@ struct OnboardingView: View {
             initialValue: voiceToolAvailabilityOverride ?? Self.detectVoiceToolAvailability()
         )
         _selectedInputMethodGuideStep = State(initialValue: initialInputMethodGuideStep)
-        _showAlternativeControlSources = State(
-            initialValue: [.chromecastRemote, .appleCompanion, .webRemote].contains(
-                model.settings.onboardingControlSource
-            )
-        )
     }
 
     private var lifecycleContent: some View {

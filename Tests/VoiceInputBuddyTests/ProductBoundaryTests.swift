@@ -173,6 +173,18 @@ struct ProductBoundaryTests {
         #expect(AppSettings(defaults: defaults).applicationLanguage == .simplifiedChinese)
     }
 
+    @Test func deviceScopeKeepsGoogleModelsDistinctAndPlannedAdaptersUnavailable() {
+        #expect(PlannedRemoteDevice.allCases == [
+            .xiaomi, .chromecastG9N9N, .googleStreamerGY3LE, .siriRemote,
+        ])
+        #expect(PlannedRemoteDevice.chromecastG9N9N.googleHardwareModelNumber == "G9N9N")
+        #expect(PlannedRemoteDevice.googleStreamerGY3LE.googleHardwareModelNumber == "GY3LE")
+        #expect(PlannedRemoteDevice.allCases.filter(\.isAvailable) == [.xiaomi])
+        // Listing a planned device must not admit it through the Xiaomi hardware bridge.
+        #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "G9N9N") == nil)
+        #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
+    }
+
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {
         #expect(OnboardingBuildCapabilities.availableControlSources == [.xiaomiRemote])
         let ready = OnboardingCapabilities(

@@ -39,46 +39,11 @@ extension OnboardingView {
             }
 
             VStack(spacing: 8) {
-                if !availablePhysicalControlSources.contains(.siriRemote) {
+                ForEach(PlannedRemoteDevice.allCases.filter { !$0.isAvailable }) { device in
                     unsupportedControlSourceCard(
-                        titleKey: "onboarding.control_source.siri_unavailable.title",
-                        icon: "appletvremote.gen4.fill"
+                        titleKey: device.titleKey,
+                        icon: device.icon
                     )
-                }
-                unsupportedControlSourceCard(
-                    titleKey: "onboarding.control_source.bluetooth_unavailable.title",
-                    icon: "antenna.radiowaves.left.and.right"
-                )
-            }
-
-            if !availableAlternativeControlSources.isEmpty {
-                onboardingActionButton(id: "control-source.more") {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        showAlternativeControlSources.toggle()
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: showAlternativeControlSources ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                        Text(verbatim: localization.text("onboarding.control_source.more"))
-                            .font(.system(size: 13, weight: .semibold))
-                        Spacer()
-                        Text("\(availableAlternativeControlSources.count)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-                }
-                .buttonStyle(.plain)
-
-                if showAlternativeControlSources {
-                    VStack(spacing: 8) {
-                        ForEach(availableAlternativeControlSources) { source in
-                            controlSourceCard(source, emphasized: false)
-                        }
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
 
@@ -94,7 +59,7 @@ extension OnboardingView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(localization.text(titleKey))
                         .font(.system(size: 13, weight: .semibold))
-                    Text(localization.text("onboarding.control_source.unsupported"))
+                    Text(localization.text("remote.catalog.planned"))
                         .font(.system(size: 12))
                 }
                 Spacer(minLength: 4)
@@ -113,12 +78,6 @@ extension OnboardingView {
     private var availablePhysicalControlSources: [OnboardingControlSource] {
         OnboardingBuildCapabilities.availableControlSources.filter {
             [.xiaomiRemote, .siriRemote].contains($0)
-        }
-    }
-
-    var availableAlternativeControlSources: [OnboardingControlSource] {
-        OnboardingBuildCapabilities.availableControlSources.filter {
-            [.chromecastRemote, .appleCompanion, .webRemote].contains($0)
         }
     }
 
@@ -143,7 +102,7 @@ extension OnboardingView {
             HStack(alignment: .top, spacing: 11) {
                 controlSourceThumbnail(source, emphasized: emphasized)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(localization.text(appleGeneration?.titleKey ?? source.titleKey))
+                    Text(localization.text(appleGeneration?.titleKey ?? (source == .xiaomiRemote ? PlannedRemoteDevice.xiaomi.titleKey : source.titleKey)))
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)

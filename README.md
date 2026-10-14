@@ -44,9 +44,12 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 
 | 设备 | 当前支持情况 |
 | --- | --- |
-| 小米蓝牙遥控器 2 Pro | 已在本地实际连接并验证按键；用户已确认音频功能正常 |
-| 小米 RC001／RC003 系列兼容遥控器 | 已包含 ATVV 音频与按键协议适配；不同型号、固件仍需实际验证 |
-| Apple Siri Remote、其他蓝牙按钮、USB 按钮或脚踏设备 | 当前不作为已支持设备提供 |
+| 小米蓝牙遥控器 2 Pro | 已验证连接与按键；用户已确认音频正常。保留现有 RC001／RC003 协议适配，不单独扩展设备清单 |
+| Google Chromecast Voice Remote（G9N9N） | 计划支持；尚未完成适配与真机验证 |
+| Google TV Streamer Voice Remote（GY3LE） | 计划支持；尚未完成适配与真机验证 |
+| Apple Siri Remote | 计划支持；尚未完成适配与真机验证 |
+
+设备范围限定为以上四项。Google 硬件型号依据 [Google 官方监管信息](https://support.google.com/product-documentation/answer/4541589?hl=en)。第三方兼容款必须单独验证，商品标注“兼容 G9N9N”不代表已经支持。
 
 遥控器需支持对应的蓝牙按键与音频协议，不能仅凭“可以蓝牙配对”判断兼容。
 
