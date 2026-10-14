@@ -58,7 +58,9 @@ extension BridgeAppModel {
         guard Self.canStartBluetoothVoice(
             mode: settings.voiceKeyMode,
             voiceFnTapModeEnabled: settings.voiceFnTapModeEnabled,
-            isVoiceKeyNeutralized: voiceFunctionMapper.isVoiceKeyNeutralized
+            isVoiceKeyNeutralized: voiceFunctionMapper.isVoiceKeyNeutralized,
+            hasHardwareVoiceKey: bridge.identifiedModel?.isChromecastRemote != true,
+            accessibilityGranted: KeyboardInjector.isAccessibilityTrusted
         ) else {
             _ = bridge.requestMicrophoneClose()
             cancelPendingBluetoothVoiceStart(for: identifier)
@@ -90,7 +92,7 @@ extension BridgeAppModel {
         bluetoothVoiceActive = true
         guard updateVoiceKeyState(
             streaming: true,
-            forceSoftware: false,
+            forceSoftware: bridge.identifiedModel?.isChromecastRemote == true && !settings.voiceFnTapModeEnabled,
             owner: .bluetooth
         ) else {
             _ = bridge.requestMicrophoneClose()
@@ -138,7 +140,7 @@ extension BridgeAppModel {
         } else {
             _ = voiceFnTapSession.startVoice()
             beginVoiceSessionIfNeeded()
-            if rc003VoiceExtensionTestEnabled {
+            if rc003VoiceExtensionTestEnabled, bridge.identifiedModel?.isChromecastRemote != true {
                 rc003VoiceExtensionActive = true
                 rc003VoiceExtensionAwaitingReopen = false
                 rc003VoiceExtensionDidReceiveAudio = false
@@ -255,7 +257,7 @@ extension BridgeAppModel {
         bluetoothVoiceActive = false
         pendingBluetoothVoiceStart.cancel()
         pendingBluetoothVoiceStopRequested = false
-        releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: false)
+        releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: true)
         pendingCommandVoiceAudio.cancel()
         if longRecordingRequested {
             finishLongRecording(reason: "remote_stop")
@@ -544,7 +546,7 @@ extension BridgeAppModel {
                 activeBluetoothVoiceDeviceIdentifier = nil
                 pendingCommandVoiceAudio.cancel()
                 _ = voiceFnTapSession.stopVoice()
-                releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: false)
+                releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: true)
                 endVoiceSessionIfNeeded(flushAudio: false)
             }
             if longRecordingRequested {

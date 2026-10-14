@@ -9,7 +9,7 @@ enum PlannedRemoteDevice: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var titleKey: String { "remote.catalog.\(rawValue).title" }
 
-    var isAvailable: Bool { self == .xiaomi }
+    var isAvailable: Bool { self == .xiaomi || self == .chromecastG9N9N }
 
     /// Selection can precede adapter readiness; connection validation remains mandatory.
     var onboardingSource: OnboardingControlSource? {

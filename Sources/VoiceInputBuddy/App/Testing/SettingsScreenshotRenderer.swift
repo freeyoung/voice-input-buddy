@@ -109,7 +109,10 @@ enum SettingsScreenshotRenderer {
             ]
         }
         _ = usesSiriRemote
-        _ = usesChromecast
+        if usesChromecast {
+            let identifier = settings.registerBluetoothRemote(identifier: UUID(), model: .chromecastVoiceRemote)
+            settings.selectRemoteProfile(identifier)
+        }
         if opensShortcutEditor {
             settings.customMappingEnabled = true
             settings.setAction(.customShortcut, for: .ok, trigger: .singleClick)

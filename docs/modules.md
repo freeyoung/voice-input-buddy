@@ -34,3 +34,7 @@ VoiceInputBuddyMic.driver 基于固定版本 BlackHole 源码构建，使用独�
 未来移除时，应一并清理客户端、UI、状态和设置迁移，并保留小米遥控器连接、按键映射与语音输入的回归验证。`references/` 是忽略的本地研究笔记目录，正式参考链接列在 README；`dist/` 是忽略的本地构建输出，不属于版本库源码。
 
 诊断只写本地日志；上传器、私有上传协议和待上传事件队列已删除。
+
+## G9N9N public adapter
+
+`G9N9NProtocol.swift` identifies candidates, parses report 2 Consumer Control usages, checks ATVV capabilities, and distinguishes pairing errors. `XiaomiBluetoothBridge` now also hosts G9N9N via explicit opt-in, requiring DIS model G9N9N and ATVV v1.0 / 16 kHz before readiness. Audio uses the existing ADPCM decoder and virtual microphone output; driver sources and signing are unchanged. The retired no-op Chromecast package facade has been removed.

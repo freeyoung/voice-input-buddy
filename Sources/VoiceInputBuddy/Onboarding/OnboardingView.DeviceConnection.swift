@@ -10,21 +10,7 @@ extension OnboardingView {
     var remoteContent: some View {
         switch settings.onboardingControlMethod {
         case .physicalRemote:
-            if settings.onboardingControlSource == .chromecastRemote,
-               !ChromecastFeatureIntegration.isPackageIncluded {
-                VStack(alignment: .leading, spacing: 18) {
-                    onboardingTitle("remote.catalog.chromecastG9N9N.title")
-                    statusCard(
-                        icon: "wrench.and.screwdriver",
-                        title: localization.text("remote.catalog.g9n9n.adapter_pending.title"),
-                        detail: localization.text("remote.catalog.g9n9n.adapter_pending.detail"),
-                        isComplete: false
-                    )
-                    openBluetoothSettingsButton
-                }
-            } else {
-                physicalRemoteContent
-            }
+            physicalRemoteContent
         case .iPhoneApp:
             iPhoneRemoteContent
         case .webRemote:

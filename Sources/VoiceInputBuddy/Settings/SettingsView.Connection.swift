@@ -101,9 +101,6 @@ extension SettingsView {
         if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
             UnrecognizedRemotePhoto()
                 .frame(width: 82, height: 166)
-        } else if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
-            UnrecognizedRemotePhoto()
-                .frame(width: 82, height: 166)
         } else if let model = settings.selectedRemoteProfile?.model,
                   let resource = VoiceRemoteCatalog.photoResource(for: model) {
             // 型号在目录里 → 用目录指定的那张真机图。

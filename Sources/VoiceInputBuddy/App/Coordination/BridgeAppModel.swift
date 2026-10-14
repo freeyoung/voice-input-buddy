@@ -63,12 +63,14 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 guard let model = settings.remoteDeviceProfiles.first(where: {
                     $0.id == profileID
                 })?.model else { return false }
-                return !model.usesPrivateAdapter
+                return !model.usesPrivateAdapter && !model.isChromecastRemote
             }
         case .siriRemote:
             return !connectedAppleRemoteProfileIDs.isEmpty
         case .chromecastRemote:
-            return !connectedChromecastProfileIDs.isEmpty
+            return connectedRemoteProfileIDs.contains { id in
+                settings.remoteDeviceProfiles.first(where: { $0.id == id })?.model.isChromecastRemote == true
+            }
         case .appleCompanion:
             return isPhoneRemoteConnected || isWatchRemoteConnected
         case .webRemote:
@@ -80,9 +82,12 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     var activePhysicalVoiceControlSource: OnboardingControlSource? {
-        if bluetoothVoiceActive { return .xiaomiRemote }
+        if bluetoothVoiceActive {
+            let profile = activeBluetoothVoiceDeviceIdentifier.flatMap { settings.profileID(forBluetoothIdentifier: $0) }
+                .flatMap { id in settings.remoteDeviceProfiles.first { $0.id == id } }
+            return profile?.model.isChromecastRemote == true ? .chromecastRemote : .xiaomiRemote
+        }
         if !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping { return .siriRemote }
-        if chromecastVoiceActive || chromecastVoiceStopping { return .chromecastRemote }
         return nil
     }
     let phoneRemoteServer = PhoneRemoteServer(logger: { message in
@@ -269,33 +274,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var activeAppleRemoteVoiceOperationID: String?
     var activeAppleRemoteVoiceStartedAt: Date?
 
-    // MARK: - Chromecast（可选私有包）
-
-    /// 私有包缺失时该实例内部全部退化为 no-op，宿主行为与未接入前完全一致。
-    lazy var chromecastFeature = ChromecastFeatureIntegration()
-    /// 当前是否有活跃的 Chromecast 收音会话。
-    var chromecastVoiceActive = false
-    var chromecastVoiceStopping = false
-    private var pendingChromecastVoiceStart = false
-    private var pendingChromecastVoiceAudio = CommandVoiceActivationAudioBuffer(
-        maximumSampleCount: 32_000
-    )
-    private var pendingChromecastVoiceStopReason: ChromecastVoiceEndReason?
-    private var chromecastVoiceStopOperation: UInt64 = 0
-    private var chromecastVoiceOperationCounter: UInt64 = 0
-    private var activeChromecastVoiceOperationID: String?
-    private var activeChromecastVoiceStartedAt: Date?
-    private var chromecastAudioBatchCount = 0
-    private var chromecastAudioSampleCount = 0
-    private var chromecastAudioEnqueueFailureCount = 0
-    private var loggedChromecastAudioDevice = false
-    /// 设置页展示用。私有包缺失时恒为 `.unavailable`，界面据此隐藏整块内容。
-    @Published private(set) var chromecastStatus: ChromecastLinkStatus =
-        ChromecastFeatureIntegration.isPackageIncluded ? .disabled : .unavailable
-    /// 遥控器**自报**的能力位；链路不可用时为空集合。
-    ///
-    /// 界面与语音键驱动都读它（经 `RemoteVoiceCapabilities.resolve`），宿主不再维护第二份型号能力表。
-    @Published private(set) var chromecastDeclaredCapabilities: ChromecastDeclaredCapabilities = []
     /// 苹果遥控器**自报**的能力位；链路不可用时为空集合（同上）。
     @Published private(set) var siriDeclaredCapabilities: SiriRemoteDeclaredCapabilities = []
 
@@ -307,25 +285,14 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         let model = settings.selectedRemoteProfile?.model
         var declared: ChromecastDeclaredCapabilities = []
         if let model {
-            if model.isChromecastRemote {
-                declared = chromecastDeclaredCapabilities
-            } else if model.isAppleSiriRemote {
+            if model.isAppleSiriRemote {
                 declared = siriDeclaredCapabilities.asDeclaredVoiceCapabilities
             }
         }
         return .resolve(model: model, declared: declared)
     }
-    /// 当前是否有活跃的 Chromecast 收音会话（按键页用它点亮固定的语音键卡片）。
-    @Published private(set) var isChromecastVoiceActive = false
-    /// Chromecast 遥控器对应的设备档案。按型号识别，不存设备标识。
-    private var chromecastProfileID: UUID?
-    /// 已连接的 Chromecast 档案，用于设备选择器与「已连接」状态。
+    /// Google readiness derives from the shared public Bluetooth bridges.
     var connectedChromecastProfileIDs = Set<UUID>()
-    /// 当前按下的 Chromecast 按键（画布控制 ID）。
-    private var chromecastPressedControls = Set<String>()
-    var chromecastButtonGestureRecognizer = RemoteButtonGestureRecognizer()
-    var chromecastDoubleClickTimers: [RemoteButton: DispatchSourceTimer] = [:]
-    var chromecastLongPressTimers: [RemoteButton: DispatchSourceTimer] = [:]
     var hidPowerKeySuppressed = false
     var hidAllowedLocationIDs: Set<UInt32>?
     var started = false
@@ -792,9 +759,5 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         AppLogger.shared.write("APP STOP")
     }
 
-    // MARK: - Chromecast 硬件（可选私有包）
-    //
-    // 与 Siri Remote 链路完全隔离：独立 owner（`.chromecast`）、独立会话与排空操作号，
-    // 一方结束不会取消另一方。私有包缺失时本段全部不会被编译进来。
 
 }

@@ -44,8 +44,8 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 
 | 设备 | 当前支持情况 |
 | --- | --- |
-| 小米蓝牙遥控器 2 Pro | 已验证连接与按键；用户已确认音频正常。保留现有 RC001／RC003 协议适配，不单独扩展设备清单 |
-| Google Chromecast Voice Remote（G9N9N） | 计划支持；尚未完成适配与真机验证 |
+| 小米蓝牙遥控器 2／2 Pro | RC001 = 2，RC003 = 2 Pro，均包含 ATVV 协议与按键适配。2 Pro 按键已本地验证，音频由用户确认正常；2 的完整音频流程仍需单独验收 |
+| Google Chromecast Voice Remote（G9N9N） | 已实现公开 ATVV v1.0／16kHz 音频和 Consumer Control 按键接入；真机验证待完成，兼容款需分别验证 |
 | Google TV Streamer Voice Remote（GY3LE） | 计划支持；尚未完成适配与真机验证 |
 | Apple Siri Remote | 计划支持；尚未完成适配与真机验证 |
 
@@ -90,6 +90,9 @@ Apple Silicon 选择 `*_macOS_arm64.pkg`，Intel 选择 `*_macOS_intel.pkg`。�
 | [remote-mic-app](https://github.com/HD838A/remote-mic-app) | 遥控器连接、音频桥接、按键映射与界面的代码基础 |
 | [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | 小米 ATVV 协议、ADPCM 解码和 HID 映射参考 |
 | [vibe-mote](https://github.com/Tilkmilk/vibe-mote) | Google TV／Chromecast 遥控器 HID 按键、ATVV 语音协议与第三方兼容款差异的参考（Windows 实现） |
+| [ATVVoice](https://github.com/b0o/ATVVoice) | 已验证 G9N9N 的 Linux ATVV 实现；能力协商、音频同步与会话保活参考 |
+| [mi-remote-mapper](https://github.com/81199000/mi-remote-mapper) | macOS CoreBluetooth、HID 和虚拟音频输出参考；未作为 G9N9N 真机验收依据 |
+| [mi-ao](https://github.com/fanxeon/mi-ao) | macOS ATVV 协议、解码与能力验证参考；Google 遥控器仍需真机验证 |
 | [mi_remote_control](https://github.com/godarrenw/mi_remote_control) | 按键动作、应用预设与故障排查的设计参考 |
 | [open-voice-bridge](https://github.com/nijez/open-voice-bridge) | 设备能力建模与语音链路诊断的设计参考 |
 | [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | 虚拟麦克风驱动 |

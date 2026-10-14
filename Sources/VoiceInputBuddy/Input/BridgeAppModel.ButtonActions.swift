@@ -374,11 +374,6 @@ extension BridgeAppModel {
         appleRemoteGestureRecognizers.removeAll()
         appleRemoteRepeatTimers.values.forEach { $0.cancel() }
         appleRemoteRepeatTimers.removeAll()
-        chromecastDoubleClickTimers.values.forEach { $0.cancel() }
-        chromecastDoubleClickTimers.removeAll()
-        chromecastLongPressTimers.values.forEach { $0.cancel() }
-        chromecastLongPressTimers.removeAll()
-        chromecastButtonGestureRecognizer.reset()
         if appleRemoteAppSwitcherSession.isActive {
             finishAppleRemoteAppSwitcher(reason: "common_phrases_opened", confirmed: false)
         }

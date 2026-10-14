@@ -122,13 +122,13 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 
 ### Remote device scope
 
-The product device list is limited to Xiaomi Bluetooth Remote 2 Pro, Google
+The product device list is limited to Xiaomi Bluetooth Remote 2 / 2 Pro, Google
 Chromecast Voice Remote (G9N9N), Google TV Streamer Voice Remote (GY3LE), and
 Apple Siri Remote. `PlannedRemoteDevice` defines this scope; it does not grant
 connection support. All four entries can be selected. Continue advances Xiaomi and G9N9N to
 connection setup. For GY3LE and Siri, Continue keeps the device page open and
 shows an inline notice below the right-hand illustration. G9N9N connection
-validation remains mandatory; its adapter is still pending. The
+validation remains mandatory; its public adapter is implemented with hardware acceptance pending. The
 validated Xiaomi admission catalog remains separate, so a planned Google model
 cannot accidentally connect through the Xiaomi bridge. Third-party replacement
 remotes need individual validation.
@@ -173,10 +173,38 @@ confirmation of GY3LE compatibility.
 ### Unsupported remote integrations
 
 The public macOS product currently supports Xiaomi remotes. Phone, watch, Web Remote,
-Siri Remote and Chromecast adapters are dormant scaffolding, not supported connections.
+Siri Remote remains dormant scaffolding. G9N9N uses the public ATVV and HID pipeline;
+GY3LE is not admitted as a G9N9N device.
 Their management panels are deliberately absent from the shipped connection page.
 Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
 Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
 Screenshot fixture entry points are debug-only.
 
 Debug interactive onboarding previews can set `VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE_STEP=remoteAvailability` to start at device selection (the default remains `voiceTool`).
+
+### G9N9N implementation boundary
+
+The public bridge opts into G9N9N candidate discovery. An advertised name is only
+an initial filter: DIS must report exactly G9N9N and the negotiated protocol must
+be v1.0 with 16 kHz ADPCM and a bounded frame size. Both discovery callbacks can
+finish in either order. Authentication failures request normal macOS pairing;
+failed discovery is not treated as proof that the service is absent.
+
+Audio remains headerless v1.0 ADPCM with high-nibble-first decoding and AUDIO_SYNC
+predictor restoration. MIC_EXTEND uses the stream ID every ten seconds while
+streaming. Existing generation checks, reconnect backoff, output readiness,
+voice ownership and tail draining apply to Google sessions as well as Xiaomi.
+Google voice shortcuts are synthesized in the app; they do not depend on a
+Xiaomi hardware Fn mapping. Physical recording follows the remote's ATVV start
+and stop notifications; input tools may use the existing Fn tap conversion.
+
+HID report 2 Consumer Control usages are translated to the common mapping engine,
+including mute, YouTube and Netflix. The known VID/PID or an exact G9N9N HID
+product name permits probing, not an authenticity claim. Other replacement IDs,
+report layouts, protocols or codecs require additional evidence/adapters.
+Power and input-source keys can use infrared and are excluded from the public
+Bluetooth mapping canvas until supported reports are captured.
+
+Hardware acceptance is pending: test an original unit and each replacement
+separately for pairing, microphone samples, stop/tail, long sessions, HID/GATT
+coexistence, sleep/wake and reconnect. Automated tests cannot establish these.

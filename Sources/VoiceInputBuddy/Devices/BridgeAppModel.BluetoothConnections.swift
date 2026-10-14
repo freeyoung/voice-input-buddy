@@ -18,7 +18,8 @@ extension BridgeAppModel {
             let bridge = XiaomiBluetoothBridge(
                 settings: settings,
                 delegate: self,
-                targetIdentifier: identifier
+                targetIdentifier: identifier,
+                allowsG9N9N: true
             )
             bluetoothBridges[identifier] = bridge
             bridge.setSystemSuspended(
@@ -35,6 +36,7 @@ extension BridgeAppModel {
         let bridge = XiaomiBluetoothBridge(
             settings: settings,
             delegate: self,
+            allowsG9N9N: true,
             excludedIdentifiers: { [weak self] in
                 guard let self else { return [] }
                 return Set(self.bluetoothBridges.keys)
@@ -62,7 +64,7 @@ extension BridgeAppModel {
             return nil
         }
         let existingProfileID = settings.profileID(forBluetoothIdentifier: identifier)
-        let profileID = existingProfileID ?? settings.registerBluetoothRemote(identifier: identifier)
+        let profileID = existingProfileID ?? settings.registerBluetoothRemote(identifier: identifier, model: bridge.identifiedModel ?? .unknown)
         if discoveryBluetoothBridge === bridge {
             discoveryBluetoothBridge = nil
             bluetoothBridges[identifier] = bridge
@@ -220,6 +222,9 @@ extension BridgeAppModel {
                   case .ready = state
             else { return nil }
             return profileID
+        })
+        connectedChromecastProfileIDs = Set(connectedBluetoothProfileIDs.filter { id in
+            settings.remoteDeviceProfiles.first { $0.id == id }?.model.isChromecastRemote == true
         })
         connectedRemoteProfileIDs = connectedBluetoothProfileIDs
             .union(connectedAppleRemoteProfileIDs)

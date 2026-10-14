@@ -27,9 +27,12 @@ extension BridgeAppModel {
     static func canStartBluetoothVoice(
         mode: VoiceKeyMode,
         voiceFnTapModeEnabled: Bool = false,
-        isVoiceKeyNeutralized: Bool
+        isVoiceKeyNeutralized: Bool,
+        hasHardwareVoiceKey: Bool = true,
+        accessibilityGranted: Bool = false
     ) -> Bool {
-        (mode == .function && !voiceFnTapModeEnabled) || isVoiceKeyNeutralized
+        if !hasHardwareVoiceKey { return accessibilityGranted }
+        return (mode == .function && !voiceFnTapModeEnabled) || isVoiceKeyNeutralized
     }
 
     static func canFallbackVoiceKeyMode(

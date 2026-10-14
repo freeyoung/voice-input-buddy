@@ -100,3 +100,62 @@ The upstream project included an RC003 product photo. That photo and upstream pr
 ## Setup guide screenshots
 
 The 16 light/dark setup screenshots in `Resources/Onboarding` are carried over from remote-mic-app (SayAll contributors), under the upstream project license. They illustrate third-party and macOS settings; depicted interface copyrights and trademarks remain with their respective owners. The upstream proprietary app logo and remote product photo are not bundled. `BuddyRemoteIllustration.png` is an unbranded generated product render. `scripts/generate-remote-layout-reference.swift` produces its coordinate reference, not the shipped image. The artwork uses no manufacturer logos or downloaded product photos.
+
+## Public Google remote protocol references
+
+The G9N9N adapter is implemented in this repository using public CoreBluetooth and IOKit APIs. No upstream private Google/Apple package, Windows injection code, or Linux audio backend is bundled.
+
+- Source: <https://github.com/b0o/ATVVoice>; reference commit `0e8f6413dc4bad7a04e3c6b648945439d7a22fac`.
+- Source: <https://github.com/Tilkmilk/vibe-mote>; reference commit `fb30e479694524962512b5bba6afc76cd0a04778`.
+- Source: <https://github.com/81199000/mi-remote-mapper>; reference commit `8436d19b3932863bfa27583e0d4007020e85d7da`.
+- Source: <https://github.com/fanxeon/mi-ao>; reference commit `d6019bcede80ff71d225385b5c44b6f5f84a4832`.
+
+ATVVoice informs ATVV v1.0 control layout, ADPCM ordering, and session keepalive. vibe-mote informs the G9N9N Consumer Control usage table and compatibility diagnostics. mi-remote-mapper and mi-ao are architecture references only; their code is not imported. The following MIT notices are retained for the adapted protocol references.
+
+### ATVVoice
+
+MIT License
+
+Copyright (c) 2026 Maddison Cohodas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+### vibe-mote
+
+MIT License
+
+Copyright (c) 2026 VibeMote contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

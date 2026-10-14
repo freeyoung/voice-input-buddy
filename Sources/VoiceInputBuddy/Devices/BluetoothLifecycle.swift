@@ -106,9 +106,14 @@ enum VoiceRemoteAdmission {
         targetIdentifier: UUID?,
         advertisesVoiceService: Bool,
         name: String?,
-        advertisedName: String?
+        advertisedName: String?,
+        allowsG9N9N: Bool = false
     ) -> VoiceRemoteAdmissionDecision {
         let nameForMatch = advertisedName ?? name
+        if allowsG9N9N, G9N9NProtocol.isCandidateName(nameForMatch) {
+            if let targetIdentifier, identifier != targetIdentifier { return .ignore }
+            return targetIdentifier == nil ? .adoptRecognizedName(nameForMatch ?? "G9N9N") : .adoptSavedIdentity
+        }
         // 别的产品优先否决，且优先于已保存身份：早先版本误把 Chromecast Remote 存成
         // Xiaomi 档案的情况真实发生过，只按 UUID 采纳会让这个错误一直重连下去。
         if let foreign = ForeignVoiceRemoteProduct.rejectedName(nameForMatch) {
