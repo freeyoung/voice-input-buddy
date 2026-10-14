@@ -111,6 +111,33 @@ struct ATVVProtocolTests {
         #expect(accumulator.pending == Data([7]))
     }
 
+    @Test func frameAccumulatorHandlesRepeatedSlicedPacketsAndRebasesOutput() {
+        let bytes = (0..<1003).map { UInt8($0 % 256) }
+        let storage = Data([0xFF]) + Data(bytes)
+        var accumulator = FrameAccumulator()
+        var frames: [Data] = []
+        for offset in stride(from: 0, to: bytes.count, by: 7) {
+            let end = min(offset + 7, bytes.count)
+            frames += accumulator.append(storage[(offset + 1)..<(end + 1)], frameSize: 120)
+            #expect(accumulator.pending.startIndex == 0)
+            #expect(accumulator.pending.count < 120)
+        }
+        #expect(frames.count == 8)
+        #expect(frames.allSatisfy { $0.startIndex == 0 && $0.count == 120 })
+        #expect(frames.reduce(into: Data()) { $0.append($1) } == Data(bytes.prefix(960)))
+        #expect(accumulator.pending == Data(bytes.suffix(43)))
+
+        // Invalid sizes must not ingest bytes or disturb a partial frame.
+        #expect(accumulator.append(Data([0xFF]), frameSize: 0).isEmpty)
+        #expect(accumulator.append(Data([0xFF]), frameSize: -1).isEmpty)
+        #expect(accumulator.pending == Data(bytes.suffix(43)))
+        accumulator.reset()
+        #expect(accumulator.pending.isEmpty)
+        #expect(accumulator.append(Data([1, 2, 3]), frameSize: 3) == [Data([1, 2, 3])])
+        #expect(accumulator.pending.isEmpty)
+        #expect(accumulator.pending.startIndex == 0)
+    }
+
     @Test func commandVoiceJourneyFlushesPreRollBeforeRemainingAudioAndClearsOnStop() {
         var buffer = CommandVoiceActivationAudioBuffer(maximumSampleCount: 4)
         var routedSamples: [Int16] = []

@@ -196,19 +196,21 @@ struct FrameAccumulator {
     mutating func append(_ data: Data, frameSize: Int) -> [Data] {
         guard frameSize > 0 else { return [] }
         pending.append(data)
+        guard pending.count >= frameSize else { return [] }
         var frames: [Data] = []
-        while pending.count >= frameSize {
-            frames.append(Data(Array(pending.prefix(frameSize))))
-            pending.removeFirst(frameSize)
+        var offset = pending.startIndex
+        while pending.endIndex - offset >= frameSize {
+            let end = offset + frameSize
+            frames.append(pending.subdata(in: offset..<end))
+            offset = end
         }
-        // Rebase the remainder and release consumed storage after every batch.
-        pending = Data(Array(pending))
+        // Copy only after consuming frames, rebasing the remainder without an
+        // intermediate Array or retaining the consumed batch's storage.
+        pending = offset == pending.endIndex ? Data() : pending.subdata(in: offset..<pending.endIndex)
         return frames
     }
 
     mutating func reset() {
-        // removeFirst leaves a Data slice with a nonzero start index. Replacing
-        // it also avoids Foundation traps when clearing that slice in place.
         pending = Data()
     }
 }

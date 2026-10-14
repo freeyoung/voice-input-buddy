@@ -116,11 +116,7 @@ extension BridgeAppModel {
                 let bufferedAudio = self.pendingMobileVoiceAudio.drain()
                 guard ready else {
                     self.pendingMobileVoiceAudio.cancel()
-                    if stopRequested {
-                        self.stopPhoneVoice(source: source)
-                    } else {
-                        self.stopPhoneVoice(source: source)
-                    }
+                    self.stopPhoneVoice(source: source)
                     return
                 }
                 if !bufferedAudio.isEmpty {
