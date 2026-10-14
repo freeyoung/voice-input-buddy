@@ -111,8 +111,6 @@ struct RemoteVoiceMappingService {
 final class RemoteVoiceFunctionMapper {
     typealias ServiceProvider = () -> [RemoteVoiceMappingService]
 
-    private static let vendorID = 0x2717
-    private static let productID = 0x32B8
     private static let mappingProperty = "UserKeyMapping" as CFString
 
     private struct OriginalMappings: Codable {
@@ -128,7 +126,13 @@ final class RemoteVoiceFunctionMapper {
     private let recoveryDefaults: UserDefaults
     private let bootID: String?
     private let recoveryJournalURL: URL?
-    private let serviceProvider: ServiceProvider
+    private let serviceProvider: ServiceProvider?
+    var additionalIdentities = Set<RemoteHIDIdentity>() {
+        willSet {
+            // Restore while the old identity list can still find its services.
+            if newValue != additionalIdentities { restore() }
+        }
+    }
     private var originalMappings: [UInt64: OriginalMappings] = [:]
     private(set) var isApplied = false
     private(set) var isPowerKeySuppressed = false
@@ -141,7 +145,7 @@ final class RemoteVoiceFunctionMapper {
     }
 
     init(
-        serviceProvider: @escaping ServiceProvider = RemoteVoiceFunctionMapper.systemServices,
+        serviceProvider: ServiceProvider? = nil,
         recoveryDefaults: UserDefaults = .standard,
         bootID: String? = RemoteVoiceFunctionMapper.currentBootID(),
         recoveryJournalURL: URL? = nil
@@ -220,7 +224,7 @@ final class RemoteVoiceFunctionMapper {
         neutralizeVoiceKey: Bool = false
     ) -> Bool {
         guard bootID != nil else { resetAppliedState(); return false }
-        let services = serviceProvider()
+        let services = serviceProvider?() ?? Self.systemServices(additionalIdentities: additionalIdentities)
         let matchedCount = services.count
         matchedServiceCount = matchedCount
         guard matchedCount > 0 else {
@@ -344,7 +348,7 @@ final class RemoteVoiceFunctionMapper {
             return
         }
 
-        let services = serviceProvider()
+        let services = serviceProvider?() ?? Self.systemServices(additionalIdentities: additionalIdentities)
         var restoredCount = 0
         for service in services {
             guard let registryID = service.registryID,
@@ -402,10 +406,10 @@ final class RemoteVoiceFunctionMapper {
         isVoiceKeyNeutralized = false
     }
 
-    private static func systemServices() -> [RemoteVoiceMappingService] {
+    private static func systemServices(additionalIdentities: Set<RemoteHIDIdentity>) -> [RemoteVoiceMappingService] {
         let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
         let services = IOHIDEventSystemClientCopyServices(client) as? [IOHIDServiceClient] ?? []
-        return services.filter(isTarget).map { service in
+        return services.filter { isTarget($0, additionalIdentities: additionalIdentities) }.map { service in
             RemoteVoiceMappingService(
                 registryID: registryID(service),
                 locationID: locationID(service),
@@ -422,7 +426,7 @@ final class RemoteVoiceFunctionMapper {
         }
     }
 
-    private static func isTarget(_ service: IOHIDServiceClient) -> Bool {
+    private static func isTarget(_ service: IOHIDServiceClient, additionalIdentities: Set<RemoteHIDIdentity>) -> Bool {
         let vendor = IOHIDServiceClientCopyProperty(
             service,
             kIOHIDVendorIDKey as CFString
@@ -431,7 +435,10 @@ final class RemoteVoiceFunctionMapper {
             service,
             kIOHIDProductIDKey as CFString
         ) as? NSNumber
-        return vendor?.intValue == vendorID && product?.intValue == productID
+        guard let vendor, let product,
+              (1...65535).contains(vendor.intValue), (0...65535).contains(product.intValue) else { return false }
+        let identity = RemoteHIDIdentity(vendorID: UInt16(vendor.intValue), productID: UInt16(product.intValue))
+        return identity == .xiaomi || additionalIdentities.contains(identity)
     }
 
     private static func registryID(_ service: IOHIDServiceClient) -> UInt64? {

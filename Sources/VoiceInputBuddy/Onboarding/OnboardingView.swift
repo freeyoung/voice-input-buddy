@@ -26,6 +26,7 @@ struct OnboardingView: View {
     @State var remoteInputDiagnostic = FirstUseRemoteInputDiagnostic()
     @State var requestedRemoteConnectionRecovery = false
     @State var testedControlButtons = Set<RemoteButton>()
+    @State var hidBindingProfile: RemoteDeviceProfile?
     @State var voiceSessionStarted = false
     @State var voiceSamplesReceived = false
     @State var voiceSessionEnded = false
@@ -98,6 +99,10 @@ struct OnboardingView: View {
         .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
         .environment(\.locale, localization.locale)
         .frame(minWidth: 980, minHeight: 732)
+        .sheet(item: $hidBindingProfile) { profile in
+            RemoteHIDBindingPicker(model: model, profile: profile)
+                .environmentObject(localization)
+        }
         .sheet(isPresented: $isMembershipPresented) {
             VStack(alignment: .trailing) {
                 Button(localization.text("common.action.close")) { isMembershipPresented = false }

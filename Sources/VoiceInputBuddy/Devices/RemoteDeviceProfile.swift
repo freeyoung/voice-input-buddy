@@ -266,6 +266,7 @@ struct RemoteDeviceProfile: Codable, Equatable, Identifiable {
     var customName: String
     var bluetoothIdentifier: UUID?
     var hidFingerprint: String?
+    var compatibleHIDBinding: RemoteHIDBinding?
     var mappings: RemoteDeviceMappings
 
     var displayNameFallbackKey: String { model.localizationKey }
@@ -276,6 +277,7 @@ struct RemoteDeviceProfile: Codable, Equatable, Identifiable {
         customName: String = "",
         bluetoothIdentifier: UUID? = nil,
         hidFingerprint: String? = nil,
+        compatibleHIDBinding: RemoteHIDBinding? = nil,
         mappings: RemoteDeviceMappings
     ) {
         self.id = id
@@ -283,6 +285,7 @@ struct RemoteDeviceProfile: Codable, Equatable, Identifiable {
         self.customName = customName
         self.bluetoothIdentifier = bluetoothIdentifier
         self.hidFingerprint = hidFingerprint
+        self.compatibleHIDBinding = compatibleHIDBinding
         self.mappings = mappings
     }
 }

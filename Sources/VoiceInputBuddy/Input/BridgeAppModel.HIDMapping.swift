@@ -351,6 +351,17 @@ extension BridgeAppModel {
         let monitor = HIDRemoteMonitor(
             settings: settings,
             allowsG9N9N: true,
+            confirmedGoogleFingerprints: { [weak self] in
+                guard let self else { return [] }
+                return Set(self.settings.remoteDeviceProfiles.compactMap { profile in
+                    guard profile.model.isChromecastRemote,
+                          let identifier = profile.bluetoothIdentifier,
+                          let bridge = self.bluetoothBridges[identifier],
+                          bridge.identifiedModel == .chromecastVoiceRemote, case .ready = bridge.state
+                    else { return nil }
+                    return profile.hidFingerprint
+                })
+            },
             profileID: profileID,
             targetFingerprint: targetFingerprint,
             excludedFingerprints: excludedFingerprints,
@@ -375,6 +386,10 @@ extension BridgeAppModel {
                 ) == true
             }
         )
+        monitor.onCandidateAvailable = { [weak self] in
+            guard let self else { return }
+            for bridge in self.bluetoothBridges.values { self.learnSelectedRemoteHIDIdentity(bridge) }
+        }
         monitor.claimsRuntimeButton = { [weak self] profileID, button in
             self?.commonPhrases.claims(button, source: Self.commonPhraseHIDSource(profileID)) == true
         }

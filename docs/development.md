@@ -207,12 +207,33 @@ Xiaomi hardware Fn mapping. Physical recording follows the remote's ATVV start
 and stop notifications; input tools may use the existing Fn tap conversion.
 
 HID report 2 Consumer Control usages are translated to the common mapping engine,
-including mute, YouTube and Netflix. The known VID/PID or an exact G9N9N HID
-product name permits probing, not an authenticity claim. Other replacement IDs,
-report layouts, protocols or codecs require additional evidence/adapters.
+including mute, YouTube and Netflix. Default HID enumeration uses exact VID/PID
+pairs only. Google reports are accepted only for a bound physical fingerprint
+whose BLE bridge is ready after DIS and capability confirmation. Enabling Google
+never bypasses Xiaomi power suppression; a failed suppression excludes both the
+standard Xiaomi ID and its saved replacement IDs from discovery. Other report
+layouts, protocols or codecs still require additional evidence/adapters.
 Power and input-source keys can use infrared and are excluded from the public
 Bluetooth mapping canvas until supported reports are captured.
 
 Hardware acceptance is pending: test an original unit and each replacement
 separately for pairing, microphone samples, stop/tail, long sessions, HID/GATT
 coexistence, sleep/wake and reconnect. Automated tests cannot establish these.
+
+### Adding compatible remote identities
+
+The connection page's Add new device action opens onboarding at device selection,
+preserving existing profiles, mappings and input-tool integration. When the selected
+family reaches BLE readiness, optional DIS PnP ID (0x2A50) metadata is compared with
+read-only Bluetooth HID enumeration. Automatic association requires one physical
+fingerprint and a matching system name. Ambiguous or missing metadata leaves a
+manual Associate button device picker in the connection step; it never opens all
+keyboards to learn IDs. Normal connection and button validation remain required.
+
+Nonstandard VID/PID pairs are saved with the selected profile and used for future
+HID matching. Standard pairs only bind the fingerprint, without another whitelist
+entry. Removing or replacing a profile removes its old whitelist entry. Xiaomi
+replacement IDs also participate in Fn mapping and power suppression; Google IDs
+do not. Updating the mapper's ID list restores owned mappings before replacing it.
+A saved ID chooses a transport candidate, not a new protocol adapter or a claim
+that every Chromecast-branded replacement works.

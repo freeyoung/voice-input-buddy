@@ -1258,3 +1258,13 @@
 "google.remote.microphone_refused" = "遥控器拒绝开启麦克风。请重新配对后重试。";
 "google.remote.pairing_required" = "蓝牙认证尚未完成。请在 macOS 蓝牙设置中移除并重新配对遥控器，再重新连接。";
 "google.remote.ir_controls" = "G9N9N 的电源与输入源键可能走红外；当前不将它们作为已验证的蓝牙映射键。";
+
+"connection.action.add_device" = "添加新设备";
+"remote.hid_binding.title" = "关联遥控器按键设备";
+"remote.hid_binding.help" = "选择已在系统蓝牙中配对的实际遥控器。保存后会记住它的设备标识，再继续向导测试按键和语音。";
+"remote.hid_binding.empty" = "暂未找到蓝牙按键设备。请先在系统蓝牙设置中配对遥控器，再刷新。";
+"remote.hid_binding.failed" = "未能保存关联。请确认遥控器已连接，并选择未被其他遥控器配置占用的设备。";
+"remote.hid_binding.refresh" = "刷新设备";
+"remote.hid_binding.save" = "关联并继续";
+"remote.hid_binding.open" = "按键未识别？关联兼容遥控器";
+"onboarding.remote.choose_device" = "选择本次添加的遥控器";

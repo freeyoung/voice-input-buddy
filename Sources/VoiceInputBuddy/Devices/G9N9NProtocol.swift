@@ -11,7 +11,7 @@ enum G9N9NProtocol {
         guard let raw else { return false }
         let name = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             .replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " ")
-        return ["chromecast", "chromecast remote", "chromecast voice remote", "g9n9n"].contains(name)
+        return ["chromecast", "chromecast remote", "chromecast voice remote", "chromecast 遥控器", "g9n9n"].contains(name)
     }
 
     static func isModelNumber(_ raw: String) -> Bool {

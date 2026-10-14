@@ -157,6 +157,15 @@ enum SettingsPageBehavior {
         ).first ?? .about
     }
 
+    static func beginDeviceSetup(settings: AppSettings) {
+        settings.discardOnboardingVoiceTrial()
+        settings.onboardingDevice = nil
+        settings.onboardingControlSource = .unselected
+        settings.onboardingRemoteAvailability = .unselected
+        settings.onboardingCompletedVersion = 0
+        settings.onboardingStep = .remoteAvailability
+    }
+
     static func beginIntegrationSetup(tool: OnboardingVoiceTool, settings: AppSettings) {
         settings.restartOnboarding()
         settings.setOnboardingVoiceTool(tool)
