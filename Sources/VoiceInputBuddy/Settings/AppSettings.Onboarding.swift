@@ -85,7 +85,13 @@ extension AppSettings {
         stagedVoiceToolBinding = nil
     }
 
+    func selectOnboardingDevice(_ device: PlannedRemoteDevice) {
+        setOnboardingControlSource(device.onboardingSource ?? .unselected)
+        onboardingDevice = device
+    }
+
     func setOnboardingControlSource(_ source: OnboardingControlSource) {
+        onboardingDevice = PlannedRemoteDevice.device(for: source)
         guard onboardingControlSource != source else { return }
         onboardingControlSource = source
         switch source {
@@ -217,6 +223,7 @@ extension AppSettings {
         onboardingVoiceTool = .unselected
         onboardingRemoteAvailability = .unselected
         onboardingControlSource = .unselected
+        onboardingDevice = nil
         onboardingAppleRemoteGeneration = nil
         onboardingVoiceBindingPreference = .documentedDefault
         onboardingPreferredGesture = nil

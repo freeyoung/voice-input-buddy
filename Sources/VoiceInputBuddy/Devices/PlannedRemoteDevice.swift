@@ -20,7 +20,7 @@ enum PlannedRemoteDevice: String, CaseIterable, Identifiable {
         }
     }
 
-    var isSelectable: Bool { onboardingSource != nil }
+    var canStartSetup: Bool { self == .xiaomi || self == .chromecastG9N9N }
 
     static func device(for source: OnboardingControlSource) -> Self? {
         allCases.first { $0.onboardingSource == source }

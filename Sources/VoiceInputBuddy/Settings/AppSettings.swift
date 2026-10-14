@@ -41,6 +41,7 @@ final class AppSettings: ObservableObject {
         static let onboardingStep = "onboarding.step"
         static let onboardingRemoteAvailability = "onboarding.remoteAvailability"
         static let onboardingControlSource = "onboarding.controlSource"
+        static let onboardingDevice = "onboarding.device"
         static let onboardingAppleRemoteGeneration = "onboarding.appleRemoteGeneration"
         static let onboardingVoiceTool = "onboarding.voiceTool"
         static let onboardingVoiceBindingPreference = "onboarding.voiceBindingPreference"
@@ -278,6 +279,10 @@ final class AppSettings: ObservableObject {
 
     var onboardingControlMethod: OnboardingControlMethod {
         onboardingControlSource.controlMethod
+    }
+
+    @Published var onboardingDevice: PlannedRemoteDevice? {
+        didSet { defaults.set(onboardingDevice?.rawValue, forKey: Keys.onboardingDevice) }
     }
 
     @Published var onboardingControlSource: OnboardingControlSource {
@@ -553,6 +558,9 @@ final class AppSettings: ObservableObject {
             .flatMap { OnboardingBuildCapabilities.availableControlSources.contains($0) ? $0 : nil }
             ?? .unselected
         onboardingControlSource = persistedControlSource
+        onboardingDevice = defaults.string(forKey: Keys.onboardingDevice)
+            .flatMap(PlannedRemoteDevice.init(rawValue:))
+            ?? PlannedRemoteDevice.device(for: persistedControlSource)
         onboardingAppleRemoteGeneration = defaults.string(
             forKey: Keys.onboardingAppleRemoteGeneration
         ).flatMap(OnboardingAppleRemoteGeneration.init(rawValue:))

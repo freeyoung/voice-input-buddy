@@ -57,6 +57,7 @@ struct OnboardingView: View {
     @State var secureInputWaitStartedAtUptime: TimeInterval?
     @State var lastLoggedSecureInputState: Bool?
     @State var aiPromptCopyResult: Bool?
+    @State var showUnsupportedDeviceNotice = false
 
     init(
         model: BridgeAppModel,

@@ -732,7 +732,7 @@
 "onboarding.voice_tool.binding.evidence_verified" = "推荐";
 "onboarding.voice_tool.binding.evidence_pending" = "测试通过后保存";
 "onboarding.control_source.title" = "选择控制设备";
-"onboarding.control_source.detail" = "请选择实体遥控器。G9N9N 可进入设置，但连接与音频功能仍待适配；灰色设备暂不可选择。";
+"onboarding.control_source.detail" = "请选择要使用的遥控器，然后点击“继续”。";
 "onboarding.control_source.hardware" = "实体遥控器";
 "onboarding.control_source.alternatives" = "备用方式";
 "onboarding.control_source.more" = "更多控制方式";
@@ -1244,13 +1244,12 @@
 
 "update.dialog.previous_version" = "更新前版本";
 
-// Four-device product scope. Planned entries cannot be selected in onboarding.
+// Four-device product scope. Upcoming adapters show an inline notice on Continue.
 "remote.catalog.xiaomi.title" = "小米蓝牙遥控器 2 Pro";
 "remote.catalog.chromecastG9N9N.title" = "Chromecast Voice Remote (G9N9N)";
 "remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
 "remote.catalog.siriRemote.title" = "Apple Siri Remote";
-"remote.catalog.planned" = "计划支持，尚未适配";
 "remote.catalog.illustration" = "设备外观示意图";
-"remote.catalog.g9n9n.setup_detail" = "可选择并进入设置。连接与麦克风功能仍在开发中。";
 "remote.catalog.g9n9n.adapter_pending.title" = "已选择 G9N9N，连接功能尚未完成";
 "remote.catalog.g9n9n.adapter_pending.detail" = "可先在 macOS 蓝牙设置中配对，但此版本尚不能读取它的按键或麦克风。可返回设备页选择小米；实际连接验证通过后才能继续。";
+"remote.catalog.unsupported_notice" = "现在还不支持，敬请期待。";

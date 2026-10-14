@@ -125,9 +125,10 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 The product device list is limited to Xiaomi Bluetooth Remote 2 Pro, Google
 Chromecast Voice Remote (G9N9N), Google TV Streamer Voice Remote (GY3LE), and
 Apple Siri Remote. `PlannedRemoteDevice` defines this scope; it does not grant
-connection support. G9N9N can be selected for setup, but its connection page explicitly reports
-the pending adapter and cannot pass connection validation. GY3LE and Siri entries
-remain disabled until their adapters are ready. The
+connection support. All four entries can be selected. Continue advances Xiaomi and G9N9N to
+connection setup. For GY3LE and Siri, Continue keeps the device page open and
+shows an inline notice below the right-hand illustration. G9N9N connection
+validation remains mandatory; its adapter is still pending. The
 validated Xiaomi admission catalog remains separate, so a planned Google model
 cannot accidentally connect through the Xiaomi bridge. Third-party replacement
 remotes need individual validation.

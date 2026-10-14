@@ -143,8 +143,14 @@ extension OnboardingView {
         }
     }
 
-    private func continueFlow() {
+    func continueFlow() {
         guard canContinue else { return }
+        if settings.onboardingStep == .remoteAvailability,
+           let device = settings.onboardingDevice,
+           !device.canStartSetup {
+            showUnsupportedDeviceNotice = true
+            return
+        }
         if settings.onboardingStep == .voiceTool {
             stageCurrentDocumentedPairingPlanIfPossible()
         }

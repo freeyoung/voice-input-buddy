@@ -7,199 +7,60 @@ import SwiftUI
 
 extension OnboardingView {
     var remoteAvailabilityContent: some View {
-        let compact = availablePhysicalControlSources.count > 1
-        let physicalColumns = [GridItem(.flexible())]
-        return VStack(alignment: .leading, spacing: compact ? 10 : 16) {
+        VStack(alignment: .leading, spacing: 12) {
             onboardingTitle("onboarding.control_source.title")
-            Text(verbatim: localization.text("onboarding.control_source.detail"))
+            Text(localization.text("onboarding.control_source.detail"))
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Text(verbatim: localization.text("onboarding.control_source.hardware"))
+            Text(localization.text("onboarding.control_source.hardware"))
                 .font(.system(size: 13, weight: .semibold))
-
-            LazyVGrid(
-                columns: physicalColumns,
-                spacing: compact ? 8 : 10
-            ) {
-                ForEach(availablePhysicalControlSources) { source in
-                    if source == .siriRemote {
-                        ForEach(OnboardingAppleRemoteGeneration.allCases) { generation in
-                            controlSourceCard(
-                                source,
-                                emphasized: true,
-                                appleGeneration: generation
-                            )
-                        }
-                    } else {
-                        controlSourceCard(source, emphasized: true)
-                    }
-                }
+            ForEach(PlannedRemoteDevice.allCases) { device in
+                deviceSelectionCard(device)
             }
-
-            VStack(spacing: 8) {
-                ForEach(PlannedRemoteDevice.allCases.filter { !$0.isSelectable }) { device in
-                    plannedDeviceCard(device)
-                }
-            }
-
         }
     }
 
-    private func plannedDeviceCard(_ device: PlannedRemoteDevice) -> some View {
-        Button {} label: {
-            HStack(spacing: 11) {
+    func selectDevice(_ device: PlannedRemoteDevice) {
+        showUnsupportedDeviceNotice = false
+        if let source = device.onboardingSource {
+            selectControlSource(source)
+        }
+        settings.selectOnboardingDevice(device)
+    }
+
+    private func deviceSelectionCard(_ device: PlannedRemoteDevice) -> some View {
+        let selected = settings.onboardingDevice == device
+        return onboardingActionButton(id: "control-device.\(device.rawValue)") {
+            selectDevice(device)
+        } label: {
+            HStack(spacing: 12) {
                 if let image = bundledRemoteImage(resourceName: device.illustrationResource) {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 34, height: 76)
                         .accessibilityLabel(localization.text("remote.catalog.illustration"))
-                } else {
-                    Image(systemName: device.icon)
-                        .font(.system(size: 21))
-                        .frame(width: 34, height: 76)
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(localization.text(device.titleKey))
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(localization.text("remote.catalog.planned"))
-                        .font(.system(size: 12))
-                }
+                Text(localization.text(device.titleKey))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Image(systemName: "circle")
+                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
+                    .foregroundStyle(selected ? Color.accentColor : Color.secondary)
             }
-            .foregroundStyle(.secondary)
-            .padding(12)
+            .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .disabled(true)
-        .accessibilityIdentifier(device.titleKey)
-    }
-
-    private var availablePhysicalControlSources: [OnboardingControlSource] {
-        OnboardingBuildCapabilities.availableControlSources.filter {
-            [.xiaomiRemote, .chromecastRemote, .siriRemote].contains($0)
-        }
-    }
-
-    private func controlSourceCard(
-        _ source: OnboardingControlSource,
-        emphasized: Bool,
-        appleGeneration: OnboardingAppleRemoteGeneration? = nil
-    ) -> some View {
-        let compact = availablePhysicalControlSources.count > 1
-        let actionID = appleGeneration.map {
-            "control-source.\(source.rawValue).\($0.rawValue)"
-        } ?? "control-source.\(source.rawValue)"
-        let isSelected = settings.onboardingControlSource == source &&
-            (source != .siriRemote || settings.onboardingAppleRemoteGeneration == appleGeneration)
-        return onboardingActionButton(id: actionID) {
-            if let appleGeneration {
-                selectAppleRemote(appleGeneration)
-            } else {
-                selectControlSource(source)
-            }
-        } label: {
-            HStack(alignment: .top, spacing: 11) {
-                controlSourceThumbnail(source, emphasized: emphasized)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(localization.text(appleGeneration?.titleKey ?? PlannedRemoteDevice.device(for: source)?.titleKey ?? source.titleKey))
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .layoutPriority(1)
-                    if source == .xiaomiRemote {
-                        Text(verbatim: localization.text("onboarding.control_source.recommended"))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color.accentColor)
-                    }
-                    Text(localization.text(source == .chromecastRemote
-                        ? "remote.catalog.g9n9n.setup_detail" : source.detailKey))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(compact ? 2 : 3)
-                }
-                Spacer(minLength: 4)
-                Image(systemName: isSelected
-                    ? "largecircle.fill.circle"
-                    : "circle")
-                    .foregroundStyle(isSelected
-                        ? Color.accentColor
-                        : Color.secondary)
-            }
-            .padding(compact ? 10 : 12)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: emphasized
-                    ? (availablePhysicalControlSources.count > 1 ? 116 : 104)
-                    : 72,
-                alignment: .topLeading
-            )
-            .background(
-                isSelected
-                    ? Color.accentColor.opacity(0.09)
-                    : Color.primary.opacity(emphasized ? 0.04 : 0.025),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
+            .background(selected ? Color.accentColor.opacity(0.09) : Color.primary.opacity(0.04),
+                        in: RoundedRectangle(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        isSelected
-                            ? Color.accentColor.opacity(0.65)
-                            : Color.primary.opacity(0.08),
-                        lineWidth: 1
-                    )
+                    .stroke(selected ? Color.accentColor.opacity(0.65) : Color.primary.opacity(0.08), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func controlSourceThumbnail(
-        _ source: OnboardingControlSource,
-        emphasized: Bool
-    ) -> some View {
-        switch source {
-        case .xiaomiRemote:
-            if let image = bundledRemoteImage(resourceName: "BuddyRemoteIllustration") {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: emphasized ? 42 : 30, height: emphasized ? 72 : 50)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                Image(systemName: controlSourceIcon(source))
-                    .font(.system(size: emphasized ? 21 : 17, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: emphasized ? 40 : 34, height: emphasized ? 40 : 34)
-                    .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-            }
-        case .chromecastRemote:
-            if let image = bundledRemoteImage(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 42, height: 72)
-                    .accessibilityLabel(localization.text("remote.catalog.illustration"))
-            }
-        case .siriRemote:
-            Image(systemName: controlSourceIcon(source))
-                .font(.system(size: emphasized ? 21 : 17, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: emphasized ? 40 : 34, height: emphasized ? 40 : 34)
-                .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-        default:
-            Image(systemName: controlSourceIcon(source))
-                .font(.system(size: emphasized ? 21 : 17, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: emphasized ? 40 : 34, height: emphasized ? 40 : 34)
-                .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-        }
+        .accessibilityIdentifier("control-device.\(device.rawValue)")
     }
 
     var gestureModeChoice: some View {

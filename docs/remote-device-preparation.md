@@ -1,6 +1,6 @@
 # 遥控器素材与适配准备
 
-设备范围为小米蓝牙遥控器 2 Pro、Google G9N9N、Google GY3LE、Apple Siri Remote 四项。小米保留现有能力；G9N9N 已可在向导中选择，但连接页会提示适配未完成；GY3LE 与 Siri Remote 暂不可选择。三款新增设备都不能作为已验证连接提供。
+设备范围为小米蓝牙遥控器 2 Pro、Google G9N9N、Google GY3LE、Apple Siri Remote 四项。小米保留现有能力；四款均可选择。小米和 G9N9N 可继续进入连接页；GY3LE 与 Siri Remote 点击继续时留在第二步，在右侧图片下方显示“现在还不支持，敬请期待。”G9N9N 连接页仍提示适配未完成。三款新增设备都不能作为已验证连接提供。
 
 ## 官方外观资料与应用素材
 

@@ -56,7 +56,7 @@ extension OnboardingView {
                 selectedVoiceToolRuntimeReady
         }
         if settings.onboardingStep == .remoteAvailability {
-            return settings.onboardingControlSource != .unselected
+            return settings.onboardingDevice != nil
         }
         return policyAllowsContinue &&
             (settings.onboardingStep != .voiceTool ||

@@ -213,9 +213,35 @@ struct ProductBoundaryTests {
         #expect(!model.isOnboardingControlSourceConnected(.chromecastRemote))
         #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote, selectedModel: .rc003)
             == .bundled(resourceName: "ChromecastG9N9NIllustration"))
-        #expect(PlannedRemoteDevice.chromecastG9N9N.isSelectable)
         #expect(!PlannedRemoteDevice.chromecastG9N9N.isAvailable)
-        #expect(!PlannedRemoteDevice.googleStreamerGY3LE.isSelectable)
+    }
+
+    @Test @MainActor func deviceChoicePersistsAndContinueBlocksOnlyUpcomingAdapters() throws {
+        for device in PlannedRemoteDevice.allCases {
+            let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
+            let defaults = try #require(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let settings = AppSettings(defaults: defaults)
+            settings.setOnboardingStep(.remoteAvailability)
+            let model = BridgeAppModel(settings: settings, initialAudioDevices: [])
+            let view = OnboardingView(model: model)
+            view.selectDevice(device)
+            #expect(settings.onboardingDevice == device)
+            #expect(view.canContinue)
+            #expect(AppSettings(defaults: defaults).onboardingDevice == device)
+            view.continueFlow()
+            if device == .xiaomi || device == .chromecastG9N9N {
+                #expect(settings.onboardingStep == .remote)
+            } else {
+                #expect(settings.onboardingStep == .remoteAvailability)
+                #expect(settings.onboardingControlSource == .unselected)
+                #expect(!settings.firstUseEvents.contains { $0.step == .remoteAvailability && $0.kind == .passed })
+            }
+            settings.restartOnboarding()
+            #expect(settings.onboardingDevice == nil)
+            settings.setOnboardingStep(.remoteAvailability)
+            #expect(!view.canContinue)
+        }
     }
 
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {
