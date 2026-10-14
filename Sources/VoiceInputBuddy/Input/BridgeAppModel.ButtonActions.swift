@@ -221,26 +221,32 @@ extension BridgeAppModel {
                 NSWorkspace.shared.urlForApplication(withBundleIdentifier: profile.bundleIdentifier) != nil
             else { return false }
         }
-        let requestID = settings.voiceFnTapModeEnabled
-            ? VoiceInputDestinationIntent.resolve(
-                configured: configured,
-                applicationProfile: applicationProfile
-            ).map { voiceInputDestinationCoordinator.beginTargetSwitch(intent: $0) }
-            : nil
-        let handled = KeyboardInjector.send(
-            configured.action,
-            shortcut: configured.shortcut,
-            applicationProfile: applicationProfile,
-            focusInputCompletion: { [weak self] succeeded in
-                if let requestID {
-                    self?.voiceInputDestinationCoordinator.completeFocusOperation(requestID: requestID, succeeded: succeeded)
+        let sendAction: (UInt64?) -> Bool = { [weak self] requestID in
+            guard let self else { return false }
+            let handled = KeyboardInjector.send(
+                configured.action,
+                shortcut: configured.shortcut,
+                applicationProfile: applicationProfile,
+                focusInputCompletion: { [weak self] succeeded in
+                    if let requestID {
+                        self?.voiceInputDestinationCoordinator.completeFocusOperation(
+                            requestID: requestID, succeeded: succeeded)
+                    }
                 }
+            )
+            if !handled, let requestID {
+                self.voiceInputDestinationCoordinator.cancel(requestID: requestID, reason: .actionFailed)
             }
-        )
-        if !handled, let requestID {
-            voiceInputDestinationCoordinator.cancel(requestID: requestID, reason: .actionFailed)
+            return handled
         }
-        return handled
+        if settings.voiceFnTapModeEnabled,
+           let intent = VoiceInputDestinationIntent.resolve(configured: configured, applicationProfile: applicationProfile) {
+            voiceInputDestinationCoordinator.beginTargetSwitch(intent: intent) { requestID in
+                _ = sendAction(requestID)
+            }
+            return true
+        }
+        return sendAction(nil)
     }
 
     func handleVoiceInputDestinationState(_ state: VoiceInputDestinationState) {

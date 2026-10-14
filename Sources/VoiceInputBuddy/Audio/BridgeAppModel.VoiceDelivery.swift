@@ -147,18 +147,18 @@ extension BridgeAppModel {
     }
 
     @discardableResult
-    // Runs on the main queue. Input-source activation pumps its run loop and
-    // can reenter remote stop; the activation gate protects only that wait.
+    // Main-queue state transitions; source activation completes without a nested run loop.
     func updateVoiceKeyState(
         streaming: Bool,
         forceSoftware: Bool,
         owner: VoiceFunctionKeyLatch.Owner,
-        keySetter: (VoiceKeyMode, Bool) -> Bool = { KeyboardInjector.setVoiceKeyPressed($0, isPressed: $1) }
+        keySetter: @escaping (VoiceKeyMode, Bool) -> Bool = { KeyboardInjector.setVoiceKeyPressed($0, isPressed: $1) },
+        completion: @escaping (Bool) -> Void = { _ in }
     ) -> Bool {
         let mode = streaming
             ? settings.voiceKeyMode
             : (heldVoiceKeyMode ?? pendingVoiceKeyMode ?? settings.voiceKeyMode)
-        guard forceSoftware || !mode.usesHardwareMapping else { return true }
+        guard forceSoftware || !mode.usesHardwareMapping else { completion(true); return true }
         if VoiceKeyPendingDownPolicy.shouldRejectStart(
             streaming: streaming,
             pendingDown: pendingVoiceKeyMode != nil || voiceKeyActivationInProgress
@@ -166,51 +166,87 @@ extension BridgeAppModel {
             AppLogger.shared.write(
                 "VOICE KEY start_rejected reason=pending_down owner=\(owner)"
             )
+            completion(false)
             return false
         }
         guard let transition = voiceKeyLatch.transition(
             streaming: streaming,
             owner: owner
         ) else {
+            completion(true)
             return true
         }
         let shouldHold = transition == .press
-        let ownsActivationGate = shouldHold && settings.onboardingVoiceTool.preferredInputSourceID != nil
-        if ownsActivationGate { voiceKeyActivationInProgress = true }
-        defer {
-            if ownsActivationGate { voiceKeyActivationInProgress = false }
-            flushPendingVoiceToolMappingRefresh()
-        }
         if shouldHold {
             pendingVoiceKeyMode = mode
-            if owner == .bluetooth {
-                pendingCommandVoiceAudio.begin()
-            }
-            if !preferredInputSourceMonitor.beginVoiceSession() {
-                pendingVoiceKeyMode = nil
-                if owner == .bluetooth {
-                    pendingCommandVoiceAudio.cancel()
+            voiceKeyActivationInProgress = true
+            voiceKeyActivationGeneration &+= 1
+            let generation = voiceKeyActivationGeneration
+            pendingVoiceKeyActivationOwner = owner
+            pendingVoiceKeyActivationCompletion = completion
+            if owner == .bluetooth { pendingCommandVoiceAudio.begin() }
+            var immediateResult: Bool?
+            preferredInputSourceMonitor.beginVoiceSession { [weak self] activated in
+                guard let self else { completion(false); return }
+                guard self.voiceKeyActivationGeneration == generation,
+                      self.pendingVoiceKeyActivationOwner == owner else { immediateResult = false; return }
+                self.voiceKeyActivationInProgress = false
+                self.pendingVoiceKeyActivationOwner = nil
+                let finish = self.pendingVoiceKeyActivationCompletion
+                self.pendingVoiceKeyActivationCompletion = nil
+                defer { self.flushPendingVoiceToolMappingRefresh() }
+                guard activated, self.pendingVoiceKeyMode == mode else {
+                    self.pendingVoiceKeyMode = nil
+                    if owner == .bluetooth { self.pendingCommandVoiceAudio.cancel() }
+                    self.voiceKeyLatch.rollback(transition, owner: owner)
+                    immediateResult = false
+                    finish?(false)
+                    return
                 }
-                voiceKeyLatch.rollback(transition, owner: owner)
-                AppLogger.shared.write(
-                    "VOICE INPUT source_prepare_failed mode=\(mode.rawValue)"
-                )
-                return false
+                let submitted = self.submitVoiceKeyState(mode: mode, shouldHold: true,
+                    transition: transition, owner: owner, keySetter: keySetter)
+                immediateResult = submitted
+                finish?(submitted)
             }
+            // An asynchronous start is accepted; the caller continues only at completion.
+            return immediateResult ?? true
         }
+        defer { flushPendingVoiceToolMappingRefresh() }
         if !shouldHold,
            heldVoiceKeyMode == nil, pendingVoiceKeyMode != nil {
             pendingVoiceKeyMode = nil
             if owner == .bluetooth {
                 pendingCommandVoiceAudio.cancel()
             }
-            preferredInputSourceMonitor.endVoiceSession()
+            cancelPendingVoiceKeyActivation()
             isVoiceTriggerEnabled = true
             AppLogger.shared.write(
                 "VOICE KEY mode=\(mode.rawValue) pending_down_cancelled"
             )
+            completion(true)
             return true
         }
+        let submitted = submitVoiceKeyState(mode: mode, shouldHold: shouldHold,
+            transition: transition, owner: owner, keySetter: keySetter)
+        completion(submitted)
+        return submitted
+    }
+
+    private func cancelPendingVoiceKeyActivation() {
+        voiceKeyActivationGeneration &+= 1
+        voiceKeyActivationInProgress = false
+        pendingVoiceKeyActivationOwner = nil
+        let completion = pendingVoiceKeyActivationCompletion
+        pendingVoiceKeyActivationCompletion = nil
+        preferredInputSourceMonitor.endVoiceSession()
+        completion?(false)
+    }
+
+    private func submitVoiceKeyState(
+        mode: VoiceKeyMode, shouldHold: Bool,
+        transition: VoiceFunctionKeyTransition, owner: VoiceFunctionKeyLatch.Owner,
+        keySetter: (VoiceKeyMode, Bool) -> Bool
+    ) -> Bool {
         guard keySetter(mode, shouldHold) else {
             if shouldHold {
                 pendingVoiceKeyMode = nil
@@ -273,6 +309,7 @@ extension BridgeAppModel {
             heldVoiceKeyMode = nil
             pendingVoiceKeyMode = nil
             pendingCommandVoiceAudio.cancel()
+            if pendingVoiceKeyActivationCompletion != nil { cancelPendingVoiceKeyActivation() }
             return true
         }
         guard let heldVoiceKeyMode else {
@@ -280,7 +317,7 @@ extension BridgeAppModel {
             voiceKeyLatch.reset()
             pendingVoiceKeyMode = nil
             pendingCommandVoiceAudio.cancel()
-            preferredInputSourceMonitor.endVoiceSession()
+            cancelPendingVoiceKeyActivation()
             isVoiceTriggerEnabled = true
             AppLogger.shared.write("VOICE KEY pending_down_cancelled reason=forced_release")
             return true

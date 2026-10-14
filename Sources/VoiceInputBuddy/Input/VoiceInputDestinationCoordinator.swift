@@ -182,9 +182,10 @@ final class VoiceInputDestinationCoordinator {
     private struct PendingRequest {
         let id: UInt64
         let intent: VoiceInputDestinationIntent
-        let initialBundleIdentifier: String?
-        let initialFocusIdentity: String
-        let initialWasSafeEditable: Bool
+        var initialBundleIdentifier: String?
+        var initialFocusIdentity: String
+        var initialWasSafeEditable: Bool
+        var initialSnapshotCaptured = false
         var adoptedShortcutBundleIdentifier: String?
         var observedExpectedApplication = false
         var focusOperationCompleted = false
@@ -239,23 +240,36 @@ final class VoiceInputDestinationCoordinator {
     }
 
     @discardableResult
-    func beginTargetSwitch(intent: VoiceInputDestinationIntent) -> UInt64 {
+    func beginTargetSwitch(
+        intent: VoiceInputDestinationIntent,
+        onCaptured: @escaping (UInt64) -> Void = { _ in }
+    ) -> UInt64 {
         cancelPending(reason: .superseded)
         generation &+= 1
         let requestID = generation
-        let initialSnapshot = snapshot()
         pendingRequest = PendingRequest(
             id: requestID,
             intent: intent,
-            initialBundleIdentifier: initialSnapshot.bundleIdentifier,
-            initialFocusIdentity: initialSnapshot.focusIdentity,
-            initialWasSafeEditable: initialSnapshot.isSafeEditableDestination
+            initialBundleIdentifier: nil,
+            initialFocusIdentity: "",
+            initialWasSafeEditable: false
         )
         timeoutTask = schedule(maximumWait) { [weak self] in
             guard self?.pendingRequest?.id == requestID else { return }
             self?.cancelPending(reason: .timedOut)
         }
         AppLogger.shared.write("VOICE DESTINATION pending request=\(requestID) intent=\(intent.logValue)")
+        querySnapshot { [weak self] initial in
+            guard let self, self.pendingRequest?.id == requestID else { return }
+            self.pendingRequest?.initialBundleIdentifier = initial.bundleIdentifier
+            self.pendingRequest?.initialFocusIdentity = initial.focusIdentity
+            self.pendingRequest?.initialWasSafeEditable = initial.isSafeEditableDestination
+            self.pendingRequest?.initialSnapshotCaptured = true
+            onCaptured(requestID)
+            if self.pendingRequest?.id == requestID, self.pendingRequest?.waiter != nil {
+                self.poll(requestID: requestID)
+            }
+        }
         return requestID
     }
 
@@ -344,7 +358,7 @@ final class VoiceInputDestinationCoordinator {
     }
 
     private func poll(requestID: UInt64) {
-        guard pendingRequest?.id == requestID else { return }
+        guard pendingRequest?.id == requestID, pendingRequest?.initialSnapshotCaptured == true else { return }
         querySnapshot { [weak self] value in
             guard let self, var request = self.pendingRequest, request.id == requestID else { return }
             switch self.evaluate(value, request: &request) {
@@ -365,6 +379,7 @@ final class VoiceInputDestinationCoordinator {
         _ current: VoiceInputDestinationSnapshot,
         request: inout PendingRequest
     ) -> Evaluation {
+        guard request.initialSnapshotCaptured else { return .waiting }
         switch request.intent {
         case let .application(expectedBundleIdentifier):
             if current.bundleIdentifier == expectedBundleIdentifier {

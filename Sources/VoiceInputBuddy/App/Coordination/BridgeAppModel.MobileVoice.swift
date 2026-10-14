@@ -7,44 +7,50 @@ import Foundation
 import BuddyRemoteCore
 
 extension BridgeAppModel {
-    private func startPhoneVoice(source: MobileVoiceSource) -> RemoteVoiceStartResult {
+    private func startPhoneVoice(source: MobileVoiceSource, completion: @escaping (RemoteVoiceStartResult) -> Void) {
         mobileVoiceOperationCounter &+= 1
         let operationID = "mobile_voice_\(mobileVoiceOperationCounter)"
-        guard activeMobileVoiceSource == nil else {
+        guard activeMobileVoiceSource == nil, pendingMobileVoiceActivationSource == nil else {
             AppLogger.shared.write(
                 "MOBILE VOICE start_rejected reason=busy requested=\(source.logName) " +
                     "active=\(activeMobileVoiceSource?.logName ?? "none")"
             )
 
-            return .busy
+            completion(.busy)
+            return
         }
         cancelVirtualAudioReleaseIfPending(trigger: "mobile_voice_start_\(source.logName)")
-        guard updateVoiceKeyState(
+        pendingMobileVoiceActivationSource = source
+        updateVoiceKeyState(
             streaming: true,
             forceSoftware: true,
             owner: .mobile
-        ) else {
-            AppLogger.shared.write(
-                "MOBILE VOICE start_rejected reason=function_key requested=\(source.logName)"
-            )
+        ) { [self] activated in
+            pendingMobileVoiceActivationSource = nil
+            guard activated else {
+                AppLogger.shared.write(
+                    "MOBILE VOICE start_rejected reason=function_key requested=\(source.logName)"
+                )
 
-            releaseVirtualAudioOutputIfUnused(reason: "mobile_voice_function_key_failed")
-            return .unavailable
+                releaseVirtualAudioOutputIfUnused(reason: "mobile_voice_function_key_failed")
+                completion(.unavailable)
+                return
+            }
+            resetCurrentVoiceSampleReceipt()
+            mobileVoiceLifecycle.markStarted(source)
+            mobileVoiceAudioBatchCount = 0
+            mobileVoiceAudioReceivedBatchCount = 0
+            mobileVoiceAudioEnqueueFailureCount = 0
+            mobileVoiceAudioSourceMismatchCount = 0
+            mobileVoiceAudioSignalMetrics = WatchBluetoothAudioSignalMetrics()
+            beginVoiceSessionIfNeeded()
+            activeMobileVoiceOperationID = operationID
+            activeMobileVoiceStartedAt = Date()
+            scheduleMobileVoiceNoAudioRecoveryIfNeeded(source: source)
+
+            AppLogger.shared.write("MOBILE VOICE started source=\(source.logName)")
+            completion(.started)
         }
-        resetCurrentVoiceSampleReceipt()
-        mobileVoiceLifecycle.markStarted(source)
-        mobileVoiceAudioBatchCount = 0
-        mobileVoiceAudioReceivedBatchCount = 0
-        mobileVoiceAudioEnqueueFailureCount = 0
-        mobileVoiceAudioSourceMismatchCount = 0
-        mobileVoiceAudioSignalMetrics = WatchBluetoothAudioSignalMetrics()
-        beginVoiceSessionIfNeeded()
-        activeMobileVoiceOperationID = operationID
-        activeMobileVoiceStartedAt = Date()
-        scheduleMobileVoiceNoAudioRecoveryIfNeeded(source: source)
-
-        AppLogger.shared.write("MOBILE VOICE started source=\(source.logName)")
-        return .started
     }
 
     func requestPhoneVoiceStart(
@@ -54,6 +60,10 @@ extension BridgeAppModel {
         guard source == .web || OnboardingBuildCapabilities.availableControlSources.contains(.appleCompanion) else {
             disablePhoneRemoteConnection()
             completion(.unavailable)
+            return
+        }
+        guard pendingMobileVoiceActivationSource == nil else {
+            completion(.busy)
             return
         }
         switch mobileVoiceLifecycle.requestStart(source) {
@@ -81,52 +91,57 @@ extension BridgeAppModel {
             pendingMobileVoiceStartSource = source
             pendingMobileVoiceAudio.begin()
         }
-        let result = startPhoneVoice(source: source)
-        completion(result)
-        guard result == .started, !outputReadyAtStart else {
-            if result != .started {
-                pendingMobileVoiceStartSource = nil
-                pendingMobileVoiceAudio.cancel()
-                pendingMobileVoiceStopRequested = false
-            }
-            return
-        }
-        AppLogger.shared.write(
-            "SYSTEM AUDIO voice_start_recovery configured=pending " +
-                "suspended=\(systemAudioSuspensionState.isSuspended) " +
-                "reasons=\(systemAudioSuspensionState.diagnostic)"
-        )
-        ensureVirtualAudioOutputReady(reason: "mobile_voice_start") { [weak self] ready in
-            guard let self,
-                  self.pendingMobileVoiceStartSource == source
-            else { return }
-            self.pendingMobileVoiceStartSource = nil
-            let stopRequested = self.pendingMobileVoiceStopRequested
-            self.pendingMobileVoiceStopRequested = false
-            let bufferedAudio = self.pendingMobileVoiceAudio.drain()
-            guard ready else {
-                self.pendingMobileVoiceAudio.cancel()
-                if stopRequested {
-                    self.stopPhoneVoice(source: source)
-                } else {
-                    self.stopPhoneVoice(source: source)
+        startPhoneVoice(source: source) { [self] result in
+            completion(result)
+            guard result == .started, !outputReadyAtStart else {
+                if result != .started {
+                    pendingMobileVoiceStartSource = nil
+                    pendingMobileVoiceAudio.cancel()
+                    pendingMobileVoiceStopRequested = false
                 }
                 return
             }
-            if !bufferedAudio.isEmpty {
-                AppLogger.shared.write(
-                    "MOBILE VOICE flush_after_configuration source=\(source.logName) " +
-                        "samples=\(bufferedAudio.count)"
-                )
-                self.receivePhoneAudio(bufferedAudio, source: source)
-            }
-            if stopRequested {
-                self.stopPhoneVoice(source: source)
+            AppLogger.shared.write(
+                "SYSTEM AUDIO voice_start_recovery configured=pending " +
+                    "suspended=\(systemAudioSuspensionState.isSuspended) " +
+                    "reasons=\(systemAudioSuspensionState.diagnostic)"
+            )
+            ensureVirtualAudioOutputReady(reason: "mobile_voice_start") { [weak self] ready in
+                guard let self,
+                      self.pendingMobileVoiceStartSource == source
+                else { return }
+                self.pendingMobileVoiceStartSource = nil
+                let stopRequested = self.pendingMobileVoiceStopRequested
+                self.pendingMobileVoiceStopRequested = false
+                let bufferedAudio = self.pendingMobileVoiceAudio.drain()
+                guard ready else {
+                    self.pendingMobileVoiceAudio.cancel()
+                    if stopRequested {
+                        self.stopPhoneVoice(source: source)
+                    } else {
+                        self.stopPhoneVoice(source: source)
+                    }
+                    return
+                }
+                if !bufferedAudio.isEmpty {
+                    AppLogger.shared.write(
+                        "MOBILE VOICE flush_after_configuration source=\(source.logName) " +
+                            "samples=\(bufferedAudio.count)"
+                    )
+                    self.receivePhoneAudio(bufferedAudio, source: source)
+                }
+                if stopRequested {
+                    self.stopPhoneVoice(source: source)
+                }
             }
         }
     }
 
     func stopPhoneVoice(source: MobileVoiceSource) {
+        if pendingMobileVoiceActivationSource == source {
+            _ = releaseVoiceKeyIfNeeded(owner: .mobile, forceSoftware: true)
+            return
+        }
         if source == .nearbyWatch {
             cancelMobileVoiceNoAudioRecoveryTimer()
         }

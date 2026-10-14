@@ -173,9 +173,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var shouldRun = false
     private var systemSuspension = BluetoothSystemSuspensionState()
     private var capabilities = XiaomiBluetoothBridge.defaultCapabilities
-    private var decoder = IMAADPCMDecoder()
-    private var accumulator = FrameAccumulator()
-    private var pendingSync: (predictor: Int, stepIndex: Int)?
+    private let audioDecoder = ATVVAudioDecoder()
     private var streaming = false
     private lazy var acknowledgedWrites = AcknowledgedBluetoothWriteQueue(
         send: { [weak self] data in
@@ -762,9 +760,7 @@ final class XiaomiBluetoothBridge: NSObject {
         microphoneOpened = false
         cancelledMicrophoneOpenAt = nil
         sessionID = 0
-        accumulator.reset()
-        pendingSync = nil
-        decoder.reset()
+        audioDecoder.reset()
     }
 
     private func publishReconnectingState() {
@@ -865,12 +861,16 @@ final class XiaomiBluetoothBridge: NSObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
+    static func controlWriteType(for properties: CBCharacteristicProperties) -> CBCharacteristicWriteType? {
+        if properties.contains(.write) { return .withResponse }
+        if properties.contains(.writeWithoutResponse) { return .withoutResponse }
+        return nil
+    }
+
     @discardableResult
     private func write(_ data: Data) -> Bool {
         guard peripheral != nil, let transmitCharacteristic else { return false }
-        let type: CBCharacteristicWriteType = transmitCharacteristic.properties.contains(.writeWithoutResponse)
-            ? .withoutResponse
-            : .withResponse
+        guard let type = Self.controlWriteType(for: transmitCharacteristic.properties) else { return false }
         if type == .withResponse { return acknowledgedWrites.enqueue(data) }
         return unacknowledgedWrites.enqueue(data)
     }
@@ -1078,15 +1078,7 @@ final class XiaomiBluetoothBridge: NSObject {
             guard bytes.count >= 7 else { return }
             let predictorBits = UInt16(bytes[4]) << 8 | UInt16(bytes[5])
             let predictor = Int(Int16(bitPattern: predictorBits))
-            pendingSync = (predictor, Int(bytes[6]))
-            let partialFrameBytes = accumulator.pending.count
-            if partialFrameBytes > 0 {
-                AppLogger.shared.write(
-                    "ATVV FRAME discarded session=\(sessionID) reason=sync " +
-                        "partial_frame_bytes=\(partialFrameBytes)"
-                )
-            }
-            accumulator.reset()
+            audioDecoder.synchronize(predictor: predictor, stepIndex: Int(bytes[6]))
         default:
             break
         }
@@ -1116,16 +1108,14 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     private func startStreaming() {
-        let partialFrameBytes = accumulator.pending.count
+        let partialFrameBytes = audioDecoder.pendingByteCount
         if partialFrameBytes > 0 {
             AppLogger.shared.write(
                 "ATVV FRAME discarded session=\(sessionID) reason=stream_start " +
                     "streaming_before=\(streaming) partial_frame_bytes=\(partialFrameBytes)"
             )
         }
-        accumulator.reset()
-        pendingSync = nil
-        decoder.reset()
+        audioDecoder.reset()
         lastStopAt = nil
         microphoneOpened = true
         guard !streaming else { return }
@@ -1141,9 +1131,8 @@ final class XiaomiBluetoothBridge: NSObject {
         guard streaming else { return }
         streaming = false
         microphoneOpened = false
-        let partialFrameBytes = accumulator.pending.count
-        accumulator.reset()
-        pendingSync = nil
+        let partialFrameBytes = audioDecoder.pendingByteCount
+        audioDecoder.reset()
         lastStopAt = Date()
         AppLogger.shared.write(
             "ATVV STREAM STOP session=\(sessionID) partial_frame_bytes=\(partialFrameBytes)"
@@ -1187,17 +1176,9 @@ final class XiaomiBluetoothBridge: NSObject {
             AppLogger.shared.write("ATVV STREAM implicit_audio_race")
         }
 
-        let frames = accumulator.append(data, frameSize: capabilities.frameSize)
-        for frame in frames {
-            if let pendingSync {
-                decoder.reset(
-                    predictor: pendingSync.predictor,
-                    stepIndex: pendingSync.stepIndex
-                )
-                self.pendingSync = nil
-            }
-            let decoded = decoder.decode(frame)
-            let samples = PCMPostprocessor.process(decoded, gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier))
+        let batches = audioDecoder.append(data, frameSize: capabilities.frameSize,
+            gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier))
+        for samples in batches {
             delegate?.bluetoothBridge(self, didDecode: samples)
         }
     }
@@ -1208,18 +1189,14 @@ final class XiaomiBluetoothBridge: NSObject {
         if streaming {
             stopStreaming()
         } else {
-            accumulator.reset()
-            pendingSync = nil
-            decoder.reset()
+            audioDecoder.reset()
         }
         scheduleReconnect(bypassCachedTarget: true)
     }
 
     private func failInitialization(_ message: LocalizedMessage) {
         state = .failed(message)
-        accumulator.reset()
-        pendingSync = nil
-        decoder.reset()
+        audioDecoder.reset()
         scheduleReconnect(bypassCachedTarget: true)
     }
 }
@@ -1751,7 +1728,7 @@ extension XiaomiBluetoothBridge {
             if normalizedModelNumber.contains("ARN9") {
                 // ARN9 firmware encodes ADPCM low-nibble-first; flipping the
                 // default high-first order is required for intelligible audio.
-                decoder.lowNibbleFirst = true
+                audioDecoder.decoder.lowNibbleFirst = true
                 AppLogger.shared.write("BLE MODEL ARN9 adpcm=low-nibble-first")
             }
             guard let model = XiaomiRemoteModel.identified(by: modelNumber) else {

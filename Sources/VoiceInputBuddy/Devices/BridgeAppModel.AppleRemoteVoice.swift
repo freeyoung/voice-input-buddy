@@ -11,6 +11,13 @@ extension BridgeAppModel {
         for device: SiriRemoteDeviceIdentity,
         reason: String
     ) {
+        if appleRemoteVoiceDevices.contains(device), pendingVoiceKeyActivationOwner == .appleRemote {
+            appleRemoteVoiceDevices.remove(device)
+            if appleRemoteVoiceDevices.isEmpty {
+                _ = releaseVoiceKeyIfNeeded(owner: .appleRemote, forceSoftware: true)
+            }
+            return
+        }
         if pendingAppleRemoteVoiceStarts.contains(device) {
             if appleRemoteVoiceDevices.contains(device) {
                 pendingAppleRemoteVoiceStops.request(device)
@@ -289,6 +296,10 @@ extension BridgeAppModel {
     }
 
     func beginAppleRemoteVoice(for device: SiriRemoteDeviceIdentity) {
+        guard pendingVoiceKeyActivationOwner == nil else {
+            AppLogger.shared.write("APPLE REMOTE VOICE phase=pending result=source_activation_busy")
+            return
+        }
         let outputReadyAtStart = audioOutput.isReadyForTestTone
         var shouldStartConfiguration = false
         if !outputReadyAtStart {
@@ -361,78 +372,80 @@ extension BridgeAppModel {
                 return
             }
         }
-        guard updateVoiceKeyState(
+        updateVoiceKeyState(
             streaming: true,
             forceSoftware: true,
             owner: .appleRemote
-        ) else {
-            appleRemoteVoiceDevices.remove(device)
-            if shouldStartConfiguration {
-                pendingAppleRemoteVoiceStarts.remove(device)
-                pendingAppleRemoteVoiceAudio.cancel()
-                pendingAppleRemoteVoiceStops.cancel(device)
+        ) { [self] activated in
+            guard activated else {
+                appleRemoteVoiceDevices.remove(device)
+                if shouldStartConfiguration {
+                    pendingAppleRemoteVoiceStarts.remove(device)
+                    pendingAppleRemoteVoiceAudio.cancel()
+                    pendingAppleRemoteVoiceStops.cancel(device)
+                }
+                siriRemoteFeature.setVoiceTouchSuppressed(false)
+                AppLogger.shared.write(
+                    "APPLE REMOTE VOICE phase=failed result=voice_key_press_failed"
+                )
+
+                return
             }
-            siriRemoteFeature.setVoiceTouchSuppressed(false)
+            beginVoiceSessionIfNeeded()
+            activeAppleRemoteVoiceOperationID = operationID
+            activeAppleRemoteVoiceStartedAt = Date()
+            guard siriRemoteFeature.beginCapture() else {
+                if shouldStartConfiguration {
+                    pendingAppleRemoteVoiceStarts.remove(device)
+                    pendingAppleRemoteVoiceAudio.cancel()
+                    pendingAppleRemoteVoiceStops.cancel(device)
+                }
+                AppLogger.shared.write(
+                    "APPLE REMOTE VOICE phase=pending result=audio_capture_not_ready " +
+                        "retry_attempt=\(appleRemoteVoiceCaptureRetryAttempt)"
+                )
+                scheduleAppleRemoteVoiceCaptureRetry(for: device)
+                AppLogger.shared.write(
+                    "APPLE REMOTE VOICE phase=held result=input_method_wake_preserved"
+                )
+                return
+            }
             AppLogger.shared.write(
-                "APPLE REMOTE VOICE phase=failed result=voice_key_press_failed"
+                "APPLE REMOTE VOICE phase=started result=triggered audio_capture=requested " +
+                    "audio_source=apple_remote_microphone route=BuddyMic2ch"
             )
 
-            return
-        }
-        beginVoiceSessionIfNeeded()
-        activeAppleRemoteVoiceOperationID = operationID
-        activeAppleRemoteVoiceStartedAt = Date()
-        guard siriRemoteFeature.beginCapture() else {
-            if shouldStartConfiguration {
-                pendingAppleRemoteVoiceStarts.remove(device)
-                pendingAppleRemoteVoiceAudio.cancel()
-                pendingAppleRemoteVoiceStops.cancel(device)
-            }
-            AppLogger.shared.write(
-                "APPLE REMOTE VOICE phase=pending result=audio_capture_not_ready " +
-                    "retry_attempt=\(appleRemoteVoiceCaptureRetryAttempt)"
-            )
-            scheduleAppleRemoteVoiceCaptureRetry(for: device)
-            AppLogger.shared.write(
-                "APPLE REMOTE VOICE phase=held result=input_method_wake_preserved"
-            )
-            return
-        }
-        AppLogger.shared.write(
-            "APPLE REMOTE VOICE phase=started result=triggered audio_capture=requested " +
-                "audio_source=apple_remote_microphone route=BuddyMic2ch"
-        )
-
-        if !outputReadyAtStart, shouldStartConfiguration {
-            AppLogger.shared.write(
-                "SYSTEM AUDIO voice_start_recovery configured=pending " +
-                    "suspended=\(systemAudioSuspensionState.isSuspended) " +
-                    "reasons=\(systemAudioSuspensionState.diagnostic)"
-            )
-            ensureVirtualAudioOutputReady(reason: "apple_remote_voice_start") { [weak self] ready in
-                guard let self else { return }
-                let pendingDevices = self.pendingAppleRemoteVoiceStarts
-                self.pendingAppleRemoteVoiceStarts.removeAll()
-                let stoppedDevices = self.pendingAppleRemoteVoiceStops.take(pending: pendingDevices)
-                let bufferedAudio = self.pendingAppleRemoteVoiceAudio.drain()
-                guard ready else {
-                    self.pendingAppleRemoteVoiceAudio.cancel()
-                    for pendingDevice in pendingDevices {
-                        self.endAppleRemoteVoice(
-                            for: pendingDevice,
-                            reason: "audio_output_unavailable"
-                        )
+            if !outputReadyAtStart, shouldStartConfiguration {
+                AppLogger.shared.write(
+                    "SYSTEM AUDIO voice_start_recovery configured=pending " +
+                        "suspended=\(systemAudioSuspensionState.isSuspended) " +
+                        "reasons=\(systemAudioSuspensionState.diagnostic)"
+                )
+                ensureVirtualAudioOutputReady(reason: "apple_remote_voice_start") { [weak self] ready in
+                    guard let self else { return }
+                    let pendingDevices = self.pendingAppleRemoteVoiceStarts
+                    self.pendingAppleRemoteVoiceStarts.removeAll()
+                    let stoppedDevices = self.pendingAppleRemoteVoiceStops.take(pending: pendingDevices)
+                    let bufferedAudio = self.pendingAppleRemoteVoiceAudio.drain()
+                    guard ready else {
+                        self.pendingAppleRemoteVoiceAudio.cancel()
+                        for pendingDevice in pendingDevices {
+                            self.endAppleRemoteVoice(
+                                for: pendingDevice,
+                                reason: "audio_output_unavailable"
+                            )
+                        }
+                        return
                     }
-                    return
-                }
-                if !bufferedAudio.isEmpty {
-                    AppLogger.shared.write(
-                        "APPLE REMOTE AUDIO flush_after_configuration samples=\(bufferedAudio.count)"
-                    )
-                    self.receiveAppleRemoteAudio(bufferedAudio)
-                }
-                for pendingDevice in stoppedDevices {
-                    self.endAppleRemoteVoice(for: pendingDevice, reason: "released_before_audio_ready")
+                    if !bufferedAudio.isEmpty {
+                        AppLogger.shared.write(
+                            "APPLE REMOTE AUDIO flush_after_configuration samples=\(bufferedAudio.count)"
+                        )
+                        self.receiveAppleRemoteAudio(bufferedAudio)
+                    }
+                    for pendingDevice in stoppedDevices {
+                        self.endAppleRemoteVoice(for: pendingDevice, reason: "released_before_audio_ready")
+                    }
                 }
             }
         }

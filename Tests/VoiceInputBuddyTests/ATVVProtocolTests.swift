@@ -58,12 +58,46 @@ struct ATVVProtocolTests {
     }
 
     @Test func postprocessorAppliesSmoothingAndClampedGain() {
-        let unchanged = PCMPostprocessor.process([0, 1000, 0], gainDB: 0)
-        #expect(unchanged == [0, 500, 0])
+        let unchanged = PCMPostprocessor().process([0, 1000, 0], gainDB: 0)
+        #expect(unchanged == [0, 250, 500])
 
-        let clipped = PCMPostprocessor.process([20_000], gainDB: 24)
+        let clipped = PCMPostprocessor().process([20_000], gainDB: 24)
         #expect(clipped == [Int16.max])
-        #expect(PCMPostprocessor.process([20_000], gainDB: .infinity) == [20_000])
+        #expect(PCMPostprocessor().process([20_000], gainDB: .infinity) == [20_000])
+    }
+
+    @Test func smoothingIsIndependentOfFrameBoundariesAndResetClearsHistory() {
+        let signal: [Int16] = (0..<960).map { Int16(($0 * 997) % 60000 - 30000) }
+        let reference = PCMPostprocessor().process(signal, gainDB: 3)
+        let processor = PCMPostprocessor()
+        var chunks: [Int16] = []
+        for offset in stride(from: 0, to: signal.count, by: 240) {
+            chunks += processor.process(Array(signal[offset..<(offset + 240)]), gainDB: 3)
+        }
+        #expect(chunks == reference)
+        processor.reset()
+        #expect(processor.process(signal, gainDB: 3) == reference)
+    }
+
+    @Test func syncDuringPartialFramePreservesBytesAndAppliesAtNextFrame() {
+        let pipeline = ATVVAudioDecoder()
+        let reference = IMAADPCMDecoder()
+        let smoothing = PCMPostprocessor()
+        let first = Data(repeating: 0x11, count: 120)
+        let second = Data(repeating: 0x22, count: 120)
+        #expect(pipeline.append(first.prefix(40), frameSize: 120, gainDB: 0).isEmpty)
+        pipeline.synchronize(predictor: 1000, stepIndex: 10)
+        #expect(pipeline.pendingByteCount == 40)
+        let expectedFirst = smoothing.process(reference.decode(first), gainDB: 0)
+        reference.reset(predictor: 1000, stepIndex: 10)
+        let expectedSecond = smoothing.process(reference.decode(second), gainDB: 0)
+        let actual = pipeline.append(first.dropFirst(40) + second, frameSize: 120, gainDB: 0)
+        #expect(actual == [expectedFirst, expectedSecond])
+        #expect(pipeline.pendingByteCount == 0)
+        pipeline.reset()
+        pipeline.synchronize(predictor: 1000, stepIndex: 10)
+        reference.reset(predictor: 1000, stepIndex: 10)
+        #expect(pipeline.append(first, frameSize: 120, gainDB: 0) == [PCMPostprocessor().process(reference.decode(first), gainDB: 0)])
     }
 
     @Test func frameAccumulatorPreservesPartialData() {

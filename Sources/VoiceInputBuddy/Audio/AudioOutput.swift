@@ -489,12 +489,13 @@ enum CoreAudioDeviceCatalog {
             byteCount: Int(size),
             alignment: MemoryLayout<AudioBufferList>.alignment
         )
+        let list = raw.bindMemory(to: AudioBufferList.self, capacity: 1)
         defer { raw.deallocate() }
         guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, raw) == noErr else {
             return 0
         }
         let bufferList = UnsafeMutableAudioBufferListPointer(
-            raw.assumingMemoryBound(to: AudioBufferList.self)
+            list
         )
         return bufferList.reduce(0) { $0 + Int($1.mNumberChannels) }
     }
@@ -650,6 +651,7 @@ final class VirtualAudioOutput {
     private var player: AVAudioPlayerNode?
     private var engineConfigurationObserver: NSObjectProtocol?
     private var engineConfigurationGeneration: UInt64 = 0
+    private let rejectedWriteLock = NSLock()
     private var rejectedWriteCount = 0
     private var lastRejectedWriteLogDate = Date.distantPast
     private let playbackLock = NSLock()
@@ -994,9 +996,12 @@ final class VirtualAudioOutput {
             logRejectedWrite(reason: "buffer_creation_failed")
             return false
         }
-        if rejectedWriteCount > 0 {
-            AppLogger.shared.write("AUDIO WRITE resumed rejected_count=\(rejectedWriteCount) state={\(basicDiagnosticState())}")
-            rejectedWriteCount = 0
+        rejectedWriteLock.lock()
+        let rejectedCount = rejectedWriteCount
+        rejectedWriteCount = 0
+        rejectedWriteLock.unlock()
+        if rejectedCount > 0 {
+            AppLogger.shared.write("AUDIO WRITE resumed rejected_count=\(rejectedCount) state={\(basicDiagnosticState())}")
         }
         playbackLock.lock()
         let generation = playbackGeneration
@@ -1589,12 +1594,16 @@ final class VirtualAudioOutput {
     }
 
     private func logRejectedWrite(reason: String) {
+        rejectedWriteLock.lock()
         rejectedWriteCount += 1
+        let count = rejectedWriteCount
         let now = Date()
-        guard now.timeIntervalSince(lastRejectedWriteLogDate) >= 1 else { return }
-        lastRejectedWriteLogDate = now
+        let shouldLog = now.timeIntervalSince(lastRejectedWriteLogDate) >= 1
+        if shouldLog { lastRejectedWriteLogDate = now }
+        rejectedWriteLock.unlock()
+        guard shouldLog else { return }
         AppLogger.shared.write(
-            "AUDIO WRITE rejected count=\(rejectedWriteCount) reason=\(reason) " +
+            "AUDIO WRITE rejected count=\(count) reason=\(reason) " +
                 "state={\(diagnosticState())}"
         )
     }

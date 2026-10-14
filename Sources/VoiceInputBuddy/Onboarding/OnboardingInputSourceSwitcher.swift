@@ -183,7 +183,9 @@ enum OnboardingInputSourceSwitcher {
         guard let reference = createList() else { return nil }
         let sources = reference.takeRetainedValue() as NSArray
         for sourceObject in sources {
-            let source = sourceObject as! TISInputSource
+            let reference = sourceObject as CFTypeRef
+            guard CFGetTypeID(reference) == TISInputSourceGetTypeID() else { continue }
+            let source = unsafeBitCast(reference, to: TISInputSource.self)
             if stringProperty(kTISPropertyInputSourceID, from: source) == targetID {
                 return source
             }

@@ -1,7 +1,8 @@
 import ApplicationServices
 import Foundation
 
-/// The system-wide AX object's timeout applies only to this process, not other apps.
+/// Setting the system-wide AX object configures the default for ALL AX queries in this process.
+/// It does not change the timeout used by other clients.
 /// Swift initializes this once; ordinary attribute reads do not repeatedly reconfigure AX.
 enum AccessibilityMessaging {
     static let queryQueue = DispatchQueue(label: "voice-input-buddy.accessibility", qos: .userInitiated)

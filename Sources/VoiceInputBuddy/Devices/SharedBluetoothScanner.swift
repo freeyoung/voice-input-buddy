@@ -58,7 +58,10 @@ final class BluetoothScanSubscriptions<Advertisement> {
         let token = UUID()
         let wasEmpty = observers.isEmpty
         observers[token] = observer
-        if wasEmpty { start() }
+        // A new reconnect attempt needs fresh discoveries even while another
+        // remote keeps the shared scan alive. Restart clears CoreBluetooth deduplication.
+        if !wasEmpty { stop() }
+        start()
         return token
     }
 
