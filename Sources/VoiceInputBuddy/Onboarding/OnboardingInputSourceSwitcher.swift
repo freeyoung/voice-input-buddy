@@ -137,7 +137,12 @@ enum OnboardingInputSourceSwitcher {
     }
 
     static func currentInputSourceID() -> String? {
-        let current = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        currentInputSourceID(copyCurrent: { TISCopyCurrentKeyboardInputSource() })
+    }
+
+    static func currentInputSourceID(copyCurrent: () -> Unmanaged<TISInputSource>?) -> String? {
+        guard let reference = copyCurrent() else { return nil }
+        let current = reference.takeRetainedValue()
         return stringProperty(kTISPropertyInputSourceID, from: current)
     }
 
@@ -171,7 +176,12 @@ enum OnboardingInputSourceSwitcher {
         withID targetID: String,
         includeAllInstalled: Bool
     ) -> TISInputSource? {
-        let sources = TISCreateInputSourceList(nil, includeAllInstalled).takeRetainedValue() as NSArray
+        inputSource(withID: targetID, createList: { TISCreateInputSourceList(nil, includeAllInstalled) })
+    }
+
+    static func inputSource(withID targetID: String, createList: () -> Unmanaged<CFArray>?) -> TISInputSource? {
+        guard let reference = createList() else { return nil }
+        let sources = reference.takeRetainedValue() as NSArray
         for sourceObject in sources {
             let source = sourceObject as! TISInputSource
             if stringProperty(kTISPropertyInputSourceID, from: source) == targetID {

@@ -50,6 +50,10 @@ private final class XiaomiPeripheralDelegateProxy: NSObject, CBPeripheralDelegat
                                    characteristic: characteristic, error: error)
     }
 
+    func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
+        owner?.handleWriteReady(peripheral: peripheral, generation: generation)
+    }
+
     func peripheralDidUpdateName(_ peripheral: CBPeripheral) {
         owner?.handleNameUpdate(peripheral: peripheral, generation: generation)
     }
@@ -154,9 +158,11 @@ final class XiaomiBluetoothBridge: NSObject {
     private var hasObservedPowerState = false
     private var lastObservedPowerState: RemotePowerState?
     private var subscribedUUIDs = Set<CBUUID>()
+    private var scanSubscription: UUID?
     private var reconnectWorkItem: DispatchWorkItem?
     private var connectionTimeoutWorkItem: DispatchWorkItem?
     private var initializationTimeoutWorkItem: DispatchWorkItem?
+    private let disconnectWatchdog = BluetoothDisconnectWatchdog()
     private var capabilitiesRequested = false
     private var capabilitiesConfirmed = false
     private var requestedReconnectDelay: TimeInterval?
@@ -182,6 +188,21 @@ final class XiaomiBluetoothBridge: NSObject {
             self.microphoneOpened = false
             self.stopStreaming()
             AppLogger.shared.write("BLE WRITE failed reason=response_or_timeout")
+            self.scheduleReconnect()
+        }
+    )
+    private lazy var unacknowledgedWrites = FlowControlledBluetoothWriteQueue(
+        canSend: { [weak self] in self?.peripheral?.canSendWriteWithoutResponse == true },
+        send: { [weak self] data in
+            guard let self, let peripheral = self.peripheral,
+                  let characteristic = self.transmitCharacteristic else { return }
+            peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
+        },
+        onFailure: { [weak self] in
+            guard let self else { return }
+            self.microphoneOpened = false
+            self.stopStreaming()
+            AppLogger.shared.write("BLE WRITE failed reason=flow_control_timeout")
             self.scheduleReconnect()
         }
     )
@@ -291,7 +312,7 @@ final class XiaomiBluetoothBridge: NSObject {
         reconnectWorkItem?.cancel()
         stopBatteryPolling(reason: "bridge_stopped")
         reconnectPolicy.reset()
-        central?.stopScan()
+        stopScan()
         closeMicrophoneIfNeeded()
         resetSession()
         if let central, let peripheral, peripheral.state != .disconnected {
@@ -314,12 +335,13 @@ final class XiaomiBluetoothBridge: NSObject {
         _ = systemSuspension.consumeConnectionCycleNeeded()
         reconnectWorkItem?.cancel()
         reconnectPolicy.reset()
-        central?.stopScan()
+        stopScan()
         if let central, let peripheral, peripheral.state != .disconnected {
             requestedReconnectDelay = 0.1
             lifecycle = .disconnecting(lifecycle.generation ?? generationCounter)
             publishReconnectingState()
             central.cancelPeripheralConnection(peripheral)
+            startDisconnectTimeout()
             return
         }
         finishAttempt(reconnectAfter: 0.1)
@@ -355,7 +377,7 @@ final class XiaomiBluetoothBridge: NSObject {
         if suspended {
             guard systemSuspension.suspend(phase: lifecycle) else { return }
             stopBatteryPolling(reason: "system_suspended")
-            central?.stopScan()
+            stopScan()
             if !lifecycle.isReady,
                let central,
                let peripheral,
@@ -396,6 +418,11 @@ final class XiaomiBluetoothBridge: NSObject {
                 "lifecycle=\(String(describing: lifecycle))"
         )
         reconnectNow()
+    }
+
+    private func stopScan() {
+        if let scanSubscription { SharedBluetoothScanner.shared.unsubscribe(scanSubscription) }
+        scanSubscription = nil
     }
 
     private func beginConnectionCycle() {
@@ -523,10 +550,25 @@ final class XiaomiBluetoothBridge: NSObject {
             },
             scan: {
                 state = .scanning
-                central.scanForPeripherals(
-                    withServices: nil,
-                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
-                )
+                stopScan()
+                scanSubscription = SharedBluetoothScanner.shared.subscribe { [weak self, weak central] advertisement in
+                    guard let self, let central, self.central === central,
+                          !self.systemSuspension.isSuspended,
+                          self.lifecycle == .scanning(generation), self.peripheral == nil,
+                          self.acceptsCandidateIdentifier(advertisement.identifier) else { return }
+                    let serviceMatch = (advertisement.data[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?
+                        .contains(self.serviceUUID) == true
+                    let decision = VoiceRemoteAdmission.decide(identifier: advertisement.identifier,
+                        targetIdentifier: self.targetIdentifier, advertisesVoiceService: serviceMatch,
+                        name: advertisement.name, advertisedName: advertisement.name, allowsG9N9N: self.allowsG9N9N)
+                    switch decision {
+                    case .adoptSavedIdentity, .adoptRecognizedName: break
+                    default: return
+                    }
+                    guard let candidate = central.retrievePeripherals(withIdentifiers: [advertisement.identifier]).first else { return }
+                    _ = self.adopt(candidate, using: central, generation: generation, source: "shared_scan",
+                        advertisesVoiceService: serviceMatch, advertisedName: advertisement.name)
+                }
                 AppLogger.shared.write("BLE SCANNING")
             }
         )
@@ -600,7 +642,7 @@ final class XiaomiBluetoothBridge: NSObject {
               peripheral == nil,
               lifecycle == .scanning(generation)
         else { return }
-        central.stopScan()
+        stopScan()
         peripheral = candidate
         currentAttemptUsesCachedTarget = usesCachedTarget
         let proxy = XiaomiPeripheralDelegateProxy(generation: generation, owner: self)
@@ -615,6 +657,8 @@ final class XiaomiBluetoothBridge: NSObject {
 
     private func resetPeripheral() {
         acknowledgedWrites.reset()
+        unacknowledgedWrites.reset()
+        disconnectWatchdog.cancel()
         stopBatteryPolling(reason: "peripheral_reset")
         peripheral?.delegate = nil
         peripheral = nil
@@ -670,6 +714,17 @@ final class XiaomiBluetoothBridge: NSObject {
         }
         initializationTimeoutWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)
+    }
+
+    private func startDisconnectTimeout() {
+        guard case let .disconnecting(generation) = lifecycle else { return }
+        disconnectWatchdog.arm(isCurrent: { [weak self] in
+            self?.shouldRun == true && self?.lifecycle == .disconnecting(generation)
+        }, onTimeout: { [weak self] in
+            guard let self else { return }
+            AppLogger.shared.write("BLE DISCONNECT TIMEOUT")
+            self.finishAttempt(reconnectAfter: self.requestedReconnectDelay ?? 0.5)
+        })
     }
 
     private func startConnectionTimeout(generation: UInt64) {
@@ -739,6 +794,7 @@ final class XiaomiBluetoothBridge: NSObject {
             requestedReconnectDelay = delay
             lifecycle = .disconnecting(lifecycle.generation ?? generationCounter)
             central.cancelPeripheralConnection(peripheral)
+            startDisconnectTimeout()
             return
         }
         finishAttempt(reconnectAfter: delay)
@@ -772,7 +828,7 @@ final class XiaomiBluetoothBridge: NSObject {
 
     private func finishAttempt(reconnectAfter delay: TimeInterval?) {
         let finishedGeneration = lifecycle.generation ?? generationCounter
-        central?.stopScan()
+        stopScan()
         requestedReconnectDelay = nil
         resetPeripheral()
 
@@ -811,13 +867,17 @@ final class XiaomiBluetoothBridge: NSObject {
 
     @discardableResult
     private func write(_ data: Data) -> Bool {
-        guard let peripheral, let transmitCharacteristic else { return false }
+        guard peripheral != nil, let transmitCharacteristic else { return false }
         let type: CBCharacteristicWriteType = transmitCharacteristic.properties.contains(.writeWithoutResponse)
             ? .withoutResponse
             : .withResponse
         if type == .withResponse { return acknowledgedWrites.enqueue(data) }
-        peripheral.writeValue(data, for: transmitCharacteristic, type: type)
-        return true
+        return unacknowledgedWrites.enqueue(data)
+    }
+
+    fileprivate func handleWriteReady(peripheral: CBPeripheral, generation: UInt64) {
+        guard shouldRun, isCurrent(peripheral), currentGeneration() == generation else { return }
+        unacknowledgedWrites.pump()
     }
 
     fileprivate func handleWriteResponse(peripheral: CBPeripheral, generation: UInt64,
@@ -1235,7 +1295,7 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
         lifecycle = transition.phase
         if transition.shouldReleaseCentral {
             resetPeripheral()
-            central.stopScan()
+            stopScan()
             central.delegate = nil
             self.central = nil
             centralGeneration = nil
@@ -1246,7 +1306,7 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
             if transition.shouldStartFreshConnectionCycle || transition.shouldDiscover {
                 systemSuspension.markConnectionCycleNeeded()
             }
-            central.stopScan()
+            stopScan()
             return
         }
         if transition.shouldStartFreshConnectionCycle {
@@ -1261,10 +1321,10 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
     private func startFreshConnectionCycle() {
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
-            central?.stopScan()
+            stopScan()
             return
         }
-        central?.stopScan()
+        stopScan()
         central?.delegate = nil
         central = nil
         centralGeneration = nil
@@ -1272,30 +1332,6 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
         beginConnectionCycle()
     }
 
-    func centralManager(
-        _ central: CBCentralManager,
-        didDiscover peripheral: CBPeripheral,
-        advertisementData: [String: Any],
-        rssi RSSI: NSNumber
-    ) {
-        guard !systemSuspension.isSuspended, self.central === central else { return }
-        let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        let serviceMatch = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?
-            .contains(serviceUUID) == true
-        guard let generation = centralGeneration,
-              lifecycle == .scanning(generation),
-              self.peripheral == nil,
-              acceptsCandidateIdentifier(peripheral.identifier)
-        else { return }
-        adopt(
-            peripheral,
-            using: central,
-            generation: generation,
-            source: "scan",
-            advertisesVoiceService: serviceMatch,
-            advertisedName: advertisedName
-        )
-    }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         guard self.central === central else { return }

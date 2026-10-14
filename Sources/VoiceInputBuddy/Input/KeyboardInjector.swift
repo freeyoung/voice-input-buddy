@@ -170,7 +170,10 @@ enum KeyboardInjector {
 
     static func isSyntheticEvent(_ event: CGEvent) -> Bool {
         let marker = event.getIntegerValueField(.eventSourceUserData)
-        return marker == syntheticEventMarker || marker == orderedVoiceEventMarker
+        return isSyntheticEventMarker(marker)
+    }
+    static func isSyntheticEventMarker(_ marker: Int64) -> Bool {
+        marker == syntheticEventMarker || marker == orderedVoiceEventMarker
     }
     static let contextualMenuKeyCode: CGKeyCode = 110
     static let functionKeyCode: CGKeyCode = 63
@@ -229,7 +232,7 @@ enum KeyboardInjector {
     static func setFunctionKeyPressed(
         _ isPressed: Bool,
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
-        keyStatePoster: KeyStatePoster = postKeyState
+        keyStatePoster: KeyStatePoster = postVoiceKeyState
     ) -> Bool {
         setVoiceKeyPressed(
             .function,
@@ -387,8 +390,6 @@ enum KeyboardInjector {
             systemKeyPoster(18)
         case .nextCommandRight:
             systemKeyPoster(17)
-        case .combinationAction:
-            return false // The host action-library adapter owns execution.
         case .customShortcut:
             if let shortcut {
                 let eventFlags = shortcut.cgEventFlags

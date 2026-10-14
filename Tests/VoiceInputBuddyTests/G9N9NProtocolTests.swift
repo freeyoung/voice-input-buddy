@@ -110,7 +110,7 @@ struct G9N9NProtocolTests {
             (0x42, .up), (0x43, .down), (0x44, .left), (0x45, .right),
             (0x41, .ok), (0x224, .back), (0x223, .home),
             (0xE9, .volumeUp), (0xEA, .volumeDown), (0xE2, .mute),
-            (0x77, .youtube), (0x78, .netflix),
+            (0x77, .youtube), (0x78, .netflix), (0x189, .input), (0x19E, .power),
         ]
         for (usage, button) in expected {
             let payload = [UInt8(usage & 0xff), UInt8(usage >> 8)]

@@ -194,12 +194,12 @@ extension BridgeAppModel {
                         identifier: identifier
                     )
                 }
+                self.flushPendingCommandVoiceAudio(for: bridge)
                 if stopRequested {
                     self.bluetoothBridgeDidStopVoice(bridge)
                 }
             }
         }
-        flushPendingCommandVoiceAudio(for: bridge)
         if !pendingStartAudio.isEmpty {
             AppLogger.shared.write(
                 "ATVV AUDIO flush_after_configuration samples=\(pendingStartAudio.count)"
@@ -209,6 +209,9 @@ extension BridgeAppModel {
                 from: bridge,
                 identifier: identifier
             )
+        }
+        if outputReadyAtStart {
+            flushPendingCommandVoiceAudio(for: bridge)
         }
     }
 

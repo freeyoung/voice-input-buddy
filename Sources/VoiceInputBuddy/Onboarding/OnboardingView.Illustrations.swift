@@ -174,8 +174,6 @@ extension OnboardingView {
                 Text(verbatim: localization.text("onboarding.iphone_remote.scan"))
                     .font(.system(size: 15, weight: .semibold))
                     .multilineTextAlignment(.center)
-            } else if !membershipFeature.canStartCompanionConnection {
-                companionMembershipRequiredView
             } else {
                 Image(systemName: model.isPhoneRemoteConnected
                     ? "iphone.gen3.radiowaves.left.and.right"
@@ -188,13 +186,6 @@ extension OnboardingView {
             sideStatusPanel
         }
         .padding(28)
-    }
-
-    private var companionMembershipRequiredView: some View {
-        membershipFeature.membershipRequiredView(remoteAuthorizationDenied: true) {
-            isMembershipPresented = true
-            membershipFeature.refreshIfNeeded()
-        }
     }
 
     @ViewBuilder
@@ -211,8 +202,6 @@ extension OnboardingView {
                     size: 250,
                     onDiagnostic: { AppLogger.shared.write($0) }
                 )
-            case .membershipRequired, .plusRequired:
-                companionMembershipRequiredView
             case let .connected(deviceName):
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 96))

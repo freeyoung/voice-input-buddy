@@ -159,9 +159,11 @@ struct FrameAccumulator {
         pending.append(data)
         var frames: [Data] = []
         while pending.count >= frameSize {
-            frames.append(pending.prefix(frameSize))
+            frames.append(Data(Array(pending.prefix(frameSize))))
             pending.removeFirst(frameSize)
         }
+        // Rebase the remainder and release consumed storage after every batch.
+        pending = Data(Array(pending))
         return frames
     }
 

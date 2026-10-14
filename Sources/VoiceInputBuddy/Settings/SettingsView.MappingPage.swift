@@ -7,36 +7,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension SettingsView {
-    var buttonProfilesChromecastReservedControls: Set<String> {
-        ["left", "right", "select"]
-    }
-
     func mappingConfiguration(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction {
-        if let profile = editingMappingProfileID {
-            return macroFeature.profileBinding(device: settings.selectedRemoteProfileID, profile: profile,
-                button: button, trigger: trigger)
-                ?? settings.configuredBaseAction(for: button, trigger: trigger)
-        }
-        return settings.configuredBaseAction(for: button, trigger: trigger)
+        settings.configuredBaseAction(for: button, trigger: trigger)
     }
 
     private func saveMappingBinding(_ configured: ConfiguredButtonAction, button: RemoteButton, trigger: ButtonTrigger) {
-        let operationID = UUID().uuidString
-        if configured.action == .combinationAction {
-            AppLogger.shared.write("BUTTON CONFIGURATION operation_id=\(operationID) action=select_combination phase=started result=requested")
-        }
-        if let profile = editingMappingProfileID {
-            macroFeature.setProfileBinding(configured, profile: profile, button: button, trigger: trigger,
-                displayName: configured.action == .customShortcut
-                    ? configured.shortcut?.visualDisplayName(using: localization) ?? configured.action.displayName(using: localization)
-                    : configured.action.displayName(using: localization))
-        } else {
-            settings.setBaseBinding(configured, for: button, trigger: trigger, profileID: settings.selectedRemoteProfileID)
-        }
-        if configured.action == .combinationAction {
-            let matches = mappingConfiguration(for: button, trigger: trigger) == configured
-            AppLogger.shared.write("BUTTON CONFIGURATION operation_id=\(operationID) action=select_combination phase=completed result=\(matches ? "stored" : "not_stored") scope=\(editingMappingProfileID == nil ? "base" : "profile")")
-        }
+        settings.setBaseBinding(configured, for: button, trigger: trigger, profileID: settings.selectedRemoteProfileID)
     }
 
     func setMappingAction(_ action: ButtonAction, for button: RemoteButton, trigger: ButtonTrigger) {
@@ -55,71 +31,6 @@ extension SettingsView {
         var configured = mappingConfiguration(for: button, trigger: trigger)
         configured.applicationProfileID = id
         saveMappingBinding(configured, button: button, trigger: trigger)
-    }
-
-    @ViewBuilder
-    func mappingInheritanceControl(button: RemoteButton, trigger: ButtonTrigger) -> some View {
-            if let profile = editingMappingProfileID {
-                Button(localization.text("button_mapping.inherit_base")) {
-                    macroFeature.setProfileBinding(nil, profile: profile, button: button, trigger: trigger)
-                }.buttonStyle(.bordered)
-                if macroFeature.profileBinding(device: settings.selectedRemoteProfileID, profile: profile,
-                    button: button, trigger: trigger) == nil {
-                    Text(localization.text("button_mapping.inherited") + "：" + mappingActionSummary(for: button, trigger: trigger))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-            }
-    }
-
-    func mappingMacroChoices(button: RemoteButton, trigger: ButtonTrigger,
-                                     configured: ConfiguredButtonAction) -> some View {
-        let searchQuery = mappingMacroSearch.trimmingCharacters(in: .whitespacesAndNewlines)
-        let matchingActions = macroFeature.libraryActions.filter {
-            searchQuery.isEmpty ||
-                $0.name.localizedCaseInsensitiveContains(searchQuery) ||
-                $0.id.localizedCaseInsensitiveContains(searchQuery)
-        }
-        let visibleActions = searchQuery.isEmpty ? Array(matchingActions.prefix(10)) : matchingActions
-        return VStack(alignment: .leading, spacing: 10) {
-            Text(localization.text("action.combination_action")).font(.system(size: 14, weight: .semibold))
-            TextField(localization.text("button_mapping.search_macros"), text: $mappingMacroSearch)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13))
-                .frame(maxWidth: 280)
-            VStack(spacing: 6) {
-                ForEach(visibleActions) { action in
-                    Button {
-                        var binding = configured
-                        binding.action = .combinationAction
-                        binding.macroID = action.id
-                        saveMappingBinding(binding, button: button, trigger: trigger)
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "square.stack.3d.up")
-                            Text(action.name).font(.system(size: 13, weight: .medium))
-                            Spacer()
-                            Text(String(format: localization.text("button_mapping.macro_step_count"), action.stepCount))
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
-                            if configured.action == .combinationAction && configured.macroID == action.id {
-                                Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.accentColor)
-                            }
-                        }.padding(10).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                        .background(configured.action == .combinationAction && configured.macroID == action.id
-                            ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
-                }
-            }
-            if configured.action == .combinationAction,
-               !macroFeature.libraryActions.contains(where: { $0.id == configured.macroID }) {
-                Text(localization.text("button_mapping.macro_unavailable")).font(.system(size: 13)).foregroundStyle(.orange)
-            }
-            Button(localization.text("button_mapping.manage_macros")) {
-                mappingActionFilter = .custom
-                mappingMacroSearch = ""
-                selectedSection = .macros
-            }
-                .buttonStyle(.bordered)
-        }
     }
 
     private var mappingPageHeader: some View {
@@ -193,16 +104,6 @@ extension SettingsView {
                             Color.clear
                                 .frame(height: 0)
                                 .id("mapping-page-top")
-                            if let profileID = editingMappingProfileID,
-                               let profile = macroFeature.mappingProfiles(device: settings.selectedRemoteProfileID).first(where: { $0.id == profileID }) {
-                                HStack {
-                                    Text(localization.text("button_mapping.editing_profile") + "：" + profile.name)
-                                        .font(.system(size: 13, weight: .medium))
-                                    Spacer()
-                                    Button(localization.text("button_mapping.base_profile")) { editingMappingProfileID = nil }
-                                        .buttonStyle(.bordered)
-                                }
-                            }
                             configurationImportBanner
                             corruptedSettingsBanner
 
@@ -212,7 +113,6 @@ extension SettingsView {
                                 mappingEditorPanel(target)
                                     .id("mapping-action-editor")
                             }
-
 
                             mappingFooter(includeSiriScrollArrow: includeSiriScrollArrow)
                             Color.clear.frame(height: 1).id("mapping-page-bottom")
@@ -362,7 +262,6 @@ extension SettingsView {
                             set: { disabled in
                                 let scope = MappingDisableScope(
                                     deviceID: settings.selectedRemoteProfileID,
-                                    mappingProfileID: editingMappingProfileID,
                                     button: target.button, trigger: target.trigger
                                 )
                                 let replacement = mappingDisableEditor.configuration(
@@ -521,13 +420,7 @@ extension SettingsView {
 
     private var mappingRestoreDefaultsButton: some View {
         Button("common.action.restore_defaults") {
-            if let profile = editingMappingProfileID {
-                for button in RemoteButton.allCases {
-                    for trigger in ButtonTrigger.allCases {
-                        macroFeature.setProfileBinding(nil, profile: profile, button: button, trigger: trigger)
-                    }
-                }
-            } else { settings.resetBindings() }
+            settings.resetBindings()
             selectedRemoteButton = .ok
         }
         .compatibilityButtonStyle(.standard)

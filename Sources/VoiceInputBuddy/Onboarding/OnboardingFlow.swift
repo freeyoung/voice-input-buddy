@@ -198,43 +198,31 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
 
 enum OnboardingAIAssistantPrompt {
     static let chinese = """
-    请在这台 Mac 上直接完成“语音搭子VoiceInputBuddy.app”的配置。我的遥控器已经通过蓝牙连接。
+    请帮助我在这台 Mac 上配置「语音搭子」。遥控器已通过蓝牙连接。
 
-    不要操作屏幕、不要点击窗口，也不要只给我操作建议。请使用语音搭子提供的本机配置命令，通过终端完成配置并验证结果：
+    本应用目前没有自动配置命令行接口。请通过应用的设置和向导，以及公开的 macOS 无障碍界面完成配置，不要调用不存在的配置命令。
 
-    1. 先在终端定位已安装的语音搭子VoiceInputBuddy.app：
-       APP_PATH="$(mdfind 'kMDItemCFBundleIdentifier == \"com.zfdang.VoiceInputBuddy\"' | head -n 1)"; [ -n "$APP_PATH" ] || APP_PATH="/Applications/VoiceInputBuddy.app"
-       [ -x "$APP_PATH/Contents/MacOS/VoiceInputBuddy" ] || APP_PATH="/Applications/语音搭子VoiceInputBuddy.app"
-       "$APP_PATH/Contents/MacOS/VoiceInputBuddy" --agent-configure --auto --json
-    2. 自动选择当前已连接的遥控器；如果有多个候选且无法判断，只向我询问一次。
-    3. 自动选择已安装且可用的语音工具：豆包、微信输入法、Vokie、Typeless 或其他工具；如果有多个候选且无法判断，只询问我一次。
-    4. 让本次 Onboarding 使用 Fn，并按控制设备与语音工具匹配的“按住”或“按一次”方式配置。
-    5. 选择可用的语音搭子音频设备作为语音输入路线，并保留当前增益；如果需要，可把增益调整到适合小声或气声的范围。
-    6. 只修改语音搭子自己的配置，不读取或修改第三方语音工具的私有文件、数据库、沙盒或未公开协议。
-    7. 配置成功后，将语音搭子向导停在真实语音测试步骤，不要跳过语音、音频、按键和文字上屏验证，也不要把写入配置当成验证成功。
-    8. 如果需要 macOS 权限、用户选择或真实说话测试，明确告诉我还缺哪一步；否则告诉我配置已准备完成。
-
-    请使用命令返回的 JSON 结果判断成功或失败，并在失败时说明具体原因。不要伪造完成状态。
+    1. 运行 open -b com.zfdang.VoiceInputBuddy 打开应用，检查向导和权限状态。
+    2. 选择已连接的遥控器；有多个无法区分的设备时，请让我选择。
+    3. 选择已安装的语音输入工具，按照向导配置 Fn 和适合该工具的按住或点按方式。
+    4. 使用语音搭子的虚拟麦克风，保留已有增益；只有必要时再调整。
+    5. 仅修改语音搭子自己的配置。不要读取或修改第三方应用的私有文件、数据库、沙盒或未公开协议。
+    6. 保留真实按键、音频和语音文字上屏验证。需要权限、用户选择或真实说话时，请明确告诉我还缺什么。
+    7. 根据界面可观察的结果报告配置状态，不要将配置写入当成测试通过，不要伪造完成状态。
     """
 
     static let english = """
-    Configure “VoiceInputBuddy” directly on this Mac. My remote is already connected over Bluetooth.
+    Help me configure Voice Input Buddy on this Mac. My remote is connected over Bluetooth.
 
-    Do not operate the screen, click windows, or only give instructions. Use the app’s local headless configuration command from the terminal, then verify its result:
+    The app currently has no automatic configuration CLI. Use its settings and onboarding wizard through public macOS accessibility interfaces; do not invoke nonexistent configuration commands.
 
-    1. Locate the installed VoiceInputBuddy app without opening a window, then run:
-       APP_PATH="$(mdfind 'kMDItemCFBundleIdentifier == \"com.zfdang.VoiceInputBuddy\"' | head -n 1)"; [ -n "$APP_PATH" ] || APP_PATH="/Applications/VoiceInputBuddy.app"
-       [ -x "$APP_PATH/Contents/MacOS/VoiceInputBuddy" ] || APP_PATH="/Applications/语音搭子VoiceInputBuddy.app"
-       "$APP_PATH/Contents/MacOS/VoiceInputBuddy" --agent-configure --auto --json
-    2. Select the currently connected remote automatically; ask me at most once if multiple candidates cannot be distinguished.
-    3. Select an installed and available voice typing app: Doubao, WeType, Vokie, Typeless, or Other; ask me at most once if multiple candidates cannot be distinguished.
-    4. Use Fn for this onboarding run and apply the hold-or-toggle behavior matched to the selected remote and voice typing app.
-    5. Select an available VoiceInputBuddy audio device for voice input and keep the current gain; adjust it only if needed for a quiet or breathy voice.
-    6. Modify only VoiceInputBuddy’s own configuration. Do not read or modify private files, databases, sandboxes, or undocumented protocols of third-party voice typing apps.
-    7. After configuration, leave VoiceInputBuddy at the real voice-test step. Do not skip voice, audio, button, or text-on-screen verification, and do not treat a written configuration as proof of success.
-    8. If macOS permissions, a user choice, or a real spoken test is still required, tell me exactly what remains; otherwise report that configuration is prepared.
-
-    Use the command’s JSON result to determine success or failure, and explain the concrete reason if it fails. Never fabricate completion.
+    1. Run open -b com.zfdang.VoiceInputBuddy to open the app and check onboarding and permissions.
+    2. Select the connected remote; ask me to choose if multiple devices cannot be distinguished.
+    3. Select an installed voice typing tool and follow the wizard to configure Fn and its matching hold or tap behavior.
+    4. Use the Voice Input Buddy virtual microphone and preserve the current gain unless adjustment is needed.
+    5. Modify only this app's configuration. Do not access third-party private files, databases, sandboxes or undocumented protocols.
+    6. Keep real button, audio and spoken-text verification. Explain any permission, choice or real spoken test still required.
+    7. Report observable results. Written configuration is not proof that voice input works. Never fabricate completion.
     """
 
     static func text(for locale: Locale) -> String {

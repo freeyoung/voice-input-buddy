@@ -106,9 +106,30 @@ extension VirtualAudioOutputDiagnosticSnapshot {
     }
 }
 
+enum PCMNormalization {
+    static func sample(_ value: Int16) -> Float {
+        Float(value) / 32768.0
+    }
+}
+
 enum AudioPlayerNodeSafety {
     static func play(_ player: AVAudioPlayerNode) -> Bool {
         VoiceInputBuddyTryPlayAudioPlayerNode(player)
+    }
+
+    static func schedule(_ player: AVAudioPlayerNode, buffer: AVAudioPCMBuffer,
+                         completion: @escaping (AVAudioPlayerNodeCompletionCallbackType) -> Void) -> Bool {
+        VoiceInputBuddyTryAudioOperation {
+            player.scheduleBuffer(buffer, at: nil, options: [],
+                completionCallbackType: .dataPlayedBack, completionHandler: completion)
+        }
+    }
+
+    static func reset(_ player: AVAudioPlayerNode) -> Bool {
+        VoiceInputBuddyTryAudioOperation {
+            player.stop()
+            player.reset()
+        }
     }
 }
 
@@ -311,7 +332,8 @@ enum CoreAudioDeviceCatalog {
             &size,
             &value
         ) == noErr else { return nil }
-        return value?.takeUnretainedValue() as String?
+        // HAL transfers ownership of CFString properties to the caller.
+        return value?.takeRetainedValue() as String?
     }
 
     private static func virtualAudioAudibilitySnapshotLocked(
@@ -851,7 +873,7 @@ final class VirtualAudioOutput {
         var accepted = false
         defer {
             if !accepted {
-                player.stop()
+                _ = VoiceInputBuddyTryAudioOperation { player.stop() }
                 engine.stop()
             }
         }
@@ -862,7 +884,7 @@ final class VirtualAudioOutput {
             try engine.start()
             logStage("start_player")
             guard AudioPlayerNodeSafety.play(player) else {
-                player.stop()
+                _ = VoiceInputBuddyTryAudioOperation { player.stop() }
                 engine.stop()
                 status = LocalizedMessage("audio.output.selected_unavailable")
                 logger(
@@ -924,13 +946,13 @@ final class VirtualAudioOutput {
                 DispatchQueue.main.async { completion(false) }
                 return
             }
-            player.scheduleBuffer(
-                buffer,
-                at: nil,
-                options: [],
-                completionCallbackType: .dataPlayedBack
-            ) { callbackType in
+            let scheduled = AudioPlayerNodeSafety.schedule(player, buffer: buffer) { callbackType in
                 completion(callbackType == .dataPlayedBack)
+            }
+            if !scheduled {
+                self.stopOnEngineQueue()
+                self.onConfigurationChange?()
+                DispatchQueue.main.async { completion(false) }
             }
         }
         return true
@@ -952,7 +974,7 @@ final class VirtualAudioOutput {
         else { return nil }
 
         for index in samples.indices {
-            channel[index] = Float(samples[index]) / Float(Int16.max)
+            channel[index] = PCMNormalization.sample(samples[index])
         }
         buffer.frameLength = AVAudioFrameCount(samples.count)
         return buffer
@@ -999,17 +1021,17 @@ final class VirtualAudioOutput {
                 self.stopOnEngineQueue()
                 return
             }
-            player.scheduleBuffer(
-                buffer,
-                at: nil,
-                options: [],
-                completionCallbackType: .dataPlayedBack
-            ) { [weak self] _ in
+            let scheduled = AudioPlayerNodeSafety.schedule(player, buffer: buffer) { [weak self] _ in
                 self?.scheduledVoiceBufferDidFinish(
                     sampleCount: sampleCount,
                     generation: generation,
                     deliveryGeneration: deliveryGeneration
                 )
+            }
+            if !scheduled {
+                AppLogger.shared.write("AUDIO ERROR schedule_exception")
+                self.stopOnEngineQueue()
+                self.onConfigurationChange?()
             }
         }
         return true
@@ -1174,9 +1196,7 @@ final class VirtualAudioOutput {
                   let player = self.player,
                   self.engine?.isRunning == true
             else { return }
-            player.stop()
-            player.reset()
-            guard AudioPlayerNodeSafety.play(player) else {
+            guard AudioPlayerNodeSafety.reset(player), AudioPlayerNodeSafety.play(player) else {
                 AppLogger.shared.write("AUDIO ERROR player_restart_exception state={\(self.diagnosticState())}")
                 self.stopOnEngineQueue()
                 self.onConfigurationChange?()
@@ -1247,7 +1267,7 @@ final class VirtualAudioOutput {
             )
         }
         removeEngineConfigurationObserver()
-        player?.stop()
+        if let player { _ = VoiceInputBuddyTryAudioOperation { player.stop() } }
         engine?.stop()
         player = nil
         engine = nil

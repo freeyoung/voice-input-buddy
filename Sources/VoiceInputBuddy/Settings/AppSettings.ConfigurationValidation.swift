@@ -59,9 +59,6 @@ extension AppSettings {
     static func validatedConfiguredAction(
         _ binding: ConfiguredButtonAction
     ) -> ConfiguredButtonAction? {
-        if binding.action == .combinationAction {
-            guard let id = binding.macroID, id.range(of: "^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$", options: .regularExpression) != nil else { return nil }
-        }
         guard let shortcut = binding.shortcut else { return binding }
         guard let validated = validatedShortcut(shortcut) else { return nil }
         var result = binding

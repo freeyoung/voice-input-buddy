@@ -23,6 +23,8 @@ enum G9N9NProtocol {
         0x0041: .ok, 0x0224: .back, 0x0223: .home,
         0x00E9: .volumeUp, 0x00EA: .volumeDown, 0x00E2: .mute,
         0x0077: .youtube, 0x0078: .netflix,
+        // Captured G9N9N Consumer Control reports: vibe-mote/keys.py.
+        0x0189: .input, 0x019E: .power,
     ]
 
     /// Known Consumer Control interface, with or without its report-ID byte.

@@ -202,8 +202,8 @@ struct InputLifecycleRegressionTests {
         defer { values.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: values)
         settings.customMappingEnabled = true
-        settings.configuredActionOverride = { _, _, trigger in
-            ConfiguredButtonAction(action: trigger == .singleClick ? .combinationAction : .disabled, shortcut: nil)
+        for button in RemoteButton.allCases {
+            settings.setAction(.escape, for: button, trigger: .singleClick)
         }
         let profile = UUID()
         let monitor = HIDRemoteMonitor(settings: settings, profileID: profile,
@@ -229,8 +229,8 @@ struct InputLifecycleRegressionTests {
         defer { values.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: values)
         settings.customMappingEnabled = true
-        settings.configuredActionOverride = { _, _, trigger in
-            ConfiguredButtonAction(action: trigger == .singleClick ? .arrowUp : .disabled, shortcut: nil)
+        for button in RemoteButton.allCases {
+            settings.setAction(.escape, for: button, trigger: .singleClick)
         }
         var allowed = true
         let profile = UUID()
@@ -393,7 +393,6 @@ struct InputLifecycleRegressionTests {
         #expect(!filter.handle(type: type, event: down))
         #expect(!filter.handle(type: type, event: up))
     }
-
 
     @Test func volumeActionsUseInjectedPoster() {
         var keys: [Int32] = []

@@ -99,7 +99,6 @@ struct RuntimeBoundaryTests {
         #expect(empty.action == .customShortcut && empty.shortcut == nil)
     }
 
-
     @Test func corruptedMappingsAreReportedAndPreservedWhileDefaultsRecover() {
         let (defaults, name) = values()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -158,17 +157,15 @@ struct RuntimeBoundaryTests {
         #expect(stops.take(pending: ["second"]).isEmpty)
     }
 
-
-    @Test func mappingToggleRestoresOnlyItsOwnDeviceProfileButtonAndGesture() {
-        let device = UUID(), profile = UUID()
+    @Test func mappingToggleRestoresOnlyItsOwnDeviceButtonAndGesture() {
+        let device = UUID()
         let scopes = [
-            MappingDisableScope(deviceID: device, mappingProfileID: profile, button: .right, trigger: .singleClick),
-            MappingDisableScope(deviceID: UUID(), mappingProfileID: profile, button: .right, trigger: .singleClick),
-            MappingDisableScope(deviceID: device, mappingProfileID: UUID(), button: .right, trigger: .singleClick),
-            MappingDisableScope(deviceID: device, mappingProfileID: profile, button: .left, trigger: .singleClick),
-            MappingDisableScope(deviceID: device, mappingProfileID: profile, button: .right, trigger: .doubleClick),
+            MappingDisableScope(deviceID: device, button: .right, trigger: .singleClick),
+            MappingDisableScope(deviceID: UUID(), button: .right, trigger: .singleClick),
+            MappingDisableScope(deviceID: device, button: .left, trigger: .singleClick),
+            MappingDisableScope(deviceID: device, button: .right, trigger: .doubleClick),
         ]
-        let actions: [ButtonAction] = [.commandCopy, .commandPaste, .commandFind, .commandQuit, .returnKey]
+        let actions: [ButtonAction] = [.commandCopy, .commandPaste, .commandFind, .commandQuit]
         var editor = MappingDisableEditor()
         for (scope, action) in zip(scopes, actions) {
             #expect(editor.configuration(disabling: true, current: .init(action: action, shortcut: nil), scope: scope) == .disabled)
@@ -184,7 +181,7 @@ struct RuntimeBoundaryTests {
         let (defaults, name) = values()
         defer { defaults.removePersistentDomain(forName: name) }
         let settings = AppSettings(defaults: defaults)
-        let scope = MappingDisableScope(deviceID: nil, mappingProfileID: nil, button: .right, trigger: .singleClick)
+        let scope = MappingDisableScope(deviceID: nil, button: .right, trigger: .singleClick)
         settings.setBaseBinding(.init(action: .commandCopy, shortcut: nil), for: .right, trigger: .singleClick, profileID: nil)
         var editor = MappingDisableEditor()
         func toggle(_ disabled: Bool) {
@@ -206,7 +203,7 @@ struct RuntimeBoundaryTests {
     @Test(arguments: [ButtonTrigger.singleClick, .doubleClick, .longPress])
     func redundantEnablePreservesTheEntireCurrentBinding(trigger: ButtonTrigger) {
         let current = ConfiguredButtonAction(action: .openCustomApplication, shortcut: nil,
-            applicationProfileID: UUID(), macroID: "current-metadata")
+            applicationProfileID: UUID())
         for backup: ConfiguredButtonAction? in [nil, .disabled, .init(action: .escape, shortcut: nil)] {
             #expect(MappingDisablePolicy.configuration(disabling: false, current: current,
                 backup: backup, button: .right, trigger: trigger) == current)
@@ -214,7 +211,7 @@ struct RuntimeBoundaryTests {
     }
 
     @Test func editorEnableDoesNotReplaceNewActionWithItsStaleBackup() {
-        let scope = MappingDisableScope(deviceID: UUID(), mappingProfileID: UUID(), button: .right, trigger: .singleClick)
+        let scope = MappingDisableScope(deviceID: UUID(), button: .right, trigger: .singleClick)
         var editor = MappingDisableEditor()
         _ = editor.configuration(disabling: true, current: .init(action: .commandCopy, shortcut: nil), scope: scope)
         let updated = ConfiguredButtonAction(action: .commandPaste, shortcut: nil)

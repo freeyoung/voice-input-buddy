@@ -126,26 +126,22 @@ struct VoiceInputDestinationSnapshot: Equatable {
         } else {
             focusedBundleIdentifier = nil
         }
-        let role = axString(focusedElement, attribute: kAXRoleAttribute as CFString)
-        let subrole = axString(focusedElement, attribute: kAXSubroleAttribute as CFString)
-        let semanticText = [
-            axString(focusedElement, attribute: kAXIdentifierAttribute as CFString),
-            axString(focusedElement, attribute: kAXTitleAttribute as CFString),
-            axString(focusedElement, attribute: kAXDescriptionAttribute as CFString),
-            axString(focusedElement, attribute: kAXHelpAttribute as CFString),
-            axString(focusedElement, attribute: kAXPlaceholderValueAttribute as CFString),
-        ].joined(separator: " ")
+        let attributes = AccessibilityMessaging.attributes(focusedElement, keys: [
+            kAXRoleAttribute, kAXSubroleAttribute, kAXIdentifierAttribute, kAXTitleAttribute,
+            kAXDescriptionAttribute, kAXHelpAttribute, kAXPlaceholderValueAttribute,
+            kAXEnabledAttribute, "AXEditable", "AXProtectedContent",
+        ])
+        let role = attributes[kAXRoleAttribute] as? String ?? ""
+        let subrole = attributes[kAXSubroleAttribute] as? String ?? ""
+        let semanticText = [kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+            kAXHelpAttribute, kAXPlaceholderValueAttribute].compactMap { attributes[$0] as? String }.joined(separator: " ")
         let roleIsEditable = role == "AXTextArea" || role == "AXTextField" || role == "AXComboBox"
         return VoiceInputDestinationSnapshot(
             bundleIdentifier: focusedBundleIdentifier ?? frontmostBundleIdentifier,
-            role: role,
-            subrole: subrole,
-            enabled: axBool(focusedElement, attribute: kAXEnabledAttribute as CFString) ?? true,
-            editable: axBool(focusedElement, attribute: "AXEditable" as CFString) ?? roleIsEditable,
-            protectedContent: axBool(
-                focusedElement,
-                attribute: "AXProtectedContent" as CFString
-            ) ?? false,
+            role: role, subrole: subrole,
+            enabled: attributes[kAXEnabledAttribute] as? Bool ?? true,
+            editable: attributes["AXEditable"] as? Bool ?? roleIsEditable,
+            protectedContent: attributes["AXProtectedContent"] as? Bool ?? false,
             semanticText: semanticText,
             focusIdentity: "\(processIdentifier):\(CFHash(focusedElement))"
         )
@@ -176,28 +172,12 @@ struct VoiceInputDestinationSnapshot: Equatable {
         return unsafeBitCast(value, to: AXUIElement.self)
     }
 
-    private static func axString(_ element: AXUIElement, attribute: CFString) -> String {
-        AccessibilityMessaging.prepareQueries()
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success else {
-            return ""
-        }
-        return value as? String ?? ""
-    }
-
-    private static func axBool(_ element: AXUIElement, attribute: CFString) -> Bool? {
-        AccessibilityMessaging.prepareQueries()
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success else {
-            return nil
-        }
-        return value as? Bool
-    }
 }
 
 final class VoiceInputDestinationCoordinator {
     typealias Scheduler = (TimeInterval, @escaping () -> Void) -> VoiceFnTapScheduledTask
     typealias SnapshotProvider = () -> VoiceInputDestinationSnapshot
+    typealias AsyncSnapshotProvider = (@escaping (VoiceInputDestinationSnapshot) -> Void) -> Void
 
     private struct PendingRequest {
         let id: UInt64
@@ -221,6 +201,9 @@ final class VoiceInputDestinationCoordinator {
     private let maximumWait: TimeInterval
     private let schedule: Scheduler
     private let snapshot: SnapshotProvider
+    private let querySnapshot: AsyncSnapshotProvider
+    private let usesAsyncSnapshots: Bool
+    private var directValidationGeneration: UInt64 = 0
     private let onStateChange: (VoiceInputDestinationState) -> Void
     private var generation: UInt64 = 0
     private var pendingRequest: PendingRequest?
@@ -231,13 +214,27 @@ final class VoiceInputDestinationCoordinator {
         pollInterval: TimeInterval = 0.05,
         maximumWait: TimeInterval = 5,
         schedule: @escaping Scheduler = VoiceFnTapScheduledTask.mainQueue,
-        snapshot: @escaping SnapshotProvider = VoiceInputDestinationSnapshot.system,
+        snapshot: SnapshotProvider? = nil,
+        querySnapshot: AsyncSnapshotProvider? = nil,
         onStateChange: @escaping (VoiceInputDestinationState) -> Void = { _ in }
     ) {
         self.pollInterval = pollInterval
         self.maximumWait = maximumWait
         self.schedule = schedule
-        self.snapshot = snapshot
+        self.snapshot = snapshot ?? VoiceInputDestinationSnapshot.system
+        usesAsyncSnapshots = snapshot == nil || querySnapshot != nil
+        if let querySnapshot {
+            self.querySnapshot = querySnapshot
+        } else if let snapshot {
+            self.querySnapshot = { completion in completion(snapshot()) }
+        } else {
+            self.querySnapshot = { completion in
+                AccessibilityMessaging.queryQueue.async {
+                    let value = VoiceInputDestinationSnapshot.system()
+                    DispatchQueue.main.async { completion(value) }
+                }
+            }
+        }
         self.onStateChange = onStateChange
     }
 
@@ -277,6 +274,7 @@ final class VoiceInputDestinationCoordinator {
     func waitUntilReady(
         completion: @escaping (VoiceInputDestinationWaitResult) -> Void
     ) -> VoiceInputDestinationWait {
+        if usesAsyncSnapshots { return waitForAsyncSnapshot(completion: completion) }
         guard var request = pendingRequest else {
             // Direct, explicit voice typing may target search fields or custom editors.
             // Protected/sensitive fields must still be refused without a pending launch.
@@ -307,6 +305,7 @@ final class VoiceInputDestinationCoordinator {
     }
 
     func shutdown() {
+        directValidationGeneration &+= 1
         cancelPending(reason: .superseded)
     }
 
@@ -317,18 +316,48 @@ final class VoiceInputDestinationCoordinator {
         }
     }
 
+    private func waitForAsyncSnapshot(completion: @escaping (VoiceInputDestinationWaitResult) -> Void) -> VoiceInputDestinationWait {
+        if var request = pendingRequest {
+            request.waiter = completion
+            pendingRequest = request
+            onStateChange(.waiting)
+            poll(requestID: request.id)
+            return .waiting(VoiceFnTapScheduledTask { [weak self] in self?.removeWaiter(requestID: request.id) })
+        }
+        directValidationGeneration &+= 1
+        let token = directValidationGeneration
+        let deadline = schedule(maximumWait) { [weak self] in
+            guard let self, self.directValidationGeneration == token else { return }
+            self.directValidationGeneration &+= 1
+            completion(.cancelled(.timedOut))
+        }
+        querySnapshot { [weak self] value in
+            guard let self, self.directValidationGeneration == token else { return }
+            self.directValidationGeneration &+= 1
+            deadline.cancel()
+            completion(value.isSensitiveDestination ? .cancelled(.sensitiveDestination) : .ready)
+        }
+        return .waiting(VoiceFnTapScheduledTask { [weak self] in
+            deadline.cancel()
+            if self?.directValidationGeneration == token { self?.directValidationGeneration &+= 1 }
+        })
+    }
+
     private func poll(requestID: UInt64) {
-        guard var request = pendingRequest, request.id == requestID else { return }
-        switch evaluate(snapshot(), request: &request) {
-        case .waiting:
-            pendingRequest = request
-            schedulePoll(requestID: requestID)
-        case .ready:
-            pendingRequest = request
-            completePending(with: .ready)
-        case let .cancelled(reason):
-            pendingRequest = request
-            completePending(with: .cancelled(reason))
+        guard pendingRequest?.id == requestID else { return }
+        querySnapshot { [weak self] value in
+            guard let self, var request = self.pendingRequest, request.id == requestID else { return }
+            switch self.evaluate(value, request: &request) {
+            case .waiting:
+                self.pendingRequest = request
+                self.schedulePoll(requestID: requestID)
+            case .ready:
+                self.pendingRequest = request
+                self.completePending(with: .ready)
+            case let .cancelled(reason):
+                self.pendingRequest = request
+                self.completePending(with: .cancelled(reason))
+            }
         }
     }
 

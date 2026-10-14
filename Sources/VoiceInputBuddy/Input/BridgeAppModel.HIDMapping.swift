@@ -369,21 +369,6 @@ extension BridgeAppModel {
             ownsEventSuppressor: false,
             actionPerformer: { [weak self] _, _, configured in
                 self?.performExternalConfiguredAction(configured) ?? false
-            },
-            overrideActionPerformer: { [weak self] profileID, button, trigger in
-                self?.performButtonProfileBoundAction(
-                    profileID: profileID,
-                    button: button,
-                    trigger: trigger,
-                    source: Self.commonPhraseHIDSource(profileID)
-                ) == true
-            },
-            hasOverrideBinding: { [weak self] profileID, button, trigger in
-                self?.macroFeature.hasActiveBinding(
-                    profileID: profileID,
-                    button: button,
-                    trigger: trigger
-                ) == true
             }
         )
         monitor.onCandidateAvailable = { [weak self] in
@@ -422,10 +407,6 @@ extension BridgeAppModel {
                 ?? self.settings.profileID(forHIDFingerprint: fingerprint)
             let resolvedProfileID = existingProfileID
                 ?? self.settings.registerHIDRemote(fingerprint: fingerprint, model: monitor.reportedModel)
-            if resolvedProfileID == self.settings.selectedRemoteProfileID,
-               self.macroFeature.isEditorActive {
-                self.macroFeature.noteButtonInteraction(button: button)
-            }
             let isNewBinding = existingProfileID == nil
             if isNewBinding {
                 monitor.assignProfileID(resolvedProfileID)
@@ -437,11 +418,6 @@ extension BridgeAppModel {
             }
             self.selectRemoteProfile(resolvedProfileID)
             self.lastRemoteButtonPress = button
-            if self.macroFeature.isEditorActive {
-                AppLogger.shared.write(
-                    "HID BUTTON button=\(button.rawValue) path=binding_editor_capture"
-                )
-            }
             let suppressConfiguredAction = OnboardingControlValidationPolicy
                 .suppressConfiguredActions(
                     at: self.settings.onboardingStep,
@@ -454,7 +430,7 @@ extension BridgeAppModel {
             }
             return (
                 resolvedProfileID,
-                !self.macroFeature.isEditorActive && !suppressConfiguredAction
+                !suppressConfiguredAction
             )
         }
         monitor.onInternalAction = { [weak self] profileID, action in

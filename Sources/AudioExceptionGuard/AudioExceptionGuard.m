@@ -1,10 +1,14 @@
 #import "AudioExceptionGuard.h"
 
-BOOL VoiceInputBuddyTryPlayAudioPlayerNode(AVAudioPlayerNode *player) {
+BOOL VoiceInputBuddyTryAudioOperation(void (^operation)(void)) {
     @try {
-        [player play];
+        operation();
         return YES;
     } @catch (__unused NSException *exception) {
         return NO;
     }
+}
+
+BOOL VoiceInputBuddyTryPlayAudioPlayerNode(AVAudioPlayerNode *player) {
+    return VoiceInputBuddyTryAudioOperation(^{ [player play]; });
 }

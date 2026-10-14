@@ -114,7 +114,7 @@ HID 设备发现仅用受支持的 VendorID／ProductID 组合。IOHIDManager �
 | CommonPhrases | 常用语存储、插入、设置及浮层 |
 | Updates | 更新信息与本地化更新界面 |
 | Diagnostics | 本地日志、诊断和停用的历史统计数据类型 |
-| Support | 本地化、链接；UnavailableFeatures 明确收纳未启用能力的接口空桩 |
+| Support | 本地化、链接；UnavailableFeatures 仅保留计划中的 Siri Remote 能力边界 |
 
 `BridgeAppModel` 保留唯一的应用状态和初始化入口，行为按连接、音频、按键和权限分入同一类型的功能扩展。`AppSettings` 保留唯一的 UserDefaults 所有者，向导配置、按键映射、导入校验和持久化各自组织。`SettingsView` 与 `OnboardingView` 保留原来的 SwiftUI 状态及 view identity，页面、指南、生命周期和呈现组件分开维护；没有创建重复的状态对象。
 
@@ -255,3 +255,11 @@ hardware enumeration returns another microphone or speaker. The driver panel
 shows the shared output name. Onboarding follows connection, button validation,
 then automatic driver/output validation; it advances only when both driver and
 output are ready, and retains installation/restart recovery on failure.
+
+### 运行稳定性与常用语插入
+
+常用语通过公开无障碍接口的 `AXSelectedText` 写入当前空选区，不读取目标文本，也不备份或修改剪贴板。不支持该写入接口、存在选区或处于受保护文本框时，会提示输入不可用。目标查询在后台串行执行，属性查询采用批量请求和 50ms 消息超时；语音目标轮询和遥控器悬停查询也使用后台查询。
+
+所有离线蓝牙设备共用一个广播扫描器，连接仍由各设备自己的 manager 管理。无响应写入尊重 `canSendWriteWithoutResponse`，排队和等待均有上限；断连回调丢失后由 5 秒看门狗重启连接。测试覆盖队列流控、失效回调、帧索引、输入源不可用和 Fn 取消/关闭时序，但不能替代真实设备、休眠唤醒及输入法验收。
+
+会员、宏、私有功能占位实现及其不可用设置入口已移除，配置不再包含宏动作字段。向导的助手提示词使用实际界面流程，不提供不存在的自动配置 CLI。Appcast 保留受 1 MiB 上限保护的流式读取；异步字节迭代不会必然产生每字节一次的任务调度，不能据此改为无界全量下载。

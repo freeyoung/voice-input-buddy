@@ -14,11 +14,10 @@ enum MappingDisablePolicy {
     }
 }
 
-/// A typed editor scope prevents another device, profile, button or gesture from
+/// A typed editor scope prevents another device, button or gesture from
 /// restoring this slot's action. Backups intentionally live only with the view.
 struct MappingDisableScope: Hashable {
     let deviceID: UUID?
-    let mappingProfileID: UUID?
     let button: RemoteButton
     let trigger: ButtonTrigger
 }

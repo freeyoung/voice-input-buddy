@@ -9,10 +9,6 @@ import UniformTypeIdentifiers
 enum SettingsSection: String, CaseIterable, Identifiable {
     case connection
     case integration
-    case privateFeature
-    case macros
-    case buttonProfiles
-    case membership
     case mapping
     case commonPhrases
     case permissions
@@ -24,10 +20,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .connection: return "settings.section.connection"
         case .integration: return "settings.section.integration"
-        case .privateFeature: return ""
-        case .macros: return ""
-        case .buttonProfiles: return ""
-        case .membership: return ""
         case .mapping: return "settings.section.buttons"
         case .commonPhrases: return "common_phrases.title"
         case .permissions: return "settings.section.permissions"
@@ -39,10 +31,6 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .connection: return "link"
         case .integration: return "text.bubble"
-        case .privateFeature: return "sparkles"
-        case .macros: return "command.square"
-        case .buttonProfiles: return "rectangle.3.group"
-        case .membership: return "crown.fill"
         case .mapping: return "keyboard"
         case .commonPhrases: return "text.quote"
         case .permissions: return "shield.lefthalf.filled"
@@ -117,44 +105,16 @@ enum SettingsPageBehavior {
         .connection,
         .mapping,
         .integration,
-        .macros,
-        .buttonProfiles,
-        .membership,
-        .privateFeature,
         .permissions,
         .about,
     ]
 
-    static func sidebarSections(
-        privateFeatureVisible: Bool,
-        macroFeatureVisible: Bool,
-        buttonProfilesVisible: Bool,
-        membershipVisible: Bool
-    ) -> [SettingsSection] {
-        sidebarSectionOrder.filter {
-            switch $0 {
-            case .privateFeature: privateFeatureVisible
-            case .macros: macroFeatureVisible
-            case .buttonProfiles: buttonProfilesVisible
-            case .membership: membershipVisible
-            default: true
-            }
-        }
+    static func sidebarSections() -> [SettingsSection] {
+        sidebarSectionOrder
     }
 
-    static func initialSection(
-        requestedSection: SettingsSection?,
-        privateFeatureVisible: Bool,
-        macroFeatureVisible: Bool,
-        buttonProfilesVisible: Bool,
-        membershipVisible: Bool
-    ) -> SettingsSection {
-        requestedSection ?? sidebarSections(
-            privateFeatureVisible: privateFeatureVisible,
-            macroFeatureVisible: macroFeatureVisible,
-            buttonProfilesVisible: buttonProfilesVisible,
-            membershipVisible: membershipVisible
-        ).first ?? .about
+    static func initialSection(requestedSection: SettingsSection?) -> SettingsSection {
+        requestedSection ?? sidebarSectionOrder.first ?? .about
     }
 
     static func beginDeviceSetup(settings: AppSettings) {
@@ -376,21 +336,5 @@ enum MappingPermissionPolicy {
         accessibilityGranted: Bool
     ) -> Bool {
         enabled && (!inputMonitoringGranted || !accessibilityGranted)
-    }
-}
-
-struct VersionTapRevealCounter {
-    private(set) var tapCount = 0
-    let requiredTaps: Int
-
-    init(requiredTaps: Int = 5) {
-        self.requiredTaps = max(1, requiredTaps)
-    }
-
-    mutating func registerTap() -> Bool {
-        tapCount += 1
-        guard tapCount >= requiredTaps else { return false }
-        tapCount = 0
-        return true
     }
 }

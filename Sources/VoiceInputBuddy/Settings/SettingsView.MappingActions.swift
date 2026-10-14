@@ -167,10 +167,6 @@ extension SettingsView {
         guard configured.action != .disabled else {
             return localization.text("button_mapping.action.not_set")
         }
-        if configured.action == .combinationAction {
-            return macroFeature.libraryActions.first { $0.id == configured.macroID }?.name
-                ?? localization.text("button_mapping.macro_unavailable")
-        }
         if configured.action == .customShortcut, let shortcut = configured.shortcut {
             return shortcut.visualDisplayName(using: localization)
         }
@@ -190,40 +186,6 @@ extension SettingsView {
         default: break
         }
         return configured.action.displayName(using: localization)
-    }
-
-    var buttonProfileHostActionSections: [ButtonProfileHostActionSection] {
-        let availableActions = ButtonAction.pickerActions(
-            installedBundleIdentifiers: PresetApplication.installedBundleIdentifiers,
-            current: .disabled,
-            experimentalContinuousRecordingEnabled: settings.experimentalContinuousRecordingEnabled
-        ).filter {
-            $0 != .disabled && $0 != .customShortcut && $0 != .openCustomApplication && $0 != .combinationAction
-        }
-        return ButtonActionCategory.allCases.compactMap { category in
-            let actions: [ButtonProfileHostAction] = availableActions
-                .filter { $0.category == category }
-                .compactMap { action in
-                guard let payload = try? JSONEncoder().encode(ConfiguredButtonAction(
-                    action: action,
-                    shortcut: nil
-                )) else { return nil }
-                return ButtonProfileHostAction(
-                    id: "host.action.\(action.rawValue)",
-                    title: action.displayName(using: localization),
-                    detail: nil,
-                    systemImage: buttonProfileSystemImage(for: action),
-                    payload: payload,
-                    isAvailable: true
-                )
-                }
-            guard !actions.isEmpty else { return nil }
-            return ButtonProfileHostActionSection(
-                id: "host.section.\(category.rawValue)",
-                title: localization.text(category.localizationKey),
-                actions: actions
-            )
-        }
     }
 
     private func buttonProfileSystemImage(for action: ButtonAction) -> String {

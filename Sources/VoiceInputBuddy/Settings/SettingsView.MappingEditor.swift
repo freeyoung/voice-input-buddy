@@ -17,12 +17,11 @@ extension SettingsView {
             installedBundleIdentifiers: installedBundleIdentifiers,
             current: configured.action,
             experimentalContinuousRecordingEnabled: settings.experimentalContinuousRecordingEnabled
-        ).filter { $0 != .disabled && $0 != .combinationAction }
+        ).filter { $0 != .disabled }
         let isManagedPowerAction = button == .power &&
             trigger == .singleClick &&
             settings.experimentalContinuousRecordingEnabled
         return VStack(alignment: .leading, spacing: 16) {
-            mappingInheritanceControl(button: button, trigger: trigger)
             mappingActionFilterControl
 
             ForEach(ButtonActionCategory.allCases.filter(mappingActionFilter.includes)) { category in
@@ -43,9 +42,6 @@ extension SettingsView {
                 }
             }
 
-            if mappingActionFilter.includes(.custom), macroFeature.isFeatureVisible {
-                mappingMacroChoices(button: button, trigger: trigger, configured: configured)
-            }
             if configured.action == .customShortcut {
                 inlineShortcutEditor(
                     button: button,
@@ -353,8 +349,7 @@ extension SettingsView {
         configured: ConfiguredButtonAction
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            model.macroFeature.portableTransferView(profileID: settings.selectedRemoteProfileID,
-                model: settings.selectedRemoteProfile?.model, applicationsOnly: true)
+
             Text("custom_application.target")
                 .font(.system(size: 14, weight: .semibold))
 

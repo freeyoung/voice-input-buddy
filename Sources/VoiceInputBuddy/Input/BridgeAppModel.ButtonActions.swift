@@ -12,7 +12,7 @@ extension BridgeAppModel {
         source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
-        guard source != .nearbyPhone || membershipFeature.canStartCompanionConnection else {
+        guard source != .nearbyPhone || OnboardingBuildCapabilities.availableControlSources.contains(.appleCompanion) else {
             disablePhoneRemoteConnection()
             return false
         }
@@ -25,8 +25,7 @@ extension BridgeAppModel {
             )
             return true
         }
-        if !macroFeature.isEditorActive,
-           commonPhrases.claims(button, source: phraseSource ?? "mobile:\(source.rawValue)") {
+        if commonPhrases.claims(button, source: phraseSource ?? "mobile:\(source.rawValue)") {
             _ = commonPhrases.handle(button, phase: .press, source: phraseSource ?? "mobile:\(source.rawValue)")
             _ = commonPhrases.handle(button, phase: .release, source: phraseSource ?? "mobile:\(source.rawValue)")
             return true
@@ -47,7 +46,7 @@ extension BridgeAppModel {
         source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
-        if phase == .press && source == .nearbyPhone && !membershipFeature.canStartCompanionConnection {
+        if phase == .press && source == .nearbyPhone && !OnboardingBuildCapabilities.availableControlSources.contains(.appleCompanion) {
             disablePhoneRemoteConnection()
             return false
         }
@@ -62,34 +61,15 @@ extension BridgeAppModel {
             }
             return true
         }
-        if macroFeature.isEditorActive {
-            if phase == .press {
-                macroFeature.noteButtonInteraction(button: button)
-            }
-            AppLogger.shared.write(
-                "PHONE REMOTE button=\(button.rawValue) phase=\(phase.rawValue) " +
-                    "path=binding_editor_capture"
-            )
-            return true
-        }
         if commonPhrases.handle(button, phase: phase, source: phraseSource ?? "mobile:\(source.rawValue)") { return true }
-        let profileID = settings.selectedRemoteProfileID
         let recognizesDoubleClick = settings.configuredAction(
             for: button,
             trigger: .doubleClick
-        ).action != .disabled || macroFeature.hasActiveBinding(
-            profileID: profileID,
-            button: button,
-            trigger: .doubleClick
-        )
+        ).action != .disabled
         let recognizesLongPress = settings.configuredAction(
             for: button,
             trigger: .longPress
-        ).action != .disabled || macroFeature.hasActiveBinding(
-            profileID: profileID,
-            button: button,
-            trigger: .longPress
-        )
+        ).action != .disabled
 
         var recognizer = mobileButtonGestureRecognizers[source] ?? RemoteButtonGestureRecognizer()
         if phase == .press,
@@ -208,17 +188,6 @@ extension BridgeAppModel {
         source: RemoteInputSource,
         phraseSource: String? = nil
     ) -> Bool {
-        if performButtonProfileBoundAction(
-            profileID: settings.selectedRemoteProfileID,
-            button: button,
-            trigger: trigger,
-            source: phraseSource ?? "mobile:\(source.rawValue)"
-        ) {
-            AppLogger.shared.write(
-                "PHONE REMOTE button=\(button.rawValue) trigger=\(trigger.rawValue) action=private_feature"
-            )
-            return true
-        }
         let configured = settings.configuredAction(for: button, trigger: trigger)
         if configured.action.isAppInternal {
             let handled = performInternalAction(configured.action, source: phraseSource ?? "mobile:\(source.rawValue)")
@@ -242,76 +211,7 @@ extension BridgeAppModel {
         return true
     }
 
-    func performButtonProfileBoundAction(
-        profileID: UUID?,
-        button: RemoteButton,
-        trigger: ButtonTrigger,
-        source: String = "host_action"
-    ) -> Bool {
-        macroFeature.executeBoundAction(
-            profileID: profileID,
-            button: button,
-            trigger: trigger,
-            hostActionPerformer: { [weak self] payload in
-                self?.performButtonProfileHostAction(payload, source: source) ?? false
-            },
-            shortcutPerformer: { [weak self] keyCode, modifiers in
-                self?.performButtonProfileShortcut(keyCode: keyCode, modifiers: modifiers) ?? false
-            }, exactShortcutPerformer: { [weak self] keyCode, modifiers, flags in
-                self?.performButtonProfileShortcut(keyCode: keyCode, modifiers: modifiers, deviceModifierFlags: flags) ?? false
-            }
-        )
-    }
-
-    private func performButtonProfileHostAction(_ payload: Data, source: String) -> Bool {
-        guard !macroFeature.hasPendingPortableImport else { return false }
-        guard let configured = try? JSONDecoder().decode(ConfiguredButtonAction.self, from: payload)
-        else { return false }
-        if configured.action.isAppInternal {
-            return performInternalAction(configured.action, source: source)
-        }
-        guard KeyboardInjector.isAccessibilityTrusted else {
-            _ = KeyboardInjector.requestAccessibilityAccess()
-            return false
-        }
-        return performExternalConfiguredAction(configured)
-    }
-
-    private func performButtonProfileShortcut(
-        keyCode: UInt16,
-        modifiers: [String], deviceModifierFlags: UInt64 = 0
-    ) -> Bool {
-        guard deviceModifierFlags & ~UInt64(0x207f) == 0 else { return false }
-        var modifierFlags = NSEvent.ModifierFlags(rawValue: UInt(deviceModifierFlags))
-        for modifier in modifiers {
-            switch modifier {
-            case "command": modifierFlags.insert(.command)
-            case "shift": modifierFlags.insert(.shift)
-            case "option": modifierFlags.insert(.option)
-            case "control": modifierFlags.insert(.control)
-            case "function": modifierFlags.insert(.function)
-            default: return false
-            }
-        }
-        guard KeyboardInjector.isAccessibilityTrusted else {
-            _ = KeyboardInjector.requestAccessibilityAccess()
-            return false
-        }
-        return performExternalConfiguredAction(ConfiguredButtonAction(
-            action: .customShortcut,
-            shortcut: CustomKeyboardShortcut(
-                keyCode: keyCode,
-                modifierFlags: modifierFlags,
-                keyLabel: "Key Code \(keyCode)"
-            )
-        ))
-    }
-
     func performExternalConfiguredAction(_ configured: ConfiguredButtonAction) -> Bool {
-        guard !macroFeature.hasPendingPortableImport else { return false }
-        if configured.action == .combinationAction {
-            return macroFeature.executeMacro(id: configured.macroID)
-        }
         let applicationProfile = settings.customApplicationProfile(
             id: configured.applicationProfileID
         )

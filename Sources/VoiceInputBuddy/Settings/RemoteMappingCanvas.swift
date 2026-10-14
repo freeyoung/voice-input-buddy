@@ -90,21 +90,24 @@ enum RemoteMappingLayout {
 }
 
 enum G9N9NMappingLayout {
+    static let canvasHeight: CGFloat = 650
     static let remoteSize = CGSize(width: 160, height: 480)
     static let voiceAnchor = UnitPoint(x: 0.675, y: 0.354)
     static let placements: [RemoteMappingPlacement] = [
-        .init(button: .up, side: .left, anchor: .init(x: 0.5, y: 0.095), targetY: 0.08),
-        .init(button: .left, side: .left, anchor: .init(x: 0.28, y: 0.174), targetY: 0.23),
-        .init(button: .back, side: .left, anchor: .init(x: 0.325, y: 0.354), targetY: 0.38),
-        .init(button: .home, side: .left, anchor: .init(x: 0.325, y: 0.472), targetY: 0.53),
-        .init(button: .youtube, side: .left, anchor: .init(x: 0.325, y: 0.590), targetY: 0.68),
-        .init(button: .volumeUp, side: .left, anchor: .init(x: 0.87, y: 0.155), targetY: 0.83),
-        .init(button: .right, side: .right, anchor: .init(x: 0.72, y: 0.174), targetY: 0.215),
-        .init(button: .ok, side: .right, anchor: .init(x: 0.5, y: 0.174), targetY: 0.36),
-        .init(button: .down, side: .right, anchor: .init(x: 0.5, y: 0.253), targetY: 0.505),
-        .init(button: .mute, side: .right, anchor: .init(x: 0.675, y: 0.472), targetY: 0.65),
-        .init(button: .netflix, side: .right, anchor: .init(x: 0.675, y: 0.590), targetY: 0.795),
-        .init(button: .volumeDown, side: .right, anchor: .init(x: 0.87, y: 0.253), targetY: 0.94),
+        .init(button: .up, side: .left, anchor: .init(x: 0.5, y: 0.095), targetY: 0.065),
+        .init(button: .left, side: .left, anchor: .init(x: 0.28, y: 0.174), targetY: 0.21),
+        .init(button: .back, side: .left, anchor: .init(x: 0.325, y: 0.354), targetY: 0.355),
+        .init(button: .home, side: .left, anchor: .init(x: 0.325, y: 0.472), targetY: 0.50),
+        .init(button: .youtube, side: .left, anchor: .init(x: 0.325, y: 0.590), targetY: 0.645),
+        .init(button: .volumeUp, side: .left, anchor: .init(x: 0.87, y: 0.155), targetY: 0.79),
+        .init(button: .power, side: .left, anchor: .init(x: 0.325, y: 0.756), targetY: 0.935),
+        .init(button: .right, side: .right, anchor: .init(x: 0.72, y: 0.174), targetY: 0.195),
+        .init(button: .ok, side: .right, anchor: .init(x: 0.5, y: 0.174), targetY: 0.32),
+        .init(button: .down, side: .right, anchor: .init(x: 0.5, y: 0.253), targetY: 0.445),
+        .init(button: .mute, side: .right, anchor: .init(x: 0.675, y: 0.472), targetY: 0.57),
+        .init(button: .netflix, side: .right, anchor: .init(x: 0.675, y: 0.590), targetY: 0.695),
+        .init(button: .volumeDown, side: .right, anchor: .init(x: 0.87, y: 0.253), targetY: 0.82),
+        .init(button: .input, side: .right, anchor: .init(x: 0.675, y: 0.756), targetY: 0.94),
     ]
 }
 
@@ -123,18 +126,19 @@ struct RemoteMappingCanvas: View {
         isGoogle ? G9N9NMappingLayout.placements : RemoteMappingLayout.buttonPlacements
     }
     private var remoteSize: CGSize { isGoogle ? G9N9NMappingLayout.remoteSize : RemoteMappingLayout.remoteSize }
+    private var canvasHeight: CGFloat { isGoogle ? G9N9NMappingLayout.canvasHeight : RemoteMappingLayout.canvasHeight }
     private var voiceAnchor: UnitPoint { isGoogle ? G9N9NMappingLayout.voiceAnchor : RemoteMappingLayout.voiceAnchor }
 
     var body: some View {
         GeometryReader { geometry in
-            let metrics = Metrics(width: geometry.size.width, remoteSize: remoteSize)
+            let metrics = Metrics(width: geometry.size.width, remoteSize: remoteSize, height: canvasHeight)
             ZStack {
                 RemoteCatalogPhoto(resourceName: isGoogle ? "ChromecastG9N9NIllustration" : "BuddyRemoteIllustration")
                     .frame(
                         width: remoteSize.width,
                         height: remoteSize.height
                     )
-                    .position(x: metrics.remoteCenterX, y: RemoteMappingLayout.canvasHeight / 2)
+                    .position(x: metrics.remoteCenterX, y: canvasHeight / 2)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 connectionLines(metrics: metrics)
@@ -144,7 +148,7 @@ struct RemoteMappingCanvas: View {
                         .frame(width: metrics.cardWidth, height: metrics.cardHeight)
                         .position(
                             x: metrics.cardCenterX(for: placement.side),
-                            y: RemoteMappingLayout.canvasHeight * placement.targetY
+                            y: canvasHeight * placement.targetY
                         )
                 }
 
@@ -152,11 +156,11 @@ struct RemoteMappingCanvas: View {
                     .frame(width: metrics.cardWidth, height: metrics.cardHeight)
                     .position(
                         x: metrics.cardCenterX(for: .right),
-                        y: RemoteMappingLayout.canvasHeight * RemoteMappingLayout.voiceTargetY
+                        y: canvasHeight * RemoteMappingLayout.voiceTargetY
                     )
             }
         }
-        .frame(height: RemoteMappingLayout.canvasHeight)
+        .frame(height: canvasHeight)
     }
 
     private func connectionLines(metrics: Metrics) -> some View {
@@ -357,12 +361,14 @@ struct RemoteMappingCanvas: View {
     private struct Metrics {
         let width: CGFloat
         let remoteSize: CGSize
+        let height: CGFloat
         let cardWidth: CGFloat
         let cardHeight: CGFloat = 72
 
-        init(width: CGFloat, remoteSize: CGSize) {
+        init(width: CGFloat, remoteSize: CGSize, height: CGFloat) {
             self.width = width
             self.remoteSize = remoteSize
+            self.height = height
             cardWidth = RemoteMappingLayout.cardWidth(for: width)
         }
 
@@ -373,17 +379,12 @@ struct RemoteMappingCanvas: View {
         }
 
         func cardEdgePoint(side: RemoteMappingSide, targetY: CGFloat) -> CGPoint {
-            RemoteMappingLayout.cardEdgePoint(
-                side: side,
-                targetY: targetY,
-                canvasWidth: width,
-                cardWidth: cardWidth
-            )
+            CGPoint(x: side == .left ? cardWidth : width - cardWidth, y: height * targetY)
         }
 
         func remotePoint(for anchor: UnitPoint) -> CGPoint {
             CGPoint(x: width / 2 + (anchor.x - 0.5) * remoteSize.width,
-                    y: RemoteMappingLayout.canvasHeight / 2 + (anchor.y - 0.5) * remoteSize.height)
+                    y: height / 2 + (anchor.y - 0.5) * remoteSize.height)
         }
     }
 }

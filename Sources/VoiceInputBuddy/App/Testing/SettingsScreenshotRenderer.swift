@@ -138,9 +138,6 @@ enum SettingsScreenshotRenderer {
             updateInformation.markAvailableUpdateSeen()
         }
         let localization = LocalizationStore(settings: settings, resourceBundle: VoiceInputBuddyResourceBundle.mainOrDevelopment)
-        model.privateFeature.updateLocaleIdentifier(localization.locale.identifier)
-        model.macroFeature.updateLocaleIdentifier(localization.locale.identifier)
-        model.membershipFeature.updateLocaleIdentifier(localization.locale.identifier)
 
         _ = NSApplication.shared
         AppIconController().apply(settings.appIconIdentifier, source: "screenshot")
