@@ -56,7 +56,7 @@ enum OnboardingPurpose: String, Codable {
     var steps: [OnboardingStep] {
         switch self {
         case .initialSetup: return OnboardingStep.visibleCases
-        case .addDevice: return [.remoteAvailability, .remote, .controls, .audio, .complete]
+        case .addDevice: return [.remoteAvailability, .remote, .controls, .complete]
         case .integration: return [.voiceTool, .voiceTest, .complete]
         }
     }

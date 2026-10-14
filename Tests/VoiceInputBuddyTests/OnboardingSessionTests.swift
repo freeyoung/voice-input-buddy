@@ -87,12 +87,12 @@ struct OnboardingSessionTests {
 
     @Test func shortenedFlowsNavigateOnlyThroughTheirOwnSteps() {
         let device = OnboardingPurpose.addDevice
-        #expect(device.steps == [.remoteAvailability, .remote, .controls, .audio, .complete])
+        #expect(device.steps == [.remoteAvailability, .remote, .controls, .complete])
         #expect(device.previousStep(before: .remoteAvailability) == nil)
-        #expect(device.nextStep(after: .audio) == .complete)
-        #expect(device.previousStep(before: .complete) == .audio)
+        #expect(device.nextStep(after: .controls) == .complete)
+        #expect(device.previousStep(before: .complete) == .controls)
         #expect(device.progress(at: .remoteAvailability) == 0)
-        #expect(device.progress(at: .controls) == 0.5)
+        #expect(device.progress(at: .controls) == 2.0 / 3.0)
         #expect(device.progress(at: .complete) == 1)
         let integration = OnboardingPurpose.integration
         #expect(integration.steps == [.voiceTool, .voiceTest, .complete])
