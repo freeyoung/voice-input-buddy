@@ -32,13 +32,16 @@ enum G9N9NProtocol {
     static func usages(reportID: UInt32, data: Data) -> Set<UInt16>? {
         guard reportID == 2 else { return nil }
         var bytes = Array(data)
-        if bytes.count == 3, bytes[0] == 2 { bytes.removeFirst() }
-        guard bytes.count == 2 else { return nil }
-        let usage = UInt16(bytes[0]) | UInt16(bytes[1]) << 8
-        if usage == 0 { return [] }
-        guard let button = consumerButtons[usage] else { return nil }
-        // The common mapping engine operates on canonical button IDs.
-        return [button.hidUsage]
+        if bytes.count % 2 == 1, bytes.first == 2 { bytes.removeFirst() }
+        guard !bytes.isEmpty, bytes.count % 2 == 0 else { return nil }
+        var usages = Set<UInt16>()
+        for offset in stride(from: 0, to: bytes.count, by: 2) {
+            let usage = UInt16(bytes[offset]) | UInt16(bytes[offset + 1]) << 8
+            if usage == 0 { continue }
+            guard let button = consumerButtons[usage] else { return nil }
+            usages.insert(button.hidUsage)
+        }
+        return usages
     }
 
     static func requiresPairing(_ error: Error) -> Bool {

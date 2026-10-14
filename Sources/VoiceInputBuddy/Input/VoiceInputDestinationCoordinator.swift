@@ -57,6 +57,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
     let enabled: Bool
     let editable: Bool
     let protectedContent: Bool
+    let secureInputEnabled: Bool
     let semanticText: String
     let focusIdentity: String
 
@@ -68,7 +69,8 @@ struct VoiceInputDestinationSnapshot: Equatable {
         editable: Bool,
         protectedContent: Bool,
         semanticText: String,
-        focusIdentity: String = ""
+        focusIdentity: String = "",
+        secureInputEnabled: Bool = false
     ) {
         self.bundleIdentifier = bundleIdentifier
         self.role = role
@@ -76,13 +78,14 @@ struct VoiceInputDestinationSnapshot: Equatable {
         self.enabled = enabled
         self.editable = editable
         self.protectedContent = protectedContent
+        self.secureInputEnabled = secureInputEnabled
         self.semanticText = semanticText
         self.focusIdentity = focusIdentity
     }
 
     private static let sensitiveTerms = [
         "password", "passcode", "secret", "api key", "apikey", "token", "credit card",
-        "密码", "口令", "密钥", "令牌", "信用卡",
+        "密码", "口令", "密钥", "令牌", "信用卡", "银行卡", "借记卡",
     ]
     private static let nonEditingTerms = [
         "search", "find", "filter", "address bar", "settings", "preferences", "command palette",
@@ -90,7 +93,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
     ]
 
     var isSensitiveDestination: Bool {
-        if protectedContent || role == "AXSecureTextField" || subrole == "AXSecureTextField" { return true }
+        if secureInputEnabled || protectedContent || role == "AXSecureTextField" || subrole == "AXSecureTextField" { return true }
         let text = semanticText.lowercased()
         return Self.sensitiveTerms.contains(where: text.contains)
     }
@@ -105,16 +108,17 @@ struct VoiceInputDestinationSnapshot: Equatable {
     }
 
     static func system() -> VoiceInputDestinationSnapshot {
+        let secureInputEnabled = SecureInputMonitor.isEnabled()
         let frontmostBundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         guard AXIsProcessTrusted() else {
-            return empty(bundleIdentifier: frontmostBundleIdentifier)
+            return empty(bundleIdentifier: frontmostBundleIdentifier, secureInputEnabled: secureInputEnabled)
         }
         let systemWideElement = AXUIElementCreateSystemWide()
         guard let focusedElement = axElement(
             systemWideElement,
             attribute: kAXFocusedUIElementAttribute as CFString
         ) else {
-            return empty(bundleIdentifier: frontmostBundleIdentifier)
+            return empty(bundleIdentifier: frontmostBundleIdentifier, secureInputEnabled: secureInputEnabled)
         }
 
         var processIdentifier: pid_t = 0
@@ -143,11 +147,12 @@ struct VoiceInputDestinationSnapshot: Equatable {
             editable: attributes["AXEditable"] as? Bool ?? roleIsEditable,
             protectedContent: attributes["AXProtectedContent"] as? Bool ?? false,
             semanticText: semanticText,
-            focusIdentity: "\(processIdentifier):\(CFHash(focusedElement))"
+            focusIdentity: "\(processIdentifier):\(CFHash(focusedElement))",
+            secureInputEnabled: secureInputEnabled || SecureInputMonitor.isEnabled()
         )
     }
 
-    private static func empty(bundleIdentifier: String?) -> VoiceInputDestinationSnapshot {
+    private static func empty(bundleIdentifier: String?, secureInputEnabled: Bool) -> VoiceInputDestinationSnapshot {
         VoiceInputDestinationSnapshot(
             bundleIdentifier: bundleIdentifier,
             role: "",
@@ -155,7 +160,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
             enabled: false,
             editable: false,
             protectedContent: false,
-            semanticText: ""
+            semanticText: "", secureInputEnabled: secureInputEnabled
         )
     }
 
@@ -380,6 +385,7 @@ final class VoiceInputDestinationCoordinator {
         request: inout PendingRequest
     ) -> Evaluation {
         guard request.initialSnapshotCaptured else { return .waiting }
+        if current.isSensitiveDestination { return .cancelled(.sensitiveDestination) }
         switch request.intent {
         case let .application(expectedBundleIdentifier):
             if current.bundleIdentifier == expectedBundleIdentifier {

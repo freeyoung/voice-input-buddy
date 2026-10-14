@@ -101,6 +101,6 @@ final class CommonPhraseInserter {
         !secureInputEnabled && enabled && !protectedContent && subrole != kAXSecureTextFieldSubrole &&
             [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole].contains(role) &&
             !["password", "passcode", "token", "secret", "apikey", "api_key", "api key",
-              "credit card", "密码", "口令", "密钥", "令牌", "信用卡"].contains(where: identifier.lowercased().contains)
+              "credit card", "密码", "口令", "密钥", "令牌", "信用卡", "银行卡", "借记卡"].contains(where: identifier.lowercased().contains)
     }
 }

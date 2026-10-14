@@ -97,11 +97,16 @@ struct CommonPhraseStorageTests {
         }
     }
 
-    @Test func corruptedSavedArchiveCanRecoverThroughValidatedImport() throws {
+    @Test func corruptedSavedArchiveFallsBackToBuiltInsAndKeepsBackup() throws {
         try run { _, defaults, data in
             defaults.set(Data("invalid-json".utf8), forKey: "commonPhrases.archive.v1")
             let broken = CommonPhraseStore(defaults: defaults, builtInData: data)
-            #expect(!broken.isAvailable && broken.loadFailed)
+            #expect(broken.isAvailable && !broken.loadFailed)
+            #expect(broken.phrase(for: .ok)?.id == "builtin-one")
+            #expect(defaults.data(forKey: "commonPhrases.archive.v1") == nil)
+            #expect(defaults.data(forKey: "commonPhrases.archive.v1.corrupt") == Data("invalid-json".utf8))
+            let reopened = CommonPhraseStore(defaults: defaults, builtInData: data)
+            #expect(reopened.isAvailable && !reopened.loadFailed)
             try broken.importData(data)
             #expect(broken.isAvailable && !broken.loadFailed)
             #expect(CommonPhraseStore(defaults: defaults, builtInData: data).phrase(for: .ok)?.id == "builtin-one")

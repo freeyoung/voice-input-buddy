@@ -28,7 +28,16 @@ final class FlowControlledBluetoothWriteQueue {
     }
 
     func pump() {
-        while !pending.isEmpty, canSend() { send(pending.removeFirst()) }
+        var progressed = false
+        while !pending.isEmpty, canSend() {
+            send(pending.removeFirst())
+            progressed = true
+        }
+        if progressed {
+            generation &+= 1
+            timeout?.cancel()
+            timeout = nil
+        }
         if pending.isEmpty {
             generation &+= 1
             timeout?.cancel()

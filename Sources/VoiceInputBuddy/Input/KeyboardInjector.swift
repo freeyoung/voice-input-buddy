@@ -46,10 +46,14 @@ enum KeyboardInjector {
         }
     }
 
+    private static let transientAppSwitcher = AppSwitcherSession()
+
     final class AppSwitcherSession {
         private let keyStatePoster: KeyStatePoster
         private var diagnosticLogger: ((String) -> Void)?
         private(set) var isActive = false
+        private var releaseTask: VoiceFnTapScheduledTask?
+        private var releaseGeneration: UInt64 = 0
 
         init(keyStatePoster: @escaping KeyStatePoster = KeyboardInjector.postKeyState) {
             self.keyStatePoster = keyStatePoster
@@ -90,11 +94,31 @@ enum KeyboardInjector {
             return true
         }
 
+        /// One-shot mappings hold Command briefly so the switcher can appear;
+        /// repeated triggers extend the hold and cycle the same session.
+        @discardableResult
+        func triggerTemporarily(
+            schedule: (TimeInterval, @escaping () -> Void) -> VoiceFnTapScheduledTask = VoiceFnTapScheduledTask.mainQueue
+        ) -> Bool {
+            guard trigger() else { return false }
+            releaseGeneration &+= 1
+            let generation = releaseGeneration
+            releaseTask?.cancel()
+            releaseTask = schedule(1) { [weak self] in
+                guard let self, self.releaseGeneration == generation else { return }
+                _ = self.confirm()
+            }
+            return true
+        }
+
         @discardableResult
         func cancel() -> Bool {
+            releaseGeneration &+= 1
+            releaseTask?.cancel()
+            releaseTask = nil
             guard isActive else { return true }
             let released = post(leftCommandKeyCode, isDown: false, flags: [], role: "command")
-            isActive = false
+            isActive = !released
             return released
         }
 
@@ -247,8 +271,10 @@ enum KeyboardInjector {
         _ mode: VoiceKeyMode,
         isPressed: Bool,
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
-        keyStatePoster: KeyStatePoster = postVoiceKeyState
+        keyStatePoster: KeyStatePoster = postVoiceKeyState,
+        secureInputEnabled: () -> Bool = SecureInputMonitor.isEnabled
     ) -> Bool {
+        guard !isPressed || !secureInputEnabled() else { return false }
         guard accessibilityTrusted() else { return false }
         let flags = isPressed ? mode.eventFlags : []
         return keyStatePoster(
@@ -279,12 +305,16 @@ enum KeyboardInjector {
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
         keyPoster: KeyPoster = { postKey(code: $0, flags: $1) },
         keyStatePoster: KeyStatePoster = postKeyState,
+        appSwitcherSession: AppSwitcherSession? = nil,
         scrollPoster: ScrollPoster = { postScrollWheel(lines: $0) },
         systemKeyPoster: SystemKeyPoster = postSystemKey,
         shortcutEventPoster: (CGEvent) -> Bool = ShortcutEventSequence.post,
         shortcutHardwareFlags: () -> CGEventFlags = { CGEventSource.flagsState(.hidSystemState) }
     ) -> Bool {
         guard action != .disabled else { return true }
+        if action != .appSwitcher, transientAppSwitcher.isActive {
+            guard transientAppSwitcher.confirm() else { return false }
+        }
         if action.isAppInternal {
             AppLogger.shared.write("INTERNAL ACTION ignored_by_keyboard action=\(action.rawValue)")
             return true
@@ -377,7 +407,7 @@ enum KeyboardInjector {
         case .contextMenu:
             keyPoster(contextualMenuKeyCode, [])
         case .appSwitcher:
-            keyPoster(48, .maskCommand)
+            return (appSwitcherSession ?? transientAppSwitcher).triggerTemporarily()
         case .volumeUp:
             systemKeyPoster(0)
         case .volumeDown:
@@ -1295,7 +1325,7 @@ enum KeyboardInjector {
         let value = value.lowercased()
         let terms = [
             "password", "passcode", "secret", "api key", "apikey", "token", "credit card",
-            "密码", "口令", "密钥", "令牌", "银行卡",
+            "密码", "口令", "密钥", "令牌", "银行卡", "借记卡", "信用卡",
         ]
         return terms.contains(where: value.contains)
     }
@@ -1332,7 +1362,8 @@ enum KeyboardInjector {
         var budget = AccessibilityTraversalBudget(maximumNodes: maximumAccessibilityTraversalCount)
         var candidates: [(element: AXUIElement, snapshot: AccessibilityTextCandidate)] = []
 
-        while let current = stack.popLast(), budget.admitNode() {
+        guard budget.admitNode() else { return [] }
+        while let current = stack.popLast(), budget.hasTimeRemaining {
             let ownContext = axSemanticText(current.element)
             let combinedContext = [current.context, ownContext]
                 .filter { !$0.isEmpty }
@@ -1362,28 +1393,36 @@ enum KeyboardInjector {
             }
 
             let childContext = String(combinedContext.suffix(512))
-            var children: [AXUIElement] = []
+            var children: [(element: AXUIElement, priority: Int)] = []
             for attribute in accessibilityChildAttributes {
+                guard budget.hasTimeRemaining else { break }
                 for child in axElements(current.element, attribute: attribute) {
                     let hash = CFHash(child)
                     if visitedElements[hash]?.contains(where: { CFEqual($0, child) }) == true {
                         continue
                     }
+                    guard let priority = accessibilityChildPriority(
+                        role: { axString(child, attribute: kAXRoleAttribute) }, frame: { axFrame(child) },
+                        windowFrame: windowFrame, budget: &budget) else { break }
                     visitedElements[hash, default: []].append(child)
-                    children.append(child)
+                    children.append((child, priority))
                 }
             }
-            // AX metadata is IPC: fetch each child's score once, outside comparisons.
-            children = children.map { child in
-                (element: child, priority: accessibilityTraversalPriority(
-                    role: axString(child, attribute: kAXRoleAttribute),
-                    frame: axFrame(child), windowFrame: windowFrame))
-            }.sorted { $0.priority < $1.priority }.map(\.element)
+            // Sorting is local; every child query was admitted under the same budget.
+            children.sort { $0.priority < $1.priority }
             stack.append(contentsOf: children.map {
-                PendingElement(element: $0, context: childContext, selectedContext: selectedContext)
+                PendingElement(element: $0.element, context: childContext, selectedContext: selectedContext)
             })
         }
         return candidates
+    }
+
+    static func accessibilityChildPriority(role: () -> String, frame: () -> CGRect?,
+                                           windowFrame: CGRect?, budget: inout AccessibilityTraversalBudget) -> Int? {
+        guard budget.admitNode() else { return nil }
+        let roleValue = role()
+        guard budget.hasTimeRemaining else { return nil }
+        return accessibilityTraversalPriority(role: roleValue, frame: frame(), windowFrame: windowFrame)
     }
 
     static func accessibilityTraversalPriority(
@@ -1836,14 +1875,23 @@ enum KeyboardInjector {
         }
     }
 
+    private static let markedKeySource = CGEventSource(stateID: .privateState)
+
+    static func makeMarkedKeyEvent(code: CGKeyCode, isDown: Bool, flags: CGEventFlags, marker: Int64,
+                                   hardwareFlags: () -> CGEventFlags = { CGEventSource.flagsState(.hidSystemState) }) -> CGEvent? {
+        guard let source = markedKeySource,
+              let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: isDown)
+        else { return nil }
+        event.type = keyEventType(code: code, isDown: isDown)
+        event.flags = flags.union(hardwareFlags())
+        event.setIntegerValueField(.eventSourceUserData, value: marker)
+        return event
+    }
+
     private static func postMarkedKeyState(code: CGKeyCode, isDown: Bool,
                                           flags: CGEventFlags, marker: Int64) -> Bool {
-        guard let source = CGEventSource(stateID: .hidSystemState),
-              let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: isDown)
+        guard let event = makeMarkedKeyEvent(code: code, isDown: isDown, flags: flags, marker: marker)
         else { return false }
-        event.type = keyEventType(code: code, isDown: isDown)
-        event.flags = flags
-        event.setIntegerValueField(.eventSourceUserData, value: marker)
         event.post(tap: .cghidEventTap)
         return true
     }

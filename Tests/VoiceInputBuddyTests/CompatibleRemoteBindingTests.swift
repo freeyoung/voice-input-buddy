@@ -105,25 +105,23 @@ struct CompatibleRemoteBindingTests {
         #expect(!unsafePending.xiaomi && !unsafePending.google)
     }
 
-    @Test func googleReportsRequireLiveProtocolConfirmationAndTheBoundPhysicalDevice() throws {
+    @Test func googleProtocolRecognitionUsesStoredBindingsWithoutLiveBLEConfirmation() throws {
         let settings = try settings()
         let google = settings.registerBluetoothRemote(identifier: UUID(), model: .chromecastVoiceRemote)
         #expect(settings.bindCompatibleHID(.init(identity: .chromecast, fingerprint: "google"), to: google))
-        func recognized(_ identity: RemoteHIDIdentity, _ fingerprint: String, _ confirmed: Set<String>) -> Bool {
-            HIDRemoteMonitor.confirmedGoogleDevice(identity: identity, fingerprint: fingerprint,
-                profiles: settings.remoteDeviceProfiles, confirmedFingerprints: confirmed)
+        func recognized(_ identity: RemoteHIDIdentity, _ fingerprint: String) -> Bool {
+            HIDRemoteMonitor.matchesGoogleProtocol(identity: identity, fingerprint: fingerprint,
+                profiles: settings.remoteDeviceProfiles)
         }
-        #expect(!recognized(.chromecast, "google", []))
-        #expect(!recognized(.chromecast, "other-device", ["google"]))
-        #expect(!recognized(alternate, "google", ["google"]))
-        #expect(recognized(.chromecast, "google", ["google"]))
+        #expect(recognized(.chromecast, "google"))
+        #expect(recognized(.chromecast, "other-device"))
+        #expect(!recognized(alternate, "google"))
         #expect(settings.bindCompatibleHID(.init(identity: alternate, fingerprint: "clone"), to: google))
-        #expect(!recognized(alternate, "clone", []))
-        #expect(recognized(alternate, "clone", ["clone"]))
-        #expect(!recognized(.chromecast, "clone", ["clone"]))
+        #expect(recognized(alternate, "clone"))
+        #expect(!recognized(.chromecast, "clone"))
         let index = try #require(settings.remoteDeviceProfiles.firstIndex { $0.id == google })
         settings.remoteDeviceProfiles[index].compatibleHIDBinding = .init(identity: alternate, fingerprint: "another-fingerprint")
-        #expect(!recognized(alternate, "clone", ["clone"]))
+        #expect(!recognized(alternate, "clone"))
         #expect(!settings.bindCompatibleHID(.init(identity: .xiaomi, fingerprint: "wrong-family"), to: google))
     }
 

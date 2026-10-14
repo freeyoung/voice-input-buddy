@@ -15,8 +15,10 @@ struct AccessibilityTraversalBudget {
         deadline = uptime() + maximumDuration
     }
 
+    var hasTimeRemaining: Bool { uptime() < deadline }
+
     mutating func admitNode() -> Bool {
-        guard visitedNodes < maximumNodes, uptime() < deadline else { return false }
+        guard visitedNodes < maximumNodes, hasTimeRemaining else { return false }
         visitedNodes += 1
         return true
     }

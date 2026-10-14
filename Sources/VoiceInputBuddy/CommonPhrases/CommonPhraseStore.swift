@@ -82,14 +82,22 @@ final class CommonPhraseStore: ObservableObject {
             builtInEntries = builtIns
             builtInIDs = builtIns.map(\.id)
             if let saved = defaults.data(forKey: Self.defaultsKey) {
-                candidate = try JSONDecoder().decode(CommonPhraseArchive.self, from: saved)
-                try candidate.validate()
-                let known = Set(candidate.builtInIDs ?? candidate.entries.filter { $0.id.hasPrefix("builtin-") }.map(\.id))
-                candidate.entries = candidate.entries.compactMap { phrase in
-                    phrase.id.hasPrefix("builtin-") ? builtIns.first { $0.id == phrase.id } : phrase
+                do {
+                    var savedCandidate = try JSONDecoder().decode(CommonPhraseArchive.self, from: saved)
+                    try savedCandidate.validate()
+                    let known = Set(savedCandidate.builtInIDs ?? savedCandidate.entries.filter { $0.id.hasPrefix("builtin-") }.map(\.id))
+                    savedCandidate.entries = savedCandidate.entries.compactMap { phrase in
+                        phrase.id.hasPrefix("builtin-") ? builtIns.first { $0.id == phrase.id } : phrase
+                    }
+                    savedCandidate.entries += builtIns.filter { !known.contains($0.id) }
+                    savedCandidate.bindings = savedCandidate.bindings.filter { _, id in savedCandidate.entries.contains { $0.id == id } }
+                    try savedCandidate.validate()
+                    candidate = savedCandidate
+                } catch {
+                    defaults.set(saved, forKey: Self.defaultsKey + ".corrupt")
+                    defaults.removeObject(forKey: Self.defaultsKey)
+                    AppLogger.shared.write("COMMON_PHRASES LOAD phase=recovered result=built_ins reason=invalid_saved_data")
                 }
-                candidate.entries += builtIns.filter { !known.contains($0.id) }
-                candidate.bindings = candidate.bindings.filter { _, id in candidate.entries.contains { $0.id == id } }
             }
             candidate.builtInIDs = builtInIDs
             try candidate.validate()
