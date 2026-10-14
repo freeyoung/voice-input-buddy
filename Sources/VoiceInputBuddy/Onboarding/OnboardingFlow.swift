@@ -369,9 +369,9 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .unselected:
             return []
-        case .xiaomiRemote, .siriRemote:
+        case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return [.hold]
-        case .chromecastRemote, .appleCompanion, .webRemote:
+        case .appleCompanion, .webRemote:
             return [.hold, .toggle]
         }
     }
@@ -558,8 +558,7 @@ struct OnboardingVoicePairingPlan: Equatable {
             result.append(mode)
         }
         append(preferredGesture)
-        if controlSource == .chromecastRemote { append(.toggle) }
-        if controlSource == .xiaomiRemote || controlSource == .siriRemote { append(.hold) }
+        if controlSource.supportedGestureModes.contains(.hold) { append(.hold) }
         append(profile.recommendedMode)
         append(.toggle)
         append(.hold)

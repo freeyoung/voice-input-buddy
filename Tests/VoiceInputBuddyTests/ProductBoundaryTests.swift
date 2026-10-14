@@ -177,7 +177,7 @@ struct ProductBoundaryTests {
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
         let bundle = try #require(Bundle(path: resources.path))
-        let planned = PlannedRemoteDevice.allCases.filter { !$0.isAvailable }
+        let planned = PlannedRemoteDevice.allCases.filter { $0 != .xiaomi }
         #expect(Set(planned.map(\.illustrationResource)).count == 3)
         for device in planned {
             #expect(device.illustrationResource != PlannedRemoteDevice.xiaomi.illustrationResource)
@@ -193,7 +193,7 @@ struct ProductBoundaryTests {
         ])
         #expect(PlannedRemoteDevice.chromecastG9N9N.googleHardwareModelNumber == "G9N9N")
         #expect(PlannedRemoteDevice.googleStreamerGY3LE.googleHardwareModelNumber == "GY3LE")
-        #expect(PlannedRemoteDevice.allCases.filter(\.isAvailable) == [.xiaomi])
+        #expect(PlannedRemoteDevice.allCases.filter(\.isAvailable) == [.xiaomi, .chromecastG9N9N])
         // Listing a planned device must not admit it through the Xiaomi hardware bridge.
         #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "G9N9N") == nil)
         #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
@@ -213,7 +213,7 @@ struct ProductBoundaryTests {
         #expect(!model.isOnboardingControlSourceConnected(.chromecastRemote))
         #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote, selectedModel: .rc003)
             == .bundled(resourceName: "ChromecastG9N9NIllustration"))
-        #expect(!PlannedRemoteDevice.chromecastG9N9N.isAvailable)
+        #expect(PlannedRemoteDevice.chromecastG9N9N.isAvailable)
     }
 
     @Test @MainActor func deviceChoicePersistsAndContinueBlocksOnlyUpcomingAdapters() throws {

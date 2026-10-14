@@ -1,36 +1,17 @@
 import Foundation
 
-// 遥控器 × Mac 端输入工具的能力矩阵（单一事实源）。
-//
-// 权威文档：公开仓 `remote/遥控器与输入工具能力矩阵.md`。**改这里必须同步改那份文档**，
-// 反之亦然：界面该显示什么、语音键该怎么驱动，都只能从这份矩阵推导，不允许在页面里各写一套判断。
-//
-// 矩阵（2026-09-20 由用户补充默认快捷键；未测试项按原文标注）：
-//
-//   遥控器            长按收音  按一次收音  触摸面
-//   小米 RC001/RC003    ✅        ❌        ❌
-//   Chromecast          ✅        ✅        ❌
-//   Apple Siri Remote   ✅      未测试      ✅
-//
-//   输入工具          长按收音  长按默认键  按一次收音  按一次默认键
-//   Typeless            ❌       不支持       ✅          Fn
-//   豆包输入法           ✅       Fn          ✅          右 Command
-//   微信输入法           ✅       Fn          ✅          右 Command
-//   Vokie               ✅       待确认       ✅          Fn
-//
-// 由此得到的搭配规则：
-// 1. 「语音键模拟 Fn 点按」只在**不会按一次收音**的遥控器上才有意义（它把「按住」模拟成「点按」，
-//    用来驱动只认点按的工具）。Chromecast 自己能按一次收音，页面不得出现该开关。
-// 2. 触摸面类设置（滑动/光标）只有具备触摸面的遥控器才显示。
-// 3. Chromecast 的语音键驱动方式由它自己的语音模式决定，不读上面的开关。
+// Public remote voice capability defaults. See docs/development.md for adapter boundaries.
+// Xiaomi and G9N9N physical recording follows ATVV start/stop notifications.
+// Tools requiring start/stop taps can use the existing software Fn conversion.
+// Siri capabilities remain separate and do not imply current hardware support.
 
 extension XiaomiRemoteModel {
     /// **型号默认值**：是否支持「按一次收音」（按一下开始、再按一下结束）。
     ///
     /// 只在「链路还没自报能力」时回退使用：运行中的判定一律走 `RemoteVoiceCapabilities.resolve`，
-    /// 它优先采用设备自报的能力位。这里的值与私有包的型号声明等价，由跨仓一致性测试锁定。
+    /// 它优先采用设备自报的能力位；公开适配不承诺未实现的原生点按收音。
     var supportsToggleVoiceRecording: Bool {
-        isChromecastRemote
+        false // Public G9N9N adapter follows the remote's physical voice session.
     }
 
     /// **型号默认值**：是否有触摸面（滑动 / 光标）。同上，仅在缺少自报能力时回退使用。

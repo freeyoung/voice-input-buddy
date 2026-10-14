@@ -252,7 +252,7 @@
 "remote.device.selector" = "遥控器";
 "remote.device.model" = "型号";
 "remote.device.model.rc001" = "小米蓝牙遥控器 2";
-"remote.device.model.rc003" = "小米蓝牙遥控器 2 Pro";
+"remote.device.model.rc003" = "小米蓝牙遥控器 2 / 2 Pro";
 "remote.device.model.unrecognized" = "未识别的遥控器";
 "remote.device.model.apple_siri_remote_a2854" = "苹果遥控器第 7 代";
 "remote.device.model.apple_siri_remote_a2540" = "苹果遥控器第 6 代";
@@ -530,7 +530,7 @@
 "app.version_with_build" = "版本 %1$@ (%2$@)";
 "app.version" = "版本 %1$@";
 "status_item.voice_active_accessibility" = "小米蓝牙遥控器 2 Pro 正在传输语音";
-"status_item.accessibility_label" = "小米蓝牙遥控器 2 Pro";
+"status_item.accessibility_label" = "小米蓝牙遥控器 2 / 2 Pro";
 "status_item.state.disconnected" = "%@：未连接设备";
 "status_item.state.connected" = "%@：设备已连接";
 "status_item.state.streaming" = "%@：正在传输语音";
@@ -1201,7 +1201,7 @@
 
 "common_phrases.key.ok" = "确认键";
 
-"button_mapping.unsupported_device" = "此遥控器目前尚未支持。请选择小米遥控器进行按键设置。";
+"button_mapping.unsupported_device" = "此遥控器目前尚未支持。请选择小米或 G9N9N 遥控器进行按键设置。";
 
 "button_mapping.action.disable_restore_scope" = "当前设置窗口内重新启用会还原之前的动作。关闭窗口后重新启用，将使用该按键的默认动作；双击和长按需要重新选择动作。";
 
@@ -1245,7 +1245,7 @@
 "update.dialog.previous_version" = "更新前版本";
 
 // Four-device product scope. Upcoming adapters show an inline notice on Continue.
-"remote.catalog.xiaomi.title" = "小米蓝牙遥控器 2 Pro";
+"remote.catalog.xiaomi.title" = "小米蓝牙遥控器 2 / 2 Pro";
 "remote.catalog.chromecastG9N9N.title" = "Chromecast Voice Remote (G9N9N)";
 "remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
 "remote.catalog.siriRemote.title" = "Apple Siri Remote";
@@ -1253,3 +1253,8 @@
 "remote.catalog.g9n9n.adapter_pending.title" = "已选择 G9N9N，连接功能尚未完成";
 "remote.catalog.g9n9n.adapter_pending.detail" = "可先在 macOS 蓝牙设置中配对，但此版本尚不能读取它的按键或麦克风。可返回设备页选择小米；实际连接验证通过后才能继续。";
 "remote.catalog.unsupported_notice" = "现在还不支持，敬请期待。";
+"google.remote.unsupported_protocol" = "此遥控器未提供受支持的 ATVV v1.0／16kHz 音频能力。按键和音频需分别验证。";
+"google.remote.unconfirmed_model" = "无法确认硬件型号为 G9N9N。兼容款和其他 Google 遥控器需要单独适配。";
+"google.remote.microphone_refused" = "遥控器拒绝开启麦克风。请重新配对后重试。";
+"google.remote.pairing_required" = "蓝牙认证尚未完成。请在 macOS 蓝牙设置中移除并重新配对遥控器，再重新连接。";
+"google.remote.ir_controls" = "G9N9N 的电源与输入源键可能走红外；当前不将它们作为已验证的蓝牙映射键。";

@@ -44,8 +44,8 @@ Driver installation requires administrator authorization and briefly interrupts 
 
 | Device | Status |
 | --- | --- |
-| Xiaomi Bluetooth Remote 2 Pro | Connection and buttons verified; audio confirmed by the user. Existing RC001 / RC003 protocol support is retained within the Xiaomi entry |
-| Google Chromecast Voice Remote (G9N9N) | Planned; adapter implementation and hardware validation pending |
+| Xiaomi Bluetooth Remote 2 / 2 Pro | RC001 = 2; RC003 = 2 Pro. Both have ATVV and button adapters. 2 Pro buttons tested locally and audio confirmed by the user; complete Remote 2 audio acceptance is pending |
+| Google Chromecast Voice Remote (G9N9N) | Public ATVV v1.0 / 16 kHz audio and Consumer Control button adapters implemented; hardware acceptance pending, replacements require separate validation |
 | Google TV Streamer Voice Remote (GY3LE) | Planned; adapter implementation and hardware validation pending |
 | Apple Siri Remote | Planned; adapter implementation and hardware validation pending |
 
@@ -90,6 +90,9 @@ To uninstall, download `Voice_Input_Buddy_Uninstaller_*_macOS_universal.pkg` (wo
 | [remote-mic-app](https://github.com/HD838A/remote-mic-app) | Code foundation for remote connectivity, audio bridging, button mappings, and interface |
 | [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | Xiaomi ATVV protocol, ADPCM decoding, and HID mapping reference |
 | [vibe-mote](https://github.com/Tilkmilk/vibe-mote) | Reference for Google TV / Chromecast remote HID buttons, ATVV audio, and third-party replacement differences (Windows implementation) |
+| [ATVVoice](https://github.com/b0o/ATVVoice) | Linux implementation with verified G9N9N support; ATVV negotiation, synchronization, and keepalive reference |
+| [mi-remote-mapper](https://github.com/81199000/mi-remote-mapper) | macOS CoreBluetooth, HID, and virtual audio reference; not G9N9N hardware acceptance evidence |
+| [mi-ao](https://github.com/fanxeon/mi-ao) | macOS ATVV decoding and capability validation reference; Google remotes require hardware validation |
 | [mi_remote_control](https://github.com/godarrenw/mi_remote_control) | Reference for button actions, application profiles, and troubleshooting |
 | [open-voice-bridge](https://github.com/nijez/open-voice-bridge) | Reference for device capability modeling and audio-path diagnostics |
 | [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | Virtual microphone driver |

@@ -89,6 +89,25 @@ enum RemoteMappingLayout {
     }
 }
 
+enum G9N9NMappingLayout {
+    static let remoteSize = CGSize(width: 160, height: 480)
+    static let voiceAnchor = UnitPoint(x: 0.675, y: 0.354)
+    static let placements: [RemoteMappingPlacement] = [
+        .init(button: .up, side: .left, anchor: .init(x: 0.5, y: 0.095), targetY: 0.08),
+        .init(button: .left, side: .left, anchor: .init(x: 0.28, y: 0.174), targetY: 0.23),
+        .init(button: .back, side: .left, anchor: .init(x: 0.325, y: 0.354), targetY: 0.38),
+        .init(button: .home, side: .left, anchor: .init(x: 0.325, y: 0.472), targetY: 0.53),
+        .init(button: .youtube, side: .left, anchor: .init(x: 0.325, y: 0.590), targetY: 0.68),
+        .init(button: .volumeUp, side: .left, anchor: .init(x: 0.87, y: 0.155), targetY: 0.83),
+        .init(button: .right, side: .right, anchor: .init(x: 0.72, y: 0.174), targetY: 0.215),
+        .init(button: .ok, side: .right, anchor: .init(x: 0.5, y: 0.174), targetY: 0.36),
+        .init(button: .down, side: .right, anchor: .init(x: 0.5, y: 0.253), targetY: 0.505),
+        .init(button: .mute, side: .right, anchor: .init(x: 0.675, y: 0.472), targetY: 0.65),
+        .init(button: .netflix, side: .right, anchor: .init(x: 0.675, y: 0.590), targetY: 0.795),
+        .init(button: .volumeDown, side: .right, anchor: .init(x: 0.87, y: 0.253), targetY: 0.94),
+    ]
+}
+
 struct RemoteMappingCanvas: View {
     @EnvironmentObject private var localization: LocalizationStore
 
@@ -98,22 +117,29 @@ struct RemoteMappingCanvas: View {
     let actionSummary: (RemoteButton, ButtonTrigger) -> String
     let onEdit: (RemoteButton, ButtonTrigger) -> Void
     var onVoiceSettings: () -> Void = {}
+    var remoteModel: XiaomiRemoteModel = .rc003
+    private var isGoogle: Bool { remoteModel.isChromecastRemote }
+    private var placements: [RemoteMappingPlacement] {
+        isGoogle ? G9N9NMappingLayout.placements : RemoteMappingLayout.buttonPlacements
+    }
+    private var remoteSize: CGSize { isGoogle ? G9N9NMappingLayout.remoteSize : RemoteMappingLayout.remoteSize }
+    private var voiceAnchor: UnitPoint { isGoogle ? G9N9NMappingLayout.voiceAnchor : RemoteMappingLayout.voiceAnchor }
 
     var body: some View {
         GeometryReader { geometry in
-            let metrics = Metrics(width: geometry.size.width)
+            let metrics = Metrics(width: geometry.size.width, remoteSize: remoteSize)
             ZStack {
-                MappingRemotePhoto()
+                RemoteCatalogPhoto(resourceName: isGoogle ? "ChromecastG9N9NIllustration" : "BuddyRemoteIllustration")
                     .frame(
-                        width: RemoteMappingLayout.remoteSize.width,
-                        height: RemoteMappingLayout.remoteSize.height
+                        width: remoteSize.width,
+                        height: remoteSize.height
                     )
                     .position(x: metrics.remoteCenterX, y: RemoteMappingLayout.canvasHeight / 2)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 connectionLines(metrics: metrics)
 
-                ForEach(RemoteMappingLayout.buttonPlacements) { placement in
+                ForEach(placements) { placement in
                     mappingCard(placement.button)
                         .frame(width: metrics.cardWidth, height: metrics.cardHeight)
                         .position(
@@ -135,7 +161,7 @@ struct RemoteMappingCanvas: View {
 
     private func connectionLines(metrics: Metrics) -> some View {
         Canvas { context, _ in
-            for placement in RemoteMappingLayout.buttonPlacements {
+            for placement in placements {
                 drawConnection(
                     context: &context,
                     start: metrics.remotePoint(for: placement.anchor),
@@ -147,7 +173,7 @@ struct RemoteMappingCanvas: View {
             }
             drawConnection(
                 context: &context,
-                start: metrics.remotePoint(for: RemoteMappingLayout.voiceAnchor),
+                start: metrics.remotePoint(for: voiceAnchor),
                 end: metrics.cardEdgePoint(side: .right, targetY: RemoteMappingLayout.voiceTargetY),
                 side: .right,
                 selected: voiceActive,
@@ -323,17 +349,20 @@ struct RemoteMappingCanvas: View {
         case .mute: return "speaker.slash"
         // 这三颗键只属于 Chromecast 遥控器，由它自己的画布渲染；小米画布的卡片集合是
         // `RemoteButton.xiaomiCases`，不会出现它们，这里只是满足枚举穷尽性。
-        case .youtube, .netflix, .input: return "questionmark"
+        case .youtube, .netflix: return "play.rectangle"
+        case .input: return "rectangle.on.rectangle"
         }
     }
 
     private struct Metrics {
         let width: CGFloat
+        let remoteSize: CGSize
         let cardWidth: CGFloat
         let cardHeight: CGFloat = 72
 
-        init(width: CGFloat) {
+        init(width: CGFloat, remoteSize: CGSize) {
             self.width = width
+            self.remoteSize = remoteSize
             cardWidth = RemoteMappingLayout.cardWidth(for: width)
         }
 
@@ -353,43 +382,8 @@ struct RemoteMappingCanvas: View {
         }
 
         func remotePoint(for anchor: UnitPoint) -> CGPoint {
-            RemoteMappingLayout.remotePoint(
-                for: anchor,
-                canvasWidth: width
-            )
-        }
-    }
-}
-
-private enum MappingRemoteImageResource {
-    static let image: NSImage? = {
-        guard let url = Bundle.main.url(
-            forResource: "BuddyRemoteIllustration",
-            withExtension: "png"
-        ) else { return nil }
-        return NSImage(contentsOf: url)
-    }()
-}
-
-private struct MappingRemotePhoto: View {
-    var body: some View {
-        Group {
-            if let photo = MappingRemoteImageResource.image {
-                Image(nsImage: photo)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.quaternary)
-                    .overlay {
-                        Image(systemName: "appletvremote.gen4.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(.secondary)
-                            .padding(20)
-                            .accessibilityLabel(Text("remote.device.illustration"))
-                    }
-            }
+            CGPoint(x: width / 2 + (anchor.x - 0.5) * remoteSize.width,
+                    y: RemoteMappingLayout.canvasHeight / 2 + (anchor.y - 0.5) * remoteSize.height)
         }
     }
 }

@@ -137,6 +137,11 @@ extension SettingsView {
 
     var mappingPage: some View {
         hardwareMappingPage {
+            if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
+                Text(localization.text("google.remote.ir_controls"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             RemoteMappingCanvas(
                 selectedButton: $selectedRemoteButton,
                 activeButtons: model.activeRemoteButtons,
@@ -150,7 +155,8 @@ extension SettingsView {
                         trigger: trigger
                     )
                 },
-                onVoiceSettings: { selectedSection = .integration }
+                onVoiceSettings: { selectedSection = .integration },
+                remoteModel: settings.selectedRemoteProfile?.model ?? .unknown
             )
             .onReceive(model.$activeRemoteButtons) { buttons in
                 selectedRemoteButton = MappingSelectionPolicy.selection(

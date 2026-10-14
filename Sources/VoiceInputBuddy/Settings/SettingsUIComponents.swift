@@ -140,11 +140,11 @@ struct RemoteCatalogPhoto: View {
 
     var body: some View {
         Group {
-            if let url = Bundle.main.url(forResource: resourceName, withExtension: "png"),
+            if let url = VoiceInputBuddyResourceBundle.mainOrDevelopment.url(forResource: resourceName, withExtension: "png"),
                let photo = NSImage(contentsOf: url) {
                 Image(nsImage: photo)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: .fit)
             } else {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(.quaternary)

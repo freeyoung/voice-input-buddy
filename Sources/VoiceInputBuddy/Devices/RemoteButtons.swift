@@ -102,7 +102,7 @@ enum RemoteButton: String, CaseIterable, Codable, Identifiable {
     }
 
     static let usageMap = Dictionary(
-        uniqueKeysWithValues: xiaomiCases.map { ($0.hidUsage, $0) }
+        uniqueKeysWithValues: (xiaomiCases + [.mute, .youtube, .netflix, .input]).map { ($0.hidUsage, $0) }
     )
 
     static func buttons(for usages: Set<UInt16>) -> Set<RemoteButton> {

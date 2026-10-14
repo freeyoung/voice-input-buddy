@@ -5,8 +5,7 @@ enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
     case rc003
     case appleSiriRemoteA2854 = "apple_siri_remote_a2854"
     case appleSiriRemoteA2540 = "apple_siri_remote_a2540"
-    /// Chromecast（Google Chromecast 语音遥控器）。与苹果遥控器同理，case 始终存在以保证
-    /// 持久化数据在任何构建里都能解码；只有展示文案受私有包门禁控制。
+    /// Google Chromecast Voice Remote G9N9N, handled by the public ATVV/HID adapters.
     case chromecastVoiceRemote = "chromecast_voice_remote"
     case unknown
 
@@ -36,7 +35,7 @@ enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
         case .appleSiriRemoteA2540:
             return "remote.device.model.unknown"
         case .chromecastVoiceRemote:
-            return "remote.device.model.unknown"
+            return "remote.catalog.chromecastG9N9N.title"
         case .unknown: return "remote.device.model.unknown"
         }
     }
@@ -56,15 +55,14 @@ enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
         self == .appleSiriRemoteA2854 || self == .appleSiriRemoteA2540
     }
 
-    /// 该型号由 Chromecast 私有包的 HID 通道驱动，不走小米 HID 发现链路。
+    /// Google layout and Consumer Control report family.
     var isChromecastRemote: Bool {
         self == .chromecastVoiceRemote
     }
 
-    /// 该型号是否由私有包的专用链路驱动（苹果遥控器或 Chromecast）。
-    /// 这类型号的档案不得被小米 HID 发现链路当成候选。
+    /// Siri uses a separate adapter; public ATVV remotes share the native pipeline.
     var usesPrivateAdapter: Bool {
-        isAppleSiriRemote || isChromecastRemote
+        isAppleSiriRemote
     }
 
     /// 按 DIS 型号串识别型号。规则集中在 `VoiceRemoteCatalog`——这里不再单独写名单。
@@ -143,7 +141,8 @@ enum VoiceRemoteCatalog {
     /// 该型号应该用的真机图资源名；目录里没有这个型号（包括 `.unknown`）返回 nil，
     /// 调用方必须显示「未识别」占位，不允许套用任何真机图。
     static func photoResource(for model: XiaomiRemoteModel) -> String? {
-        entries.first { $0.model == model }?.photoResource
+        if model.isChromecastRemote { return PlannedRemoteDevice.chromecastG9N9N.illustrationResource }
+        return entries.first { $0.model == model }?.photoResource
     }
 }
 

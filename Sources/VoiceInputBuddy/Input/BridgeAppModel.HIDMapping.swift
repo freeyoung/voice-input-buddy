@@ -43,6 +43,7 @@ extension BridgeAppModel {
         let requestedVoiceKeyMode = settings.voiceKeyMode
         let accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
         let requestedFnTapMode = settings.voiceFnTapModeEnabled && requestedVoiceKeyMode == .function
+
         if settings.voiceFnTapModeEnabled != requestedFnTapMode {
             settings.voiceFnTapModeEnabled = requestedFnTapMode
         }
@@ -60,6 +61,15 @@ extension BridgeAppModel {
             voiceFnTapModeRequested: requestedFnTapMode,
             voiceKeyModeRequested: requestedVoiceKeyMode
         )
+        if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
+            // G9N9N voice sessions are ATVV-driven; there is no native Xiaomi Fn key to remap.
+            let googlePowerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: false)
+            voiceFnTapSession.setEnabled(requestedFnTapMode && KeyboardInjector.isAccessibilityTrusted)
+            startHIDMonitors(powerKeySuppressed: googlePowerKeySuppressed)
+            refreshVoiceKeyCompatibilityWarning()
+            return
+        }
+
         let canFallbackVoiceKeyMode = Self.canFallbackVoiceKeyMode(
             isStreaming: isStreaming,
             allowVoiceKeyModeFallback: allowVoiceKeyModeFallback
@@ -164,6 +174,10 @@ extension BridgeAppModel {
     func scheduleHIDMappingRecoveryIfNeeded(
         restartSiriRemote: Bool = true
     ) {
+        if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
+            cancelHIDMappingRecovery(reason: "google_atvv_voice")
+            return
+        }
         guard hidMappingRecoveryWorkItem == nil else { return }
         guard let delay = HIDMappingRecoveryPolicy.retryDelay(
             forAttempt: hidMappingRecoveryAttempt,
@@ -261,8 +275,7 @@ extension BridgeAppModel {
         }
         if settings.customMappingEnabled { _ = hidEventSuppressor.start() }
         for profile in settings.remoteDeviceProfiles {
-            // 苹果遥控器与 Chromecast 都由各自的私有链路驱动；它们的档案不能被小米 HID
-            // 发现链路当成候选，否则会给一个不存在的小米设备建监视器。
+            // Siri keeps a separate adapter. Xiaomi and G9N9N share the public HID engine.
             guard !profile.model.usesPrivateAdapter,
                   let fingerprint = profile.hidFingerprint
             else { continue }
@@ -330,6 +343,7 @@ extension BridgeAppModel {
     ) -> HIDRemoteMonitor {
         let monitor = HIDRemoteMonitor(
             settings: settings,
+            allowsG9N9N: true,
             profileID: profileID,
             targetFingerprint: targetFingerprint,
             excludedFingerprints: excludedFingerprints,
@@ -385,7 +399,7 @@ extension BridgeAppModel {
             let existingProfileID = profileID
                 ?? self.settings.profileID(forHIDFingerprint: fingerprint)
             let resolvedProfileID = existingProfileID
-                ?? self.settings.registerHIDRemote(fingerprint: fingerprint)
+                ?? self.settings.registerHIDRemote(fingerprint: fingerprint, model: monitor.reportedModel)
             if resolvedProfileID == self.settings.selectedRemoteProfileID,
                self.macroFeature.isEditorActive {
                 self.macroFeature.noteButtonInteraction(button: button)

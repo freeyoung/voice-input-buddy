@@ -86,7 +86,8 @@ extension OnboardingView {
         case .siriRemote:
             model.applyHIDSettings()
         case .chromecastRemote:
-            break // Not supported by this build.
+            model.refreshRemoteDiscovery()
+            model.applyHIDSettings()
         case .appleCompanion:
             model.enablePhoneRemoteConnection()
         case .webRemote:
@@ -128,8 +129,8 @@ extension OnboardingView {
         switch settings.onboardingControlSource {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return source == .bluetoothRemote &&
-                (model.activePhysicalVoiceControlSource == settings.onboardingControlSource ||
-                    selectedPhysicalRemoteProfileMatchesSource)
+                (model.activePhysicalVoiceControlSource.map { $0 == settings.onboardingControlSource }
+                    ?? selectedPhysicalRemoteProfileMatchesSource)
         case .appleCompanion:
             return source == .nearbyPhone
         case .webRemote:
@@ -143,7 +144,7 @@ extension OnboardingView {
         guard let model = settings.selectedRemoteProfile?.model else { return false }
         switch settings.onboardingControlSource {
         case .xiaomiRemote:
-            return !model.usesPrivateAdapter
+            return !model.usesPrivateAdapter && !model.isChromecastRemote
         case .siriRemote:
             guard model.isAppleSiriRemote else { return false }
             guard let generation = settings.onboardingAppleRemoteGeneration else { return true }

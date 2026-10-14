@@ -67,6 +67,9 @@ enum HIDDeviceMatchDecision: Equatable {
 
 final class HIDRemoteMonitor {
     private let settings: AppSettings
+    private let allowsG9N9N: Bool
+    private var currentReportIsGoogle = false
+    var reportedModel: XiaomiRemoteModel { currentReportIsGoogle ? .chromecastVoiceRemote : .unknown }
     private let eventSuppressor: KeyboardEventSuppressor
     private let ownsEventSuppressor: Bool
     private let scheduler: HIDRemoteScheduling
@@ -118,6 +121,7 @@ final class HIDRemoteMonitor {
 
     init(
         settings: AppSettings,
+        allowsG9N9N: Bool = false,
         profileID: UUID? = nil,
         targetFingerprint: String? = nil,
         excludedFingerprints: @escaping () -> Set<String> = { [] },
@@ -150,6 +154,7 @@ final class HIDRemoteMonitor {
         appSwitcherKeyStatePoster: @escaping KeyboardInjector.KeyStatePoster = KeyboardInjector.postKeyState
     ) {
         self.settings = settings
+        self.allowsG9N9N = allowsG9N9N
         self.profileID = profileID
         self.targetFingerprint = targetFingerprint
         self.excludedFingerprints = excludedFingerprints
@@ -217,7 +222,7 @@ final class HIDRemoteMonitor {
             mappingEnabled: settings.customMappingEnabled || backOnlyMode,
             inputMonitoringGranted: inputGranted,
             accessibilityGranted: accessibilityGranted,
-            powerKeySuppressed: powerKeySuppressed || backOnlyMode
+            powerKeySuppressed: powerKeySuppressed || backOnlyMode || allowsG9N9N
         ) else {
             if !inputGranted {
                 updateStatus(LocalizedMessage("button_mapping.permission.input_monitoring_required"))
@@ -236,11 +241,18 @@ final class HIDRemoteMonitor {
         }
 
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
-        let matching = [
-            kIOHIDVendorIDKey as String: 0x2717,
-            kIOHIDProductIDKey as String: 0x32B8,
-        ] as CFDictionary
-        IOHIDManagerSetDeviceMatching(manager, matching)
+        var matches: [[String: Any]] = []
+        if powerKeySuppressed || backOnlyMode {
+            matches.append([kIOHIDVendorIDKey as String: 0x2717, kIOHIDProductIDKey as String: 0x32B8])
+        }
+        if allowsG9N9N {
+            matches.append([kIOHIDVendorIDKey as String: G9N9NProtocol.vendorID,
+                            kIOHIDProductIDKey as String: G9N9NProtocol.productID])
+            for name in ["G9N9N"] {
+                matches.append([kIOHIDProductKey as String: name])
+            }
+        }
+        IOHIDManagerSetDeviceMatchingMultiple(manager, matches as CFArray)
 
         let context = Unmanaged.passUnretained(self).toOpaque()
         IOHIDManagerRegisterDeviceMatchingCallback(manager, hidDeviceMatched, context)
@@ -337,7 +349,8 @@ final class HIDRemoteMonitor {
             updateStatus(LocalizedMessage("button_mapping.error.device_open_failed"))
             return
         }
-        guard Self.isLocationAllowed(
+        currentReportIsGoogle = allowsG9N9N && Self.isGoogleCandidate(device)
+        guard currentReportIsGoogle || Self.isLocationAllowed(
             locationID: Self.locationID(for: device),
             allowedLocationIDs: allowedLocationIDs
         ) else {
@@ -515,7 +528,8 @@ final class HIDRemoteMonitor {
             diagnosticLogger("HID REPORT rejected reason=mapping_disabled")
             return
         }
-        guard Self.isLocationAllowed(
+        currentReportIsGoogle = allowsG9N9N && Self.isGoogleCandidate(device)
+        guard currentReportIsGoogle || Self.isLocationAllowed(
             locationID: Self.locationID(for: device),
             allowedLocationIDs: allowedLocationIDs
         ) else {
@@ -603,6 +617,13 @@ final class HIDRemoteMonitor {
         activeDeviceIsSeized = isSeized
     }
 
+    func handleSimulatedGoogleReport(reportID: UInt32, data: Data) {
+        let previous = currentReportIsGoogle
+        defer { currentReportIsGoogle = previous }
+        currentReportIsGoogle = true
+        handleSimulatedReport(reportID: reportID, data: data)
+    }
+
     func handleSimulatedReport(reportID: UInt32, data: Data) {
         guard settings.customMappingEnabled || backOnlyMode else {
             diagnosticLogger("HID REPORT rejected reason=mapping_disabled source=simulated")
@@ -631,7 +652,10 @@ final class HIDRemoteMonitor {
     }
 
     private func parsedUsages(reportID: UInt32, data: Data, source: String) -> Set<UInt16>? {
-        guard let usages = RemoteHIDReportParser.usages(reportID: reportID, data: data) else {
+        let decoded = currentReportIsGoogle
+            ? G9N9NProtocol.usages(reportID: reportID, data: data)
+            : RemoteHIDReportParser.usages(reportID: reportID, data: data)
+        guard let usages = decoded else {
             diagnosticLogger(
                 "HID REPORT rejected reason=parse_failed source=\(source) " +
                     "id=\(reportID) bytes=\(data.count)"
@@ -970,6 +994,14 @@ final class HIDRemoteMonitor {
                 : .rejected("target_mismatch")
         }
         return .probe
+    }
+
+    private static func isGoogleCandidate(_ device: IOHIDDevice) -> Bool {
+        let vendor = (IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? NSNumber)?.intValue
+        let product = (IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? NSNumber)?.intValue
+        let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String
+        return vendor == G9N9NProtocol.vendorID && product == G9N9NProtocol.productID ||
+            name.map(G9N9NProtocol.isModelNumber) == true
     }
 
     static func shouldPromoteDiscoveryReport(usages: Set<UInt16>) -> Bool {

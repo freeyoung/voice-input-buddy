@@ -159,17 +159,26 @@ extension AppSettings {
     }
 
     @discardableResult
-    func registerBluetoothRemote(identifier: UUID) -> UUID {
+    func registerBluetoothRemote(identifier: UUID, model: XiaomiRemoteModel = .unknown) -> UUID {
         if let existing = remoteDeviceProfiles.first(where: { $0.bluetoothIdentifier == identifier }) {
             return existing.id
         }
-        if let index = remoteDeviceProfiles.firstIndex(where: {
-            $0.bluetoothIdentifier == nil && $0.model == .unknown
-        }) {
+        let matching = remoteDeviceProfiles.indices.filter {
+            remoteDeviceProfiles[$0].bluetoothIdentifier == nil && remoteDeviceProfiles[$0].model == model
+        }
+        let matchingIndex = model.isChromecastRemote
+            ? (matching.count == 1 ? matching.first : nil) : matching.first
+        let emptyIndex = remoteDeviceProfiles.firstIndex {
+            $0.bluetoothIdentifier == nil && $0.model == .unknown &&
+                (!model.isChromecastRemote || $0.hidFingerprint == nil)
+        }
+        if let index = matchingIndex ?? emptyIndex {
             remoteDeviceProfiles[index].bluetoothIdentifier = identifier
+            if model != .unknown { remoteDeviceProfiles[index].model = model }
             return remoteDeviceProfiles[index].id
         }
         let profile = RemoteDeviceProfile(
+            model: model,
             bluetoothIdentifier: identifier,
             mappings: mappingsForNewRemote()
         )
@@ -178,14 +187,31 @@ extension AppSettings {
     }
 
     @discardableResult
-    func registerHIDRemote(fingerprint: String) -> UUID {
+    func registerHIDRemote(fingerprint: String, model: XiaomiRemoteModel = .unknown) -> UUID {
         if let existing = remoteDeviceProfiles.first(where: { $0.hidFingerprint == fingerprint }) {
             return existing.id
         }
+        if model.isChromecastRemote {
+            let candidates = remoteDeviceProfiles.indices.filter {
+                remoteDeviceProfiles[$0].model == model && remoteDeviceProfiles[$0].hidFingerprint == nil
+            }
+            if candidates.count == 1, let index = candidates.first {
+                remoteDeviceProfiles[index].hidFingerprint = fingerprint
+                return remoteDeviceProfiles[index].id
+            }
+            // Multiple independent BLE identities cannot be joined by a product label alone.
+            let profile = RemoteDeviceProfile(model: model, hidFingerprint: fingerprint,
+                                              mappings: mappingsForNewRemote())
+            remoteDeviceProfiles.append(profile)
+            return profile.id
+        }
         let selectedUnboundIndex = remoteDeviceProfiles.firstIndex(where: {
-            $0.id == selectedRemoteProfileID && $0.hidFingerprint == nil
+            $0.id == selectedRemoteProfileID && $0.hidFingerprint == nil &&
+                ($0.model == model || model == .unknown && !$0.model.isChromecastRemote)
         })
-        if let index = selectedUnboundIndex ?? remoteDeviceProfiles.firstIndex(where: { $0.hidFingerprint == nil }) {
+        if let index = selectedUnboundIndex ?? remoteDeviceProfiles.firstIndex(where: {
+            $0.hidFingerprint == nil && ($0.model == model || model == .unknown && !$0.model.isChromecastRemote)
+        }) {
             let defaultMappings = RemoteDeviceMappings(
                 buttonBindings: Self.defaultBindings,
                 buttonShortcuts: [:],
@@ -201,6 +227,7 @@ extension AppSettings {
             return remoteDeviceProfiles[index].id
         }
         let profile = RemoteDeviceProfile(
+            model: model,
             hidFingerprint: fingerprint,
             mappings: mappingsForNewRemote()
         )

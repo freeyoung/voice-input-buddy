@@ -99,8 +99,6 @@ extension BridgeAppModel {
         guard !bluetoothVoiceActive,
               appleRemoteVoiceDevices.isEmpty,
               !appleRemoteVoiceStopping,
-              !chromecastVoiceActive,
-              !chromecastVoiceStopping,
               activeMobileVoiceSource == nil,
               isStreaming
         else { return }
@@ -115,14 +113,10 @@ extension BridgeAppModel {
             audioOutput.endSession()
         }
         privateFeature.finishVoiceSession()
-        // 会话因别的原因结束（用户关闭语音、切换输入源）时，必须让 Chromecast 包内的
-        // latched 状态同步清空；否则下一次点按会被误判成「结束」而不是「开始」。
-        chromecastFeature.notifyHostVoiceSessionEnded()
     }
 
     private var currentVoiceSource: RemoteInputSource {
-        if bluetoothVoiceActive || !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping
-            || chromecastVoiceActive || chromecastVoiceStopping {
+        if bluetoothVoiceActive || !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping {
             return .bluetoothRemote
         }
         switch activeMobileVoiceSource {

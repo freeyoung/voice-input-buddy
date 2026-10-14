@@ -1203,7 +1203,7 @@
 
 "common_phrases.key.ok" = "Select button";
 
-"button_mapping.unsupported_device" = "This remote is not supported yet. Select a Xiaomi remote to configure its buttons.";
+"button_mapping.unsupported_device" = "This remote is not supported yet. Choose a Xiaomi or G9N9N remote to configure buttons.";
 
 "button_mapping.action.disable_restore_scope" = "Re-enabling restores the previous action while this settings window stays open. After closing it, a click uses the button default; double-click and long-press actions must be selected again.";
 
@@ -1244,7 +1244,7 @@
 "update.dialog.previous_version" = "Previous version";
 
 // Four-device product scope. Upcoming adapters show an inline notice on Continue.
-"remote.catalog.xiaomi.title" = "Xiaomi Bluetooth Remote 2 Pro";
+"remote.catalog.xiaomi.title" = "Xiaomi Bluetooth Remote 2 / 2 Pro";
 "remote.catalog.chromecastG9N9N.title" = "Chromecast Voice Remote (G9N9N)";
 "remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
 "remote.catalog.siriRemote.title" = "Apple Siri Remote";
@@ -1252,3 +1252,8 @@
 "remote.catalog.g9n9n.adapter_pending.title" = "G9N9N selected; connection support pending";
 "remote.catalog.g9n9n.adapter_pending.detail" = "You can pair the remote in macOS Bluetooth settings, but this build cannot read its buttons or microphone yet. Return to device selection to choose Xiaomi. Connection validation must pass before continuing.";
 "remote.catalog.unsupported_notice" = "Not supported yet. Stay tuned.";
+"google.remote.unsupported_protocol" = "This remote does not offer supported ATVV v1.0 / 16 kHz audio. Buttons and audio require separate validation.";
+"google.remote.unconfirmed_model" = "The hardware model could not be confirmed as G9N9N. Replacements and other Google remotes require separate adapters.";
+"google.remote.microphone_refused" = "The remote refused to open its microphone. Pair it again and retry.";
+"google.remote.pairing_required" = "Bluetooth authentication is incomplete. Remove and pair the remote again in macOS Bluetooth settings, then reconnect.";
+"google.remote.ir_controls" = "G9N9N power and input keys may use infrared; they are not treated as verified Bluetooth mapping keys.";

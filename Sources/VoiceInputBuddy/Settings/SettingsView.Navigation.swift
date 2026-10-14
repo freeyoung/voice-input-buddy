@@ -170,7 +170,7 @@ extension SettingsView {
             }
         case .mapping:
             if let device = settings.selectedRemoteProfile,
-               device.model.isAppleSiriRemote || device.model.isChromecastRemote {
+               device.model.isAppleSiriRemote {
                 settingsPage {
                     PageHeader(title: localization.text("button_mapping.page.title"))
                 } content: {

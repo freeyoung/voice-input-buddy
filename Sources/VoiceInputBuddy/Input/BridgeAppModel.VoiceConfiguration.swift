@@ -102,6 +102,13 @@ extension BridgeAppModel {
             return
         }
 
+        if settings.selectedRemoteProfile?.model.isChromecastRemote == true {
+            settings.voiceFnTapModeEnabled = true
+            voiceFnTapSession.setEnabled(true)
+            startHIDMonitors(powerKeySuppressed: applyVoiceFunctionMapping(neutralizeVoiceKey: false))
+            return
+        }
+
         var powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: true)
         guard voiceFunctionMapper.isVoiceKeyNeutralized else {
             voiceFnTapSession.setEnabled(false)
