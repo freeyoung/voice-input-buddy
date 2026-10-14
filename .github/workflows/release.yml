@@ -47,7 +47,6 @@ jobs:
       matrix:
         arch: [arm64, x86_64]
     env:
-      RELEASE_CHANGES_FILE: ${{ runner.temp }}/release-changelog/release-changes.txt
       BUILD_ARCH: ${{ matrix.arch }}
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     outputs:
@@ -104,6 +103,7 @@ jobs:
       - name: Sign and verify production update package
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
+          RELEASE_CHANGES_FILE: ${{ runner.temp }}/release-changelog/release-changes.txt
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
         run: scripts/sign-release-update.sh
