@@ -45,6 +45,7 @@ final class PreferredInputSourceMonitor {
         let targetInputSourceID: String
         var owners: Set<Owner>
         var activationPending: Bool
+        var voiceTriggerSubmitted = false
     }
 
     init(
@@ -158,7 +159,10 @@ final class PreferredInputSourceMonitor {
                 "VOICE INPUT function_key edge=down tool=\(selectedVoiceTool.rawValue)"
             )
         }
-        beginVoiceSession(reason: "function_key_down", owner: .functionKey)
+        if beginVoiceSession(reason: "function_key_down", owner: .functionKey) {
+            // A physical Fn edge has already reached the input system.
+            markVoiceTriggerSubmitted()
+        }
     }
 
     static func shouldObserveFunctionEvent(marker: Int64) -> Bool {
@@ -186,7 +190,14 @@ final class PreferredInputSourceMonitor {
         )
     }
 
-    /// Ends an input-source session previously started for a voice key.
+    /// Record successful key submission separately from source activation.
+    /// A failed/cancelled start can still roll back its input-source selection.
+    func markVoiceTriggerSubmitted() {
+        managedInputSourceSession?.voiceTriggerSubmitted = true
+    }
+
+    /// Release source ownership, retaining the selected input method after an
+    /// actual trigger. Key-up ends recording, not asynchronous text composition.
     func endVoiceSession() {
         explicitVoiceSessionActivationPending = false
         explicitActivationGeneration &+= 1
@@ -337,6 +348,15 @@ final class PreferredInputSourceMonitor {
             }
         }
         managedInputSourceSession = nil
+
+        // CGEvent submission is not acknowledgment that the input method has
+        // committed its result. Switching away at key-up (or on monitor stop)
+        // can detach pending composition from the focused text client. Leave
+        // selection to the user instead of guessing a recognition timeout.
+        guard !session.voiceTriggerSubmitted else {
+            logger("VOICE INPUT source_retained reason=composition_may_be_pending session_reason=\(reason)")
+            return
+        }
 
         guard let previousInputSourceID = session.previousInputSourceID else { return }
         let currentSourceID = currentInputSourceID()

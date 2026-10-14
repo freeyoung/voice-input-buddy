@@ -223,7 +223,9 @@ extension BridgeAppModel {
             )
             return false
         }
-        if !shouldHold {
+        if shouldHold {
+            preferredInputSourceMonitor.markVoiceTriggerSubmitted()
+        } else {
             preferredInputSourceMonitor.endVoiceSession()
         }
         if shouldHold {
