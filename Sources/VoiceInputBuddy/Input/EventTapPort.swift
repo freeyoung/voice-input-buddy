@@ -1,6 +1,36 @@
 import CoreGraphics
 import Foundation
 
+/// Bounds repeated WindowServer disable/re-enable cycles on each tap.
+final class EventTapRecovery {
+    private var attempts = 0
+    private var lastAttempt: TimeInterval?
+    private let now: () -> TimeInterval
+    private let dispatch: (TimeInterval, @escaping () -> Void) -> Void
+
+    init(now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+         dispatch: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, action in
+             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+         }) {
+        self.now = now
+        self.dispatch = dispatch
+    }
+
+    func recover(type: CGEventType, isCurrent: @escaping () -> Bool,
+                 permissionsGranted: @escaping () -> Bool,
+                 enable: @escaping () -> Void, stop: @escaping () -> Void) {
+        let time = now()
+        if let lastAttempt, time - lastAttempt > 30 { attempts = 0 }
+        lastAttempt = time
+        attempts += 1
+        let delay = min(8, 0.5 * pow(2, Double(attempts - 1)))
+        let exhausted = attempts > 5
+        EventTapPort.deferRecovery(type: type,
+            dispatch: { self.dispatch(delay, $0) }, isCurrent: isCurrent,
+            permissionsGranted: { !exhausted && permissionsGranted() }, enable: enable, stop: stop)
+    }
+}
+
 /// event tap 端口的接入与释放。
 ///
 /// 释放必须包含 `CFMachPortInvalidate`：只调用 `CGEvent.tapEnable(enable: false)` 并摘除

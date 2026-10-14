@@ -133,8 +133,7 @@ extension AppSettings {
 
     func configuredAction(for button: RemoteButton, trigger: ButtonTrigger,
                           profileID: UUID?) -> ConfiguredButtonAction {
-        configuredActionOverride?(profileID, button, trigger)
-            ?? configuredBaseAction(for: button, trigger: trigger, profileID: profileID)
+        configuredBaseAction(for: button, trigger: trigger, profileID: profileID)
     }
 
     var selectedRemoteProfile: RemoteDeviceProfile? {

@@ -166,7 +166,7 @@ final class PreferredInputSourceMonitor {
     }
 
     static func shouldObserveFunctionEvent(marker: Int64) -> Bool {
-        marker != KeyboardInjector.orderedVoiceEventMarker
+        !KeyboardInjector.isSyntheticEventMarker(marker)
     }
 
     /// Starts the input-source session for a software-emitted voice key.

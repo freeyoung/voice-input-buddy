@@ -148,7 +148,7 @@ extension BridgeAppModel {
     }
 
     func receivePhoneAudio(_ samples: [Int16], source: MobileVoiceSource) {
-        guard source == .web || membershipFeature.canStartCompanionConnection else {
+        guard source == .web || OnboardingBuildCapabilities.availableControlSources.contains(.appleCompanion) else {
             disablePhoneRemoteConnection()
             return
         }

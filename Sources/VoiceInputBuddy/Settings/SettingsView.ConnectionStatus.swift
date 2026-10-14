@@ -21,8 +21,6 @@ extension SettingsView {
             return localization.text("connection.web.connecting")
         case .waitingForPhone:
             return localization.text("connection.web.waiting_scan")
-        case .membershipRequired, .plusRequired:
-            return localization.text("connection.web.plus_required_title")
         case .awaitingApproval:
             return localization.text("connection.web.waiting_approval")
         case .connected:
@@ -36,7 +34,7 @@ extension SettingsView {
         switch model.webRemoteState {
         case .connected:
             return .green
-        case .failed, .unavailable, .membershipRequired, .plusRequired:
+        case .failed, .unavailable:
             return .orange
         default:
             return .secondary

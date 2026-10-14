@@ -205,8 +205,6 @@ extension OnboardingView {
         switch model.webRemoteState {
         case .connected:
             return localization.text("onboarding.web_remote.connected")
-        case .membershipRequired, .plusRequired:
-            return localization.text("connection.web.plus_required_title")
         case .unavailable, .failed:
             return localization.text("onboarding.web_remote.unavailable")
         case .connecting:

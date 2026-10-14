@@ -265,8 +265,8 @@ struct VoiceInputActivationTests {
     @Test func orderedEventsCannotAcquireAnExtraGlobalFnOwnerAndRemainSynthetic() throws {
         #expect(!PreferredInputSourceMonitor.shouldObserveFunctionEvent(marker: KeyboardInjector.orderedVoiceEventMarker))
         #expect(PreferredInputSourceMonitor.shouldObserveFunctionEvent(marker: 0))
-        // Fn tap sessions retain their existing, separately managed behavior.
-        #expect(PreferredInputSourceMonitor.shouldObserveFunctionEvent(marker: KeyboardInjector.syntheticEventMarker))
+        // Both software markers must stay outside the physical Fn observer.
+        #expect(!PreferredInputSourceMonitor.shouldObserveFunctionEvent(marker: KeyboardInjector.syntheticEventMarker))
         let event = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 63, keyDown: true))
         event.setIntegerValueField(.eventSourceUserData, value: KeyboardInjector.orderedVoiceEventMarker)
         #expect(KeyboardInjector.isSyntheticEvent(event))

@@ -7,26 +7,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension SettingsView {
-    func sectionTitle(_ section: SettingsSection) -> String {
-        switch section {
-        case .privateFeature: privateFeature.sectionTitle
-        case .macros: macroFeature.sectionTitle
-        case .buttonProfiles: macroFeature.buttonProfilesSectionTitle
-        case .membership: membershipFeature.sectionTitle
-        default: ""
-        }
-    }
-
-    func sectionSystemImage(_ section: SettingsSection) -> String {
-        switch section {
-        case .privateFeature: privateFeature.sectionSystemImage
-        case .macros: macroFeature.sectionSystemImage
-        case .buttonProfiles: macroFeature.buttonProfilesSectionSystemImage
-        case .membership: membershipFeature.sectionSystemImage
-        default: section.systemImage
-        }
-    }
-
     @ViewBuilder
     var updateInformationContent: some View {
         switch updateInformation.state {
@@ -92,12 +72,6 @@ extension SettingsView {
         (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String) ??
             (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ??
             localization.text("common.value.unknown")
-    }
-
-    func revealPrivateEnrollmentIfNeeded() {
-        guard versionTapRevealCounter.registerTap() else { return }
-        privateFeature.revealEnrollment()
-        macroFeature.revealEnrollment()
     }
 
     func languageTitle(_ language: AppLanguage) -> String {

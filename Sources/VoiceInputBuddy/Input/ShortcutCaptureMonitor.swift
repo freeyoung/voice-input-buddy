@@ -33,6 +33,7 @@ final class ShortcutCaptureMonitor {
     private let modifierIsPressed: (UInt16) -> Bool
     private let lock = NSLock()
     private var captureGeneration: UInt64 = 0
+    private let tapRecovery = EventTapRecovery()
     private var tapRecoveryGeneration = 0
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -118,8 +119,7 @@ final class ShortcutCaptureMonitor {
             tapRecoveryGeneration += 1
             let generation = tapRecoveryGeneration
             if let port = eventTap {
-                EventTapPort.deferRecovery(type: type,
-                    dispatch: { DispatchQueue.main.async(execute: $0) },
+                tapRecovery.recover(type: type,
                     isCurrent: { [weak self] in
                         self?.tapRecoveryGeneration == generation && self?.eventTap === port
                     },

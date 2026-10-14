@@ -9,13 +9,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @ObservedObject var model: BridgeAppModel
     @ObservedObject var settings: AppSettings
-    @ObservedObject var privateFeature: PrivateFeatureIntegration
-    @State var preservesMappingContextOnNavigation = false
-    @State var editingMappingProfileID: UUID?
-    @State var mappingMacroSearch = ""
 
-    @ObservedObject var macroFeature: MacroFeatureIntegration
-    @ObservedObject var membershipFeature: MembershipFeatureIntegration
     @ObservedObject var loginItemService: LoginItemService
     @ObservedObject var updateInformation: UpdateInformationStore
     @EnvironmentObject var localization: LocalizationStore
@@ -48,7 +42,6 @@ struct SettingsView: View {
     @State var isRepositoryLinkCopied = false
     @State var isMappingPermissionAlertPresented = false
     @State var isWaitingForMappingPermissions = false
-    @State var versionTapRevealCounter = VersionTapRevealCounter()
 
     init(
         model: BridgeAppModel,
@@ -67,9 +60,7 @@ struct SettingsView: View {
     ) {
         self.model = model
         settings = model.settings
-        privateFeature = model.privateFeature
-        macroFeature = model.macroFeature
-        membershipFeature = model.membershipFeature
+
         loginItemService = model.loginItemService
         self.updateInformation = updateInformation
         self.checkForUpdates = checkForUpdates
@@ -81,11 +72,7 @@ struct SettingsView: View {
         self.minimumContentSize = minimumContentSize
         self.initialShortcutPickerShowsKeyboard = initialShortcutPickerShowsKeyboard
         _selectedSection = State(initialValue: SettingsPageBehavior.initialSection(
-            requestedSection: initialSection,
-            privateFeatureVisible: model.privateFeature.isFeatureVisible,
-            macroFeatureVisible: model.macroFeature.isFeatureVisible,
-            buttonProfilesVisible: model.macroFeature.isButtonProfilesVisible,
-            membershipVisible: model.membershipFeature.isFeatureVisible
+            requestedSection: initialSection
         ))
         _selectedRemoteButton = State(initialValue: initialMappingEditingButton ?? .ok)
         _mappingEditingTarget = State(
@@ -107,13 +94,6 @@ struct SettingsView: View {
         }
         .background(Color(nsColor: .controlBackgroundColor).ignoresSafeArea())
         .environment(\.locale, localization.locale)
-        .environment(\.openURL, OpenURLAction { url in
-            guard url == URL(string: "voice-input-buddy://membership") else { return .systemAction }
-            guard membershipFeature.isFeatureVisible else { return .discarded }
-            selectedSection = .membership
-            membershipFeature.refreshIfNeeded()
-            return .handled
-        })
         .frame(
             minWidth: minimumContentSize.width,
             minHeight: minimumContentSize.height
@@ -125,45 +105,21 @@ struct SettingsView: View {
             model.refreshRemoteDeviceNames(reason: .page)
             refreshPermissionStates()
             loginItemService.refresh()
-            macroFeature.setEditorActive(false)
-            membershipFeature.refreshIfNeeded()
+
         }
         .onChange(of: selectedSection) { _, section in
             if section == .mapping {
-                if preservesMappingContextOnNavigation { preservesMappingContextOnNavigation = false }
-                else { model.selectDefaultMappingRemoteIfAvailable() }
+                model.selectDefaultMappingRemoteIfAvailable()
             }
             if section == .connection || section == .mapping {
                 model.refreshRemoteDeviceNames(reason: .page)
             }
-            if section != .macros, section != .buttonProfiles {
-                macroFeature.setEditorActive(false)
-            }
-        }
-        .onDisappear {
-            macroFeature.setEditorActive(false)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshPermissionStates()
             loginItemService.refresh()
             resumeCustomMappingIfPermissionsGranted()
-            membershipFeature.refreshIfNeeded()
-        }
-        .onReceive(privateFeature.$isFeatureVisible.removeDuplicates()) { isVisible in
-            if !isVisible, selectedSection == .privateFeature {
-                selectedSection = .about
-            }
-        }
-        .onReceive(macroFeature.$isFeatureVisible.removeDuplicates()) { isVisible in
-            if !isVisible,
-               (selectedSection == .macros || selectedSection == .buttonProfiles) {
-                selectedSection = .about
-            }
-        }
-        .onReceive(membershipFeature.$isFeatureVisible.removeDuplicates()) { isVisible in
-            if !isVisible, selectedSection == .membership {
-                selectedSection = .about
-            }
+
         }
         .alert(
             localization.text("button_mapping.permission_prompt.title"),

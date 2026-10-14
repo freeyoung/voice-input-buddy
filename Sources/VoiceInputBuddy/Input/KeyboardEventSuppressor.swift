@@ -52,6 +52,7 @@ final class KeyboardEventSuppressor {
             pendingEvents.removeAll { $0.event == event }
         }
     }
+    private let tapRecovery = EventTapRecovery()
     private var tapRecoveryGeneration = 0
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -176,8 +177,7 @@ final class KeyboardEventSuppressor {
             tapRecoveryGeneration += 1
             let generation = tapRecoveryGeneration
             if let port = eventTap {
-                EventTapPort.deferRecovery(type: type,
-                    dispatch: { DispatchQueue.main.async(execute: $0) },
+                tapRecovery.recover(type: type,
                     isCurrent: { [weak self] in
                         self?.tapRecoveryGeneration == generation && self?.eventTap === port
                     },

@@ -68,7 +68,6 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(customMappingEnabled, forKey: Keys.customMappingEnabled) }
     }
 
-    var configuredActionOverride: ((UUID?, RemoteButton, ButtonTrigger) -> ConfiguredButtonAction?)?
     @Published var unifiedBaseBindings: [UnifiedButtonBinding] = [] {
         didSet {
             if let data = try? JSONEncoder().encode(unifiedBaseBindings) {

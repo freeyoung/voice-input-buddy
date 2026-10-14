@@ -176,6 +176,7 @@ final class SiriRemoteCursorFeedbackController {
     private var lastRenderUptime: TimeInterval = 0
     private var isFeedbackVisible = false
     private var interactionState = SiriRemoteCursorFeedbackInteractionState()
+    private var hoverQueryGeneration: UInt64 = 0
     private var hoveredElement: AXUIElement?
     private var hoveredElementDepth = 0
     private var hoveredCursorLocation: CGPoint?
@@ -194,6 +195,7 @@ final class SiriRemoteCursorFeedbackController {
             }
             return
         }
+        hoverQueryGeneration &+= 1
         switch feedback {
         case let .pointerMoved(_, _, speed):
             let now = ProcessInfo.processInfo.systemUptime
@@ -236,11 +238,8 @@ final class SiriRemoteCursorFeedbackController {
 
     @discardableResult
     func activateHoveredElementIfAvailable() -> Bool {
-        guard Thread.isMainThread else {
-            return DispatchQueue.main.sync { [weak self] in
-                self?.activateHoveredElementIfAvailable() ?? false
-            }
-        }
+        // The caller can use its ordinary button mapping off the UI thread.
+        guard Thread.isMainThread else { return false }
         guard interactionState.consumeOK(), let hoveredElement else { return false }
         hideWorkItem?.cancel()
         hideWorkItem = nil
@@ -304,6 +303,7 @@ final class SiriRemoteCursorFeedbackController {
             }
             return
         }
+        hoverQueryGeneration &+= 1
         hideWorkItem?.cancel()
         hideWorkItem = nil
         interactionState.expired()
@@ -370,7 +370,21 @@ final class SiriRemoteCursorFeedbackController {
     }
 
     private func resolvePointerIdleTarget() {
-        let target = clickableElementAtCursor()
+        guard let location = CGEvent(source: nil)?.location else { return }
+        let generation = hoverQueryGeneration
+        AccessibilityMessaging.queryQueue.async { [weak self] in
+            let target = Self.clickableElement(at: location)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.hoverQueryGeneration == generation,
+                      let current = CGEvent(source: nil)?.location,
+                      SiriRemoteCursorFeedbackState.cursorRemainsAtTarget(current: current, target: location)
+                else { return }
+                self.applyIdleTarget(target)
+            }
+        }
+    }
+
+    private func applyIdleTarget(_ target: (element: AXUIElement, depth: Int, cursorLocation: CGPoint)?) {
         switch interactionState.pointerBecameIdle(hasClickableTarget: target != nil) {
         case .hide:
             hoveredElement = nil
@@ -407,18 +421,10 @@ final class SiriRemoteCursorFeedbackController {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
     }
 
-    private func clickableElementAtCursor() -> (
-        element: AXUIElement,
-        depth: Int,
-        cursorLocation: CGPoint
+    private static func clickableElement(at location: CGPoint) -> (
+        element: AXUIElement, depth: Int, cursorLocation: CGPoint
     )? {
-        guard let location = CGEvent(source: nil)?.location else {
-            logger(
-                "APPLE REMOTE TOUCH FEEDBACK phase=hover_target result=failed " +
-                    "reason=cursor_location_unavailable"
-            )
-            return nil
-        }
+        AccessibilityMessaging.prepareQueries()
         let systemWide = AXUIElementCreateSystemWide()
         var element: AXUIElement?
         let elementError = AXUIElementCopyElementAtPosition(
@@ -427,29 +433,23 @@ final class SiriRemoteCursorFeedbackController {
             Float(location.y),
             &element
         )
-        guard elementError == .success, let element else {
-            logger(
-                "APPLE REMOTE TOUCH FEEDBACK phase=hover_target result=failed " +
-                    "reason=ax_element_unavailable error=\(elementError.rawValue)"
-            )
-            return nil
-        }
+        guard elementError == .success, let element else { return nil }
         guard let target = SiriRemotePressableTargetResolver.resolve(
             startingAt: element,
-            supportsPress: { self.supportsPress($0) },
-            parent: { self.parentElement(of: $0) }
+            supportsPress: { Self.supportsPress($0) },
+            parent: { Self.parentElement(of: $0) }
         ) else { return nil }
         return (target.element, target.depth, location)
     }
 
-    private func supportsPress(_ element: AXUIElement) -> Bool {
+    private static func supportsPress(_ element: AXUIElement) -> Bool {
         var actionNames: CFArray?
         let error = AXUIElementCopyActionNames(element, &actionNames)
         guard error == .success, let names = actionNames as? [String] else { return false }
         return names.contains(kAXPressAction as String)
     }
 
-    private func parentElement(of element: AXUIElement) -> AXUIElement? {
+    private static func parentElement(of element: AXUIElement) -> AXUIElement? {
         var value: CFTypeRef?
         let error = AXUIElementCopyAttributeValue(
             element,

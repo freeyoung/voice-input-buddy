@@ -56,13 +56,9 @@ extension SettingsView {
                                     Text("about.version.current")
                                         .font(.system(size: 12))
                                         .foregroundStyle(.secondary)
-                                    Button(action: revealPrivateEnrollmentIfNeeded) {
-                                        Text(currentVersion)
-                                            .font(.system(size: 13, weight: .medium))
-                                            .monospacedDigit()
-                                    }
-                                    .buttonStyle(.plain)
-                                    .contentShape(Rectangle())
+                                    Text(currentVersion)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .monospacedDigit()
                                     if case .available = updateInformation.state {
                                         StatusPill(
                                             text: localization.text("about.version.available"),
@@ -123,11 +119,6 @@ extension SettingsView {
                             .font(.title3.weight(.semibold))
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        if membershipFeature.isEnvironmentSettingsVisible {
-                            membershipFeature.serviceEnvironmentSettingsView()
-                                .padding(.vertical, 8)
-                        }
-
                         Group {
                             VStack(spacing: 0) {
                             HStack(spacing: 14) {
@@ -153,12 +144,6 @@ extension SettingsView {
                                     .frame(width: 150)
                             }
                             .padding(.vertical, 8)
-                            if macroFeature.isFeatureVisible {
-                                Text(localization.text("settings.portable_configuration.title"))
-                                    .font(.system(size: 12, weight: .medium))
-                                macroFeature.portableTransferView(profileID: settings.selectedRemoteProfileID,
-                                    model: settings.selectedRemoteProfile?.model)
-                            }
 
                             if let configurationStatus {
                                 Divider()
@@ -324,14 +309,6 @@ extension SettingsView {
                     }
                     .padding(.vertical, 12)
                     .overlay(alignment: .bottom) { Divider() }
-
-                    if privateFeature.shouldShowEnrollment {
-                        privateFeature.enrollmentView()
-                    }
-
-                    if macroFeature.shouldShowEnrollment {
-                        macroFeature.enrollmentView()
-                    }
 
                     inlineDiagnosticsSection
 

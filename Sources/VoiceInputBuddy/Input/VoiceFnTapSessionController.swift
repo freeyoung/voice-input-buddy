@@ -270,30 +270,36 @@ final class VoiceFnTapSessionController {
         isSuspended = true
         suppressAudioUntilRemoteStop = false
         pendingVoice = nil
-        generation &+= 1
-        cancelScheduledTasks()
-        let completedInFlightTap = releaseFunctionKeyIfNeeded()
         let needsStopTap: Bool
         switch phase {
-        case .active, .draining:
-            needsStopTap = true
+        case .active, .draining: needsStopTap = true
+        case .starting where functionKeyIsPressed:
+            // Finish the start pulse before issuing a full-duration stop pulse.
+            remoteEnded = true
+            preRoll.removeAll()
+            return
         case .stopping:
-            // Releasing the in-flight key-down above completes the stop tap.
-            // Posting another tap here would toggle the target back on.
-            needsStopTap = false
-        case .starting:
-            needsStopTap = completedInFlightTap
-        case .idle:
-            needsStopTap = false
+            // The existing stop pulse already owns its scheduled release.
+            return
+        case .starting, .idle: needsStopTap = false
         }
-        if needsStopTap, !postImmediateFunctionKeyTap() {
-            onFailure(.stopTapFailed)
+        generation &+= 1
+        cancelScheduledTasks()
+        if needsStopTap {
+            phase = .stopping(generation)
+            let token = generation
+            performFunctionKeyTap(generation: token) { [weak self] success in
+                guard let self, self.generation == token else { return }
+                if !success { self.onFailure(.stopTapFailed) }
+                self.logDrainTerminalIfNeeded(result: "cancelled", reason: "shutdown")
+                self.resetSessionState()
+                self.runIdleCompletions()
+            }
+        } else {
+            logDrainTerminalIfNeeded(result: "cancelled", reason: "shutdown")
+            resetSessionState()
+            runIdleCompletions()
         }
-        logDrainTerminalIfNeeded(result: "cancelled", reason: "shutdown")
-        resetSessionState()
-        keyReleaseRetryTask?.cancel()
-        keyReleaseRetryTask = nil
-        finishCleanupCompletions(success: !functionKeyIsPressed)
     }
 
     private func beginSession(preloaded: PendingVoice? = nil) {
@@ -466,14 +472,15 @@ final class VoiceFnTapSessionController {
             releaseFunctionKeyIfNeeded()
             runIdleCompletions()
         case .starting:
-            generation &+= 1
-            cancelScheduledTasks()
-            let completedStartTap = releaseFunctionKeyIfNeeded()
-            if completedStartTap, !postImmediateFunctionKeyTap() {
-                onFailure(.stopTapFailed)
+            if functionKeyIsPressed {
+                // Keep the start tap's scheduled release, then drain and stop normally.
+                remoteEnded = true
+                preRoll.removeAll()
+            } else {
+                generation &+= 1
+                resetSessionState()
+                runIdleCompletions()
             }
-            resetSessionState()
-            runIdleCompletions()
         case let .active(sessionGeneration):
             remoteEnded = remoteHasEnded
             beginDrain(generation: sessionGeneration)
@@ -552,12 +559,6 @@ final class VoiceFnTapSessionController {
             }
         }
         return success
-    }
-
-    private func postImmediateFunctionKeyTap() -> Bool {
-        guard !functionKeyIsPressed, setFunctionKeyPressed(true) else { return false }
-        functionKeyIsPressed = true
-        return releaseFunctionKeyIfNeeded()
     }
 
     private func logDrainTerminalIfNeeded(result: String, reason: String) {

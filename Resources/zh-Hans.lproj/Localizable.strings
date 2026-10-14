@@ -1064,7 +1064,7 @@
 "common_phrases.local_storage" = "保存在这台 Mac，重启后仍保留。";
 "common_phrases.panel_hint" = "按方向键和OK键插入对应常用语\n按返回键关闭面板";
 "common_phrases.close" = "关闭常用语";
-"common_phrases.settings_hint" = "在按键映射中绑定“打开常用语”。内容只保存在本机；插入时会暂时使用剪贴板。";
+"common_phrases.settings_hint" = "在按键映射中绑定“打开常用语”。内容只保存在本机；通过无障碍文本框插入，不会修改剪贴板。";
 "common_phrases.assign_hint" = "五键分配";
 "common_phrases.assign_selected" = "将当前已保存的常用语分配到按键";
 "common_phrases.key.up" = "上";
@@ -1257,7 +1257,7 @@
 "google.remote.unconfirmed_model" = "无法确认硬件型号为 G9N9N。兼容款和其他 Google 遥控器需要单独适配。";
 "google.remote.microphone_refused" = "遥控器拒绝开启麦克风。请重新配对后重试。";
 "google.remote.pairing_required" = "蓝牙认证尚未完成。请在 macOS 蓝牙设置中移除并重新配对遥控器，再重新连接。";
-"google.remote.ir_controls" = "G9N9N 的电源与输入源键可能走红外；当前不将它们作为已验证的蓝牙映射键。";
+"google.remote.ir_controls" = "电源和信源键收到蓝牙报文时可以映射；如果遥控器将它们配置为红外发射，应用无法收到这些按键。";
 
 "connection.action.add_device" = "添加新设备";
 "remote.hid_binding.title" = "关联遥控器按键设备";
@@ -1282,3 +1282,5 @@
 "onboarding.add_device.complete.detail" = "设备已连接，按键已测试，麦克风已就绪。已有的输入法集成配置保持不变。";
 "onboarding.integration.complete.title" = "输入法集成完成";
 "onboarding.integration.complete.detail" = "输入法已完成配置，并已通过现有设备的语音输入验证。";
+
+"common_phrases.inserted" = "常用语已插入。";

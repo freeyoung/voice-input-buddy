@@ -99,34 +99,22 @@ struct ProductBoundaryTests {
     }
 
     @Test func unavailableFeaturesStayOutOfNavigation() {
-        let sections = SettingsPageBehavior.sidebarSections(
-            privateFeatureVisible: false,
-            macroFeatureVisible: true,
-            buttonProfilesVisible: true,
-            membershipVisible: false
-        )
+        let sections = SettingsPageBehavior.sidebarSections()
         #expect(sections.contains(.mapping))
         #expect(sections.contains(.connection))
         #expect(!SettingsSection.allCases.map(\.rawValue).contains("transcripts"))
-        #expect(!sections.contains(.membership))
+        #expect(!SettingsSection.allCases.map(\.rawValue).contains("membership"))
     }
 
     @Test func dailyNavigationKeepsPermissionRepairBeforeSettings() {
-        let sections = SettingsPageBehavior.sidebarSections(
-            privateFeatureVisible: false, macroFeatureVisible: false,
-            buttonProfilesVisible: false, membershipVisible: false
-        )
+        let sections = SettingsPageBehavior.sidebarSections()
         #expect(sections == [.connection, .mapping, .integration, .permissions, .about])
         #expect(SettingsPageBehavior.visibleSection(for: .permissions) == .permissions)
         #expect(SettingsPageBehavior.initialSection(
-            requestedSection: nil, privateFeatureVisible: false,
-            macroFeatureVisible: false, buttonProfilesVisible: false,
-            membershipVisible: false
+            requestedSection: nil
         ) == .connection)
         #expect(SettingsPageBehavior.initialSection(
-            requestedSection: .permissions, privateFeatureVisible: false,
-            macroFeatureVisible: false, buttonProfilesVisible: false,
-            membershipVisible: false
+            requestedSection: .permissions
         ) == .permissions)
     }
 
@@ -354,6 +342,5 @@ struct ProductBoundaryTests {
             uid: "speaker", name: "MacBook Speakers"
         ))
     }
-
 
 }

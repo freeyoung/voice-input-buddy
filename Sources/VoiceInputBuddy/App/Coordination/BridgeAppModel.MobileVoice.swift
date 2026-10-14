@@ -51,7 +51,7 @@ extension BridgeAppModel {
         source: MobileVoiceSource,
         completion: @escaping (RemoteVoiceStartResult) -> Void
     ) {
-        guard source == .web || membershipFeature.canStartCompanionConnection else {
+        guard source == .web || OnboardingBuildCapabilities.availableControlSources.contains(.appleCompanion) else {
             disablePhoneRemoteConnection()
             completion(.unavailable)
             return

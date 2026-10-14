@@ -264,9 +264,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         observeLocalization()
         observePhoneRemoteButtonTitles()
         installWorkspaceAudioLifecycleObservers()
-        model.privateFeature.refreshAccessIfNeeded()
-        model.macroFeature.refreshAccessIfNeeded()
-        model.membershipFeature.refreshIfNeeded()
+
         if OnboardingLaunchPolicy.shouldStartRuntime(
             isComplete: model.settings.isOnboardingComplete,
             step: model.settings.onboardingStep
@@ -327,8 +325,15 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         }
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        model.voiceFnTapSession.setEnabled(false) { _ in
+            DispatchQueue.main.async { sender.reply(toApplicationShouldTerminate: true) }
+        }
+        return .terminateLater
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
-        model.privateFeature.hideHUDImmediately()
+
         model.stop()
         model.settings.discardOnboardingVoiceTrial()
         updateCheckTask?.cancel()
@@ -347,9 +352,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     func applicationDidBecomeActive(_ notification: Notification) {
         model.refreshRemoteDeviceNames(reason: .foreground)
-        model.privateFeature.refreshAccessIfNeeded()
-        model.macroFeature.refreshAccessIfNeeded()
-        model.membershipFeature.refreshIfNeeded()
+
         model.refreshHIDAfterPermissionChange()
     }
 
@@ -414,11 +417,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.model.handleSystemAudioLifecycle(event)
-                    if event == .systemDidWake {
-                        self.model.privateFeature.refreshAccessIfNeeded()
-                        self.model.macroFeature.refreshAccessIfNeeded()
-                        self.model.membershipFeature.refreshIfNeeded()
-                    }
                 }
             }
         }
@@ -706,17 +704,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         }
         .store(in: &subscriptions)
 
-        model.privateFeature.$hudShouldBeVisible
-        .removeDuplicates()
-        .receive(on: RunLoop.main)
-        .sink { [weak self] isVisible in
-            self?.setPrivateFeatureHUDVisible(isVisible)
-        }
-        .store(in: &subscriptions)
-    }
-
-    private func setPrivateFeatureHUDVisible(_ isVisible: Bool) {
-        model.privateFeature.setHUDVisible(isVisible)
     }
 
     private func observeLocalization() {
@@ -726,15 +713,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 guard let self else { return }
                 self.refreshStatusItemPresentation()
                 self.settingsWindowController?.window?.title = self.localization.text("app.name")
-                self.model.privateFeature.updateLocaleIdentifier(
-                    self.localization.locale.identifier
-                )
-                self.model.macroFeature.updateLocaleIdentifier(
-                    self.localization.locale.identifier
-                )
-                self.model.membershipFeature.updateLocaleIdentifier(
-                    self.localization.locale.identifier
-                )
+
                 self.configureApplicationMenu()
                 if self.statusItem != nil {
                     self.rebuildStatusMenu()
@@ -975,7 +954,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         guard let window = notification.object as? NSWindow,
               window === settingsWindowController?.window
         else { return }
-        model.macroFeature.setEditorActive(false)
+
         isSettingsWindowOpen = false
         updateDockActivationPolicy()
     }
@@ -996,10 +975,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         DispatchQueue.main.async { [weak self] in
             self?.reapplyCurrentAppIcon(source: "window_deminiaturized")
         }
-    }
-
-    func applicationDidHide(_ notification: Notification) {
-        model.macroFeature.setEditorActive(false)
     }
 
     @objc private func showLog() {

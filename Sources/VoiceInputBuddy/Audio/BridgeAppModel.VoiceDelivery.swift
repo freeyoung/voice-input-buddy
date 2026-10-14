@@ -72,7 +72,7 @@ extension BridgeAppModel {
 
     func beginVoiceSessionIfNeeded() {
         guard !isStreaming else { return }
-        privateFeature.startVoiceSession()
+
         cancelTestToneIfNeeded(
             statusMessage: LocalizedMessage("audio.test_tone.blocked_voice_active"),
             logReason: "voice_start"
@@ -113,7 +113,7 @@ extension BridgeAppModel {
         if flushAudio {
             audioOutput.endSession()
         }
-        privateFeature.finishVoiceSession()
+
     }
 
     private var currentVoiceSource: RemoteInputSource {

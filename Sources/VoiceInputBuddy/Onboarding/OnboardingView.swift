@@ -7,8 +7,6 @@ import SwiftUI
 
 struct OnboardingView: View {
     @ObservedObject var model: BridgeAppModel
-    @ObservedObject var membershipFeature: MembershipFeatureIntegration
-    @State var isMembershipPresented = false
     @ObservedObject var settings: AppSettings
     @EnvironmentObject var localization: LocalizationStore
     @Environment(\.colorScheme) var colorScheme
@@ -71,7 +69,7 @@ struct OnboardingView: View {
         interactionProbe: OnboardingInteractionProbe? = nil
     ) {
         self.model = model
-        membershipFeature = model.membershipFeature
+
         settings = model.settings
         self.completeRuntimeReadyOverride = completeRuntimeReadyOverride
         self.allowsInputSourceSwitching = allowsInputSourceSwitching
@@ -102,12 +100,6 @@ struct OnboardingView: View {
         .sheet(item: $hidBindingProfile) { profile in
             RemoteHIDBindingPicker(model: model, profile: profile)
                 .environmentObject(localization)
-        }
-        .sheet(isPresented: $isMembershipPresented) {
-            VStack(alignment: .trailing) {
-                Button(localization.text("common.action.close")) { isMembershipPresented = false }
-                membershipFeature.settingsView()
-            }.padding(20)
         }
         .onAppear {
             refreshPermissionStates()
@@ -268,6 +260,5 @@ struct OnboardingView: View {
             recordFailureTransition(failure)
         }
     }
-
 
 }

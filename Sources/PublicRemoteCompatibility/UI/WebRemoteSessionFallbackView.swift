@@ -4,14 +4,9 @@ import SwiftUI
 @MainActor
 public protocol WebRemoteSessionModel: ObservableObject {
     var webRemoteState: WebRemoteSessionState { get }
-    var webRemoteServiceEnvironment: String { get }
 
     func enableWebRemoteConnection()
     func disableWebRemoteConnection()
-}
-
-public extension WebRemoteSessionModel {
-    var webRemoteServiceEnvironment: String { "production" }
 }
 
 public struct WebRemoteSessionLocalization {
@@ -29,7 +24,7 @@ public struct WebRemoteSessionLocalization {
     public func text(_ key: String) -> String { resolve(key) }
 }
 
-/// 公开构建只保留界面契约；动态小程序码由可选私有模块提供。
+/// Explains that this planned connection method is unavailable in the current build.
 public struct WebRemoteMiniProgramCodeView<Model: WebRemoteSessionModel>: View {
     private let localization: WebRemoteSessionLocalization
 

@@ -232,8 +232,7 @@ extension BridgeAppModel {
             return
         }
 
-        if !macroFeature.isEditorActive,
-           commonPhrases.handle(button, phase: phase, source: "apple:\(profileID.uuidString)") { return }
+        if commonPhrases.handle(button, phase: phase, source: "apple:\(profileID.uuidString)") { return }
 
         if appleRemoteAppSwitcherSession.isActive {
             if phase == .release {
@@ -253,35 +252,16 @@ extension BridgeAppModel {
             )
         }
 
-        if macroFeature.isEditorActive {
-            if phase == .press {
-                macroFeature.noteButtonInteraction(button: button)
-            }
-            AppLogger.shared.write(
-                "APPLE REMOTE BUTTON phase=\(phase.rawValue) button=\(button.rawValue) " +
-                    "path=binding_editor_capture"
-            )
-            return
-        }
-
         let recognizesDoubleClick = settings.configuredAction(
             for: button,
             trigger: .doubleClick,
             profileID: profileID
-        ).action != .disabled || macroFeature.hasActiveBinding(
-            profileID: profileID,
-            button: button,
-            trigger: .doubleClick
-        )
+        ).action != .disabled
         let recognizesLongPress = settings.configuredAction(
             for: button,
             trigger: .longPress,
             profileID: profileID
-        ).action != .disabled || macroFeature.hasActiveBinding(
-            profileID: profileID,
-            button: button,
-            trigger: .longPress
-        )
+        ).action != .disabled
         var recognizer = appleRemoteGestureRecognizers[device]
             ?? RemoteButtonGestureRecognizer()
         if phase == .press,
@@ -330,11 +310,7 @@ extension BridgeAppModel {
             for: button,
             action: configured.action,
             hasSecondaryAction: hasSecondaryAction,
-            hasSingleActionOverride: macroFeature.hasActiveBinding(
-                profileID: profileID,
-                button: button,
-                trigger: .singleClick
-            ),
+            hasSingleActionOverride: false,
             frontmostBundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         ) else { return }
 
@@ -372,11 +348,7 @@ extension BridgeAppModel {
                           for: button,
                           profileID: profileID
                       ),
-                      hasSingleActionOverride: self.macroFeature.hasActiveBinding(
-                          profileID: profileID,
-                          button: button,
-                          trigger: .singleClick
-                      ),
+                      hasSingleActionOverride: false,
                       frontmostBundleIdentifier:
                           NSWorkspace.shared.frontmostApplication?.bundleIdentifier
                   ) != nil
@@ -438,14 +410,7 @@ extension BridgeAppModel {
         for button: RemoteButton,
         profileID: UUID
     ) -> Bool {
-        settings.hasSecondaryAction(for: button, profileID: profileID) ||
-            [.doubleClick, .longPress].contains { trigger in
-                macroFeature.hasActiveBinding(
-                    profileID: profileID,
-                    button: button,
-                    trigger: trigger
-                )
-            }
+        settings.hasSecondaryAction(for: button, profileID: profileID)
     }
 
     private func processAppleRemoteGestureCommands(
@@ -543,18 +508,6 @@ extension BridgeAppModel {
         trigger: ButtonTrigger,
         profileID: UUID
     ) -> Bool {
-        if performButtonProfileBoundAction(
-            profileID: profileID,
-            button: button,
-            trigger: trigger,
-            source: "apple:\(profileID.uuidString)"
-        ) {
-            AppLogger.shared.write(
-                "APPLE REMOTE BUTTON phase=completed result=submitted " +
-                    "button=\(button.rawValue) trigger=\(trigger.rawValue) action=private_feature"
-            )
-            return true
-        }
         let configured = settings.configuredAction(
             for: button,
             trigger: trigger,

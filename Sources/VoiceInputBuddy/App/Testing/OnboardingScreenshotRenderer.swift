@@ -178,7 +178,6 @@ enum OnboardingScreenshotRenderer {
             settings: settings,
             resourceBundle: VoiceInputBuddyResourceBundle.mainOrDevelopment
         )
-        model.membershipFeature.updateLocaleIdentifier(localization.locale.identifier)
 
         _ = NSApplication.shared
         let previousAppearance = NSApp.appearance

@@ -32,12 +32,8 @@ extension SettingsView {
     }
 
     private var visibleSections: [SettingsSection] {
-        SettingsPageBehavior.sidebarSections(
-            privateFeatureVisible: privateFeature.isFeatureVisible,
-            macroFeatureVisible: macroFeature.isFeatureVisible,
-            buttonProfilesVisible: macroFeature.isButtonProfilesVisible,
-            membershipVisible: membershipFeature.isFeatureVisible
-        )
+        SettingsPageBehavior.sidebarSections()
+
     }
 
     private func sidebarButton(_ section: SettingsSection) -> some View {
@@ -47,7 +43,7 @@ extension SettingsView {
         } label: {
             VStack(spacing: 7) {
                 ZStack(alignment: .topTrailing) {
-                    Image(systemName: sectionSystemImage(section))
+                    Image(systemName: section.systemImage)
                         .font(.system(size: 21, weight: .semibold))
                     if SettingsPageBehavior.showsUpdateBadge(
                         for: section,
@@ -60,16 +56,8 @@ extension SettingsView {
                             .accessibilityHidden(true)
                     }
                 }
-                if section == .privateFeature
-                    || section == .macros
-                    || section == .buttonProfiles
-                    || section == .membership {
-                    Text(sectionTitle(section))
-                        .font(.system(size: 13, weight: .semibold))
-                } else {
-                    Text(section.title)
-                        .font(.system(size: 13, weight: .semibold))
-                }
+                Text(section.title)
+                    .font(.system(size: 13, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
@@ -102,72 +90,6 @@ extension SettingsView {
             connectionPage
         case .integration:
             integrationPage
-        case .privateFeature:
-            if privateFeature.isFeatureVisible {
-                privateFeature.settingsView()
-            } else {
-                aboutPage
-            }
-        case .macros:
-            if macroFeature.isFeatureVisible {
-                VStack(spacing: 0) {
-                    macroFeature.settingsView(
-                        selectedRemoteProfileID: settings.selectedRemoteProfileID,
-                        remoteModel: settings.selectedRemoteProfile?.model,
-                        configuredActionTitle: { buttonValue, triggerValue in
-                            guard let button = RemoteButton(rawValue: buttonValue),
-                                  let trigger = ButtonTrigger(rawValue: triggerValue)
-                            else { return nil }
-                            return mappingActionSummary(for: button, trigger: trigger)
-                        },
-                        settings: settings,
-                        onEditBinding: { device, profile, button, trigger in
-                            preservesMappingContextOnNavigation = true
-                            if let device { settings.selectRemoteProfile(device) }
-                            editingMappingProfileID = profile
-                            mappingEditingTarget = ShortcutEditingTarget(button: button, trigger: trigger)
-                            selectedSection = .mapping
-                        },
-                        onBindToButton: {
-                            preservesMappingContextOnNavigation = true
-                            mappingEditingTarget = nil
-                            mappingActionFilter = .custom
-                            mappingMacroSearch = ""
-                            selectedSection = .mapping
-                        }
-                    )
-                }
-            } else {
-                aboutPage
-            }
-        case .buttonProfiles:
-            if macroFeature.isButtonProfilesVisible {
-                VStack(spacing: 0) {
-                    macroFeature.buttonProfilesView(
-                        selectedRemoteProfileID: settings.selectedRemoteProfileID,
-                        remoteModel: settings.selectedRemoteProfile?.model,
-                        hostActionSections: buttonProfileHostActionSections,
-                        onEditKeys: { profile in
-                            preservesMappingContextOnNavigation = true
-                            editingMappingProfileID = profile
-                            selectedSection = .mapping
-                        },
-                        chromecastReservedControlIDs: buttonProfilesChromecastReservedControls,
-                        membershipNotice: membershipFeature.membershipRequiredView(forButtonProfiles: true) {
-                            selectedSection = .membership
-                            membershipFeature.refreshIfNeeded()
-                        }
-                    )
-                }
-            } else {
-                aboutPage
-            }
-        case .membership:
-            if membershipFeature.isFeatureVisible {
-                membershipFeature.settingsView()
-            } else {
-                aboutPage
-            }
         case .mapping:
             if let device = settings.selectedRemoteProfile,
                device.model.isAppleSiriRemote {
