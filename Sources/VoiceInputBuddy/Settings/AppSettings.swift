@@ -35,6 +35,7 @@ final class AppSettings: ObservableObject {
         static let continuousRecordingPowerBindingBackup = "continuousRecordingPowerBindingBackup"
         static let lastLaunchedBuild = "launch.lastLaunchedBuild"
         static let trustedPhoneIdentityFingerprints = "security.trustedPhoneIdentityFingerprints"
+        static let onboardingPurpose = "onboarding.purpose"
         static let onboardingCompletedVersion = "onboarding.completedVersion"
         static let onboardingStep = "onboarding.step"
         static let onboardingRemoteAvailability = "onboarding.remoteAvailability"
@@ -247,6 +248,10 @@ final class AppSettings: ObservableObject {
                 forKey: Keys.trustedPhoneIdentityFingerprints
             )
         }
+    }
+
+    @Published var onboardingPurpose: OnboardingPurpose {
+        didSet { defaults.set(onboardingPurpose.rawValue, forKey: Keys.onboardingPurpose) }
     }
 
     @Published var onboardingCompletedVersion: Int {
@@ -528,6 +533,8 @@ final class AppSettings: ObservableObject {
         trustedPhoneIdentityFingerprints = Set(
             defaults.stringArray(forKey: Keys.trustedPhoneIdentityFingerprints) ?? []
         )
+        onboardingPurpose = defaults.string(forKey: Keys.onboardingPurpose)
+            .flatMap(OnboardingPurpose.init(rawValue:)) ?? .initialSetup
         onboardingCompletedVersion = defaults.integer(forKey: Keys.onboardingCompletedVersion)
         onboardingStep = defaults.string(forKey: Keys.onboardingStep)
             .flatMap(OnboardingStep.init(rawValue:)) ?? .permissions

@@ -48,6 +48,35 @@ enum OnboardingStep: String, CaseIterable, Codable {
     }
 }
 
+enum OnboardingPurpose: String, Codable {
+    case initialSetup
+    case addDevice
+    case integration
+
+    var steps: [OnboardingStep] {
+        switch self {
+        case .initialSetup: return OnboardingStep.visibleCases
+        case .addDevice: return [.remoteAvailability, .remote, .controls, .audio, .complete]
+        case .integration: return [.voiceTool, .voiceTest, .complete]
+        }
+    }
+
+    func previousStep(before step: OnboardingStep) -> OnboardingStep? {
+        guard let index = steps.firstIndex(of: step), index > 0 else { return nil }
+        return steps[index - 1]
+    }
+
+    func nextStep(after step: OnboardingStep) -> OnboardingStep? {
+        guard let index = steps.firstIndex(of: step), index + 1 < steps.count else { return nil }
+        return steps[index + 1]
+    }
+
+    func progress(at step: OnboardingStep) -> Double {
+        guard let index = steps.firstIndex(of: step), steps.count > 1 else { return 0 }
+        return Double(index) / Double(steps.count - 1)
+    }
+}
+
 enum OnboardingPhase: String, CaseIterable {
     case prepare
     case setup

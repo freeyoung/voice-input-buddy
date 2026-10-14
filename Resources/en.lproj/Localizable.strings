@@ -1275,3 +1275,9 @@
 "onboarding.audio.automatic_ready" = "Driver and audio output are ready. Continuing setup.";
 
 "onboarding.audio.checking" = "Checking the driver and audio output.";
+
+"onboarding.action.dismiss" = "Exit setup";
+"onboarding.add_device.complete.title" = "Device setup complete";
+"onboarding.add_device.complete.detail" = "Your device is connected, its buttons have been tested, and the microphone is ready. Your existing voice input integration is preserved.";
+"onboarding.integration.complete.title" = "Voice input integration complete";
+"onboarding.integration.complete.detail" = "Your voice input tool has been configured and tested with your existing device.";

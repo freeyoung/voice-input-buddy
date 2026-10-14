@@ -1,9 +1,92 @@
 import Combine
 import Foundation
 
+private struct OnboardingReturnConfiguration: Codable {
+    let completedVersion: Int
+    let step: OnboardingStep
+    let voiceTool: OnboardingVoiceTool
+    let controlSource: OnboardingControlSource
+    let device: String?
+    let remoteAvailability: OnboardingRemoteAvailability
+    let appleRemoteGeneration: OnboardingAppleRemoteGeneration?
+    let bindingPreference: OnboardingVoiceBindingPreference
+    let preferredGesture: VoiceGestureMode?
+    let verifiedBinding: VoiceToolUserBinding?
+    let voiceKeyMode: VoiceKeyMode
+    let fnTapModeEnabled: Bool
+    let chromecastVoiceMode: ChromecastVoiceMode
+    let customMappingEnabled: Bool
+    let selectedRemoteProfileID: UUID?
+}
+
 extension AppSettings {
+    private static let onboardingReturnConfigurationKey = "onboarding.returnConfiguration"
+
+    private var onboardingReturnConfiguration: OnboardingReturnConfiguration? {
+        guard let data = defaults.data(forKey: Self.onboardingReturnConfigurationKey) else { return nil }
+        return try? JSONDecoder().decode(OnboardingReturnConfiguration.self, from: data)
+    }
+
+    var canDismissOnboarding: Bool {
+        guard let configuration = onboardingReturnConfiguration else { return false }
+        return configuration.completedVersion >= Self.currentOnboardingVersion
+    }
+
+    func preserveCompletedOnboarding() {
+        guard isOnboardingComplete, onboardingReturnConfiguration == nil else { return }
+        discardOnboardingVoiceTrial()
+        let configuration = OnboardingReturnConfiguration(
+            completedVersion: onboardingCompletedVersion,
+            step: onboardingStep,
+            voiceTool: onboardingVoiceTool,
+            controlSource: onboardingControlSource,
+            device: onboardingDevice?.rawValue,
+            remoteAvailability: onboardingRemoteAvailability,
+            appleRemoteGeneration: onboardingAppleRemoteGeneration,
+            bindingPreference: onboardingVoiceBindingPreference,
+            preferredGesture: onboardingPreferredGesture,
+            verifiedBinding: verifiedVoiceToolBinding,
+            voiceKeyMode: voiceKeyMode,
+            fnTapModeEnabled: voiceFnTapModeEnabled,
+            chromecastVoiceMode: chromecastVoiceMode,
+            customMappingEnabled: customMappingEnabled,
+            selectedRemoteProfileID: selectedRemoteProfileID
+        )
+        if let data = try? JSONEncoder().encode(configuration) {
+            defaults.set(data, forKey: Self.onboardingReturnConfigurationKey)
+        }
+    }
+
+    func dismissOnboarding() {
+        guard canDismissOnboarding, let configuration = onboardingReturnConfiguration else { return }
+        discardOnboardingVoiceTrial()
+        onboardingVoiceTool = configuration.voiceTool
+        onboardingControlSource = configuration.controlSource
+        onboardingDevice = configuration.device.flatMap(PlannedRemoteDevice.init(rawValue:))
+        onboardingRemoteAvailability = configuration.remoteAvailability
+        onboardingAppleRemoteGeneration = configuration.appleRemoteGeneration
+        onboardingVoiceBindingPreference = configuration.bindingPreference
+        onboardingPreferredGesture = configuration.preferredGesture
+        verifiedVoiceToolBinding = configuration.verifiedBinding
+        voiceKeyMode = configuration.voiceKeyMode
+        voiceFnTapModeEnabled = configuration.fnTapModeEnabled
+        chromecastVoiceMode = configuration.chromecastVoiceMode
+        customMappingEnabled = configuration.customMappingEnabled
+        if let profileID = configuration.selectedRemoteProfileID {
+            selectRemoteProfile(profileID)
+        }
+        onboardingPurpose = .initialSetup
+        onboardingStep = configuration.step
+        defaults.removeObject(forKey: Self.onboardingReturnConfigurationKey)
+        onboardingCompletedVersion = configuration.completedVersion
+    }
+
     func setOnboardingStep(_ step: OnboardingStep) {
         guard !isOnboardingComplete, onboardingStep != step else { return }
+        // A lost prerequisite may require repair outside the shortened flow.
+        if !onboardingPurpose.steps.contains(step) {
+            onboardingPurpose = .initialSetup
+        }
         onboardingStep = step
     }
 
@@ -211,12 +294,15 @@ extension AppSettings {
     }
 
     func completeOnboarding() {
+        defaults.removeObject(forKey: Self.onboardingReturnConfigurationKey)
         recordFirstUseEvent(.completed, step: .complete)
         onboardingStep = .complete
         onboardingCompletedVersion = Self.currentOnboardingVersion
     }
 
     func restartOnboarding() {
+        preserveCompletedOnboarding()
+        onboardingPurpose = .initialSetup
         discardOnboardingVoiceTrial()
         verifiedVoiceToolBinding = nil
         defaults.removeObject(forKey: Keys.firstUseEvents)

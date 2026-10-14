@@ -179,20 +179,40 @@ extension OnboardingView {
         }
     }
 
+    private var completionTitleKey: String {
+        switch settings.onboardingPurpose {
+        case .initialSetup: return "onboarding.complete.title"
+        case .addDevice: return "onboarding.add_device.complete.title"
+        case .integration: return "onboarding.integration.complete.title"
+        }
+    }
+
+    private var completionDetailKey: String {
+        switch settings.onboardingPurpose {
+        case .initialSetup: return "onboarding.complete.detail"
+        case .addDevice: return "onboarding.add_device.complete.detail"
+        case .integration: return "onboarding.integration.complete.detail"
+        }
+    }
+
     var completeContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 46))
                 .foregroundStyle(Color.green)
-            onboardingTitle("onboarding.complete.title")
-            Text(verbatim: localization.text("onboarding.complete.detail"))
+            onboardingTitle(completionTitleKey)
+            Text(verbatim: localization.text(completionDetailKey))
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 12) {
-                featureLine("mic.fill", "onboarding.complete.voice")
-                featureLine("button.programmable", "onboarding.complete.controls")
+                if settings.onboardingPurpose != .addDevice {
+                    featureLine("mic.fill", "onboarding.complete.voice")
+                }
+                if settings.onboardingPurpose != .integration {
+                    featureLine("button.programmable", "onboarding.complete.controls")
+                }
                 featureLine("gearshape", "onboarding.complete.settings")
             }
             .padding(.top, 8)
