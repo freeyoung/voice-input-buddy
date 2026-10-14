@@ -39,8 +39,8 @@ enum RemoteVoiceFunctionMappingPolicy {
         destination: 0x0000_00FF_0000_0003
     )
 
-    // Typeless 等点按式语音工具会被 Fn 长按干扰；此模式下彻底丢弃语音键的
-    // 按键事件（目标 usage 0），Fn 点按改由软件注入，避免物理按键按住时干扰注入。
+    // 软件点按及需要先切换输入法的 Fn 长按均由 App 注入。
+    // 丢弃遥控器原生语音键，避免输入法尚未激活时先收到 Fn，或与注入事件重复。
     static let neutralRemoteVoiceKey = HIDUsageMapping(
         source: 0x0000_0007_0000_003E,
         destination: 0x0

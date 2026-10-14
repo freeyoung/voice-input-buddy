@@ -191,7 +191,7 @@ final class KeyboardEventSuppressor {
             }
             return false
         }
-        if event.getIntegerValueField(.eventSourceUserData) == KeyboardInjector.syntheticEventMarker {
+        if KeyboardInjector.isSyntheticEvent(event) {
             return false
         }
         guard let descriptor = descriptor(type: type, event: event) else { return false }

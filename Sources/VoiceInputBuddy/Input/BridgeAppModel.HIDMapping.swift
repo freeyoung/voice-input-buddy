@@ -75,7 +75,14 @@ extension BridgeAppModel {
             allowVoiceKeyModeFallback: allowVoiceKeyModeFallback
         )
         var powerKeySuppressed: Bool
-        if requestedFnTapMode, accessibilityGranted {
+        if requiresOrderedVoiceFn {
+            voiceFnTapSession.setEnabled(false)
+            powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: true)
+            if !voiceFunctionMapper.isVoiceKeyNeutralized {
+                voiceShortcutStatus = LocalizedMessage("voice_button.status.waiting")
+                AppLogger.shared.write("VOICE KEY ordered_fn waiting reason=native_key_not_neutralized")
+            }
+        } else if requestedFnTapMode, accessibilityGranted {
             powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: true)
             if voiceFunctionMapper.isVoiceKeyNeutralized {
                 voiceFnTapSession.setEnabled(true)

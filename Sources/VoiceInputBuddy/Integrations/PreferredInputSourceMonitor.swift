@@ -26,6 +26,7 @@ final class PreferredInputSourceMonitor {
     private var monitor: Any?
     private var functionKeyIsPressed = false
     private var explicitVoiceSessionActivationPending = false
+    private var explicitActivationGeneration: UInt64 = 0
     private var managedInputSourceSession: ManagedInputSourceSession?
     private static let activationTimeout: TimeInterval = 0.5
     private static let activationPollInterval: TimeInterval = 0.02
@@ -51,18 +52,14 @@ final class PreferredInputSourceMonitor {
         prepareInputSource: @escaping InputSourcePreparer = OnboardingInputSourceSwitcher.prepareForVoiceSession,
         currentInputSourceID: @escaping CurrentInputSourceIDProvider = OnboardingInputSourceSwitcher.currentInputSourceID,
         restoreInputSource: @escaping InputSourceRestorer = OnboardingInputSourceSwitcher.selectEnabledInputSource,
-        waitForInputSourceActivation: @escaping InputSourceActivationWaiter = { target, current, shouldContinue in
-            let deadline = Date().addingTimeInterval(PreferredInputSourceMonitor.activationTimeout)
-            while shouldContinue(), current() != target, Date() < deadline {
-                _ = RunLoop.main.run(
-                    mode: .common,
-                    before: Date().addingTimeInterval(PreferredInputSourceMonitor.activationPollInterval)
-                )
-            }
-            return shouldContinue() && current() == target
+        waitForInputSourceActivation: @escaping InputSourceActivationWaiter = { target, current, continuing in
+            waitForActivation(target: target, current: current, shouldContinue: continuing)
         },
         installMonitor: @escaping MonitorInstaller = { handler in
             NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
+                // Ordered software voice sessions own their source lifecycle.
+                // A delayed global event must not create a second Fn owner.
+                guard shouldObserveFunctionEvent(marker: event.cgEvent?.getIntegerValueField(.eventSourceUserData) ?? 0) else { return }
                 handler(event.modifierFlags.contains(.function))
             }
         },
@@ -79,6 +76,42 @@ final class PreferredInputSourceMonitor {
         self.logger = logger
     }
 
+    // Main-thread only. `.common` is a registration pseudo-mode, not a runnable
+    // mode. Preserve the active concrete mode (including AppKit event tracking).
+    static func activationRunLoopMode(_ current: RunLoop.Mode?) -> RunLoop.Mode {
+        guard let current, current != .common else { return .default }
+        return current
+    }
+
+    static func waitForActivation(
+        target: String, current: CurrentInputSourceIDProvider, shouldContinue: () -> Bool,
+        now: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        currentMode: () -> RunLoop.Mode? = { RunLoop.main.currentMode },
+        pump: (RunLoop.Mode, TimeInterval) -> Void = { mode, interval in
+            _ = RunLoop.main.run(mode: mode, before: Date().addingTimeInterval(interval))
+        }
+    ) -> Bool {
+        let selectionDeadline = now() + activationTimeout
+        let settlingDuration: TimeInterval = 0.05
+        var selectedSince: TimeInterval?
+        while shouldContinue() {
+            let time = now()
+            if current() == target {
+                if selectedSince == nil {
+                    guard time <= selectionDeadline else { return false }
+                    selectedSince = time
+                }
+                if let selectedSince, time - selectedSince >= settlingDuration { return true }
+            } else {
+                selectedSince = nil
+                if time >= selectionDeadline { return false }
+            }
+            let remaining = selectedSince.map { $0 + settlingDuration - time } ?? (selectionDeadline - time)
+            pump(activationRunLoopMode(currentMode()), min(activationPollInterval, max(0, remaining)))
+        }
+        return false
+    }
+
     func start() {
         guard monitor == nil else { return }
         monitor = installMonitor { [weak self] pressed in
@@ -89,6 +122,7 @@ final class PreferredInputSourceMonitor {
     func stop(preservingExplicitVoiceSession: Bool = false) {
         if !preservingExplicitVoiceSession {
             explicitVoiceSessionActivationPending = false
+            explicitActivationGeneration &+= 1
         }
         finishManagedInputSourceSession(
             reason: "monitor_stop",
@@ -127,19 +161,27 @@ final class PreferredInputSourceMonitor {
         beginVoiceSession(reason: "function_key_down", owner: .functionKey)
     }
 
+    static func shouldObserveFunctionEvent(marker: Int64) -> Bool {
+        marker != KeyboardInjector.orderedVoiceEventMarker
+    }
+
     /// Starts the input-source session for a software-emitted voice key.
     /// Command keys do not produce the Fn `flagsChanged` event that the legacy
     /// monitor observes, so their lifecycle is driven explicitly by the voice
     /// session instead of by every ordinary Command press on the Mac keyboard.
     @discardableResult
     func beginVoiceSession() -> Bool {
+        explicitActivationGeneration &+= 1
+        let generation = explicitActivationGeneration
         explicitVoiceSessionActivationPending = true
-        defer { explicitVoiceSessionActivationPending = false }
+        defer {
+            if explicitActivationGeneration == generation { explicitVoiceSessionActivationPending = false }
+        }
         return beginVoiceSession(
             reason: "voice_session_start",
             owner: .explicitVoice,
             activationShouldContinue: { [weak self] in
-                self?.explicitVoiceSessionActivationPending == true
+                self?.explicitVoiceSessionActivationPending == true && self?.explicitActivationGeneration == generation
             }
         )
     }
@@ -147,6 +189,7 @@ final class PreferredInputSourceMonitor {
     /// Ends an input-source session previously started for a voice key.
     func endVoiceSession() {
         explicitVoiceSessionActivationPending = false
+        explicitActivationGeneration &+= 1
         finishManagedInputSourceSession(
             reason: "voice_session_end",
             owner: .explicitVoice
@@ -238,11 +281,12 @@ final class PreferredInputSourceMonitor {
         activationShouldContinue: () -> Bool,
         selectedVoiceTool: OnboardingVoiceTool
     ) -> Bool {
-        guard waitForInputSourceActivation(
+        let activated = waitForInputSourceActivation(
             targetInputSourceID,
             currentInputSourceID,
             activationShouldContinue
-        ) else {
+        )
+        guard activated, activationShouldContinue() else {
             let activationResult = activationShouldContinue()
                 ? "activation_timeout"
                 : "activation_cancelled"
@@ -250,6 +294,9 @@ final class PreferredInputSourceMonitor {
                 "VOICE INPUT source_prepare tool=\(selectedVoiceTool.rawValue) " +
                     "result=\(activationResult)"
             )
+            // Cancellation already released this owner. Do not alter a newer
+            // session that may have begun while the main run loop was pumped.
+            guard activationShouldContinue() else { return false }
             if var session = managedInputSourceSession {
                 session.activationPending = false
                 managedInputSourceSession = session
@@ -263,9 +310,17 @@ final class PreferredInputSourceMonitor {
         guard var session = managedInputSourceSession,
               session.owners.contains(.explicitVoice),
               session.targetInputSourceID == targetInputSourceID
-        else { return false }
+        else {
+            if var abandoned = managedInputSourceSession {
+                abandoned.activationPending = false
+                managedInputSourceSession = abandoned
+            }
+            finishManagedInputSourceSession(reason: "activation_session_changed", owner: .explicitVoice)
+            return false
+        }
         session.activationPending = false
         managedInputSourceSession = session
+        logger("VOICE INPUT source_activation tool=\(selectedVoiceTool.rawValue) result=confirmed")
         return true
     }
 

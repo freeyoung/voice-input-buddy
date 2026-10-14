@@ -133,7 +133,7 @@ final class ShortcutCaptureMonitor {
             return false
         }
         guard type == .keyDown || type == .flagsChanged else { return false }
-        guard event.getIntegerValueField(.eventSourceUserData) != KeyboardInjector.syntheticEventMarker else {
+        guard !KeyboardInjector.isSyntheticEvent(event) else {
             return false
         }
 
