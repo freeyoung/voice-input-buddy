@@ -167,6 +167,8 @@ struct CompatibleRemoteBindingTests {
         let original = settings.remoteDeviceProfiles
         SettingsPageBehavior.beginDeviceSetup(settings: settings)
         #expect(settings.onboardingStep == .remoteAvailability)
+        #expect(settings.onboardingPurpose == .addDevice)
+        #expect(settings.canDismissOnboarding)
         #expect(!settings.isOnboardingComplete)
         #expect(settings.onboardingDevice == nil)
         #expect(settings.onboardingVoiceTool == .voicecursor)

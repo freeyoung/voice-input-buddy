@@ -1276,3 +1276,9 @@
 "onboarding.audio.automatic_ready" = "驱动与语音输出已就绪，即将进入下一步。";
 
 "onboarding.audio.checking" = "正在检查驱动与语音输出。";
+
+"onboarding.action.dismiss" = "退出向导";
+"onboarding.add_device.complete.title" = "设备添加完成";
+"onboarding.add_device.complete.detail" = "设备已连接，按键已测试，麦克风已就绪。已有的输入法集成配置保持不变。";
+"onboarding.integration.complete.title" = "输入法集成完成";
+"onboarding.integration.complete.detail" = "输入法已完成配置，并已通过现有设备的语音输入验证。";

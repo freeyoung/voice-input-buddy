@@ -137,13 +137,15 @@ struct ProductBoundaryTests {
         let settings = AppSettings(defaults: defaults)
         settings.gainDB = 6
         settings.customMappingEnabled = true
+        settings.setOnboardingControlSource(.chromecastRemote)
         settings.completeOnboarding()
         SettingsPageBehavior.beginIntegrationSetup(tool: .voicecursor, settings: settings)
         #expect(settings.selectedAudioDeviceUID == "BuddyMic2ch_UID")
         #expect(settings.gainDB == 6)
         #expect(settings.customMappingEnabled)
         #expect(settings.onboardingVoiceTool == .voicecursor)
-        #expect(settings.onboardingControlSource == .xiaomiRemote)
+        #expect(settings.onboardingControlSource == .chromecastRemote)
+        #expect(settings.onboardingPurpose == .integration)
         #expect(settings.onboardingStep == .voiceTool)
         #expect(!settings.isOnboardingComplete)
         let restored = AppSettings(defaults: defaults)

@@ -9,9 +9,9 @@ extension OnboardingView {
     var phaseHeader: some View {
         VStack(spacing: 14) {
             HStack(alignment: .top, spacing: 8) {
-                ForEach(Array(OnboardingStep.visibleCases.enumerated()), id: \.element.rawValue) { index, step in
+                ForEach(Array(settings.onboardingPurpose.steps.enumerated()), id: \.element.rawValue) { index, step in
                     let current = step == settings.onboardingStep
-                    let completed = step.progress < settings.onboardingStep.progress
+                    let completed = settings.onboardingPurpose.progress(at: step) < settings.onboardingPurpose.progress(at: settings.onboardingStep)
                     VStack(spacing: 7) {
                         Text(completed ? "✓" : "\(index + 1)")
                             .font(.system(size: 12, weight: .semibold))
@@ -35,7 +35,7 @@ extension OnboardingView {
                     Capsule().fill(Color.primary.opacity(0.09))
                     Capsule()
                         .fill(Color.primary)
-                        .frame(width: proxy.size.width * settings.onboardingStep.progress)
+                        .frame(width: proxy.size.width * settings.onboardingPurpose.progress(at: settings.onboardingStep))
                 }
             }
             .frame(height: 3)
@@ -102,6 +102,20 @@ extension OnboardingView {
                         .layoutPriority(1)
                 }
                 Spacer(minLength: 0)
+                if settings.canDismissOnboarding {
+                    onboardingActionButton(id: "dismiss") {
+                        settings.dismissOnboarding()
+                        if let profileID = settings.selectedRemoteProfileID {
+                            model.selectRemoteProfile(profileID)
+                        }
+                        model.applyHIDSettings()
+                    } label: {
+                        Text(localization.text("onboarding.action.dismiss"))
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(model.isStreaming)
+                    .accessibilityIdentifier("onboarding.dismiss")
+                }
                 if settings.onboardingStep != .audio {
                     onboardingActionButton(id: "continue", action: continueFlow) {
                         Text(localization.text(primaryActionKey))
@@ -175,13 +189,13 @@ extension OnboardingView {
             settings.completeOnboarding()
             return
         }
-        if let next = settings.onboardingStep.next {
+        if let next = settings.onboardingPurpose.nextStep(after: settings.onboardingStep) {
             settings.setOnboardingStep(next)
         }
     }
 
     private var previousStep: OnboardingStep? {
-        return settings.onboardingStep.previous
+        return settings.onboardingPurpose.previousStep(before: settings.onboardingStep)
     }
 
     private func goBack(to previous: OnboardingStep) {

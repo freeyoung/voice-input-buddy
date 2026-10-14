@@ -158,6 +158,8 @@ enum SettingsPageBehavior {
     }
 
     static func beginDeviceSetup(settings: AppSettings) {
+        settings.preserveCompletedOnboarding()
+        settings.onboardingPurpose = settings.canDismissOnboarding ? .addDevice : .initialSetup
         settings.discardOnboardingVoiceTrial()
         settings.onboardingDevice = nil
         settings.onboardingControlSource = .unselected
@@ -167,10 +169,12 @@ enum SettingsPageBehavior {
     }
 
     static func beginIntegrationSetup(tool: OnboardingVoiceTool, settings: AppSettings) {
-        settings.restartOnboarding()
+        settings.preserveCompletedOnboarding()
+        settings.discardOnboardingVoiceTrial()
+        settings.onboardingPurpose = settings.canDismissOnboarding ? .integration : .initialSetup
+        settings.onboardingCompletedVersion = 0
         settings.setOnboardingVoiceTool(tool)
-        settings.setOnboardingControlSource(.xiaomiRemote)
-        settings.setOnboardingStep(.voiceTool)
+        settings.setOnboardingStep(settings.onboardingPurpose.steps[0])
     }
 
     static func visibleSection(for requestedSection: SettingsSection) -> SettingsSection {
