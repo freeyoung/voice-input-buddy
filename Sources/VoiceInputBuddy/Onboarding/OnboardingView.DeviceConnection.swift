@@ -20,6 +20,10 @@ extension OnboardingView {
         }
     }
 
+    private func learnSelectedHIDIdentity() {
+        if let bridge = model.selectedBluetoothBridge { model.learnSelectedRemoteHIDIdentity(bridge) }
+    }
+
     private var physicalRemoteContent: some View {
         VStack(alignment: .leading, spacing: 18) {
             onboardingTitle("onboarding.remote.title")
@@ -27,6 +31,23 @@ extension OnboardingView {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            let profiles = settings.remoteDeviceProfiles.filter { profile in
+                model.connectedRemoteProfileIDs.contains(profile.id) &&
+                    BridgeAppModel.canLearnHIDIdentity(model: profile.model, source: settings.onboardingControlSource)
+            }
+            if !profiles.isEmpty {
+                Picker("onboarding.remote.choose_device", selection: Binding(
+                    get: { profiles.contains(where: { $0.id == settings.selectedRemoteProfileID }) ? settings.selectedRemoteProfileID : nil },
+                    set: { if let id = $0 { model.selectRemoteProfile(id) } }
+                )) {
+                    Text("onboarding.remote.choose_device").tag(Optional<UUID>.none)
+                    ForEach(profiles) { profile in
+                        Text(model.systemDeviceName(for: profile) ?? localization.text(profile.model.localizationKey))
+                            .tag(Optional(profile.id))
+                    }
+                }
+            }
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(localization.text(physicalRemotePairingKeys.title))
@@ -105,6 +126,15 @@ extension OnboardingView {
                 pendingColor: remoteInputDiagnostic.shouldShowVoiceButtonCorrection ? .orange : nil,
                 compact: true
             )
+
+            if let profile = settings.selectedRemoteProfile,
+               selectedControlConnected,
+               BridgeAppModel.canLearnHIDIdentity(model: profile.model, source: settings.onboardingControlSource) {
+                Button("remote.hid_binding.open") { hidBindingProfile = profile }
+                    .buttonStyle(.bordered)
+                    .onAppear { learnSelectedHIDIdentity() }
+                    .onChange(of: settings.selectedRemoteProfileID) { _, _ in learnSelectedHIDIdentity() }
+            }
 
             if shouldShowSecureInputWarning {
                 secureInputWarningCard

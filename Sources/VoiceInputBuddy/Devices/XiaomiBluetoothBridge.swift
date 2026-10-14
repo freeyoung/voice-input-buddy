@@ -129,6 +129,8 @@ final class XiaomiBluetoothBridge: NSObject {
     private var googleReadiness = G9N9NReadiness()
     private var microphoneKeepalive: DispatchWorkItem?
     private(set) var identifiedModel: XiaomiRemoteModel?
+    private(set) var reportedHIDIdentity: RemoteHIDIdentity?
+    var onHIDIdentityUpdate: (() -> Void)?
     private weak var delegate: XiaomiBluetoothBridgeDelegate?
     private(set) var targetIdentifier: UUID?
     private let excludedIdentifiers: () -> Set<UUID>
@@ -198,6 +200,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private let batteryLevelStatusUUID = CBUUID(string: "2BED")
     private let deviceInformationServiceUUID = CBUUID(string: "180A")
     private let modelNumberUUID = CBUUID(string: "2A24")
+    private let pnpIDUUID = CBUUID(string: "2A50")
 
     var deviceIdentifier: UUID? {
         peripheral?.identifier ?? targetIdentifier
@@ -637,6 +640,7 @@ final class XiaomiBluetoothBridge: NSObject {
         capabilitiesConfirmed = false
         googleReadiness = G9N9NReadiness()
         identifiedModel = nil
+        reportedHIDIdentity = nil
         capabilities = Self.defaultCapabilities
         currentAttemptUsesCachedTarget = false
         resetSession()
@@ -661,7 +665,8 @@ final class XiaomiBluetoothBridge: NSObject {
                   self.lifecycle == .discovering(generation) ||
                     self.lifecycle == .awaitingCapabilities(generation)
             else { return }
-            self.failInitialization(LocalizedMessage("connection.error.voice_service_timeout"))
+            self.failInitialization(LocalizedMessage(self.googleCandidate && !self.googleReadiness.modelConfirmed
+                ? "google.remote.unconfirmed_model" : "connection.error.voice_service_timeout"))
         }
         initializationTimeoutWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)
@@ -1440,7 +1445,7 @@ extension XiaomiBluetoothBridge {
         if let deviceInformationService = peripheral.services?.first(where: {
             $0.uuid == deviceInformationServiceUUID
         }) {
-            peripheral.discoverCharacteristics([modelNumberUUID], for: deviceInformationService)
+            peripheral.discoverCharacteristics([modelNumberUUID, pnpIDUUID], for: deviceInformationService)
         }
     }
 
@@ -1521,10 +1526,10 @@ extension XiaomiBluetoothBridge {
                 )
                 return
             }
-            guard let characteristic = service.characteristics?.first(where: { $0.uuid == modelNumberUUID }) else {
-                return
+            for characteristic in service.characteristics ?? [] where
+                characteristic.uuid == modelNumberUUID || characteristic.uuid == pnpIDUUID {
+                peripheral.readValue(for: characteristic)
             }
-            peripheral.readValue(for: characteristic)
             return
         }
         if let error {
@@ -1665,6 +1670,11 @@ extension XiaomiBluetoothBridge {
             return
         }
         guard let data = characteristic.value else { return }
+        if characteristic.uuid == pnpIDUUID {
+            reportedHIDIdentity = RemoteHIDIdentity.fromPnP(data)
+            onHIDIdentityUpdate?()
+            return
+        }
         if characteristic.uuid == batteryLevelUUID {
             let level = data.first.map(Int.init)
             guard !hasObservedBatteryLevel || lastObservedBatteryLevel != level else { return }

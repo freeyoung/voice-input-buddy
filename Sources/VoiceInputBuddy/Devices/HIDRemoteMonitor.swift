@@ -67,6 +67,7 @@ enum HIDDeviceMatchDecision: Equatable {
 
 final class HIDRemoteMonitor {
     private let settings: AppSettings
+    private let confirmedGoogleFingerprints: () -> Set<String>
     private let allowsG9N9N: Bool
     private var currentReportIsGoogle = false
     var reportedModel: XiaomiRemoteModel { currentReportIsGoogle ? .chromecastVoiceRemote : .unknown }
@@ -116,12 +117,14 @@ final class HIDRemoteMonitor {
     var claimsRuntimeButton: ((UUID?, RemoteButton) -> Bool)?
     var onInputReset: ((UUID?) -> Void)?
     var onMonitoringInterrupted: (() -> Void)?
+    var onCandidateAvailable: (() -> Void)?
     var isMonitoring: Bool { manager != nil }
     var onInternalAction: ((UUID?, ButtonAction) -> Void)?
 
     init(
         settings: AppSettings,
         allowsG9N9N: Bool = false,
+        confirmedGoogleFingerprints: @escaping () -> Set<String> = { [] },
         profileID: UUID? = nil,
         targetFingerprint: String? = nil,
         excludedFingerprints: @escaping () -> Set<String> = { [] },
@@ -155,6 +158,7 @@ final class HIDRemoteMonitor {
     ) {
         self.settings = settings
         self.allowsG9N9N = allowsG9N9N
+        self.confirmedGoogleFingerprints = confirmedGoogleFingerprints
         self.profileID = profileID
         self.targetFingerprint = targetFingerprint
         self.excludedFingerprints = excludedFingerprints
@@ -213,6 +217,9 @@ final class HIDRemoteMonitor {
             updateStatus(LocalizedMessage("button_mapping.status.system_managed"))
             return
         }
+        let targetModel = settings.remoteDeviceProfiles.first { $0.id == profileID }?.model
+        let families = Self.monitorFamilies(targetModel: targetModel,
+            powerKeySuppressed: powerKeySuppressed || backOnlyMode, allowsGoogle: allowsG9N9N)
         let inputGranted = Self.isInputMonitoringGranted
         let accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
         AppLogger.shared.write(
@@ -222,7 +229,7 @@ final class HIDRemoteMonitor {
             mappingEnabled: settings.customMappingEnabled || backOnlyMode,
             inputMonitoringGranted: inputGranted,
             accessibilityGranted: accessibilityGranted,
-            powerKeySuppressed: powerKeySuppressed || backOnlyMode || allowsG9N9N
+            powerKeySuppressed: families.xiaomi || families.google
         ) else {
             if !inputGranted {
                 updateStatus(LocalizedMessage("button_mapping.permission.input_monitoring_required"))
@@ -236,8 +243,9 @@ final class HIDRemoteMonitor {
         }
 
         let matches = Self.deviceMatchingCriteria(
-            includeXiaomi: powerKeySuppressed || backOnlyMode,
-            includeGoogle: allowsG9N9N
+            includeXiaomi: families.xiaomi,
+            includeGoogle: families.google,
+            additionalIdentities: settings.compatibleHIDIdentities(includeXiaomi: families.xiaomi, includeGoogle: families.google)
         )
         guard !matches.isEmpty else {
             updateStatus(LocalizedMessage("button_mapping.error.power_suppression_failed"))
@@ -347,7 +355,11 @@ final class HIDRemoteMonitor {
             updateStatus(LocalizedMessage("button_mapping.error.device_open_failed"))
             return
         }
-        currentReportIsGoogle = allowsG9N9N && Self.isGoogleCandidate(device)
+        // HID may become visible after BLE readiness. Retry association outside the
+        // matching callback because learning can restart the manager.
+        DispatchQueue.main.async { [weak self] in self?.onCandidateAvailable?() }
+        currentReportIsGoogle = allowsG9N9N && isGoogleDevice(device)
+        guard !isGoogleCandidateIdentity(device) || currentReportIsGoogle else { return }
         guard currentReportIsGoogle || Self.isLocationAllowed(
             locationID: Self.locationID(for: device),
             allowedLocationIDs: allowedLocationIDs
@@ -526,7 +538,8 @@ final class HIDRemoteMonitor {
             diagnosticLogger("HID REPORT rejected reason=mapping_disabled")
             return
         }
-        currentReportIsGoogle = allowsG9N9N && Self.isGoogleCandidate(device)
+        currentReportIsGoogle = allowsG9N9N && isGoogleDevice(device)
+        guard !isGoogleCandidateIdentity(device) || currentReportIsGoogle else { return }
         guard currentReportIsGoogle || Self.isLocationAllowed(
             locationID: Self.locationID(for: device),
             allowedLocationIDs: allowedLocationIDs
@@ -994,7 +1007,8 @@ final class HIDRemoteMonitor {
         return .probe
     }
 
-    static func deviceMatchingCriteria(includeXiaomi: Bool, includeGoogle: Bool) -> [[String: Any]] {
+    static func deviceMatchingCriteria(includeXiaomi: Bool, includeGoogle: Bool,
+                                       additionalIdentities: [RemoteHIDIdentity] = []) -> [[String: Any]] {
         // IOHIDManager does not constrain matching by Product name. A name-only
         // dictionary acts as a wildcard and can open unrelated keyboards that
         // another remapper owns, failing the entire manager with exclusive access.
@@ -1007,15 +1021,47 @@ final class HIDRemoteMonitor {
             matches.append([kIOHIDVendorIDKey as String: G9N9NProtocol.vendorID,
                             kIOHIDProductIDKey as String: G9N9NProtocol.productID])
         }
+        var included = Set(matches.compactMap { match -> RemoteHIDIdentity? in
+            guard let vendor = match[kIOHIDVendorIDKey] as? Int,
+                  let product = match[kIOHIDProductIDKey] as? Int else { return nil }
+            return RemoteHIDIdentity(vendorID: UInt16(vendor), productID: UInt16(product))
+        })
+        for identity in additionalIdentities where identity.vendorID != 0 && included.insert(identity).inserted {
+            matches.append(identity.matchingDictionary)
+        }
         return matches
     }
 
-    private static func isGoogleCandidate(_ device: IOHIDDevice) -> Bool {
-        let vendor = (IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? NSNumber)?.intValue
-        let product = (IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? NSNumber)?.intValue
-        let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String
-        return vendor == G9N9NProtocol.vendorID && product == G9N9NProtocol.productID ||
-            name.map(G9N9NProtocol.isModelNumber) == true
+    static func monitorFamilies(targetModel: XiaomiRemoteModel?, powerKeySuppressed: Bool,
+                                allowsGoogle: Bool) -> (xiaomi: Bool, google: Bool) {
+        let xiaomi = powerKeySuppressed && (targetModel == nil || targetModel == .unknown || targetModel == .rc001 || targetModel == .rc003)
+        let google = allowsGoogle && (targetModel == nil || targetModel?.isChromecastRemote == true)
+        return (xiaomi, google)
+    }
+
+    static func confirmedGoogleDevice(identity: RemoteHIDIdentity, fingerprint: String,
+                                      profiles: [RemoteDeviceProfile], confirmedFingerprints: Set<String>) -> Bool {
+        guard confirmedFingerprints.contains(fingerprint) else { return false }
+        return profiles.contains { profile in
+            profile.model.isChromecastRemote && profile.hidFingerprint == fingerprint &&
+                profile.bluetoothIdentifier != nil &&
+                ((profile.compatibleHIDBinding?.identity == identity &&
+                    profile.compatibleHIDBinding?.fingerprint == fingerprint) ||
+                    (profile.compatibleHIDBinding == nil && identity == .chromecast))
+        }
+    }
+
+    private func isGoogleCandidateIdentity(_ device: IOHIDDevice) -> Bool {
+        guard let identity = RemoteHIDIdentity.read(from: device) else { return false }
+        return identity == .chromecast || settings.compatibleHIDIdentities(
+            includeXiaomi: false, includeGoogle: true).contains(identity)
+    }
+
+    private func isGoogleDevice(_ device: IOHIDDevice) -> Bool {
+        guard let fingerprint = Self.fingerprint(for: device),
+              let identity = RemoteHIDIdentity.read(from: device) else { return false }
+        return Self.confirmedGoogleDevice(identity: identity, fingerprint: fingerprint,
+            profiles: settings.remoteDeviceProfiles, confirmedFingerprints: confirmedGoogleFingerprints())
     }
 
     static func shouldPromoteDiscoveryReport(usages: Set<UInt16>) -> Bool {

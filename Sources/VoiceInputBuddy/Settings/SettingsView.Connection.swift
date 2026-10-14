@@ -58,6 +58,12 @@ extension SettingsView {
             VStack(spacing: 16) {
                 remoteDeviceSelector(vertical: true)
 
+                Button("connection.action.add_device") {
+                    SettingsPageBehavior.beginDeviceSetup(settings: settings)
+                }
+                .compatibilityButtonStyle(.standard)
+                .disabled(model.isStreaming)
+
                 connectionRemotePhoto
 
                 VStack(alignment: .leading, spacing: 9) {

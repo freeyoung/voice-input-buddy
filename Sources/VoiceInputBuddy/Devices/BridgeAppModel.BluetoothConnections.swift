@@ -21,6 +21,7 @@ extension BridgeAppModel {
                 targetIdentifier: identifier,
                 allowsG9N9N: true
             )
+            observeRemoteHIDIdentity(bridge)
             bluetoothBridges[identifier] = bridge
             bridge.setSystemSuspended(
                 systemAudioSuspensionState.isSuspended,
@@ -42,6 +43,7 @@ extension BridgeAppModel {
                 return Set(self.bluetoothBridges.keys)
             }
         )
+        observeRemoteHIDIdentity(bridge)
         discoveryBluetoothBridge = bridge
         bridge.setSystemSuspended(
             systemAudioSuspensionState.isSuspended,

@@ -437,6 +437,7 @@ extension BridgeAppModel {
             return
         }
         settings.updateRemoteProfileModel(profileID, model: model)
+        learnSelectedRemoteHIDIdentity(bridge)
         refreshRemoteDeviceNames(reason: .connection)
     }
 
@@ -510,6 +511,7 @@ extension BridgeAppModel {
         bluetoothBridgeStates[bridgeObjectID] = state
         if case .ready = state {
             _ = registerBluetoothBridgeIfNeeded(bridge)
+            learnSelectedRemoteHIDIdentity(bridge)
             voiceFnTapSession.resume()
             if shouldReapplyHIDSettings {
                 applyHIDSettings()

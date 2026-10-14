@@ -1257,3 +1257,13 @@
 "google.remote.microphone_refused" = "The remote refused to open its microphone. Pair it again and retry.";
 "google.remote.pairing_required" = "Bluetooth authentication is incomplete. Remove and pair the remote again in macOS Bluetooth settings, then reconnect.";
 "google.remote.ir_controls" = "G9N9N power and input keys may use infrared; they are not treated as verified Bluetooth mapping keys.";
+
+"connection.action.add_device" = "Add new device";
+"remote.hid_binding.title" = "Link remote button device";
+"remote.hid_binding.help" = "Select the actual remote already paired in macOS Bluetooth. Its device identifiers will be remembered; continue the guide to test buttons and voice.";
+"remote.hid_binding.empty" = "No Bluetooth button device found. Pair your remote in macOS Bluetooth settings, then refresh.";
+"remote.hid_binding.failed" = "Could not save the link. Check that the remote is connected and choose a device not assigned to another remote profile.";
+"remote.hid_binding.refresh" = "Refresh devices";
+"remote.hid_binding.save" = "Link and continue";
+"remote.hid_binding.open" = "Buttons not detected? Link a compatible remote";
+"onboarding.remote.choose_device" = "Choose the remote being added";

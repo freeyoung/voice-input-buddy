@@ -158,6 +158,47 @@ extension AppSettings {
         isLoadingRemoteProfile = false
     }
 
+    var compatibleHIDBindings: [RemoteHIDBinding] {
+        remoteDeviceProfiles.compactMap { profile in
+            guard !profile.model.usesPrivateAdapter,
+                  profile.model != .unknown,
+                  let binding = profile.compatibleHIDBinding,
+                  !binding.identity.isStandard,
+                  binding.identity.vendorID != 0,
+                  binding.fingerprint == profile.hidFingerprint else { return nil }
+            return binding
+        }
+    }
+
+    func compatibleHIDIdentities(includeXiaomi: Bool, includeGoogle: Bool) -> [RemoteHIDIdentity] {
+        let valid = compatibleHIDBindings
+        return remoteDeviceProfiles.compactMap { profile in
+            guard let binding = profile.compatibleHIDBinding, valid.contains(binding),
+                  (includeGoogle && profile.model.isChromecastRemote) ||
+                    (includeXiaomi && (profile.model == .rc001 || profile.model == .rc003)) else { return nil }
+            return binding.identity
+        }
+    }
+
+    @discardableResult
+    func bindCompatibleHID(_ binding: RemoteHIDBinding, to profileID: UUID) -> Bool {
+        guard let index = remoteDeviceProfiles.firstIndex(where: { $0.id == profileID }),
+              [XiaomiRemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(remoteDeviceProfiles[index].model),
+              binding.identity != .xiaomi || !remoteDeviceProfiles[index].model.isChromecastRemote,
+              binding.identity != .chromecast || remoteDeviceProfiles[index].model.isChromecastRemote,
+              binding.identity.vendorID != 0, !binding.fingerprint.isEmpty,
+              !remoteDeviceProfiles.contains(where: {
+                  $0.id != profileID && $0.hidFingerprint == binding.fingerprint
+              }) else { return false }
+        var profile = remoteDeviceProfiles[index]
+        profile.hidFingerprint = binding.fingerprint
+        // Standard identities already belong to the built-in list.
+        profile.compatibleHIDBinding = binding.identity.isStandard ? nil : binding
+        guard profile != remoteDeviceProfiles[index] else { return false }
+        remoteDeviceProfiles[index] = profile
+        return true
+    }
+
     @discardableResult
     func registerBluetoothRemote(identifier: UUID, model: XiaomiRemoteModel = .unknown) -> UUID {
         if let existing = remoteDeviceProfiles.first(where: { $0.bluetoothIdentifier == identifier }) {
