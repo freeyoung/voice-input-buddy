@@ -31,8 +31,8 @@ Voice Input Buddy 接收遥控器音频，解码后送入虚拟麦克风，同�
 从 [Releases](https://github.com/zfdang/voice-input-buddy/releases) 下载 `Voice_Input_Buddy_*.pkg`。一个安装包包含 App 和虚拟麦克风驱动。
 
 1. 安装后打开 `/Applications/Voice Input Buddy.app`。
-2. 按设置向导授予蓝牙、输入监控和辅助功能权限，确认麦克风驱动已检测到。首次默认跟随系统语言，可在第一步选择中文或英文。
-3. 连接遥控器，并在输入工具中选择 **Voice Input Buddy Mic** 虚拟麦克风。
+2. 按设置向导授予蓝牙、输入监控和辅助功能权限。首次默认跟随系统语言，可在第一步选择中文或英文。
+3. 选择并连接遥控器、测试按键，等待驱动检查与固定输出准备就绪，再在输入工具中选择 **Voice Input Buddy Mic** 虚拟麦克风。App 自动使用该设备，不需要选择输出，也不回退到 BlackHole 或扬声器。
 4. 在“输入法集成”中配置语音快捷键，通过向导测试。
 5. 打开文本输入框，按住遥控器语音键说话、松开结束。需要点按触发的工具，可调整开始／结束行为。
 

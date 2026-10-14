@@ -1,15 +1,13 @@
 # Virtual microphone setup
 
-Voice Input Buddy uses a separate two-channel BlackHole-based loopback driver, named **Voice Input Buddy Mic** with UID `BuddyMic2ch_UID`. It does not replace BlackHole or the upstream application driver.
+Voice Input Buddy uses a separate two-channel driver built from BlackHole v0.7.1, named **Voice Input Buddy Mic** with UID `BuddyMic2ch_UID`. It does not replace an existing BlackHole or upstream application driver.
 
-This initial port provides local development builds. Build the driver using `scripts/build-driver.sh`, then create `dist/VoiceInputBuddy-Microphone.pkg` with `scripts/build-driver-package.sh`. No DMG or public signed installer is provided yet.
+Download `*_macOS_arm64.pkg` for Apple Silicon or `*_macOS_intel.pkg` for Intel from this project's GitHub Releases. One package installs the app and driver; no separate driver build is needed. They install at `/Applications/Voice Input Buddy.app` and `/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver`. Installation requires administrator authorization and restarts Core Audio, briefly interrupting playback or recording. Refresh detection or restart your Mac as instructed if the device is not loaded.
 
-When you choose to install the local PKG, macOS Installer requires administrator authorization. The package installs only `/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver`; it does not launch the app. After installation it restarts Core Audio to load the device; this briefly interrupts playback and recording. If restart fails, restart your Mac.
+The app always outputs to Voice Input Buddy Mic, without other output choices or a BlackHole fallback. After connection and button testing, the initial guide automatically checks the driver and output, proceeding only when both are ready. Select **Voice Input Buddy Mic** in Doubao, WeType or your other input tool and configure its voice shortcut with the guide. Adjust each remote's gain on the Devices page.
 
-In the setup wizard, refresh audio devices and select Voice Input Buddy as the output. In your dictation application, select Voice Input Buddy as the microphone and configure the matching voice shortcut. BlackHole 2ch can also be selected if already installed.
+Verify recognition and text entry in a focused editable field, using hold-to-talk or the configured tap behavior. A successful build or device detection is not complete hardware acceptance.
 
-For verification, select the loopback microphone in QuickTime Player's New Audio Recording and check the level while holding the remote voice button. Then test a focused editable text field with the target input tool. A successful build is not a completed hardware test.
+Current PKGs are unsigned and not notarized. The app and driver use a fixed self-signed certificate; update packages also require this project's Sparkle signature. Matching driver source, patches and licenses: https://github.com/zfdang/voice-input-buddy/blob/main/docs/source-code.md . Local developers can still build a standalone driver package with `scripts/build-driver.sh` and `scripts/build-driver-package.sh`.
 
-Download the universal uninstaller PKG from Releases and open it in macOS Installer. By default it removes the app, driver, and your settings, logs and caches. You may choose to keep personal data. Driver removal needs administrator authorization and restarts Core Audio.
-
-The driver uses pinned BlackHole v0.7.1 GPL source. Its matching source and patch must accompany any future public binary release.
+Download the universal uninstaller PKG and open it in macOS Installer. By default it removes the app, driver, and your settings, logs and caches; you may uncheck personal-data removal. Uninstall requires administrator authorization and restarts Core Audio. Details: https://github.com/zfdang/voice-input-buddy/blob/main/docs/uninstall.md .

@@ -63,7 +63,7 @@ The direct `com.apple.bluetooth.BTPacketLogger` XPC connection, `RequiresAuth` /
 - Historical upstream version: 1.6.1; no libopus binary is bundled in this distribution
 - License: BSD 3-Clause (`BSD-3-Clause`)
 
-The retained experimental Apple Remote audio helper can dynamically load an externally installed libopus to decode remote voice packets. This product does not bundle libopus or Apple PacketLogger; Apple Siri Remote remains unsupported in the app.
+The historical Apple Remote audio helper could dynamically load an externally installed libopus to decode remote voice packets. That helper and the PacketLogger/HCI capture implementation have been removed. This product does not bundle libopus or Apple PacketLogger; Apple Siri Remote remains unsupported in the app. The copyright and license below are retained as historical notices.
 
 Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic, Jean-Marc Valin, Timothy B. Terriberry, CSIRO, Gregory Maxwell, Mark Borgerding, Erik de Castro Lopo, Mozilla, Amazon
 
@@ -82,7 +82,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 - Pinned source revision: `v0.7.1` / `e2b22aaaba4e507a097131704bf96dabc004d9cf`
 - License: GNU General Public License v3.0 (`GPL-3.0`)
 
-BlackHole remains an optional loopback-device choice. `scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `VoiceInputBuddyMic.driver` from pinned BlackHole source. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and VoiceInputBuddyMic; matching driver source is available at the pinned upstream revision together with this repository’s patch and build script.
+`scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `VoiceInputBuddyMic.driver` from pinned BlackHole source. The app routes audio only to this driver, not to an optional BlackHole device. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and VoiceInputBuddyMic; matching driver source is available at the pinned upstream revision together with this repository’s patch and build script.
 
 ## MiRemoteVoice
 
@@ -99,7 +99,7 @@ The upstream project included an RC003 product photo. That photo and upstream pr
 
 ## Setup guide screenshots
 
-The 16 light/dark setup screenshots in `Resources/Onboarding` are carried over from remote-mic-app (SayAll contributors), under the upstream project license. They illustrate third-party and macOS settings; depicted interface copyrights and trademarks remain with their respective owners. The upstream proprietary app logo and remote product photo are not bundled. `BuddyRemoteIllustration.png` is an unbranded generated product render. `scripts/generate-remote-layout-reference.swift` produces its coordinate reference, not the shipped image. The artwork uses no manufacturer logos or downloaded product photos.
+`Resources/Onboarding` includes inherited light/dark setup screenshots from remote-mic-app (SayAll contributors), under the upstream project license, and locally captured replacement/additional light screenshots for WeType, Doubao and VoiceCursor. They illustrate third-party and macOS settings; depicted interface copyrights and trademarks remain with their respective owners. The upstream proprietary app logo and remote product photo are not bundled. `BuddyRemoteIllustration.png` is an unbranded generated product render. `scripts/generate-remote-layout-reference.swift` produces its coordinate reference, not the shipped image. The artwork uses no manufacturer logos or downloaded product photos.
 
 ## Public Google remote protocol references
 

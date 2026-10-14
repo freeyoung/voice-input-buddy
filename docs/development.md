@@ -8,11 +8,11 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 虚拟麦克风：scripts/build-driver.sh 固定 BlackHole v0.7.1 的 e2b22aaaba4e507a097131704bf96dabc004d9cf，应用 USB transport 补丁，使用独立工厂 UUID、Bundle ID 和 BuddyMic UID，避免替换 BlackHole 或原 MiRemoteV 驱动。输出 VoiceInputBuddyMic.driver。scripts/build-driver-package.sh 创建系统 HAL 目录安装包，安装需用户明确授权；安装后脚本重启 Core Audio 以重新枚举设备，会短暂中断播放和录音；若失败则提示重启系统。驱动编译禁用 BlackHole 的通道名称格式，确保实际 UID 为 BuddyMic2ch_UID。
 
-应用不会自动修改系统默认音频设备。遥控器断开、应用停止、退出、音频配置失败及重连时，只释放或重新绑定应用自身的音频输出；系统默认输入、输出及系统提示音设备保持由用户或系统管理。应将 App 音频输出与第三方工具麦克风选择设为同一个回环设备。目标语音快捷键需要用户根据工具设置选择；wizard 和权限检查必须保留。
+应用不会自动修改系统默认音频设备。遥控器断开、应用停止、退出、音频配置失败及重连时，只释放或重新绑定应用自身的音频输出；系统默认输入、输出及系统提示音设备保持由用户或系统管理。App 固定使用 Voice Input Buddy Mic（`BuddyMic2ch_UID`），第三方工具的麦克风需选择该设备；没有输出选择或 BlackHole 回退。目标语音快捷键通过向导按工具实际设置配置并验证。
 
 当前发行使用固定自签名证书为 App 和驱动签名，PKG 未签名，不具备 Apple Developer ID，也未公证。证书只生成一次，私钥由 GitHub Secrets 保存；构建时导入 runner 的临时 Keychain，不添加证书信任设置。普通本地开发和 PR 构建仍默认 ad-hoc 签名。更新包另由本项目的 Sparkle Ed25519 密钥签名；push main 自动发布。配置和验收要求见 [releases.md](releases.md)。若以后取得 Developer ID，应加入 Application / Installer 签名和公证。驱动安装卸载仍需真机回归。不会沿用原作者更新密钥、会员后端或发布服务。
 
-当前保留实验性 Apple 遥控器底层辅助代码与公开兼容类型；上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。不应将本次构建成功等同于 Mac App Store 审核通过。
+当前保留未开放的 Siri Remote 能力边界与公开兼容类型；Apple 音频捕获、PacketLogger、HCI 辅助进程、上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。构建成功不代表未支持设备可用。
 
 ## 运行时权限变化
 
@@ -20,7 +20,7 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 系统停用 event tap 的回调只安排后续处理并立即返回。超时或系统用户输入停用通知均在回调外重新检查权限；权限有效时恢复当前端口，权限无效时停止过滤器与设备映射。监听中断用显式状态记录，不依赖界面文案；实际监听与过滤恢复后清除中断状态。端口或恢复代次已改变时，丢弃旧恢复任务。快捷键录制对象继续在析构时注销端口。语音快捷键释放失败时保留 held 状态，不绕过辅助功能权限检查；权限恢复后再尝试释放。
 
-辅助功能消息超时仅在本进程首次查询时配置一次为 250 毫秒，不修改其他进程，也不逐属性重复配置；首次配置失败时记录一次日志。跨进程辅助功能调用沿用这个超时，输入框树遍历同时受节点数和单调时钟的一秒预算限制。预算阻止开始新的节点；已开始的节点仍需完成其有超时限制的消息，不能将这一秒理解为整项操作的硬截止。
+辅助功能消息超时仅在本进程首次查询时配置一次为 50 毫秒，不修改其他进程，也不逐属性重复配置；首次配置失败时记录一次日志。跨进程辅助功能调用沿用这个超时，输入框树遍历同时受节点数和单调时钟的一秒预算限制，子节点优先级计算也消耗预算。预算阻止开始新的节点；已开始的节点仍需完成其有超时限制的消息，不能将这一秒理解为整项操作的硬截止。
 
 蓝牙未授权时取消重连、释放连接与语音状态，不继续自动连接。应用的正式音频路径接收蓝牙遥控器的 PCM 并写入虚拟音频设备，没有直接采集 Mac 物理麦克风的录音路径；输入工具的麦克风权限由对应第三方应用管理。
 
@@ -28,7 +28,7 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 ## 异步操作生命周期
 
-音频启动只在准备队列枚举设备，回到主线程后采用用户当前的输出选择并排队配置。停止时直接向音频引擎队列提交释放；旧枚举或启动回调不会释放后续会话的输出，也不会覆盖更新配置的状态。
+音频启动只在准备队列枚举设备，回到主线程后采用固定输出 UID 并排队配置。停止时直接向音频引擎队列提交释放；旧枚举或启动回调不会释放后续会话的输出，也不会覆盖更新配置的状态。
 
 快捷键录制结果在回调送达时再次检查录制代次。停止、重置或销毁录制器后，排队中的普通按键和独立修饰键结果均作废。HID 映射只有在设备被独占或原始按键过滤器运行时才附加动作；过滤不可用时停止重复与延迟手势动作，保留默认左右方向键的原生直通。
 
@@ -56,7 +56,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test -c release -
 
 覆盖率报告位于 `.build/debug/codecov/VoiceInputBuddy.json`。按文件检查未覆盖的行为，尤其是错误处理与资源释放；文件覆盖率包含系统适配代码，不能把模拟状态机的通过当作真实系统权限或硬件操作的验证。
 
-异步边界测试使用可控调度器，显式送达已经取消的旧回调，不依赖睡眠等待。权限轮询、快捷键发送与输入目标测试注入状态和事件接收器，不修改真实权限、发送系统按键或切换其他应用。常用语插入使用独立的临时剪贴板；持久化和文件锁测试使用独立 UserDefaults 域及临时目录，不读取或修改用户的日常剪贴板和应用设置。结构化诊断测试仅验证本地日志；没有诊断上传和待上传事件存储。
+异步边界测试使用可控调度器，显式送达已经取消的旧回调，不依赖睡眠等待。权限轮询、快捷键发送与输入目标测试注入状态和事件接收器，不修改真实权限、发送系统按键或切换其他应用。常用语插入测试注入目标与写入接口，不使用剪贴板；持久化和文件锁测试使用独立 UserDefaults 域及临时目录，不读取或修改用户的应用设置。结构化诊断测试仅验证本地日志；没有诊断上传和待上传事件存储。
 
 开发 App 位于 `dist/Voice Input Buddy.app`，驱动位于 `dist/VoiceInputBuddyMic.driver`。App 构建按架构使用独立的 `.build/app-arm64` 与 `.build/app-x86_64` 目录，避免 SwiftPM 缓存混用。Release 与一体安装包的复现步骤见 [发布流程](releases.md)。
 
@@ -72,13 +72,11 @@ App 打包先在临时目录组装全新的 bundle，资源检查和签名成功
 
 已删除停用的上游硬件公告数据层、占位服务地址和空面板；新增设备支持通过本项目的发行说明公布。
 
-实验性 Apple 遥控器音频辅助进程的每次启动令牌通过匿名 stdin 管道传递，不放在命令行参数或环境变量中。启动时只接受固定长度的 UUID 及换行，缺失、截断或无效令牌会在创建 IPC 服务前退出。该辅助进程仍不纳入当前发行 App。
-
 SwiftPM 使用 Swift 6.2 工具链，语言模式暂为 Swift 5。这是现有并发边界的迁移状态，并不代表已经通过 Swift 6 严格并发检查。切换语言模式需要单独审查事件 tap、蓝牙回调、音频队列和 MainActor 的隔离，不能以一次 manifest 修改代替并发验证。历史 Apple 音频捕获、PacketLogger 与 HCI helper 已移除；CI 只构建当前产品。
 
 HID 原始映射在改写前一次性原子写入 `~/Library/Application Support/VoiceInputBuddy/HIDMappingRecovery.json`。记录绑定本机启动会话；UUID 不可用时用系统启动时间识别，同样无法识别或写入失败时拒绝改写 HID。离线或恢复失败时保留记录，下次重连/启动继续恢复；不恢复到用户后来主动更改的映射。
 
-Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败结果回答配置等待方，保持未释放状态并阻止映射切换；恢复辅助功能权限后可重试释放。旧音频的隔离状态与 Fn 清理完成分离，避免用户切换模式时等待一个尚未到来的遥控器停止通知。音频排空取消、停止及销毁都会回答等待方一次；Apple 音频排空上限为两秒。
+Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败结果回答配置等待方，保持未释放状态并阻止映射切换；恢复辅助功能权限后可重试释放。旧音频的隔离状态与 Fn 清理完成分离，避免用户切换模式时等待一个尚未到来的遥控器停止通知。音频排空取消、停止及销毁都会回答等待方一次；排空由完成回调与看门狗共同处理。
 
 微信／豆包等指定输入法的遥控器 Fn 长按由 App 控制：小米原生语音键先中和，再切换输入法并确认 TIS 选择状态，在主运行循环中保留至少 50ms 的激活处理时间，最后提交软件 Fn down。选择等待上限 500ms，若在截止前选中则额外允许最多 50ms 稳定时间；等待中松开、取消或超时均不提交 down。激活期间的蓝牙 PCM 暂存，成功触发后再送往现有虚拟麦克风。遥控器停止负责 Fn up 和输入法会话结束，不依赖全局 flagsChanged 能否收到松开。辅助功能权限或小米中和映射不可用时拒绝启动，避免重新走存在时序竞争的硬件路径。
 
@@ -113,16 +111,14 @@ HID 设备发现仅用受支持的 VendorID／ProductID 组合。IOHIDManager �
 | Settings | 配置持久化、导入校验、设置页面及共享呈现组件 |
 | CommonPhrases | 常用语存储、插入、设置及浮层 |
 | Updates | 更新信息与本地化更新界面 |
-| Diagnostics | 本地日志、诊断和停用的历史统计数据类型 |
+| Diagnostics | 本地日志与诊断；没有历史统计数据模型或上传队列 |
 | Support | 本地化、链接；UnavailableFeatures 仅保留计划中的 Siri Remote 能力边界 |
 
 `BridgeAppModel` 保留唯一的应用状态和初始化入口，行为按连接、音频、按键和权限分入同一类型的功能扩展。`AppSettings` 保留唯一的 UserDefaults 所有者，向导配置、按键映射、导入校验和持久化各自组织。`SettingsView` 与 `OnboardingView` 保留原来的 SwiftUI 状态及 view identity，页面、指南、生命周期和呈现组件分开维护；没有创建重复的状态对象。
 
 跨文件扩展需要的成员使用模块内部可见性，文件内独用的辅助实现仍为 private；没有新增 public API，也未增加 target 或模块依赖。新增功能应放到对应目录，避免再把页面与硬件操作混入入口文件。
 
-这次重组有明确的访问控制取舍：按主应用源码中的 private/fileprivate 声明统计（含 private(set)，不计注释和字符串），初版由 1,903 处减至 1,289 处，约 614 处放宽为 internal。复核后恢复了 5 个只在 AppSettings 主文件写入的 setter，并把向导的焦点 modifier 收回使用它的文件为 private，目前为 1,295 处。private(set) 从原来的 122 处变为 78 处：仍有 44 个属性因所属类型的跨文件扩展确实写入而使用 internal setter。
-
-恢复 private(set) 的属性为 lastKnownAudioDeviceUID 和 corruptedSettingKeys。这些 setter 已通过编译器检查，没有其他文件的写入。其他 internal setter 并不是独立模块边界；同一 target 的任何文件技术上都能写它们。页面应通过状态所有者的操作方法请求变化，避免直接改写连接、音频和向导状态。若以后需要更强的编译期隔离，应将状态与操作一起封装到独立服务或 target，不能把目录拆分当作这种隔离。
+跨文件扩展所需的 internal setter 并不是独立模块边界；同一 target 的任何文件技术上都能写它们。仅在主文件写入的属性继续使用 private(set)，例如 corruptedSettingKeys。页面应通过状态所有者的操作方法请求变化，避免直接改写连接、音频和向导状态。若以后需要更强的编译期隔离，应将状态与操作一起封装到独立服务或 target，不能把目录拆分当作这种隔离。
 
 向导专用的焦点 modifier 直接在导航页面使用，不再给整个模块的 View 增加扩展方法。
 
@@ -180,8 +176,8 @@ confirmation of GY3LE compatibility.
 
 ### Unsupported remote integrations
 
-The public macOS product currently supports Xiaomi remotes. Phone, watch, Web Remote,
-Siri Remote remains dormant scaffolding. G9N9N uses the public ATVV and HID pipeline;
+The public macOS connection flow admits Xiaomi RC001/RC003 and G9N9N. Phone, watch,
+Web Remote and Siri Remote have no supported setup entry. G9N9N uses the public ATVV and HID pipeline;
 GY3LE is not admitted as a G9N9N device.
 Their management panels are deliberately absent from the shipped connection page.
 Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
