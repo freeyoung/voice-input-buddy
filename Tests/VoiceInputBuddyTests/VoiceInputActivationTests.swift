@@ -15,7 +15,7 @@ struct VoiceInputActivationTests {
         return BridgeAppModel(settings: settings, initialAudioDevices: [])
     }
 
-    @Test func firstFnWaitsForSourceActivationAndRemoteStopRestoresWithoutGlobalUp() throws {
+    @Test func firstFnWaitsForActivationAndLeavesSourceSelectedAfterStop() throws {
         let model = try model()
         let target = try #require(OnboardingVoiceTool.weixin.preferredInputSourceID)
         var source = "previous"
@@ -42,12 +42,11 @@ struct VoiceInputActivationTests {
             let stopped = model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .bluetooth,
                 keySetter: { _, _ in events.append("fn_up"); return true })
             #expect(stopped)
-            #expect(source == "previous")
+            #expect(source == target)
             #expect(!model.voiceKeyLatch.isHeld)
             #expect(!model.preferredInputSourceMonitor.functionKeyIsPressedForDiagnostics)
         }
-        #expect(events == ["select", "activated", "fn_down", "fn_up", "restore",
-                           "select", "activated", "fn_down", "fn_up", "restore"])
+        #expect(events == ["select", "activated", "fn_down", "fn_up", "fn_down", "fn_up"])
     }
 
     @Test func cancelledActivationCannotSendFnDownOrBlockTheNextSession() throws {
@@ -85,7 +84,7 @@ struct VoiceInputActivationTests {
         let cleaned = model.releaseVoiceKeyIfNeeded(releaseKey: { _ in posted.append(false); return true })
         #expect(cleaned)
         #expect(posted == [true, false])
-        #expect(source == "previous")
+        #expect(source == OnboardingVoiceTool.weixin.preferredInputSourceID)
     }
 
     @Test func activationTimeoutRollsBackBeforePostingAnyKey() throws {
@@ -105,7 +104,7 @@ struct VoiceInputActivationTests {
         #expect(!model.pendingCommandVoiceAudio.isWaiting)
     }
 
-    @Test func failedFnUpKeepsSourceUntilAConfirmedCleanupSubmission() throws {
+    @Test func failedFnUpAndConfirmedCleanupBothRetainSourceForComposition() throws {
         let model = try model()
         var source = "previous"
         model.preferredInputSourceMonitor = PreferredInputSourceMonitor(
@@ -122,7 +121,7 @@ struct VoiceInputActivationTests {
         #expect(source == OnboardingVoiceTool.weixin.preferredInputSourceID)
         let cleaned = model.releaseVoiceKeyIfNeeded(releaseKey: { _ in true })
         #expect(cleaned)
-        #expect(source == "previous")
+        #expect(source == OnboardingVoiceTool.weixin.preferredInputSourceID)
     }
 
     @Test func alreadySelectedSourceAndUserChangesArePreserved() throws {
@@ -144,7 +143,7 @@ struct VoiceInputActivationTests {
         #expect(source == "user_selected")
     }
 
-    @Test func ordinaryKeyboardFnStillSelectsAndRestoresItsInputSource() throws {
+    @Test func ordinaryKeyboardFnLeavesItsInputSourceSelected() throws {
         var source = "previous"
         let target = try #require(OnboardingVoiceTool.weixin.preferredInputSourceID)
         let monitor = PreferredInputSourceMonitor(voiceTool: { .weixin },
@@ -154,7 +153,113 @@ struct VoiceInputActivationTests {
         #expect(source == target)
         #expect(monitor.functionKeyIsPressedForDiagnostics)
         monitor.handleFunctionKeyPressed(false)
+        #expect(source == target)
+    }
+
+    @Test func delayedResultRemainsAttachedAfterKeyUpAndMonitorStop() throws {
+        let model = try model()
+        let target = try #require(OnboardingVoiceTool.weixin.preferredInputSourceID)
+        var source = "previous"
+        var restores = 0
+        model.preferredInputSourceMonitor = PreferredInputSourceMonitor(
+            voiceTool: { .weixin },
+            prepareInputSource: { _ in source = target; return .selected },
+            currentInputSourceID: { source },
+            restoreInputSource: { source = $0; restores += 1; return .selected },
+            waitForInputSourceActivation: { _, _, continuing in continuing() },
+            installMonitor: { _ in nil }, logger: { _ in })
+        #expect(model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .bluetooth,
+            keySetter: { _, _ in true }))
+        #expect(model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .bluetooth,
+            keySetter: { _, _ in true }))
+        model.preferredInputSourceMonitor.stop()
+        // A recognition result can arrive after both recording and monitoring
+        // have ended. Its input method must still be the selected text client.
+        #expect(source == target)
+        #expect(restores == 0)
+        #expect(!model.voiceKeyLatch.isHeld)
+    }
+
+    @Test func monitorStopDuringSubmittedVoiceRetainsSourceAndUserSelection() throws {
+        let target = try #require(OnboardingVoiceTool.weixin.preferredInputSourceID)
+        for userChanged in [false, true] {
+            var source = "previous"
+            var restores = 0
+            let monitor = PreferredInputSourceMonitor(voiceTool: { .weixin },
+                prepareInputSource: { _ in source = target; return .selected },
+                currentInputSourceID: { source },
+                restoreInputSource: { source = $0; restores += 1; return .selected },
+                waitForInputSourceActivation: { _, _, continuing in continuing() },
+                installMonitor: { _ in nil }, logger: { _ in })
+            #expect(monitor.beginVoiceSession())
+            monitor.markVoiceTriggerSubmitted()
+            if userChanged { source = "user_selected" }
+            monitor.stop()
+            monitor.endVoiceSession()
+            #expect(source == (userChanged ? "user_selected" : target))
+            #expect(restores == 0)
+        }
+    }
+
+    @Test func unsubmittedSessionRollsBackAndDoesNotAffectLaterSuccessfulSession() throws {
+        let target = try #require(OnboardingVoiceTool.weixin.preferredInputSourceID)
+        var source = "previous"
+        var restored: [String] = []
+        let monitor = PreferredInputSourceMonitor(voiceTool: { .weixin },
+            prepareInputSource: { _ in source = target; return .selected },
+            currentInputSourceID: { source },
+            restoreInputSource: { restored.append($0); source = $0; return .selected },
+            waitForInputSourceActivation: { _, _, continuing in continuing() },
+            installMonitor: { _ in nil }, logger: { _ in })
+        #expect(monitor.beginVoiceSession())
+        monitor.endVoiceSession()
         #expect(source == "previous")
+        #expect(restored == ["previous"])
+        #expect(monitor.beginVoiceSession())
+        monitor.markVoiceTriggerSubmitted()
+        monitor.endVoiceSession()
+        #expect(source == target)
+        #expect(restored == ["previous"])
+    }
+
+    @Test func standaloneToolsNeverSelectWaitForOrRestoreAnInputSource() {
+        for tool in [OnboardingVoiceTool.voicecursor, .typeless, .vokie, .other] {
+            #expect(tool.preferredInputSourceID == nil)
+            var sourceOperations = 0
+            let monitor = PreferredInputSourceMonitor(voiceTool: { tool },
+                prepareInputSource: { _ in sourceOperations += 1; return .failed },
+                currentInputSourceID: { sourceOperations += 1; return "previous" },
+                restoreInputSource: { _ in sourceOperations += 1; return .failed },
+                waitForInputSourceActivation: { _, _, _ in sourceOperations += 1; return false },
+                installMonitor: { _ in nil }, logger: { _ in })
+            #expect(monitor.beginVoiceSession())
+            monitor.markVoiceTriggerSubmitted()
+            monitor.endVoiceSession()
+            monitor.handleFunctionKeyPressed(true)
+            monitor.handleFunctionKeyPressed(false)
+            monitor.stop()
+            #expect(sourceOperations == 0)
+        }
+    }
+
+    @Test func bothSystemInputMethodsRetainSelectionAfterSuccessfulTrigger() throws {
+        for tool in [OnboardingVoiceTool.weixin, .doubao] {
+            let target = try #require(tool.preferredInputSourceID)
+            var source = "previous"
+            var restored: [String] = []
+            let monitor = PreferredInputSourceMonitor(voiceTool: { tool },
+                prepareInputSource: { _ in source = target; return .selected },
+                currentInputSourceID: { source },
+                restoreInputSource: { restored.append($0); source = $0; return .selected },
+                waitForInputSourceActivation: { _, _, continuing in continuing() },
+                installMonitor: { _ in nil }, logger: { _ in })
+            #expect(monitor.beginVoiceSession())
+            monitor.markVoiceTriggerSubmitted()
+            monitor.endVoiceSession()
+            monitor.stop()
+            #expect(source == target)
+            #expect(restored.isEmpty)
+        }
     }
 
     @Test func orderedEventsCannotAcquireAnExtraGlobalFnOwnerAndRemainSynthetic() throws {
@@ -210,7 +315,7 @@ struct VoiceInputActivationTests {
             heldMode: .function, pendingMode: nil))
     }
 
-    @Test func anotherVoiceOwnerDoesNotRestoreTheSourceUntilTheLastFnUp() throws {
+    @Test func multipleVoiceOwnersReleaseKeysWithoutRestoringTheSource() throws {
         let model = try model()
         var source = "previous"
         var posts: [Bool] = []
@@ -228,7 +333,7 @@ struct VoiceInputActivationTests {
         #expect(posts == [true])
         let secondStop = model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .mobile, keySetter: setter)
         #expect(secondStop)
-        #expect(source == "previous")
+        #expect(source == OnboardingVoiceTool.weixin.preferredInputSourceID)
         #expect(posts == [true, false])
     }
     @Test func toolChangesRemainPendingUntilBothRecordingAndKeyCleanupEnd() throws {
