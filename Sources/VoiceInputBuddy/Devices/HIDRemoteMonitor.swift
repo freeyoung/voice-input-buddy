@@ -235,23 +235,21 @@ final class HIDRemoteMonitor {
             return
         }
 
+        let matches = Self.deviceMatchingCriteria(
+            includeXiaomi: powerKeySuppressed || backOnlyMode,
+            includeGoogle: allowsG9N9N
+        )
+        guard !matches.isEmpty else {
+            updateStatus(LocalizedMessage("button_mapping.error.power_suppression_failed"))
+            return
+        }
+
         if settings.customMappingEnabled {
             let suppressionReady = eventSuppressor.start()
             AppLogger.shared.write("HID FILTER ready=\(suppressionReady)")
         }
 
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
-        var matches: [[String: Any]] = []
-        if powerKeySuppressed || backOnlyMode {
-            matches.append([kIOHIDVendorIDKey as String: 0x2717, kIOHIDProductIDKey as String: 0x32B8])
-        }
-        if allowsG9N9N {
-            matches.append([kIOHIDVendorIDKey as String: G9N9NProtocol.vendorID,
-                            kIOHIDProductIDKey as String: G9N9NProtocol.productID])
-            for name in ["G9N9N"] {
-                matches.append([kIOHIDProductKey as String: name])
-            }
-        }
         IOHIDManagerSetDeviceMatchingMultiple(manager, matches as CFArray)
 
         let context = Unmanaged.passUnretained(self).toOpaque()
@@ -994,6 +992,22 @@ final class HIDRemoteMonitor {
                 : .rejected("target_mismatch")
         }
         return .probe
+    }
+
+    static func deviceMatchingCriteria(includeXiaomi: Bool, includeGoogle: Bool) -> [[String: Any]] {
+        // IOHIDManager does not constrain matching by Product name. A name-only
+        // dictionary acts as a wildcard and can open unrelated keyboards that
+        // another remapper owns, failing the entire manager with exclusive access.
+        var matches: [[String: Any]] = []
+        if includeXiaomi {
+            matches.append([kIOHIDVendorIDKey as String: 0x2717,
+                            kIOHIDProductIDKey as String: 0x32B8])
+        }
+        if includeGoogle {
+            matches.append([kIOHIDVendorIDKey as String: G9N9NProtocol.vendorID,
+                            kIOHIDProductIDKey as String: G9N9NProtocol.productID])
+        }
+        return matches
     }
 
     private static func isGoogleCandidate(_ device: IOHIDDevice) -> Bool {
