@@ -1,6 +1,6 @@
 # 遥控器素材与适配准备
 
-设备范围为小米蓝牙遥控器 2 Pro、Google G9N9N、Google GY3LE、Apple Siri Remote 四项。小米保留现有能力；其余三项目前只有素材和适配计划，不能作为已验证连接提供。
+设备范围为小米蓝牙遥控器 2 Pro、Google G9N9N、Google GY3LE、Apple Siri Remote 四项。小米保留现有能力；G9N9N 已可在向导中选择，但连接页会提示适配未完成；GY3LE 与 Siri Remote 暂不可选择。三款新增设备都不能作为已验证连接提供。
 
 ## 官方外观资料与应用素材
 
@@ -38,6 +38,6 @@ Google 商品页把 Play/Pause 列入功能，但官方布局说明没有单独�
 3. Google 连接和 ATVV 会话使用共用框架，以协商得到的能力决定编码、帧和会话行为；两款保留独立型号识别、布局和按键映射，第三方变体保留可诊断的差异。
 4. 验证正常按键、语音开始／结束、PCM 解码、虚拟麦克风输出、长会话、休眠重连与 HID／GATT 共存。Siri Remote 使用自己的接入层，不套用 Google ATVV 假设。
 5. 验证兼容款：不能因名称、型号标签、VID/PID 相同就认定完整支持；认证失败时先完成正常配对再探测。区分按键可用、音频可用、服务不可访问和服务确实缺失。
-6. 完成对应型号的真机验收后，再启用向导选择、连接管理和真实按键映射。素材准备与编译通过不等于硬件验收。
+6. G9N9N 允许先选择并进入设置，但实际连接验证保持必需。完成对应型号的真机验收后，再启用连接管理和真实按键映射。素材准备与编译通过不等于硬件验收。
 
 详细验收条件见[开发说明](development.md#google-remote-compatibility-acceptance)。[vibe-mote](https://github.com/Tilkmilk/vibe-mote) 和 [ATVVoice](https://github.com/b0o/ATVVoice) 是协议研究参考，不将它们的 Windows／Linux 验证当作本项目的 macOS 验收。

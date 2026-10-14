@@ -199,8 +199,27 @@ struct ProductBoundaryTests {
         #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
     }
 
+    @Test @MainActor func g9n9nSelectionPersistsWithoutClaimingAConnection() throws {
+        let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let model = BridgeAppModel(settings: settings, initialAudioDevices: [])
+        let view = OnboardingView(model: model)
+        view.selectControlSource(.chromecastRemote)
+        #expect(settings.onboardingControlSource == .chromecastRemote)
+        #expect(settings.onboardingControlMethod == .physicalRemote)
+        #expect(AppSettings(defaults: defaults).onboardingControlSource == .chromecastRemote)
+        #expect(!model.isOnboardingControlSourceConnected(.chromecastRemote))
+        #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote, selectedModel: .rc003)
+            == .bundled(resourceName: "ChromecastG9N9NIllustration"))
+        #expect(PlannedRemoteDevice.chromecastG9N9N.isSelectable)
+        #expect(!PlannedRemoteDevice.chromecastG9N9N.isAvailable)
+        #expect(!PlannedRemoteDevice.googleStreamerGY3LE.isSelectable)
+    }
+
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {
-        #expect(OnboardingBuildCapabilities.availableControlSources == [.xiaomiRemote])
+        #expect(OnboardingBuildCapabilities.availableControlSources == [.xiaomiRemote, .chromecastRemote])
         let ready = OnboardingCapabilities(
             bluetoothGranted: true,
             inputMonitoringGranted: true,

@@ -39,7 +39,7 @@ extension OnboardingView {
             }
 
             VStack(spacing: 8) {
-                ForEach(PlannedRemoteDevice.allCases.filter { !$0.isAvailable }) { device in
+                ForEach(PlannedRemoteDevice.allCases.filter { !$0.isSelectable }) { device in
                     plannedDeviceCard(device)
                 }
             }
@@ -82,7 +82,7 @@ extension OnboardingView {
 
     private var availablePhysicalControlSources: [OnboardingControlSource] {
         OnboardingBuildCapabilities.availableControlSources.filter {
-            [.xiaomiRemote, .siriRemote].contains($0)
+            [.xiaomiRemote, .chromecastRemote, .siriRemote].contains($0)
         }
     }
 
@@ -107,7 +107,7 @@ extension OnboardingView {
             HStack(alignment: .top, spacing: 11) {
                 controlSourceThumbnail(source, emphasized: emphasized)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(localization.text(appleGeneration?.titleKey ?? (source == .xiaomiRemote ? PlannedRemoteDevice.xiaomi.titleKey : source.titleKey)))
+                    Text(localization.text(appleGeneration?.titleKey ?? PlannedRemoteDevice.device(for: source)?.titleKey ?? source.titleKey))
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -117,7 +117,8 @@ extension OnboardingView {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Color.accentColor)
                     }
-                    Text(localization.text(source.detailKey))
+                    Text(localization.text(source == .chromecastRemote
+                        ? "remote.catalog.g9n9n.setup_detail" : source.detailKey))
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
@@ -177,6 +178,14 @@ extension OnboardingView {
                     .foregroundStyle(Color.accentColor)
                     .frame(width: emphasized ? 40 : 34, height: emphasized ? 40 : 34)
                     .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+            }
+        case .chromecastRemote:
+            if let image = bundledRemoteImage(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 42, height: 72)
+                    .accessibilityLabel(localization.text("remote.catalog.illustration"))
             }
         case .siriRemote:
             Image(systemName: controlSourceIcon(source))

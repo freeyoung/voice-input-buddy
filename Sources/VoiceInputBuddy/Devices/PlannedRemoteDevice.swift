@@ -1,5 +1,5 @@
 /// Product scope, separate from the catalog admitting validated hardware connections.
-/// Planned devices remain unavailable until their public adapters are implemented and tested.
+/// Adapter readiness is separate from allowing a device to be selected for setup.
 enum PlannedRemoteDevice: String, CaseIterable, Identifiable {
     case xiaomi
     case chromecastG9N9N
@@ -10,6 +10,21 @@ enum PlannedRemoteDevice: String, CaseIterable, Identifiable {
     var titleKey: String { "remote.catalog.\(rawValue).title" }
 
     var isAvailable: Bool { self == .xiaomi }
+
+    /// Selection can precede adapter readiness; connection validation remains mandatory.
+    var onboardingSource: OnboardingControlSource? {
+        switch self {
+        case .xiaomi: return .xiaomiRemote
+        case .chromecastG9N9N: return .chromecastRemote
+        case .googleStreamerGY3LE, .siriRemote: return nil
+        }
+    }
+
+    var isSelectable: Bool { onboardingSource != nil }
+
+    static func device(for source: OnboardingControlSource) -> Self? {
+        allCases.first { $0.onboardingSource == source }
+    }
 
     /// Original schematic artwork; not a photograph or evidence of device support.
     var illustrationResource: String {

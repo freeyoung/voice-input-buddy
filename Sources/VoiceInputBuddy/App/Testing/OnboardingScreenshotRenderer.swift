@@ -172,8 +172,11 @@ enum OnboardingScreenshotRenderer {
 
 #if DEBUG
         let interactive = ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE"] == "1"
+        let interactiveStep = ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE_STEP"
+        ].flatMap(OnboardingStep.init(rawValue:)) ?? .voiceTool
         let renderedPages: [(OnboardingStep, String)] = interactive
-            ? [(.voiceTool, "input-tool-interactive.png")] : pages(for: controlMethod)
+            ? [(interactiveStep, "interactive.png")] : pages(for: controlMethod)
 #else
         let renderedPages = pages(for: controlMethod)
 #endif

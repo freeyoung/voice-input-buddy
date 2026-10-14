@@ -125,8 +125,9 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 The product device list is limited to Xiaomi Bluetooth Remote 2 Pro, Google
 Chromecast Voice Remote (G9N9N), Google TV Streamer Voice Remote (GY3LE), and
 Apple Siri Remote. `PlannedRemoteDevice` defines this scope; it does not grant
-connection support. Google and Siri entries remain disabled in onboarding until
-their public hardware adapters and real-device validation are complete. The
+connection support. G9N9N can be selected for setup, but its connection page explicitly reports
+the pending adapter and cannot pass connection validation. GY3LE and Siri entries
+remain disabled until their adapters are ready. The
 validated Xiaomi admission catalog remains separate, so a planned Google model
 cannot accidentally connect through the Xiaomi bridge. Third-party replacement
 remotes need individual validation.
@@ -176,3 +177,5 @@ Their management panels are deliberately absent from the shipped connection page
 Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
 Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
 Screenshot fixture entry points are debug-only.
+
+Debug interactive onboarding previews can set `VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE_STEP=remoteAvailability` to start at device selection (the default remains `voiceTool`).
