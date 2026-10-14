@@ -130,23 +130,62 @@ final class IMAADPCMDecoder {
     }
 }
 
-enum PCMPostprocessor {
-    static func process(_ input: [Int16], gainDB: Double) -> [Int16] {
-        guard !input.isEmpty else { return [] }
-        var filtered = input.map(Int.init)
-        if input.count >= 3 {
-            for index in 1..<(input.count - 1) {
-                filtered[index] = (
-                    Int(input[index - 1]) + 2 * Int(input[index]) + Int(input[index + 1])
-                ) >> 2
-            }
-        }
+final class PCMPostprocessor {
+    private var previous: Int?
+    private var preceding: Int?
+
+    func reset() {
+        previous = nil
+        preceding = nil
+    }
+
+    // Causal binomial FIR, with one-sample delay. History crosses BLE frame boundaries.
+    func process(_ input: [Int16], gainDB: Double) -> [Int16] {
         let finiteGainDB = gainDB.isFinite ? gainDB : 0
-        let safeGainDB = min(24.0, max(-24.0, finiteGainDB))
-        let gain = pow(10.0, safeGainDB / 20.0)
-        return filtered.map { value in
-            let scaled = Int((Double(value) * gain).rounded())
+        let gain = pow(10.0, min(24.0, max(-24.0, finiteGainDB)) / 20.0)
+        return input.map { sample in
+            let value = Int(sample)
+            let last = previous ?? value
+            let beforeLast = preceding ?? last
+            let filtered = (beforeLast + 2 * last + value) >> 2
+            preceding = last
+            previous = value
+            let scaled = Int((Double(filtered) * gain).rounded())
             return Int16(min(32_767, max(-32_768, scaled)))
+        }
+    }
+}
+
+/// A control sync arriving during a partial frame takes effect at the next boundary.
+final class ATVVAudioDecoder {
+    let decoder = IMAADPCMDecoder()
+    private var accumulator = FrameAccumulator()
+    private let postprocessor = PCMPostprocessor()
+    private var pendingSync: (predictor: Int, stepIndex: Int)?
+    private var framesBeforeSync = 0
+    var pendingByteCount: Int { accumulator.pending.count }
+
+    func synchronize(predictor: Int, stepIndex: Int) {
+        pendingSync = (predictor, stepIndex)
+        framesBeforeSync = accumulator.pending.isEmpty ? 0 : 1
+    }
+
+    func reset() {
+        accumulator.reset()
+        pendingSync = nil
+        framesBeforeSync = 0
+        decoder.reset()
+        postprocessor.reset()
+    }
+
+    func append(_ data: Data, frameSize: Int, gainDB: Double) -> [[Int16]] {
+        accumulator.append(data, frameSize: frameSize).map { frame in
+            if let sync = pendingSync, framesBeforeSync == 0 {
+                decoder.reset(predictor: sync.predictor, stepIndex: sync.stepIndex)
+                pendingSync = nil
+            }
+            if framesBeforeSync > 0 { framesBeforeSync -= 1 }
+            return postprocessor.process(decoder.decode(frame), gainDB: gainDB)
         }
     }
 }

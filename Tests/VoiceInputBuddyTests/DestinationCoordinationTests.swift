@@ -10,6 +10,40 @@ struct DestinationCoordinationTests {
             semanticText: "Composer", focusIdentity: identity)
     }
 
+    @Test func initialSnapshotDefersActionAndWaiterUntilCaptured() {
+        let clock = ControlledTestScheduler()
+        var queries: [(VoiceInputDestinationSnapshot) -> Void] = []
+        var actions: [UInt64] = []
+        var results: [VoiceInputDestinationWaitResult] = []
+        let coordinator = VoiceInputDestinationCoordinator(schedule: clock.voiceSchedule,
+            snapshot: { Issue.record("Must not read initial focus synchronously"); return field() },
+            querySnapshot: { queries.append($0) })
+        let request = coordinator.beginTargetSwitch(intent: .shortcut) { actions.append($0) }
+        _ = coordinator.waitUntilReady { results.append($0) }
+        #expect(actions.isEmpty)
+        #expect(queries.count == 1)
+        queries[0](field())
+        #expect(actions == [request])
+        #expect(queries.count == 2)
+        queries[1](field(identity: "new"))
+        #expect(results == [.ready])
+    }
+
+    @Test func staleOrTimedOutInitialSnapshotsNeverDispatchActions() {
+        let clock = ControlledTestScheduler()
+        var queries: [(VoiceInputDestinationSnapshot) -> Void] = []
+        var actions: [UInt64] = []
+        let coordinator = VoiceInputDestinationCoordinator(schedule: clock.voiceSchedule,
+            querySnapshot: { queries.append($0) })
+        coordinator.beginTargetSwitch(intent: .shortcut) { actions.append($0) }
+        coordinator.beginTargetSwitch(intent: .shortcut) { actions.append($0) }
+        queries[0](field())
+        #expect(actions.isEmpty)
+        clock.fire(afterMilliseconds: 5000)
+        queries[1](field())
+        #expect(actions.isEmpty)
+    }
+
     @Test func applicationSwitchWaitsForEditableDestinationAndCompletesOnce() {
         let clock = ControlledTestScheduler()
         var current = field()

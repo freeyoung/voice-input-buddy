@@ -1373,17 +1373,12 @@ enum KeyboardInjector {
                     children.append(child)
                 }
             }
-            children.sort {
-                accessibilityTraversalPriority(
-                    role: axString($0, attribute: kAXRoleAttribute),
-                    frame: axFrame($0),
-                    windowFrame: windowFrame
-                ) < accessibilityTraversalPriority(
-                    role: axString($1, attribute: kAXRoleAttribute),
-                    frame: axFrame($1),
-                    windowFrame: windowFrame
-                )
-            }
+            // AX metadata is IPC: fetch each child's score once, outside comparisons.
+            children = children.map { child in
+                (element: child, priority: accessibilityTraversalPriority(
+                    role: axString(child, attribute: kAXRoleAttribute),
+                    frame: axFrame(child), windowFrame: windowFrame))
+            }.sorted { $0.priority < $1.priority }.map(\.element)
             stack.append(contentsOf: children.map {
                 PendingElement(element: $0, context: childContext, selectedContext: selectedContext)
             })
@@ -1834,11 +1829,19 @@ enum KeyboardInjector {
         postMarkedKeyState(code: code, isDown: isDown, flags: flags, marker: orderedVoiceEventMarker)
     }
 
+    static func keyEventType(code: CGKeyCode, isDown: Bool) -> CGEventType {
+        switch code {
+        case 54...63: return .flagsChanged
+        default: return isDown ? .keyDown : .keyUp
+        }
+    }
+
     private static func postMarkedKeyState(code: CGKeyCode, isDown: Bool,
                                           flags: CGEventFlags, marker: Int64) -> Bool {
         guard let source = CGEventSource(stateID: .hidSystemState),
               let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: isDown)
         else { return false }
+        event.type = keyEventType(code: code, isDown: isDown)
         event.flags = flags
         event.setIntegerValueField(.eventSourceUserData, value: marker)
         event.post(tap: .cghidEventTap)

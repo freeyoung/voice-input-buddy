@@ -260,36 +260,8 @@ final class HIDRemoteMonitor {
             CFRunLoopMode.commonModes.rawValue
         )
 
-        let result = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        guard result == kIOReturnSuccess else {
-            IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)
-            IOHIDManagerRegisterDeviceRemovalCallback(manager, nil, nil)
-            IOHIDManagerRegisterInputReportCallback(manager, nil, nil)
-            IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-            IOHIDManagerUnscheduleFromRunLoop(
-                manager,
-                CFRunLoopGetMain(),
-                CFRunLoopMode.commonModes.rawValue
-            )
-            if ownsEventSuppressor { eventSuppressor.stop() }
-            let karabinerInstalled = karabinerElementsInstalled()
-            if let exclusiveMessageKey = Self.deviceOpenFailureMessageKey(
-                result: result,
-                karabinerElementsInstalled: karabinerInstalled
-            ) {
-                updateStatus(LocalizedMessage(exclusiveMessageKey))
-                AppLogger.shared.write(
-                    "HID MANAGER OPEN BLOCKED reason=exclusive_access " +
-                        "karabiner_installed=\(karabinerInstalled) result=\(result)"
-                )
-            } else {
-                updateStatus(LocalizedMessage(
-                    "button_mapping.error.remote_read_failed",
-                    arguments: [String(result)]
-                ))
-            }
-            return
-        }
+        // Scheduling/matching discovers devices without opening every interface.
+        // Open only a selected/probed device, so its first open can request seizure.
         self.manager = manager
         startPermissionMonitor()
         updateStatus(LocalizedMessage("button_mapping.status.waiting_for_device"))
@@ -367,7 +339,7 @@ final class HIDRemoteMonitor {
             if backOnlyMode {
                 probeDevice(device)
             } else {
-                _ = activateDevice(device, fingerprint: fingerprint, allowManagerFallback: false)
+                _ = activateDevice(device, fingerprint: fingerprint)
             }
         case .probe:
             probeDevice(device)
@@ -425,8 +397,7 @@ final class HIDRemoteMonitor {
     @discardableResult
     private func activateDevice(
         _ device: IOHIDDevice,
-        fingerprint: String,
-        allowManagerFallback: Bool
+        fingerprint: String
     ) -> Bool {
         let seizeResult = IOHIDDeviceOpen(
             device,
@@ -455,7 +426,7 @@ final class HIDRemoteMonitor {
             )
             return false
         }
-        guard monitorResult == kIOReturnSuccess || allowManagerFallback else {
+        guard monitorResult == kIOReturnSuccess else {
             updateStatus(LocalizedMessage("button_mapping.error.device_read_failed", arguments: [String(monitorResult)]))
             AppLogger.shared.write(
                 "HID DEVICE OPEN FAILED seize=\(seizeResult) monitor=\(monitorResult)"
@@ -473,30 +444,10 @@ final class HIDRemoteMonitor {
                     : "button_mapping.status.connected_system_actions_may_remain"
             )
         )
-        if monitorResult == kIOReturnSuccess {
-            AppLogger.shared.write(
-                "HID CONNECTED mode=monitored " +
-                    AppLogger.errorFields(
-                        domain: "io_return",
-                        code: Int(seizeResult),
-                        fieldPrefix: "seize_error"
-                    )
-            )
-        } else {
-            AppLogger.shared.write(
-                "HID CONNECTED mode=manager_report " +
-                    AppLogger.errorFields(
-                        domain: "io_return",
-                        code: Int(seizeResult),
-                        fieldPrefix: "seize_error"
-                    ) + " " +
-                    AppLogger.errorFields(
-                        domain: "io_return",
-                        code: Int(monitorResult),
-                        fieldPrefix: "monitor_error"
-                    )
-            )
-        }
+        AppLogger.shared.write(
+            "HID CONNECTED mode=monitored " +
+                AppLogger.errorFields(domain: "io_return", code: Int(seizeResult), fieldPrefix: "seize_error")
+        )
         return true
     }
 
@@ -571,8 +522,7 @@ final class HIDRemoteMonitor {
             if !promoteProbedDevice(device, fingerprint: fingerprint) {
                 guard activateDevice(
                     device,
-                    fingerprint: fingerprint,
-                    allowManagerFallback: true
+                    fingerprint: fingerprint
                 ) else {
                     diagnosticLogger("HID REPORT rejected reason=device_activation_failed")
                     return

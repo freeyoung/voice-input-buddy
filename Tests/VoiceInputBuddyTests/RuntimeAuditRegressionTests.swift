@@ -1,4 +1,6 @@
 import AppKit
+import Carbon
+import CoreBluetooth
 import AudioExceptionGuard
 import Testing
 @testable import VoiceInputBuddy
@@ -9,6 +11,25 @@ struct RuntimeAuditRegressionTests {
     @Test func unavailableInputSourceServicesReturnNil() {
         #expect(OnboardingInputSourceSwitcher.currentInputSourceID(copyCurrent: { nil }) == nil)
         #expect(OnboardingInputSourceSwitcher.inputSource(withID: "test", createList: { nil }) == nil)
+        #expect(OnboardingInputSourceSwitcher.inputSource(withID: "test", createList: {
+            Unmanaged.passRetained(["invalid", NSNull(), 7] as CFArray)
+        }) == nil)
+    }
+
+    @Test func virtualModifierEdgesUseFlagsChangedWhileOrdinaryKeysKeepDownAndUp() {
+        for code: CGKeyCode in [54, 55, 56, 57, 58, 59, 60, 61, 62, 63] {
+            #expect(KeyboardInjector.keyEventType(code: code, isDown: true) == .flagsChanged)
+            #expect(KeyboardInjector.keyEventType(code: code, isDown: false) == .flagsChanged)
+        }
+        #expect(KeyboardInjector.keyEventType(code: 0, isDown: true) == .keyDown)
+        #expect(KeyboardInjector.keyEventType(code: 0, isDown: false) == .keyUp)
+    }
+
+    @Test func controlWritesPreferAcknowledgmentsAndRejectNonWritableCharacteristics() {
+        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.write, .writeWithoutResponse]) == .withResponse)
+        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.write]) == .withResponse)
+        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.writeWithoutResponse]) == .withoutResponse)
+        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.notify]) == nil)
     }
 
     @Test func streamedFramesStayOrderedAndRebasedAcrossLongSessions() {
@@ -87,21 +108,21 @@ struct RuntimeAuditRegressionTests {
         #expect(queue.enqueue(Data([3])))
     }
 
-    @Test func offlineRemoteSubscriptionsUseOneScanUntilLastSubscriberLeaves() {
+    @Test func newOfflineRemoteSubscriptionRestartsSharedScan() {
         var starts = 0
         var stops = 0
         var observed: [Int] = []
         let scans = BluetoothScanSubscriptions<Int>(start: { starts += 1 }, stop: { stops += 1 })
         let first = scans.subscribe { observed.append($0) }
         let second = scans.subscribe { observed.append($0) }
-        #expect(starts == 1)
+        #expect(starts == 2)
         scans.publish(7)
         #expect(observed == [7, 7])
         scans.unsubscribe(first)
-        #expect(stops == 0)
-        scans.unsubscribe(second)
-        scans.unsubscribe(second)
         #expect(stops == 1)
+        scans.unsubscribe(second)
+        scans.unsubscribe(second)
+        #expect(stops == 2)
         #expect(!scans.hasObservers)
     }
 

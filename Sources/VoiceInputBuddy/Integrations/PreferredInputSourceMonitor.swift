@@ -7,9 +7,10 @@ final class PreferredInputSourceMonitor {
     typealias InputSourceRestorer = (String) -> OnboardingInputSourceSwitchResult
     typealias InputSourceActivationWaiter = (
         String,
-        CurrentInputSourceIDProvider,
-        () -> Bool
-    ) -> Bool
+        @escaping CurrentInputSourceIDProvider,
+        @escaping () -> Bool,
+        @escaping (Bool) -> Void
+    ) -> Void
     typealias MonitorInstaller = (@escaping (Bool) -> Void) -> Any?
     typealias MonitorRemover = (Any) -> Void
     typealias Logger = (String) -> Void
@@ -53,8 +54,8 @@ final class PreferredInputSourceMonitor {
         prepareInputSource: @escaping InputSourcePreparer = OnboardingInputSourceSwitcher.prepareForVoiceSession,
         currentInputSourceID: @escaping CurrentInputSourceIDProvider = OnboardingInputSourceSwitcher.currentInputSourceID,
         restoreInputSource: @escaping InputSourceRestorer = OnboardingInputSourceSwitcher.selectEnabledInputSource,
-        waitForInputSourceActivation: @escaping InputSourceActivationWaiter = { target, current, continuing in
-            waitForActivation(target: target, current: current, shouldContinue: continuing)
+        waitForInputSourceActivation: @escaping InputSourceActivationWaiter = { target, current, continuing, completion in
+            waitForActivation(target: target, current: current, shouldContinue: continuing, completion: completion)
         },
         installMonitor: @escaping MonitorInstaller = { handler in
             NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
@@ -77,40 +78,38 @@ final class PreferredInputSourceMonitor {
         self.logger = logger
     }
 
-    // Main-thread only. `.common` is a registration pseudo-mode, not a runnable
-    // mode. Preserve the active concrete mode (including AppKit event tracking).
-    static func activationRunLoopMode(_ current: RunLoop.Mode?) -> RunLoop.Mode {
-        guard let current, current != .common else { return .default }
-        return current
-    }
-
     static func waitForActivation(
-        target: String, current: CurrentInputSourceIDProvider, shouldContinue: () -> Bool,
-        now: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
-        currentMode: () -> RunLoop.Mode? = { RunLoop.main.currentMode },
-        pump: (RunLoop.Mode, TimeInterval) -> Void = { mode, interval in
-            _ = RunLoop.main.run(mode: mode, before: Date().addingTimeInterval(interval))
-        }
-    ) -> Bool {
+        target: String, current: @escaping CurrentInputSourceIDProvider,
+        shouldContinue: @escaping () -> Bool,
+        now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        schedule: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, work in
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        },
+        completion: @escaping (Bool) -> Void
+    ) {
         let selectionDeadline = now() + activationTimeout
         let settlingDuration: TimeInterval = 0.05
         var selectedSince: TimeInterval?
-        while shouldContinue() {
+        func check() {
+            guard shouldContinue() else { completion(false); return }
             let time = now()
             if current() == target {
                 if selectedSince == nil {
-                    guard time <= selectionDeadline else { return false }
+                    guard time <= selectionDeadline else { completion(false); return }
                     selectedSince = time
                 }
-                if let selectedSince, time - selectedSince >= settlingDuration { return true }
+                if let selectedSince, time - selectedSince >= settlingDuration {
+                    completion(true)
+                    return
+                }
             } else {
                 selectedSince = nil
-                if time >= selectionDeadline { return false }
+                if time >= selectionDeadline { completion(false); return }
             }
             let remaining = selectedSince.map { $0 + settlingDuration - time } ?? (selectionDeadline - time)
-            pump(activationRunLoopMode(currentMode()), min(activationPollInterval, max(0, remaining)))
+            schedule(min(activationPollInterval, max(0.001, remaining)), check)
         }
-        return false
+        check()
     }
 
     func start() {
@@ -173,21 +172,32 @@ final class PreferredInputSourceMonitor {
     /// Command keys do not produce the Fn `flagsChanged` event that the legacy
     /// monitor observes, so their lifecycle is driven explicitly by the voice
     /// session instead of by every ordinary Command press on the Mac keyboard.
-    @discardableResult
-    func beginVoiceSession() -> Bool {
+    func beginVoiceSession(completion: @escaping (Bool) -> Void) {
         explicitActivationGeneration &+= 1
         let generation = explicitActivationGeneration
         explicitVoiceSessionActivationPending = true
-        defer {
-            if explicitActivationGeneration == generation { explicitVoiceSessionActivationPending = false }
+        let continuing = { [weak self] in
+            self?.explicitVoiceSessionActivationPending == true && self?.explicitActivationGeneration == generation
         }
-        return beginVoiceSession(
-            reason: "voice_session_start",
-            owner: .explicitVoice,
-            activationShouldContinue: { [weak self] in
-                self?.explicitVoiceSessionActivationPending == true && self?.explicitActivationGeneration == generation
-            }
-        )
+        guard beginVoiceSession(reason: "voice_session_start", owner: .explicitVoice) else {
+            explicitVoiceSessionActivationPending = false
+            completion(false)
+            return
+        }
+        guard let session = managedInputSourceSession, session.activationPending else {
+            explicitVoiceSessionActivationPending = false
+            completion(true)
+            return
+        }
+        let tool = voiceTool()
+        waitForInputSourceActivation(session.targetInputSourceID, currentInputSourceID, continuing) { [weak self] activated in
+            guard let self else { completion(false); return }
+            let result = self.completeExplicitActivation(
+                activated: activated, targetInputSourceID: session.targetInputSourceID,
+                activationShouldContinue: continuing, selectedVoiceTool: tool)
+            if self.explicitActivationGeneration == generation { self.explicitVoiceSessionActivationPending = false }
+            completion(result)
+        }
     }
 
     /// Record successful key submission separately from source activation.
@@ -210,8 +220,7 @@ final class PreferredInputSourceMonitor {
     @discardableResult
     private func beginVoiceSession(
         reason: String,
-        owner: ManagedInputSourceSession.Owner,
-        activationShouldContinue: () -> Bool = { true }
+        owner: ManagedInputSourceSession.Owner
     ) -> Bool {
         let selectedVoiceTool = voiceTool()
         if selectedVoiceTool.preferredInputSourceID != nil || managedInputSourceSession != nil {
@@ -250,11 +259,7 @@ final class PreferredInputSourceMonitor {
             session.owners.insert(owner)
             session.activationPending = true
             managedInputSourceSession = session
-            return completeExplicitActivation(
-                targetInputSourceID: targetInputSourceID,
-                activationShouldContinue: activationShouldContinue,
-                selectedVoiceTool: selectedVoiceTool
-            )
+            return true
         }
 
         let previousInputSourceID = currentInputSourceID()
@@ -277,26 +282,15 @@ final class PreferredInputSourceMonitor {
             owners: [owner],
             activationPending: owner == .explicitVoice
         )
-        if owner == .explicitVoice {
-            return completeExplicitActivation(
-                targetInputSourceID: targetInputSourceID,
-                activationShouldContinue: activationShouldContinue,
-                selectedVoiceTool: selectedVoiceTool
-            )
-        }
         return true
     }
 
     private func completeExplicitActivation(
+        activated: Bool,
         targetInputSourceID: String,
         activationShouldContinue: () -> Bool,
         selectedVoiceTool: OnboardingVoiceTool
     ) -> Bool {
-        let activated = waitForInputSourceActivation(
-            targetInputSourceID,
-            currentInputSourceID,
-            activationShouldContinue
-        )
         guard activated, activationShouldContinue() else {
             let activationResult = activationShouldContinue()
                 ? "activation_timeout"
@@ -306,7 +300,7 @@ final class PreferredInputSourceMonitor {
                     "result=\(activationResult)"
             )
             // Cancellation already released this owner. Do not alter a newer
-            // session that may have begun while the main run loop was pumped.
+            // session that may have begun while activation was pending.
             guard activationShouldContinue() else { return false }
             if var session = managedInputSourceSession {
                 session.activationPending = false

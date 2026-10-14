@@ -142,6 +142,10 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var pendingVoiceKeyMode: VoiceKeyMode?
     // Main-queue state; only input-source waits can pump/reenter that queue.
     var voiceKeyActivationInProgress = false
+    var voiceKeyActivationGeneration: UInt64 = 0
+    var pendingVoiceKeyActivationOwner: VoiceFunctionKeyLatch.Owner?
+    var pendingVoiceKeyActivationCompletion: ((Bool) -> Void)?
+    var pendingMobileVoiceActivationSource: MobileVoiceSource?
     var pendingVoiceToolMappingRefresh = false
     var pendingCommandVoiceAudio = CommandVoiceActivationAudioBuffer()
     var voiceSessionID: UUID?

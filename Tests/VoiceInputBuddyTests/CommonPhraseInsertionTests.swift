@@ -79,5 +79,10 @@ struct CommonPhraseInsertionTests {
         #expect(!permits(protected: true))
         #expect(!permits(enabled: false))
         #expect(!permits(identifier: "api_key"))
+        for semanticText in ["密码", "输入口令", "信用卡号码", "Credit Card", "Passcode", "API Key"] {
+            #expect(!permits(identifier: semanticText))
+        }
+        #expect(!CommonPhraseInserter.permitsInsertion(role: kAXTextFieldRole, subrole: "",
+            enabled: true, protectedContent: false, identifier: "Composer", secureInputEnabled: true))
     }
 }

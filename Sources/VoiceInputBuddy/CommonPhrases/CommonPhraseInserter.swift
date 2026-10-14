@@ -58,6 +58,7 @@ final class CommonPhraseInserter {
     }
 
     static func insertAtCaret(_ text: String, processID: pid_t) -> String? {
+        guard !SecureInputMonitor.isEnabled() else { return "input_unavailable" }
         guard KeyboardInjector.isAccessibilityTrusted else { return "accessibility_required" }
         guard processID != ProcessInfo.processInfo.processIdentifier,
               NSWorkspace.shared.frontmostApplication?.processIdentifier == processID else { return "target_changed" }
@@ -68,12 +69,15 @@ final class CommonPhraseInserter {
               let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return "input_unavailable" }
         let element = unsafeBitCast(focused, to: AXUIElement.self)
         let attributes = AccessibilityMessaging.attributes(element, keys: [kAXRoleAttribute, kAXSubroleAttribute,
-            kAXEnabledAttribute, "AXProtectedContent", kAXIdentifierAttribute, kAXSelectedTextRangeAttribute])
+            kAXEnabledAttribute, "AXProtectedContent", kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+            kAXPlaceholderValueAttribute, kAXHelpAttribute, kAXSelectedTextRangeAttribute])
         guard permitsInsertion(role: attributes[kAXRoleAttribute] as? String ?? "",
             subrole: attributes[kAXSubroleAttribute] as? String ?? "",
             enabled: attributes[kAXEnabledAttribute] as? Bool ?? true,
             protectedContent: attributes["AXProtectedContent"] as? Bool ?? false,
-            identifier: attributes[kAXIdentifierAttribute] as? String ?? "") else { return "input_unavailable" }
+            identifier: [kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+                kAXPlaceholderValueAttribute, kAXHelpAttribute].compactMap { attributes[$0] as? String }.joined(separator: " "),
+            secureInputEnabled: SecureInputMonitor.isEnabled()) else { return "input_unavailable" }
         var settable = DarwinBoolean(false)
         guard AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable) == .success,
               settable.boolValue,
@@ -84,7 +88,8 @@ final class CommonPhraseInserter {
               range.length == 0 else { return "input_unavailable" }
         // Validate focus again after IPC; do not write through a stale element.
         var current: CFTypeRef?
-        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == processID,
+        guard !SecureInputMonitor.isEnabled(),
+              NSWorkspace.shared.frontmostApplication?.processIdentifier == processID,
               AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &current) == .success,
               let current, CFEqual(current, element) else { return "target_changed" }
         return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
@@ -92,9 +97,10 @@ final class CommonPhraseInserter {
     }
 
     static func permitsInsertion(role: String, subrole: String, enabled: Bool,
-                                 protectedContent: Bool, identifier: String) -> Bool {
-        enabled && !protectedContent && subrole != kAXSecureTextFieldSubrole &&
+                                 protectedContent: Bool, identifier: String, secureInputEnabled: Bool = false) -> Bool {
+        !secureInputEnabled && enabled && !protectedContent && subrole != kAXSecureTextFieldSubrole &&
             [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole].contains(role) &&
-            !["password", "token", "secret", "apikey", "api_key"].contains(where: identifier.lowercased().contains)
+            !["password", "passcode", "token", "secret", "apikey", "api_key", "api key",
+              "credit card", "密码", "口令", "密钥", "令牌", "信用卡"].contains(where: identifier.lowercased().contains)
     }
 }
