@@ -1,10 +1,41 @@
 import Foundation
 import CoreBluetooth
+import IOKit.hid
 import Testing
 @testable import VoiceInputBuddy
 
 @Suite("G9N9N public transports")
 struct G9N9NProtocolTests {
+    @Test(arguments: [(true, false), (false, true), (true, true)])
+    func hidMatchingExcludesUnrelatedDevices(options: (Bool, Bool)) throws {
+        let (xiaomi, google) = options
+        let matches = HIDRemoteMonitor.deviceMatchingCriteria(includeXiaomi: xiaomi, includeGoogle: google)
+        var allowed: Set<String> = []
+        if xiaomi { allowed.insert("10007:12984") }
+        if google { allowed.insert("\(G9N9NProtocol.vendorID):\(G9N9NProtocol.productID)") }
+        #expect(matches.count == allowed.count)
+        for match in matches {
+            // Every OR clause needs identifiers: IOKit ignores a Product-only
+            // clause and would then enumerate all keyboards, mice and headsets.
+            let vendor = try #require(match[kIOHIDVendorIDKey] as? Int)
+            let product = try #require(match[kIOHIDProductIDKey] as? Int)
+            #expect(allowed.contains("\(vendor):\(product)"))
+        }
+        // Exercise native matching semantics without opening/seizing a device
+        // or requesting Input Monitoring permission. Empty results are valid.
+        let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+        IOHIDManagerSetDeviceMatchingMultiple(manager, matches as CFArray)
+        for device in IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> ?? [] {
+            let vendor = try #require(IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? NSNumber)
+            let product = try #require(IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? NSNumber)
+            #expect(allowed.contains("\(vendor.intValue):\(product.intValue)"))
+        }
+    }
+
+    @Test func noRemoteFamiliesProduceNoMatchingRequest() {
+        #expect(HIDRemoteMonitor.deviceMatchingCriteria(includeXiaomi: false, includeGoogle: false).isEmpty)
+    }
+
     private func capabilities(_ bytes: [UInt8] = [0x0B, 1, 0, 2, 3, 0, 120]) throws -> ATVVCapabilities {
         try #require(ATVVCapabilities.parse(Data(bytes), allowingLegacyLayout: false))
     }
