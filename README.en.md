@@ -44,9 +44,12 @@ Driver installation requires administrator authorization and briefly interrupts 
 
 | Device | Status |
 | --- | --- |
-| Xiaomi Bluetooth Remote 2 Pro | Connection and buttons tested locally; audio operation confirmed by the user |
-| Compatible Xiaomi RC001 / RC003 series remotes | ATVV audio and button protocol support is included; individual models and firmware need testing |
-| Apple Siri Remote, generic Bluetooth/USB buttons, foot pedals | Not currently offered as supported devices |
+| Xiaomi Bluetooth Remote 2 Pro | Connection and buttons verified; audio confirmed by the user. Existing RC001 / RC003 protocol support is retained within the Xiaomi entry |
+| Google Chromecast Voice Remote (G9N9N) | Planned; adapter implementation and hardware validation pending |
+| Google TV Streamer Voice Remote (GY3LE) | Planned; adapter implementation and hardware validation pending |
+| Apple Siri Remote | Planned; adapter implementation and hardware validation pending |
+
+The device scope is limited to these four entries. Google hardware model numbers follow [Google's regulatory documentation](https://support.google.com/product-documentation/answer/4541589?hl=en). Third-party replacements require separate validation; a seller's “compatible with G9N9N” label does not establish support.
 
 Bluetooth pairing alone does not establish compatibility: the remote must use a supported button and audio protocol.
 
@@ -86,6 +89,7 @@ To uninstall, download `Voice_Input_Buddy_Uninstaller_*_macOS_universal.pkg` (wo
 | --- | --- |
 | [remote-mic-app](https://github.com/HD838A/remote-mic-app) | Code foundation for remote connectivity, audio bridging, button mappings, and interface |
 | [remote-bridge-hub](https://github.com/xxb26553663-star/remote-bridge-hub) | Xiaomi ATVV protocol, ADPCM decoding, and HID mapping reference |
+| [vibe-mote](https://github.com/Tilkmilk/vibe-mote) | Reference for Google TV / Chromecast remote HID buttons, ATVV audio, and third-party replacement differences (Windows implementation) |
 | [mi_remote_control](https://github.com/godarrenw/mi_remote_control) | Reference for button actions, application profiles, and troubleshooting |
 | [open-voice-bridge](https://github.com/nijez/open-voice-bridge) | Reference for device capability modeling and audio-path diagnostics |
 | [BlackHole](https://github.com/ExistentialAudio/BlackHole) v0.7.1 | Virtual microphone driver |

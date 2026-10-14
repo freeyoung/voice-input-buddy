@@ -120,6 +120,56 @@ Fn 释放最多尝试四次，重试间隔为 1、2、4 秒。耗尽后以失败
 
 本地资源定位根据 Package.swift 与 Resources 目录查找，不依赖源码所在层级。打包资源检查递归扫描整个 Sources/VoiceInputBuddy，以覆盖位于 Integrations 等其他功能目录的向导截图引用；同时检查 Onboarding 源码仍存在，没有源码时直接失败，不能静默跳过。`scripts/test-app-bundle.py` 用隔离的编译/签名 fixture 验证嵌套指南缺图时保留已有 App，不需要安装真实驱动。
 
+### Remote device scope
+
+The product device list is limited to Xiaomi Bluetooth Remote 2 Pro, Google
+Chromecast Voice Remote (G9N9N), Google TV Streamer Voice Remote (GY3LE), and
+Apple Siri Remote. `PlannedRemoteDevice` defines this scope; it does not grant
+connection support. All four entries can be selected. Continue advances Xiaomi and G9N9N to
+connection setup. For GY3LE and Siri, Continue keeps the device page open and
+shows an inline notice below the right-hand illustration. G9N9N connection
+validation remains mandatory; its adapter is still pending. The
+validated Xiaomi admission catalog remains separate, so a planned Google model
+cannot accidentally connect through the Xiaomi bridge. Third-party replacement
+remotes need individual validation.
+
+素材、官方外观参考与分型号适配计划见[遥控器准备说明](remote-device-preparation.md)。
+
+### Google remote compatibility acceptance
+
+G9N9N and GY3LE identify the two Google product targets, not every replacement
+sold under those names. Original units and third-party replacements follow the
+same capability checks. Device names, printed labels, DIS model numbers, and
+VID/PID are identification hints, not proof of origin or working audio.
+
+Before enabling a Google adapter, validate these independently:
+
+- HID descriptor and observed press/release reports, including the voice key;
+  do not assume every replacement uses the same three-byte report layout.
+- ATVV service `AB5E0001-5A21-4F05-BC7D-AF01F617B664` and its transmit,
+  audio, and control characteristics (`AB5E0002`, `AB5E0003`, `AB5E0004`
+  with the same UUID suffix), including write and notification access.
+- Negotiated protocol version, codec, sample rate, frame size, and usable
+  decoded PCM. Finding a service alone does not establish audio support.
+- User-initiated start/stop, long-session keepalive, release or stop behavior,
+  trailing audio, and delivery through the existing virtual microphone.
+- Sleep/wake, reconnect, and simultaneous system HID and GATT operation on macOS.
+- At least one original reference unit and any replacement unit separately;
+  record manufacturer/model/firmware and observed capabilities without claiming
+  all batches from the same seller are equivalent.
+
+Distinguish buttons-only, audio-only, full support, unsupported codec, and
+connection/authentication errors. An `Insufficient Authentication` error is an
+incomplete probe: ask for normal system pairing and retry discovery after the
+link is secured. Do not classify an inaccessible service as absent, label a
+unit counterfeit, or switch to the computer microphone while claiming remote
+audio works. No driver injection or private app access is required by this plan.
+
+[vibe-mote's hardware notes](https://github.com/Tilkmilk/vibe-mote#九遥控器怎么挑原装--兼容款--山寨)
+report different ATVV behavior across two G9N9N-labelled replacements. These are
+Windows observations and research references, not macOS acceptance evidence or
+confirmation of GY3LE compatibility.
+
 ### Unsupported remote integrations
 
 The public macOS product currently supports Xiaomi remotes. Phone, watch, Web Remote,
@@ -128,3 +178,5 @@ Their management panels are deliberately absent from the shipped connection page
 Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
 Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
 Screenshot fixture entry points are debug-only.
+
+Debug interactive onboarding previews can set `VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE_STEP=remoteAvailability` to start at device selection (the default remains `voiceTool`).

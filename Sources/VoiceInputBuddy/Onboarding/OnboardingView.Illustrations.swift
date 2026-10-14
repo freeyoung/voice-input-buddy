@@ -31,7 +31,7 @@ extension OnboardingView {
                     } else if settings.onboardingStep == .voiceTool {
                         welcomeIllustration
                     } else if settings.onboardingStep == .remoteAvailability {
-                        selectedControlSourceIllustration
+                        selectedDeviceIllustration
                     } else if settings.onboardingStep == .complete {
                         completeIllustration
                     } else {
@@ -62,24 +62,34 @@ extension OnboardingView {
         }
     }
 
+    private var selectedDeviceIllustration: some View {
+        VStack(spacing: 16) {
+            if let device = settings.onboardingDevice,
+               let image = bundledRemoteImage(resourceName: device.illustrationResource) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 190, maxHeight: 480)
+                    .accessibilityLabel(localization.text("remote.catalog.illustration"))
+                if showUnsupportedDeviceNotice && !device.canStartSetup {
+                    Text(localization.text("remote.catalog.unsupported_notice"))
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("remote.unsupported-notice")
+                }
+            } else {
+                remoteAvailabilityIllustration
+            }
+        }
+        .padding(28)
+    }
+
     private var remoteIllustration: some View {
         VStack(spacing: 16) {
             onboardingRemotePhoto
             sideStatusPanel
         }
         .padding(28)
-    }
-
-    @ViewBuilder
-    private var selectedControlSourceIllustration: some View {
-        switch settings.onboardingControlSource {
-        case .xiaomiRemote, .siriRemote, .chromecastRemote:
-            remoteIllustration
-        case .appleCompanion, .webRemote:
-            controlMethodIllustration
-        case .unselected:
-            remoteAvailabilityIllustration
-        }
     }
 
     @ViewBuilder

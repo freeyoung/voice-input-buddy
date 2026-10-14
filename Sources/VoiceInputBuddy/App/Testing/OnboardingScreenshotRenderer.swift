@@ -150,6 +150,11 @@ enum OnboardingScreenshotRenderer {
                 requestedAppleRemoteGeneration ?? .generation7
             )
         }
+        if let requestedDevice = ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_DEVICE"
+        ].flatMap(PlannedRemoteDevice.init(rawValue:)) {
+            settings.selectOnboardingDevice(requestedDevice)
+        }
         let screenshotAudioDevices = [
             AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
             AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
@@ -172,8 +177,11 @@ enum OnboardingScreenshotRenderer {
 
 #if DEBUG
         let interactive = ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE"] == "1"
+        let interactiveStep = ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_INTERACTIVE_STEP"
+        ].flatMap(OnboardingStep.init(rawValue:)) ?? .voiceTool
         let renderedPages: [(OnboardingStep, String)] = interactive
-            ? [(.voiceTool, "input-tool-interactive.png")] : pages(for: controlMethod)
+            ? [(interactiveStep, "interactive.png")] : pages(for: controlMethod)
 #else
         let renderedPages = pages(for: controlMethod)
 #endif
@@ -185,6 +193,7 @@ enum OnboardingScreenshotRenderer {
                 ""
             }
             settings.setOnboardingStep(step)
+            let actionProbe = OnboardingInteractionProbe(openURL: { _ in })
             let rootView = OnboardingView(
                 model: model,
                 completeRuntimeReadyOverride: true,
@@ -198,7 +207,8 @@ enum OnboardingScreenshotRenderer {
                     .other: .unknown,
                 ],
                 initialInputMethodGuideStep: requestedGuideStep,
-                remoteInputDiagnosticOverride: remoteInputDiagnostic
+                remoteInputDiagnosticOverride: remoteInputDiagnostic,
+                interactionProbe: actionProbe
             )
                 .environmentObject(localization)
                 .frame(width: 1020, height: 772)
@@ -206,6 +216,13 @@ enum OnboardingScreenshotRenderer {
             let window = makeWindow(hostingController: hostingController)
 
             window.makeKeyAndOrderFront(nil)
+            if !interactive, step == .remoteAvailability,
+               ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_TRY_CONTINUE"] == "1" {
+                window.contentView?.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+                actionProbe.invoke("continue")
+            }
+
 #if DEBUG
             if interactive {
                 window.title = "Voice Input Buddy Preview"

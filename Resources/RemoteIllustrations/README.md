@@ -1,0 +1,26 @@
+# Remote illustrations
+
+These three SVG files are original schematic drawings distributed under the
+project's GPL-3.0-only license. Matching transparent PNGs in the parent directory
+are the app's thumbnails. They contain no copied manufacturer photographs,
+logos, or traced image paths. Buttons use generic symbols or short text labels.
+
+The Siri drawing depicts the third-generation USB-C remote (A2854); it does not
+claim that all Siri Remote generations share its layout. Google replacement
+units may have different layouts. These drawings are not to scale and do not
+establish connection or audio compatibility.
+
+Official visual and button-layout references are linked in
+[device preparation](../../docs/remote-device-preparation.md). Manufacturer
+images remain on their official sites and are not included in the distribution.
+
+To regenerate a thumbnail from its editable vector source, from the repo root:
+
+```sh
+rsvg-convert Resources/RemoteIllustrations/ChromecastG9N9NIllustration.svg -o Resources/ChromecastG9N9NIllustration.png
+rsvg-convert Resources/RemoteIllustrations/GoogleStreamerGY3LEIllustration.svg -o Resources/GoogleStreamerGY3LEIllustration.png
+rsvg-convert Resources/RemoteIllustrations/SiriRemoteA2854Illustration.svg -o Resources/SiriRemoteA2854Illustration.png
+```
+
+`rsvg-convert` is only an artwork regeneration tool; normal application builds
+use the checked-in PNGs and do not require it.

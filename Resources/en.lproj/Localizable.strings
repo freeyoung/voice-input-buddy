@@ -733,7 +733,7 @@
 "onboarding.voice_tool.binding.evidence_verified" = "Recommended";
 "onboarding.voice_tool.binding.evidence_pending" = "Saved after testing";
 "onboarding.control_source.title" = "Choose How to Control Your Mac";
-"onboarding.control_source.detail" = "Choose a supported physical remote. Devices marked “Not supported yet” cannot be selected.";
+"onboarding.control_source.detail" = "Choose your remote, then click Continue.";
 "onboarding.control_source.hardware" = "Physical remotes";
 "onboarding.control_source.alternatives" = "Alternatives";
 "onboarding.control_source.more" = "More control methods";
@@ -1162,11 +1162,8 @@
 "onboarding.step.controls" = "Button test";
 "onboarding.step.complete" = "Done";
 
-"onboarding.control_source.siri_unavailable.title" = "Apple Siri Remote";
 
-"onboarding.control_source.bluetooth_unavailable.title" = "Other Bluetooth voice devices";
 
-"onboarding.control_source.unsupported" = "Not supported yet";
 
 "onboarding.voice_tool.guide.open_voicecursor" = "Open VoiceCursor";
 "onboarding.voice_tool.guide.open_voicecursor.detail" = "Open VoiceCursor → Settings → General to configure its hotkey and microphone.";
@@ -1245,3 +1242,13 @@
 "update.dialog.latest_version" = "Latest on this channel";
 
 "update.dialog.previous_version" = "Previous version";
+
+// Four-device product scope. Upcoming adapters show an inline notice on Continue.
+"remote.catalog.xiaomi.title" = "Xiaomi Bluetooth Remote 2 Pro";
+"remote.catalog.chromecastG9N9N.title" = "Chromecast Voice Remote (G9N9N)";
+"remote.catalog.googleStreamerGY3LE.title" = "Google TV Streamer Voice Remote (GY3LE)";
+"remote.catalog.siriRemote.title" = "Apple Siri Remote";
+"remote.catalog.illustration" = "Device schematic illustration";
+"remote.catalog.g9n9n.adapter_pending.title" = "G9N9N selected; connection support pending";
+"remote.catalog.g9n9n.adapter_pending.detail" = "You can pair the remote in macOS Bluetooth settings, but this build cannot read its buttons or microphone yet. Return to device selection to choose Xiaomi. Connection validation must pass before continuing.";
+"remote.catalog.unsupported_notice" = "Not supported yet. Stay tuned.";

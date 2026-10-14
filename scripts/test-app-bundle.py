@@ -79,6 +79,19 @@ class AppBundleTests(unittest.TestCase):
         self.assertEqual(marker.read_text(), 'keep previous build')
         self.assertEqual(list((self.root / 'dist').glob('.app-build.*')), [])
 
+    def test_missing_planned_remote_image_preserves_previous_bundle(self):
+        result = self.build()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in ('ChromecastG9N9NIllustration', 'GoogleStreamerGY3LEIllustration', 'SiriRemoteA2854Illustration'):
+            self.assertTrue((self.app / f'Contents/Resources/{name}.png').exists())
+        marker = self.app / 'Contents/Resources/previous-build.txt'
+        marker.write_text('keep previous build')
+        (self.root / 'Resources/GoogleStreamerGY3LEIllustration.png').unlink()
+        result = self.build()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('GoogleStreamerGY3LEIllustration.png', result.stderr)
+        self.assertEqual(marker.read_text(), 'keep previous build')
+
     def test_missing_image_in_nested_guide_preserves_previous_bundle(self):
         result = self.build()
         self.assertEqual(result.returncode, 0, result.stderr)

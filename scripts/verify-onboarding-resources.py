@@ -63,7 +63,11 @@ for name in sorted(names):
     if dark is not None or name not in {'doubao-input-microphone', 'weixin-input-microphone', 'voicecursor-setting-fn', 'voicecursor-setting-mic'}:
         assert dark is not None, f'Missing dark screenshot: {name}'
         files.append(dark)
-files.append(resources / 'BuddyRemoteIllustration.png')
+# Product catalog resources are required even while adapters remain planned.
+catalog = (app_sources / 'Devices/PlannedRemoteDevice.swift').read_text()
+illustrations = set(re.findall(r'return "(\w+Illustration)"', catalog))
+assert illustrations, 'No product catalog illustrations found'
+files.extend(resources / f'{name}.png' for name in sorted(illustrations))
 for path in files:
     width, height = dimensions(path)
     assert width > 0 and height > 0, f'Empty image: {path}'
