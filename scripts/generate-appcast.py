@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 SPARKLE = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
 ET.register_namespace('sparkle', SPARKLE)
 
-def generate(package, tag, version, signature, output):
+def generate(package, tag, version, signature, output, changes=None):
     if not re.fullmatch(r'v\d{2}-\d{2}-\d{2}\.\d{3}', tag):
         raise ValueError('Invalid release tag')
     if not version.isdigit() or int(version) <= 0 or int(tag.rsplit('.', 1)[1]) != int(version):
@@ -35,9 +35,7 @@ def generate(package, tag, version, signature, output):
     ET.SubElement(item, f'{{{SPARKLE}}}minimumSystemVersion').text = '14.0'
     if architecture == 'arm64':
         ET.SubElement(item, f'{{{SPARKLE}}}hardwareRequirements').text = 'arm64'
-    ET.SubElement(item, 'description').text = ('Updates the app and virtual microphone driver. '
-        'Administrator authorization is required; audio may briefly restart.\n'
-        '更新程序与虚拟麦克风驱动。需要管理员授权，音频服务可能短暂重启。')
+    ET.SubElement(item, 'description').text = changes or '此版本未提供更新摘要。'
     ET.SubElement(item, 'enclosure', {
         'url': f'https://github.com/zfdang/voice-input-buddy/releases/download/{tag}/{expected}',
         'length': str(package.stat().st_size), 'type': 'application/octet-stream',
@@ -49,5 +47,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     for name in ['package', 'tag', 'version', 'signature', 'output']:
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--changes-file', type=Path, required=True)
     args = parser.parse_args()
-    generate(Path(args.package), args.tag, args.version, args.signature, args.output)
+    generate(Path(args.package), args.tag, args.version, args.signature, args.output,
+             args.changes_file.read_text(encoding='utf-8'))
