@@ -68,7 +68,7 @@ extension SettingsView {
         }
     }
 
-    private func remoteDeviceCard(
+    func remoteDeviceCard(
         _ profile: RemoteDeviceProfile,
         fillsWidth: Bool = false
     ) -> some View {

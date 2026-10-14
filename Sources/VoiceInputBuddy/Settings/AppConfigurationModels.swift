@@ -41,7 +41,7 @@ struct PersonalizedConfiguration: Codable {
 
     let formatVersion: Int
     let gainDB: Double
-    let selectedAudioDeviceUID: String
+    var remoteGainDB: [UUID: Double]? = nil
     let customMappingEnabled: Bool
     let buttonBindings: [String: ButtonAction]
     let buttonShortcuts: [String: CustomKeyboardShortcut]

@@ -1137,7 +1137,7 @@ final class XiaomiBluetoothBridge: NSObject {
                 self.pendingSync = nil
             }
             let decoded = decoder.decode(frame)
-            let samples = PCMPostprocessor.process(decoded, gainDB: settings.gainDB)
+            let samples = PCMPostprocessor.process(decoded, gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier))
             delegate?.bluetoothBridge(self, didDecode: samples)
         }
     }

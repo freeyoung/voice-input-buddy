@@ -15,6 +15,6 @@ struct AudioDeviceIdentityTests {
         let owned = AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: "Renamed microphone")
         #expect(DoubaoAudioDevicePolicy.device(in: [owned])?.id == owned.id)
         #expect(OnboardingAudioSelectionPolicy.isSupportedDevice(uid: owned.uid, name: owned.name))
-        #expect(OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "BlackHole2ch_UID", name: "Renamed BlackHole"))
+        #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "BlackHole2ch_UID", name: "Renamed BlackHole"))
     }
 }

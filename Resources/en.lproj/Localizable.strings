@@ -861,13 +861,13 @@
 "onboarding.web_remote.scan" = "Scan with WeChat";
 "onboarding.web_remote.retry" = "Generate a New QR Code";
 "onboarding.web_remote.button_detail" = "After connecting, tap any button except the voice button in Voice Input Buddy.";
-"onboarding.audio.title" = "Choose a virtual audio device";
-"onboarding.audio.detail" = "Select Voice Input Buddy. Existing Voice Input Buddy or BlackHole 2ch devices also work. Speakers cannot provide voice input.";
-"onboarding.audio.device_detail" = "Install or enable Voice Input Buddy, then check again. You can keep using an existing Voice Input Buddy or BlackHole 2ch.";
+"onboarding.audio.title" = "Check the virtual microphone driver";
+"onboarding.audio.detail" = "The driver is checked and Voice Input Buddy Mic is configured automatically. Setup continues when ready; no device selection is needed.";
+"onboarding.audio.device_detail" = "Install the Voice Input Buddy Mic driver, then restart your Mac if the device is still missing.";
 "onboarding.audio.no_devices" = "No supported virtual audio device was detected";
 "onboarding.audio.selected" = "%1$@ selected";
-"onboarding.audio.select_required" = "Choose a supported virtual audio device";
-"onboarding.audio.select_detail" = "Choose Voice Input Buddy or BlackHole 2ch above.";
+"onboarding.audio.select_required" = "Voice Input Buddy Mic was not detected";
+"onboarding.audio.select_detail" = "Make sure the driver is installed. Restart your Mac if the device is still missing.";
 "onboarding.audio.refresh" = "Check Again";
 "onboarding.audio.on_demand_detail" = "The selected device will connect automatically when phone voice input starts. The next step verifies real audio and text.";
 "onboarding.voice_test.title" = "Test voice typing";
@@ -931,7 +931,7 @@
 "onboarding.side.control_selected" = "Control method selected";
 "onboarding.side.button_received" = "Button Press Detected";
 "onboarding.side.device_found" = "Supported virtual audio device detected";
-"onboarding.side.device_selected" = "Virtual audio device selected";
+"onboarding.side.device_selected" = "Voice Input Buddy Mic assigned automatically";
 "onboarding.side.audio_ready" = "Audio output ready";
 "onboarding.side.audio_on_demand" = "Audio connects when voice starts";
 "onboarding.side.voice_key" = "Voice session started and ended";
@@ -958,14 +958,14 @@
 "onboarding.recovery.remote.button_not_ready.title" = "No Button Press Detected Yet";
 "onboarding.recovery.remote.button_not_ready.detail" = "Reconnect, then press any button other than the voice button in the current control interface.";
 "onboarding.recovery.remote.button_not_ready.action" = "Retry Button Detection";
-"onboarding.recovery.audio.no_output_device.title" = "Choose a virtual audio device";
-"onboarding.recovery.audio.no_output_device.detail" = "Choose Voice Input Buddy or BlackHole 2ch above.";
+"onboarding.recovery.audio.no_output_device.title" = "Virtual microphone driver not detected";
+"onboarding.recovery.audio.no_output_device.detail" = "Install the Voice Input Buddy Mic driver. Restart your Mac if the device remains missing.";
 "onboarding.recovery.audio.no_output_device.action" = "Check Devices Again";
-"onboarding.recovery.audio.selected_device_missing.title" = "Choose a supported virtual audio device";
-"onboarding.recovery.audio.selected_device_missing.detail" = "The selected device is unavailable. Choose Voice Input Buddy or BlackHole 2ch.";
+"onboarding.recovery.audio.selected_device_missing.title" = "Voice Input Buddy Mic not detected";
+"onboarding.recovery.audio.selected_device_missing.detail" = "Make sure the driver is installed. Output is configured automatically. Restart your Mac or follow the installation guide if the device remains missing.";
 "onboarding.recovery.audio.selected_device_missing.action" = "Refresh Devices";
 "onboarding.recovery.audio.output_not_ready.title" = "Audio output is not ready";
-"onboarding.recovery.audio.output_not_ready.detail" = "Reconnect the selected device and retry its audio setup.";
+"onboarding.recovery.audio.output_not_ready.detail" = "Voice Input Buddy Mic could not be connected. Retry the check, then restart your Mac if it still fails.";
 "onboarding.recovery.audio.output_not_ready.action" = "Retry Audio Setup";
 "onboarding.recovery.voice.session_not_started.title" = "The voice button has not started a session";
 "onboarding.recovery.voice.session_not_started.detail" = "Click the text field, then %@.";
@@ -1016,7 +1016,7 @@
 "settings.import_notice.separator" = ", ";
 "settings.import_notice.item.button_mapping" = "remote button mappings";
 "settings.import_notice.item.custom_application" = "custom application actions";
-"settings.import_notice.item.audio_device" = "audio device selection";
+"settings.import_notice.item.audio_gain" = "device gain";
 "settings.import_notice.item.other" = "other settings";
 "configuration.import.partial" = "Settings imported. Some items were skipped; see the Button Mapping page.";
 "settings.corrupted.title" = "Some settings could not be read and were reset to defaults";
@@ -1135,7 +1135,7 @@
 "settings.driver.detail" = "A loopback device carries remote audio to your input tool.";
 "settings.driver.installed" = "Compatible microphone detected";
 "settings.driver.missing" = "Compatible microphone not detected";
-"settings.driver.reload_help" = "After installing the driver, refresh the devices here. If it is still missing, restart your Mac. Select the audio output in Devices.";
+"settings.driver.reload_help" = "If Voice Input Buddy Mic is still missing after installation, restart your Mac or follow the installation guide.";
 "settings.integration.title" = "Input Method & Voice Tool Integration";
 "settings.integration.introduction" = "Configure the tool that receives your remote audio and voice shortcut. Use the setup guide to verify the complete path, rather than assuming a detected device is ready for dictation.";
 "settings.integration.current" = "Current integration";
@@ -1156,7 +1156,7 @@
 "onboarding.step.remoteAvailability" = "Your device";
 "onboarding.step.permissions" = "Permissions";
 "onboarding.step.remote" = "Connect remote";
-"onboarding.step.audio" = "Audio routing";
+"onboarding.step.audio" = "Driver check";
 "onboarding.step.voiceTool" = "Input tool";
 "onboarding.step.voiceTest" = "Voice test";
 "onboarding.step.controls" = "Button test";
@@ -1267,3 +1267,11 @@
 "remote.hid_binding.save" = "Link and continue";
 "remote.hid_binding.open" = "Buttons not detected? Link a compatible remote";
 "onboarding.remote.choose_device" = "Choose the remote being added";
+
+"audio.gain.per_device_help" = "Gain is saved separately and applies only to this remote.";
+
+"settings.driver.fixed_output_help" = "All remotes share this virtual microphone. Audio output is configured automatically.";
+
+"onboarding.audio.automatic_ready" = "Driver and audio output are ready. Continuing setup.";
+
+"onboarding.audio.checking" = "Checking the driver and audio output.";

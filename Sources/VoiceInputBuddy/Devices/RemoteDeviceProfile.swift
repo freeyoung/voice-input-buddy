@@ -266,6 +266,7 @@ struct RemoteDeviceProfile: Codable, Equatable, Identifiable {
     var customName: String
     var bluetoothIdentifier: UUID?
     var hidFingerprint: String?
+    var gainDB: Double?
     var compatibleHIDBinding: RemoteHIDBinding?
     var mappings: RemoteDeviceMappings
 
@@ -278,6 +279,7 @@ struct RemoteDeviceProfile: Codable, Equatable, Identifiable {
         bluetoothIdentifier: UUID? = nil,
         hidFingerprint: String? = nil,
         compatibleHIDBinding: RemoteHIDBinding? = nil,
+        gainDB: Double? = nil,
         mappings: RemoteDeviceMappings
     ) {
         self.id = id
@@ -285,6 +287,7 @@ struct RemoteDeviceProfile: Codable, Equatable, Identifiable {
         self.customName = customName
         self.bluetoothIdentifier = bluetoothIdentifier
         self.hidFingerprint = hidFingerprint
+        self.gainDB = gainDB
         self.compatibleHIDBinding = compatibleHIDBinding
         self.mappings = mappings
     }

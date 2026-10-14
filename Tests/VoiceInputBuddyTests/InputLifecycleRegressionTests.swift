@@ -351,12 +351,10 @@ struct InputLifecycleRegressionTests {
         #expect(settings.verifiedVoiceToolBinding != nil)
         settings.completeOnboarding()
         settings.recordFirstUseEvent(.completed, step: .audio)
-        #expect(settings.hasHistoricalAudioConfiguration)
         settings.restartOnboarding()
         #expect(!settings.isOnboardingComplete)
         #expect(settings.firstUseEvents.isEmpty)
         #expect(settings.verifiedVoiceToolBinding == nil)
-        #expect(!settings.hasHistoricalAudioConfiguration)
     }
 
     @Test func recorderIgnoresReleaseOfModifierHeldBeforeOpening() throws {

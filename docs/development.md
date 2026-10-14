@@ -237,3 +237,21 @@ replacement IDs also participate in Fn mapping and power suppression; Google IDs
 do not. Updating the mapper's ID list restores owned mappings before replacing it.
 A saved ID chooses a transport candidate, not a new protocol adapter or a claim
 that every Chromecast-branded replacement works.
+
+
+### Connection groups and fixed microphone output
+
+The connection page uses one group per saved remote: identity, image, connection
+state and gain. Add new device is a prominent page-header action. Gains persist
+in the remote profile and BLE decoding resolves gain from the reporting bridge's
+Bluetooth identity, independently of the currently selected settings card.
+Portable configuration retains explicit per-profile gains, validating bounds
+and mapping the source selection to the destination selection.
+
+All sources share the fixed `BuddyMic2ch_UID` output (Voice Input Buddy Mic).
+Output selection and remembered/alternate-device fallback have been removed.
+Startup and recovery retain their generation guards and use that UID even when
+hardware enumeration returns another microphone or speaker. The driver panel
+shows the shared output name. Onboarding follows connection, button validation,
+then automatic driver/output validation; it advances only when both driver and
+output are ready, and retains installation/restart recovery on failure.

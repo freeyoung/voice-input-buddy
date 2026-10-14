@@ -6,7 +6,7 @@ extension AppSettings {
         let configuration = PersonalizedConfiguration(
             formatVersion: PersonalizedConfiguration.currentFormatVersion,
             gainDB: gainDB,
-            selectedAudioDeviceUID: selectedAudioDeviceUID,
+            remoteGainDB: Dictionary(uniqueKeysWithValues: remoteDeviceProfiles.map { ($0.id, gainDB(for: $0.id)) }),
             customMappingEnabled: customMappingEnabled,
             buttonBindings: Dictionary(
                 uniqueKeysWithValues: buttonBindings.map { ($0.key.rawValue, $0.value) }
@@ -178,13 +178,6 @@ extension AppSettings {
                     return nil
                 }
             }
-        let importedAudioDeviceUID: String
-        if configuration.selectedAudioDeviceUID.count <= Self.maximumImportedIdentifierLength {
-            importedAudioDeviceUID = configuration.selectedAudioDeviceUID
-        } else {
-            importedAudioDeviceUID = ""
-            rejected.insert(Keys.selectedAudioDeviceUID)
-        }
         let importedRecordingBackup: ConfiguredButtonAction?
         if let backup = configuration.continuousRecordingPowerBindingBackup {
             importedRecordingBackup = Self.validatedConfiguredAction(backup)
@@ -196,7 +189,16 @@ extension AppSettings {
         }
 
         gainDB = configuration.gainDB
-        selectedAudioDeviceUID = importedAudioDeviceUID
+        for (id, value) in configuration.remoteGainDB ?? [:] {
+            guard value.isFinite, (0...24).contains(value) else { rejected.insert("remoteGainDB"); continue }
+            if remoteDeviceProfiles.contains(where: { $0.id == id }) {
+                setGainDB(value, for: id)
+            } else if id == configuration.selectedMappingProfileID {
+                if let selectedRemoteProfileID { setGainDB(value, for: selectedRemoteProfileID) }
+            } else if value != 10 {
+                rejected.insert("remoteGainDB")
+            }
+        }
         customMappingEnabled = configuration.customMappingEnabled
         buttonBindings = Self.defaultBindings.merging(importedBindings) { _, imported in imported }
         buttonShortcuts = importedShortcuts
