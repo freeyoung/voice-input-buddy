@@ -245,12 +245,14 @@ final class HIDRemoteMonitor {
         }
 
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
-        IOHIDManagerSetDeviceMatchingMultiple(manager, matches as CFArray)
-
         let context = Unmanaged.passUnretained(self).toOpaque()
         IOHIDManagerRegisterDeviceMatchingCallback(manager, hidDeviceMatched, context)
         IOHIDManagerRegisterDeviceRemovalCallback(manager, hidDeviceRemoved, context)
         IOHIDManagerRegisterInputReportCallback(manager, hidInputReport, context)
+        // Matching immediately enumerates already-connected devices. An unopened
+        // manager does not forward callbacks registered after that enumeration
+        // to existing devices, so install callbacks before setting the matches.
+        IOHIDManagerSetDeviceMatchingMultiple(manager, matches as CFArray)
         IOHIDManagerScheduleWithRunLoop(
             manager,
             CFRunLoopGetMain(),
