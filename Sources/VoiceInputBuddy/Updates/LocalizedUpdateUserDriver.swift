@@ -26,6 +26,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     private let localization: LocalizationStore
     private let currentVersion: UpdateDialogVersion
     private let presentsWindows: Bool
+    private let activateApplication: @MainActor () -> Void
     private var languageSubscription: AnyCancellable?
     private(set) var window: NSWindow?
     private var isPresented = false
@@ -81,10 +82,13 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         }
     }
 
-    init(localization: LocalizationStore, currentVersion: UpdateDialogVersion = .current(), presentsWindows: Bool = true) {
+    init(localization: LocalizationStore, currentVersion: UpdateDialogVersion = .current(),
+         presentsWindows: Bool = true,
+         activateApplication: @escaping @MainActor () -> Void = { NSApp.activate(ignoringOtherApps: true) }) {
         self.localization = localization
         self.currentVersion = currentVersion
         self.presentsWindows = presentsWindows
+        self.activateApplication = activateApplication
         super.init()
         languageSubscription = localization.$locale
             .receive(on: RunLoop.main)
@@ -110,6 +114,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
             let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
                                  styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             panel.isReleasedWhenClosed = false
+            panel.collectionBehavior.insert(.moveToActiveSpace)
             panel.delegate = self
             panel.center()
             window = panel
@@ -121,10 +126,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         window.setContentSize(content.preferredSize)
         content.layoutSubtreeIfNeeded()
         window.defaultButtonCell = content.actionButtons.last(where: { $0.keyEquivalent == "\r" })?.cell as? NSButtonCell
-        if activate {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate()
-        }
+        if activate { showUpdateInFocus() }
     }
 
     func makeContentView() -> UpdateDialogContentView {
@@ -291,7 +293,15 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         window = nil
     }
 
-    func showUpdateInFocus() { window?.makeKeyAndOrderFront(nil); NSApp.activate() }
+    func showUpdateInFocus() {
+        guard isPresented, presentsWindows, let window else { return }
+        // Match Sparkle's standard driver: plain activate() can fail when a
+        // background/menu-bar app needs confirmation after an asynchronous stage.
+        activateApplication()
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+    }
 #if DEBUG
     static func runPreviewIfRequested() -> Bool {
         let environment = ProcessInfo.processInfo.environment
