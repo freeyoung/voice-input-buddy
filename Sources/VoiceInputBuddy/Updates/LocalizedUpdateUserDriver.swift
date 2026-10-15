@@ -30,6 +30,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     private var languageSubscription: AnyCancellable?
     private(set) var window: NSWindow?
     private var isPresented = false
+    private var installAndRelaunchWhenReady = false
     private var candidateVersion: UpdateDialogVersion?
     private var actions: [Action] = []
     private var closeActionIndex: Int?
@@ -46,12 +47,10 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     var detail: String { LocalizedMessage(detailKey, arguments: detailArguments).text(using: localization) }
     var versionRows: [UpdateDialogVersionRow] {
         var rows = [UpdateDialogVersionRow(
-            label: localization.text(titleKey == "update.dialog.installed" && candidateVersion != nil
-                ? "update.dialog.previous_version" : "update.dialog.installed_version"),
+            label: localization.text("update.dialog.installed_version"),
             version: currentVersion.version)]
         if let candidateVersion, titleKey != "update.dialog.up_to_date" {
-            let labelKey = titleKey == "update.dialog.installed" ? "update.dialog.installed_version"
-                : titleKey == "update.dialog.not_found" ? "update.dialog.latest_version" : "update.dialog.available_version"
+            let labelKey = titleKey == "update.dialog.not_found" ? "update.dialog.latest_version" : "update.dialog.available_version"
             rows.append(.init(label: localization.text(labelKey), version: candidateVersion.version))
         }
         return rows
@@ -71,7 +70,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     private var statusStyle: (symbol: String, tint: NSColor) {
         switch titleKey {
-        case "update.dialog.up_to_date", "update.dialog.installed": return ("checkmark.circle.fill", .systemGreen)
+        case "update.dialog.up_to_date": return ("checkmark.circle.fill", .systemGreen)
         case "update.dialog.error": return ("exclamationmark.triangle.fill", .systemOrange)
         case "update.dialog.found", "update.dialog.ready": return ("arrow.down.circle.fill", .controlAccentColor)
         case "update.dialog.downloading": return ("arrow.down.to.line", .controlAccentColor)
@@ -111,15 +110,22 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     private func render(activate: Bool = false) {
         guard isPresented, presentsWindows else { return }
         if window == nil {
-            let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
+            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
                                  styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             panel.isReleasedWhenClosed = false
-            panel.collectionBehavior.insert(.moveToActiveSpace)
+            panel.hidesOnDeactivate = false
+            panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             panel.delegate = self
             panel.center()
             window = panel
         }
         guard let window else { return }
+        // Preparation finishes asynchronously, potentially while another app is
+        // active. Activation alone does not keep the restart confirmation above
+        // that app's windows. Elevate only the stages waiting for an install choice.
+        let awaitsInstallationChoice = titleKey == "update.dialog.ready"
+            || (titleKey == "update.dialog.installing" && !actions.isEmpty)
+        window.level = awaitsInstallationChoice ? .floating : .normal
         window.title = localization.text("update.dialog.window")
         let content = makeContentView()
         window.contentView = content
@@ -191,6 +197,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     }
 
     func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
+        installAndRelaunchWhenReady = false
         candidateVersion = nil
         present("update.dialog.checking", progress: -1, closeActionIndex: 0,
                 actions: [Action(key: "common.action.cancel", completes: true, handler: cancellation)])
@@ -201,12 +208,18 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     }
 
     func showAvailableUpdate(_ version: UpdateDialogVersion, reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        installAndRelaunchWhenReady = false
         candidateVersion = version
         present("update.dialog.found", detail: "update.dialog.found.detail", closeActionIndex: 0,
                 actions: [
             Action(key: "update.dialog.later", completes: true) { reply(.dismiss) },
             Action(key: "update.dialog.skip", completes: true) { reply(.skip) },
-            Action(key: "update.dialog.install", completes: true) { reply(.install) },
+            Action(key: "update.dialog.install", completes: true) { [weak self] in
+                // The first confirmation explicitly includes restarting. Carry
+                // that choice through download and system authorization only.
+                self?.installAndRelaunchWhenReady = true
+                reply(.install)
+            },
         ])
     }
 
@@ -235,6 +248,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     }
 
     func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
+        installAndRelaunchWhenReady = false
         let error = error as NSError
         present("update.dialog.error", diagnostic: LocalizedMessage("update.dialog.error_code",
                     arguments: [error.domain, String(error.code)]).text(using: localization), closeActionIndex: 0,
@@ -268,6 +282,11 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     func showExtractionReceivedProgress(_ progress: Double) { self.progress = min(1, max(0, progress)); render() }
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        if installAndRelaunchWhenReady {
+            dismissUpdateInstallation()
+            reply(.install)
+            return
+        }
         present("update.dialog.ready", closeActionIndex: 1, actions: [
             Action(key: "update.dialog.cancel_install", completes: true) { reply(.skip) },
             Action(key: "update.dialog.install_later", completes: true) { reply(.dismiss) },
@@ -282,10 +301,14 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     }
 
     func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
-        present("update.dialog.installed", closeActionIndex: 0, actions: [Action(key: "update.dialog.done", completes: true, handler: acknowledgement)])
+        // The relaunched app reports completion with a transient notice in its
+        // main window. Do not require another acknowledgement in the old driver.
+        dismissUpdateInstallation()
+        acknowledgement()
     }
 
     func dismissUpdateInstallation() {
+        installAndRelaunchWhenReady = false
         isPresented = false
         actions = []
         closeActionIndex = nil
@@ -339,9 +362,6 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         case "extracting":
             driver.showAvailableUpdate(next) { _ in stop() }
             driver.showDownloadDidStartExtractingUpdate()
-        case "installed":
-            driver.showAvailableUpdate(next) { _ in stop() }
-            driver.showUpdateInstalledAndRelaunched(true, acknowledgement: stop)
         case "installing", "waiting_quit":
             driver.showAvailableUpdate(next) { _ in stop() }
             driver.showInstallingUpdate(withApplicationTerminated: stage == "installing",

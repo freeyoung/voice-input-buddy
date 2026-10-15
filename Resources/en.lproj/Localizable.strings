@@ -1180,10 +1180,10 @@
 "update.dialog.allow_checks" = "Enable Automatic Checks";
 "update.dialog.checking" = "Checking for updates…";
 "update.dialog.found" = "A new version is available";
-"update.dialog.found.detail" = "Download the new version for the latest improvements.";
+"update.dialog.found.detail" = "The update will download, then install and restart automatically after any required administrator authorization.";
 "update.dialog.later" = "Later";
 "update.dialog.skip" = "Skip Version";
-"update.dialog.install" = "Download Update";
+"update.dialog.install" = "Update and Restart";
 "update.dialog.not_found" = "No compatible update is available";
 "update.dialog.not_found.detail" = "This update channel has no newer version available for this device. You can keep using the app.";
 "update.dialog.error" = "The update could not be completed";
@@ -1195,7 +1195,6 @@
 "update.dialog.install_restart" = "Install and Restart";
 "update.dialog.installing" = "Installing the update…";
 "update.dialog.retry_quit" = "Quit App and Continue";
-"update.dialog.installed" = "Update complete";
 "update.dialog.history" = "Release Notes";
 
 
@@ -1229,7 +1228,6 @@
 
 "update.dialog.waiting_for_quit.detail" = "The app is still running. Quit it to continue installing.";
 
-"update.dialog.installed.detail" = "The new version is installed. You can keep using the app.";
 
 "update.dialog.close" = "Close";
 
@@ -1241,7 +1239,6 @@
 
 "update.dialog.latest_version" = "Latest on this channel";
 
-"update.dialog.previous_version" = "Previous version";
 
 // Four-device product scope. Upcoming adapters show an inline notice on Continue.
 "remote.catalog.xiaomi.title" = "Xiaomi Bluetooth Remote 2 / 2 Pro";

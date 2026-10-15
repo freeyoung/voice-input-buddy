@@ -224,6 +224,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private var updateCheckTask: Task<Void, Never>?
     private var resolvedUpdateFeedURLString: String?
     private var updaterStarted = false
+    private var completedUpdateVersion: String?
     private lazy var updateUserDriver = LocalizedUpdateUserDriver(localization: localization)
     private lazy var updater = SPUUpdater(hostBundle: .main, applicationBundle: .main,
                                          userDriver: updateUserDriver, delegate: self)
@@ -250,6 +251,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             currentBuild: currentBuild,
             sparkleHadLaunchedBefore: UserDefaults.standard.bool(forKey: "SUHasLaunchedBefore")
         )
+        if completedUpdate {
+            completedUpdateVersion = UpdateDialogVersion.current().version
+        }
         observeUpdatePreferences()
         observeAppIconPreference()
         configureUpdater()
@@ -317,9 +321,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                     self.showSettingsWindow(initialSection: .about)
                 } else {
                     self.showSettings()
-                }
-                if completedUpdate {
-                    self.showUpdateCompletedAlert()
                 }
             }
         }
@@ -922,7 +923,8 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 syncEntryPointVisibility: { [weak self] in
                     self?.applyImportedEntryPointVisibility()
                 },
-                initialSettingsSection: initialSettingsSection
+                initialSettingsSection: initialSettingsSection,
+                completedUpdateVersion: completedUpdateVersion
             )
             .environmentObject(localization)
         )
@@ -1145,25 +1147,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         if error != nil, updateInformation.state == .checking {
             updateInformation.setUnavailable()
         }
-    }
-
-    private func showUpdateCompletedAlert() {
-        guard let window = settingsWindowController?.window else { return }
-        let version = (Bundle.main.object(forInfoDictionaryKey: "BuddyReleaseVersion") as? String)
-            ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
-            ?? localization.text("common.value.unknown")
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = localization.text("update.completed.title")
-        alert.informativeText = String(
-            format: localization.text("update.completed.message"),
-            locale: localization.locale,
-            arguments: [version]
-        )
-        alert.addButton(withTitle: localization.text("update.dialog.done"))
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        alert.beginSheetModal(for: window, completionHandler: nil)
     }
 
     private func setDockIconVisible(_ isVisible: Bool) {
