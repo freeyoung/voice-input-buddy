@@ -311,6 +311,74 @@ struct UpdateDialogTests {
         #expect(driver.window?.level == .normal)
     }
 
+    @Test func confirmedUpgradeRetainsFloatingWindowDuringInstallationUntilTermination() throws {
+        let suite = "update-install-continuity-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        let language = try localization(suite)
+        language.select(.simplifiedChinese)
+        let driver = LocalizedUpdateUserDriver(localization: language, activateApplication: {})
+        defer { driver.dismissUpdateInstallation() }
+        var choices: [SPUUserUpdateChoice] = []
+        driver.showAvailableUpdate(.init(version: "v26-10-15.215", commitCount: "215")) { choices.append($0) }
+        driver.performAction(at: 2)
+        #expect(choices == [.install])
+
+        driver.showDownloadInitiated {}
+        let panel = try #require(driver.window as? NSPanel)
+        driver.showDownloadDidStartExtractingUpdate()
+        #expect(driver.window === panel)
+
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        #expect(choices == [.install, .install])
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(panel.level == .floating)
+        #expect(driver.title == "正在安装更新…")
+        #expect(driver.detail == "正在安装新版本，请稍候。")
+        #expect(driver.actionTitles.isEmpty)
+
+        var retries = 0
+        driver.showInstallingUpdate(withApplicationTerminated: false) { retries += 1 }
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(panel.level == .floating)
+        #expect(driver.detail == "正在安装新版本，请稍候。")
+        #expect(driver.actionTitles == ["退出应用并继续"])
+
+        driver.showInstallingUpdate(withApplicationTerminated: true) {}
+        #expect(panel.level == .normal)
+
+        var acknowledgements = 0
+        driver.showUpdateInstalledAndRelaunched(true) { acknowledgements += 1 }
+        #expect(acknowledgements == 1)
+        #expect(driver.window == nil)
+    }
+
+    @Test func manualReadyInstallContinuesFloatingProgressWithoutDismissal() throws {
+        let suite = "update-manual-ready-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        let language = try localization(suite)
+        language.select(.simplifiedChinese)
+        let driver = LocalizedUpdateUserDriver(localization: language, activateApplication: {})
+        defer { driver.dismissUpdateInstallation() }
+        var choices: [SPUUserUpdateChoice] = []
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        let panel = try #require(driver.window as? NSPanel)
+        #expect(panel.level == .floating)
+        #expect(driver.actionTitles == ["取消安装", "稍后安装", "安装并重启"])
+
+        driver.performAction(at: 2)
+        #expect(choices == [.install])
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(panel.level == .floating)
+        #expect(driver.title == "正在安装更新…")
+        #expect(driver.detail == "正在安装新版本，请稍候。")
+        #expect(driver.actionTitles.isEmpty)
+    }
+
     @Test(arguments: [AppLanguage.english, .simplifiedChinese])
     func footerActionsFitTheDialogInBothLanguages(language: AppLanguage) throws {
         let suite = "update-layout-" + UUID().uuidString

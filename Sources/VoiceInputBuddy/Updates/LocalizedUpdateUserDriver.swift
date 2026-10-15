@@ -31,6 +31,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     private(set) var window: NSWindow?
     private var isPresented = false
     private var installAndRelaunchWhenReady = false
+    private var applicationTerminated = false
     private var candidateVersion: UpdateDialogVersion?
     private var actions: [Action] = []
     private var closeActionIndex: Int?
@@ -124,7 +125,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         // active. Activation alone does not keep the restart confirmation above
         // that app's windows. Elevate only the stages waiting for an install choice.
         let awaitsInstallationChoice = titleKey == "update.dialog.ready"
-            || (titleKey == "update.dialog.installing" && !actions.isEmpty)
+            || (titleKey == "update.dialog.installing" && !applicationTerminated)
         window.level = awaitsInstallationChoice ? .floating : .normal
         window.title = localization.text("update.dialog.window")
         let content = makeContentView()
@@ -198,6 +199,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
         installAndRelaunchWhenReady = false
+        applicationTerminated = false
         candidateVersion = nil
         present("update.dialog.checking", progress: -1, closeActionIndex: 0,
                 actions: [Action(key: "common.action.cancel", completes: true, handler: cancellation)])
@@ -209,6 +211,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     func showAvailableUpdate(_ version: UpdateDialogVersion, reply: @escaping (SPUUserUpdateChoice) -> Void) {
         installAndRelaunchWhenReady = false
+        applicationTerminated = false
         candidateVersion = version
         present("update.dialog.found", detail: "update.dialog.found.detail", closeActionIndex: 0,
                 actions: [
@@ -249,6 +252,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
         installAndRelaunchWhenReady = false
+        applicationTerminated = false
         let error = error as NSError
         present("update.dialog.error", diagnostic: LocalizedMessage("update.dialog.error_code",
                     arguments: [error.domain, String(error.code)]).text(using: localization), closeActionIndex: 0,
@@ -283,20 +287,24 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
         if installAndRelaunchWhenReady {
-            dismissUpdateInstallation()
+            installAndRelaunchWhenReady = false
+            present("update.dialog.installing", detail: "update.dialog.installing.detail", progress: -1)
             reply(.install)
             return
         }
         present("update.dialog.ready", closeActionIndex: 1, actions: [
             Action(key: "update.dialog.cancel_install", completes: true) { reply(.skip) },
             Action(key: "update.dialog.install_later", completes: true) { reply(.dismiss) },
-            Action(key: "update.dialog.install_restart", completes: true) { reply(.install) },
+            Action(key: "update.dialog.install_restart", completes: false) { [weak self] in
+                self?.present("update.dialog.installing", detail: "update.dialog.installing.detail", progress: -1)
+                reply(.install)
+            },
         ])
     }
 
     func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) {
-        present("update.dialog.installing", detail: applicationTerminated
-                    ? "update.dialog.installing.detail" : "update.dialog.waiting_for_quit.detail", progress: -1,
+        self.applicationTerminated = applicationTerminated
+        present("update.dialog.installing", detail: "update.dialog.installing.detail", progress: -1,
                 actions: applicationTerminated ? [] : [Action(key: "update.dialog.retry_quit", completes: false, handler: retryTerminatingApplication)])
     }
 
@@ -309,6 +317,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     func dismissUpdateInstallation() {
         installAndRelaunchWhenReady = false
+        applicationTerminated = false
         isPresented = false
         actions = []
         closeActionIndex = nil
