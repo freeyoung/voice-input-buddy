@@ -48,15 +48,13 @@ extension OnboardingView {
             controlMethod: settings.onboardingControlMethod,
             voiceKeyMode: settings.voiceKeyMode,
             voiceToolGuideStepsCompleted: inputMethodGuideStepsCompleted,
+            selectedDevice: settings.onboardingDevice,
             capabilities: capabilities
         )
         if settings.onboardingStep == .voiceTest {
             return policyAllowsContinue &&
                 verifiedTranscriptionAppeared &&
                 selectedVoiceToolRuntimeReady
-        }
-        if settings.onboardingStep == .remoteAvailability {
-            return settings.onboardingDevice != nil
         }
         return policyAllowsContinue &&
             (settings.onboardingStep != .voiceTool ||

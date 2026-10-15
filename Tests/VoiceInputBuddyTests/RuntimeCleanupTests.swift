@@ -191,32 +191,34 @@ struct ProductDeepLinkTests {
 struct ScheduledVoiceTaskLifetimeTests {
     private final class Probe {}
 
-    @Test func completedTaskReleasesCapturedObjects() async throws {
+    @Test func completedTaskReleasesCapturedObjects() {
         var probe: Probe? = Probe()
         weak let observed = probe
         var calls = 0
-        let task = VoiceFnTapScheduledTask.mainQueue(after: 0) { [retained = probe!] in
+        var queued: DispatchWorkItem?
+        let task = ScheduledOperation.scheduled(after: 0, enqueue: { _, item in queued = item }) { [retained = probe!] in
             withExtendedLifetime(retained) { calls += 1 }
         }
         probe = nil
-        try await Task.sleep(for: .milliseconds(100))
+        queued?.perform()
         #expect(calls == 1)
         #expect(observed == nil)
         withExtendedLifetime(task) {}
     }
 
-    @Test func cancellationReleasesCapturedObjectsBeforeDeadline() async throws {
+    @Test func cancellationReleasesCapturedObjectsBeforeDeadline() {
         var probe: Probe? = Probe()
         weak let observed = probe
         var calls = 0
-        let task = VoiceFnTapScheduledTask.mainQueue(after: 0.05) { [retained = probe!] in
+        var queued: DispatchWorkItem?
+        let task = ScheduledOperation.scheduled(after: 0.05, enqueue: { _, item in queued = item }) { [retained = probe!] in
             withExtendedLifetime(retained) { calls += 1 }
         }
         probe = nil
         task.cancel()
         task.cancel()
         #expect(observed == nil)
-        try await Task.sleep(for: .milliseconds(100))
+        queued?.perform()
         #expect(calls == 0)
         #expect(observed == nil)
     }

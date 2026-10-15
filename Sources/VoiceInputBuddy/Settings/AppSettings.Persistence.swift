@@ -47,7 +47,7 @@ extension AppSettings {
     }
 
     func saveSelectedRemoteProfileMappings() {
-        guard !isLoadingRemoteProfile,
+        guard !isLoadingRemoteProfile, !isResettingBindings,
               let selectedRemoteProfileID,
               let index = remoteDeviceProfiles.firstIndex(where: { $0.id == selectedRemoteProfileID })
         else { return }

@@ -26,7 +26,8 @@ let package = Package(
         .target(
             name: "AudioExceptionGuard",
             path: "Sources/AudioExceptionGuard",
-            publicHeadersPath: "include"
+            publicHeadersPath: "include",
+            cSettings: [.unsafeFlags(["-fobjc-arc", "-fobjc-arc-exceptions"])]
         ),
         .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy"], path: "Tests/VoiceInputBuddyTests"),
     ],

@@ -21,7 +21,7 @@ final class CommonPhraseController: ObservableObject {
     private var targetPID: pid_t?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var generation: UInt64 = 0
-    private var localization: LocalizationStore?
+    private var localization: LocalizationSnapshot?
 
     init(
         store: CommonPhraseStore,
@@ -56,7 +56,7 @@ final class CommonPhraseController: ObservableObject {
     deinit { for (center, observer) in observers { center.removeObserver(observer) } }
 
     @discardableResult
-    func open(source: String, localization: LocalizationStore) -> Bool {
+    @MainActor func open(source: String, localization: LocalizationStore) -> Bool {
         guard store.isAvailable else {
             AppLogger.shared.write("COMMON_PHRASES PANEL phase=failed reason=resource_unavailable")
             return false
@@ -67,7 +67,7 @@ final class CommonPhraseController: ObservableObject {
         }
         close(reason: "superseded")
         onWillOpen?()
-        self.localization = localization
+        self.localization = localization.snapshot
         generation &+= 1
         targetPID = frontmostProcessID()
         routing.open(source: source)

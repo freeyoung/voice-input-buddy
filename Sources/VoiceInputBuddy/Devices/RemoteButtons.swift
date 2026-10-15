@@ -57,6 +57,7 @@ enum RemoteButton: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    @MainActor
     func shortLabel(using localization: LocalizationStore) -> String {
         switch self {
         case .power: return localization.text("remote.button.short.power")
@@ -79,6 +80,7 @@ enum RemoteButton: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         switch self {
         case .power: return localization.text("remote.button.full.power")
@@ -248,6 +250,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
         return normalized
     }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         if let standaloneModifier {
             return standaloneModifier.displayName(using: localization)
@@ -282,6 +285,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
     }
 
     /// Compact macOS-style representation used by the mapping UI.
+    @MainActor
     func visualDisplayName(using localization: LocalizationStore) -> String {
         if let standaloneModifier {
             return standaloneModifier.symbol
@@ -316,6 +320,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
     }
 
     /// Full keyboard wording used by tooltips and accessibility labels.
+    @MainActor
     func detailedDisplayName(using localization: LocalizationStore) -> String {
         if let standaloneModifier {
             return standaloneModifier.displayName(using: localization)
@@ -358,6 +363,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
         return parts.joined(separator: " + ")
     }
 
+    @MainActor
     private func sidedSymbol(
         _ symbol: String,
         leftMask: UInt,
@@ -367,6 +373,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
         sidePrefix(leftMask: leftMask, rightMask: rightMask, using: localization) + symbol
     }
 
+    @MainActor
     private func sidePrefix(
         leftMask: UInt,
         rightMask: UInt,
@@ -381,6 +388,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
         return ""
     }
 
+    @MainActor
     private func detailedModifierName(
         _ localizationKey: String,
         leftMask: UInt,
@@ -405,6 +413,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
         }
     }
 
+    @MainActor
     private func detailedKeyLabel(using localization: LocalizationStore) -> String {
         switch keyCode {
         case 36: return localization.text("keyboard.key.return")
@@ -421,6 +430,7 @@ struct CustomKeyboardShortcut: Codable, Equatable {
         }
     }
 
+    @MainActor
     private func localizedKeyLabel(using localization: LocalizationStore) -> String {
         switch keyCode {
         case 36: return localization.text("keyboard.key.return")
@@ -498,6 +508,7 @@ enum ButtonTrigger: String, CaseIterable, Codable, Identifiable {
 
     var id: String { rawValue }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         switch self {
         case .singleClick: return localization.text("trigger.single_click")
@@ -532,6 +543,7 @@ enum CustomApplicationFocusStrategy: String, Codable, CaseIterable, Identifiable
 
     var id: String { rawValue }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         switch self {
         case .none: return localization.text("custom_application.focus.none")
@@ -610,6 +622,7 @@ enum PresetApplication: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         switch self {
         case .remoteMic: return localization.text("app.name")
@@ -738,6 +751,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
 
     var id: String { rawValue }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         switch self {
         case .disabled: return localization.text("action.disabled")

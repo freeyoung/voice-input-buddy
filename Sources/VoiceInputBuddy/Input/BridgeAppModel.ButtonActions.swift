@@ -288,7 +288,10 @@ extension BridgeAppModel {
     @discardableResult
     func performInternalAction(_ action: ButtonAction, source: String = "host_action") -> Bool {
         if action == .openCommonPhrases {
-            return commonPhrases.open(source: source, localization: LocalizationStore(settings: settings))
+            guard Thread.isMainThread else { return false }
+            return MainActor.assumeIsolated {
+                commonPhrases.open(source: source, localization: LocalizationStore(settings: settings))
+            }
         }
         guard action == .toggleLongRecording else { return false }
         guard action.isEnabled(

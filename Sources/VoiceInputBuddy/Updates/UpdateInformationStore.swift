@@ -218,13 +218,13 @@ final class UpdateInformationStore: ObservableObject {
 
     private let userDefaults: UserDefaults
     private var pendingUpdate: PendingUpdate?
-    private var checkingDeadline: VoiceFnTapScheduledTask?
+    private var checkingDeadline: ScheduledOperation?
     private var checkingGeneration = UUID()
-    private let schedule: VoiceFnTapSessionController.Scheduler
+    private let schedule: OperationScheduler
     private let checkingTimeout: TimeInterval
 
     init(userDefaults: UserDefaults = .standard, checkingTimeout: TimeInterval = 30,
-         schedule: @escaping VoiceFnTapSessionController.Scheduler = VoiceFnTapScheduledTask.mainQueue) {
+         schedule: @escaping OperationScheduler = ScheduledOperation.mainQueue) {
         self.userDefaults = userDefaults
         self.checkingTimeout = checkingTimeout
         self.schedule = schedule

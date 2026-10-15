@@ -14,8 +14,6 @@ extension BridgeAppModel {
             return
         }
         isPhoneRemoteConnectionEnabled = true
-        phoneRemoteServer.start()
-        watchBluetoothServer.start()
         AppLogger.shared.write("PHONE REMOTE enabled_by_user")
     }
 
@@ -25,8 +23,6 @@ extension BridgeAppModel {
         isPhoneRemoteConnected = false
         isWatchRemoteConnected = false
         cancelPhoneApproval()
-        phoneRemoteServer.stop()
-        watchBluetoothServer.stop()
         AppLogger.shared.write("PHONE REMOTE disabled_by_user")
     }
 
@@ -56,14 +52,14 @@ extension BridgeAppModel {
     }
 
     func disableWebRemoteConnection() {
-        webRemoteClient.stop()
+        webRemoteState = .disabled
         AppLogger.shared.write(
             "WEB REMOTE SESSION phase=cancelled result=cancelled " +
                 "reason=cancelled_by_user"
         )
     }
 
-    func updatePhoneRemoteButtonTitles(
+    @MainActor func updatePhoneRemoteButtonTitles(
         bindings: [RemoteButton: ButtonAction],
         shortcuts: [RemoteButton: CustomKeyboardShortcut],
         applicationProfileIDs: [RemoteButton: UUID] = [:],
@@ -89,8 +85,5 @@ extension BridgeAppModel {
             titles[button.rawValue] = String(fullTitle.prefix(10))
         }
         remoteButtonTitles = titles
-        phoneRemoteServer.updateButtonTitles(titles)
-        watchBluetoothServer.updateButtonTitles(titles)
-        webRemoteClient.updateButtonTitles(titles)
     }
 }

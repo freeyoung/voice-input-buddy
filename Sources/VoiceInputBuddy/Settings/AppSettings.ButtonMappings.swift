@@ -482,10 +482,18 @@ extension AppSettings {
     }
 
     func resetBindings() {
+        isResettingBindings = true
+        defer {
+            isResettingBindings = false
+            saveSelectedRemoteProfileMappings()
+            if let data = try? JSONEncoder().encode(unifiedBaseBindings) {
+                defaults.set(data, forKey: "unifiedBaseBindings")
+            }
+        }
         buttonBindings = Self.defaultBindings
         buttonShortcuts = [:]
         unifiedBaseBindings.removeAll { $0.remoteProfileID == selectedRemoteProfileID }
-        // Legacy unscoped macros remain available on other devices after this reset.
+        // Override inherited bindings only for the selected device.
         if let device = selectedRemoteProfileID {
             for inherited in unifiedBaseBindings.filter({ $0.remoteProfileID == nil }) {
                 setBaseBinding(ConfiguredButtonAction(

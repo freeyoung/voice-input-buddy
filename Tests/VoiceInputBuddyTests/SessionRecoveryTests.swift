@@ -3,34 +3,6 @@ import Foundation
 import Testing
 @testable import VoiceInputBuddy
 
-private final class RecoveryTask: HIDRemoteScheduledTask {
-    let due: UInt64
-    var action: (() -> Void)?
-    init(due: UInt64, action: @escaping () -> Void) { self.due = due; self.action = action }
-    func cancel() { action = nil }
-}
-private final class RecoveryScheduler: HIDRemoteScheduling {
-    var clock: UInt64 = 0
-    var tasks: [RecoveryTask] = []
-    func schedule(afterMilliseconds: UInt64, repeatingEveryMilliseconds: UInt64?, _ action: @escaping () -> Void) -> HIDRemoteScheduledTask {
-        let task = RecoveryTask(due: clock + afterMilliseconds, action: action)
-        tasks.append(task)
-        return task
-    }
-    func runNext() {
-        tasks.sort { $0.due < $1.due }
-        while !tasks.isEmpty {
-            let task = tasks.removeFirst()
-            guard let action = task.action else { continue }
-            clock = task.due
-            task.action = nil
-            action()
-            return
-        }
-    }
-    func runAll() { for _ in 0..<20 where tasks.contains(where: { $0.action != nil }) { runNext() } }
-}
-
 @Suite("Session recovery")
 @MainActor
 struct SessionRecoveryTests {
@@ -40,12 +12,12 @@ struct SessionRecoveryTests {
     }
 
     @Test func disabledSessionCompletesCleanupWithoutWaitingForLostRemoteStop() {
-        let scheduler = RecoveryScheduler()
+        let scheduler = ControlledTestScheduler()
         var completions = 0
         let session = VoiceFnTapSessionController(startDelay: 0,
             schedule: { delay, action in
                 let task = scheduler.schedule(afterMilliseconds: UInt64(delay * 1000), repeatingEveryMilliseconds: nil, action)
-                return VoiceFnTapScheduledTask(cancellation: { task.cancel() })
+                return ScheduledOperation(cancellation: { task.cancel() })
             }, setFunctionKeyPressed: { _ in true }, enqueueAudio: { _ in },
             drainAudio: { _, completion in completion() }, onFailure: { _ in })
         session.setEnabled(true)
@@ -62,26 +34,26 @@ struct SessionRecoveryTests {
         #expect(completions == 1)
     }
 
-    @Test func cancelledDrainAnswersExactlyOnceEvenAfterDeadline() async throws {
-        let output = VirtualAudioOutput(logger: { _ in })
+    @Test func cancelledDrainAnswersExactlyOnceEvenAfterDeadline() {
+        let clock = ControlledTestScheduler()
+        let output = VirtualAudioOutput(logger: { _ in }, scheduleDrainDeadline: clock.voiceSchedule)
         output.registerPendingVoiceBuffer()
         var outcomes: [VirtualAudioDrainOutcome] = []
         output.endSessionAfterDraining(maximumDelay: 0.02) { (outcome: VirtualAudioDrainOutcome) in outcomes.append(outcome) }
         output.cancelPendingDrain()
         output.cancelPendingDrain()
         #expect(outcomes == [.forced])
-        try await Task.sleep(for: .milliseconds(60))
+        clock.advance(to: 20)
         #expect(outcomes == [.forced])
     }
 
-    @Test func destroyedOutputAnswersOutstandingDrain() async throws {
+    @Test func destroyedOutputAnswersOutstandingDrain() {
         var output: VirtualAudioOutput? = VirtualAudioOutput(logger: { _ in })
         weak let observed = output
         output!.registerPendingVoiceBuffer()
         var outcomes: [VirtualAudioDrainOutcome] = []
         output!.endSessionAfterDraining(maximumDelay: nil) { (outcome: VirtualAudioDrainOutcome) in outcomes.append(outcome) }
         output = nil
-        try await Task.sleep(for: .milliseconds(30))
         #expect(observed == nil)
         #expect(outcomes == [.forced])
     }
@@ -103,7 +75,7 @@ struct SessionRecoveryTests {
     }
 
     @Test func acknowledgedWritesSerializeAndDropFailedBacklog() {
-        let scheduler = RecoveryScheduler()
+        let scheduler = ControlledTestScheduler()
         var sent: [Data] = []
         var failures = 0
         let queue = AcknowledgedBluetoothWriteQueue(scheduler: scheduler, send: { sent.append($0) }, onFailure: { failures += 1 })
@@ -124,7 +96,7 @@ struct SessionRecoveryTests {
     }
 
     @Test func writeTimeoutIsFiniteAndQueueCapacityIsBounded() {
-        let scheduler = RecoveryScheduler()
+        let scheduler = ControlledTestScheduler()
         var failures = 0
         var sent = 0
         let queue = AcknowledgedBluetoothWriteQueue(scheduler: scheduler, send: { _ in sent += 1 }, onFailure: { failures += 1 })

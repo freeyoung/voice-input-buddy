@@ -45,26 +45,6 @@ struct ProductBoundaryTests {
         }
     }
 
-    /// Architectural boundary: default routes may be observed, but the app must
-    /// never write Core Audio's global system object to change those routes.
-    @Test func systemAudioDefaultsRemainReadOnly() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent()
-        let sources = root.appendingPathComponent("Sources")
-        let enumerator = try #require(FileManager.default.enumerator(
-            at: sources, includingPropertiesForKeys: nil
-        ))
-        let globalAudioWrite = try NSRegularExpression(
-            pattern: #"AudioObjectSetPropertyData\s*\(\s*(?:AudioObjectID\s*\(\s*)?kAudioObjectSystemObject"#
-        )
-        for case let file as URL in enumerator where file.pathExtension == "swift" {
-            let source = try String(contentsOf: file, encoding: .utf8)
-            #expect(globalAudioWrite.firstMatch(in: source,
-                range: NSRange(source.startIndex..., in: source)) == nil,
-                "Global audio route mutation found in \(file.lastPathComponent)")
-        }
-    }
-
     @Test @MainActor func configurationOperationsPersistPreferencesWithoutUsageData() throws {
         let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

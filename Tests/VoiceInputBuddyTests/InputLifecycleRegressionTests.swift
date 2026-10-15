@@ -178,7 +178,7 @@ struct InputLifecycleRegressionTests {
             startDelay: 0, tapDuration: 0,
             schedule: { _, operation in
                 operations.append(operation)
-                return VoiceFnTapScheduledTask(cancellation: {})
+                return ScheduledOperation(cancellation: {})
             },
             setFunctionKeyPressed: { pressed in pressed || allowRelease },
             enqueueAudio: { _ in }, drainAudio: { _, completion in completion() },

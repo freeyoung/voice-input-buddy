@@ -70,7 +70,7 @@ final class AppSettings: ObservableObject {
 
     @Published var unifiedBaseBindings: [UnifiedButtonBinding] = [] {
         didSet {
-            if let data = try? JSONEncoder().encode(unifiedBaseBindings) {
+            if !isResettingBindings, let data = try? JSONEncoder().encode(unifiedBaseBindings) {
                 defaults.set(data, forKey: "unifiedBaseBindings")
             }
         }
@@ -78,9 +78,11 @@ final class AppSettings: ObservableObject {
 
     func setBaseBinding(_ configured: ConfiguredButtonAction, for button: RemoteButton,
                         trigger: ButtonTrigger, profileID: UUID?) {
-        unifiedBaseBindings.removeAll { $0.remoteProfileID == profileID && $0.button == button && $0.trigger == trigger }
-        unifiedBaseBindings.append(UnifiedButtonBinding(remoteProfileID: profileID, button: button,
-                                                        trigger: trigger, configured: configured))
+        var bindings = unifiedBaseBindings
+        bindings.removeAll { $0.remoteProfileID == profileID && $0.button == button && $0.trigger == trigger }
+        bindings.append(UnifiedButtonBinding(remoteProfileID: profileID, button: button,
+                                            trigger: trigger, configured: configured))
+        unifiedBaseBindings = bindings
     }
 
     @Published var buttonBindings: [RemoteButton: ButtonAction] {
@@ -239,6 +241,7 @@ final class AppSettings: ObservableObject {
     }
 
     var isLoadingRemoteProfile = false
+    var isResettingBindings = false
 
     @Published var trustedPhoneIdentityFingerprints: Set<String> {
         didSet {

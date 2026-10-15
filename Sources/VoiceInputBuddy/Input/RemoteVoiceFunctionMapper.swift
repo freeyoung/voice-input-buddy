@@ -174,7 +174,7 @@ final class RemoteVoiceFunctionMapper {
     private static func currentBootID() -> String? {
         var size = 0
         if sysctlbyname("kern.bootsessionuuid", nil, &size, nil, 0) == 0, size > 0 {
-            var bytes = [CChar](repeating: 0, count: size)
+            var bytes = [CChar](repeating: 0, count: size + 1)
             if sysctlbyname("kern.bootsessionuuid", &bytes, &size, nil, 0) == 0,
                let identity = bootIdentity(uuid: String(cString: bytes), bootTime: nil) { return identity }
         }

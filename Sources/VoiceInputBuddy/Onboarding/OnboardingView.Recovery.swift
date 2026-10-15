@@ -160,6 +160,7 @@ extension OnboardingView {
     }
 
     private func resetVoiceTestForRetry() {
+        cancelVoiceTestTasks()
         voiceTranscriptDeadlineToken = UUID()
         voiceAttemptStartedAtUptime = nil
         voiceTranscriptWaitStartedAtUptime = nil

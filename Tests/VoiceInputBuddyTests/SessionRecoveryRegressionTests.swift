@@ -2,35 +2,6 @@ import Foundation
 import Testing
 @testable import VoiceInputBuddy
 
-private final class LifecycleTask: HIDRemoteScheduledTask {
-    let due: UInt64
-    var action: (() -> Void)?
-    init(_ due: UInt64, _ action: @escaping () -> Void) { self.due = due; self.action = action }
-    func cancel() { action = nil }
-}
-private final class LifecycleClock: HIDRemoteScheduling {
-    var now: UInt64 = 0
-    var tasks: [LifecycleTask] = []
-    func schedule(afterMilliseconds: UInt64, repeatingEveryMilliseconds: UInt64?, _ action: @escaping () -> Void) -> HIDRemoteScheduledTask {
-        let task = LifecycleTask(now + afterMilliseconds, action)
-        tasks.append(task)
-        return task
-    }
-    func scheduleSeconds(_ delay: TimeInterval, _ action: @escaping () -> Void) -> VoiceFnTapScheduledTask {
-        let task = schedule(afterMilliseconds: UInt64(delay * 1000), repeatingEveryMilliseconds: nil, action)
-        return VoiceFnTapScheduledTask { task.cancel() }
-    }
-    func advance(to end: UInt64) {
-        for _ in 0..<100 {
-            guard let task = tasks.filter({ $0.action != nil && $0.due <= end }).min(by: { $0.due < $1.due }) else { break }
-            now = task.due
-            let action = task.action
-            task.action = nil
-            action?()
-        }
-        now = end
-    }
-}
 private final class LifecycleLoginController: LoginItemControlling {
     var status: LoginItemRegistrationStatus = .notRegistered
     var fail = true
@@ -48,11 +19,11 @@ struct SessionRecoveryRegressionTests {
     private func defaults() -> UserDefaults { UserDefaults(suiteName: "lifecycle-" + UUID().uuidString)! }
 
     @Test func releaseRetriesWithoutAnotherVoiceEventAndOnlyThenCompletes() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         var canRelease = false
         var completions = 0
         let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
-            schedule: clock.scheduleSeconds,
+            schedule: clock.voiceSchedule,
             setFunctionKeyPressed: { down in down || canRelease }, enqueueAudio: { _ in },
             drainAudio: { _, done in done() }, onFailure: { _ in })
         session.setEnabled(true)
@@ -70,10 +41,10 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func failedReleaseBacksOffWithOneTimerAndResetsAfterRecovery() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         var canRelease = false
         let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
-            schedule: clock.scheduleSeconds,
+            schedule: clock.voiceSchedule,
             setFunctionKeyPressed: { down in down || canRelease }, enqueueAudio: { _ in },
             drainAudio: { _, done in done() }, onFailure: { _ in })
         session.setEnabled(true)
@@ -104,11 +75,11 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func exhaustedReleaseRetriesAnswerFailureWithoutPretendingCleanupSucceeded() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         var allowRelease = false
         var answers: [Bool] = []
         let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
-            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { $0 || allowRelease },
+            schedule: clock.voiceSchedule, setFunctionKeyPressed: { $0 || allowRelease },
             enqueueAudio: { _ in }, drainAudio: { _, completion in completion() }, onFailure: { _ in })
         session.setEnabled(true)
         #expect(session.startVoice())
@@ -131,11 +102,11 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func successfulExplicitReleaseClearsExhaustedRecoveryGate() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         var allowRelease = false
         var answers: [Bool] = []
         let session = VoiceFnTapSessionController(startDelay: 0, tapDuration: 0.1,
-            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { $0 || allowRelease },
+            schedule: clock.voiceSchedule, setFunctionKeyPressed: { $0 || allowRelease },
             enqueueAudio: { _ in }, drainAudio: { _, done in done() }, onFailure: { _ in })
         session.setEnabled(true)
         #expect(session.startVoice())
@@ -154,7 +125,7 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func unmappedHIDUsageDoesNotAllocateRecoveryTimer() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         let monitor = HIDRemoteMonitor(settings: AppSettings(defaults: defaults()),
             profileID: nil, scheduler: clock, runtimePermissions: { true },
             actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
@@ -166,7 +137,7 @@ struct SessionRecoveryRegressionTests {
 
     @Test(arguments: [ButtonAction.arrowRight, .commandCopy])
     func everyHeldUsageExpiresEvenForRepeatsAndGestures(action: ButtonAction) {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         let prefs = defaults()
         let settings = AppSettings(defaults: prefs)
         settings.customMappingEnabled = true
@@ -194,10 +165,10 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func rejectedVoiceRequestsLogTheirActualReason() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         var logs: [String] = []
         let session = VoiceFnTapSessionController(startDelay: 0,
-            schedule: clock.scheduleSeconds, setFunctionKeyPressed: { _ in true },
+            schedule: clock.voiceSchedule, setFunctionKeyPressed: { _ in true },
             enqueueAudio: { _ in }, drainAudio: { _, done in done() },
             onFailure: { _ in }, logger: { logs.append($0) })
         #expect(!session.startVoice())
@@ -213,8 +184,8 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func manualUpdateCheckCancelsInformationDeadlineAndWaitsForUpdater() {
-        let clock = LifecycleClock()
-        let store = UpdateInformationStore(userDefaults: defaults(), checkingTimeout: 1, schedule: clock.scheduleSeconds)
+        let clock = ControlledTestScheduler()
+        let store = UpdateInformationStore(userDefaults: defaults(), checkingTimeout: 1, schedule: clock.voiceSchedule)
         store.beginChecking()
         clock.advance(to: 500)
         store.beginChecking(timeoutEnabled: false)
@@ -236,10 +207,10 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func destroyingSessionReleasesHeldKeyAndCancelsDelayedTap() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         var events: [Bool] = []
         var session: VoiceFnTapSessionController? = VoiceFnTapSessionController(startDelay: 0,
-            schedule: clock.scheduleSeconds,
+            schedule: clock.voiceSchedule,
             setFunctionKeyPressed: { events.append($0); return true }, enqueueAudio: { _ in },
             drainAudio: { _, done in done() }, onFailure: { _ in })
         weak let observed = session
@@ -255,7 +226,7 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func missingButtonReleaseDoesNotLatchForever() {
-        let clock = LifecycleClock()
+        let clock = ControlledTestScheduler()
         let prefs = defaults()
         let monitor = HIDRemoteMonitor(settings: AppSettings(defaults: prefs), scheduler: clock,
             runtimePermissions: { true }, diagnosticLogger: { _ in })
@@ -282,8 +253,8 @@ struct SessionRecoveryRegressionTests {
     }
 
     @Test func abandonedUpdateCheckExpiresButCompletedResultDoesNot() {
-        let clock = LifecycleClock()
-        let store = UpdateInformationStore(userDefaults: defaults(), checkingTimeout: 1, schedule: clock.scheduleSeconds)
+        let clock = ControlledTestScheduler()
+        let store = UpdateInformationStore(userDefaults: defaults(), checkingTimeout: 1, schedule: clock.voiceSchedule)
         store.beginChecking()
         clock.advance(to: 1000)
         #expect(store.state == .unavailable)

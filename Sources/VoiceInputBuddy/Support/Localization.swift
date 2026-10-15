@@ -109,7 +109,7 @@ struct LocalizedMessage: Equatable {
         self.arguments = arguments
     }
 
-    func text(using localization: LocalizationStore) -> String {
+    @MainActor func text(using localization: LocalizationStore) -> String {
         let template = localization.text(key)
         guard !arguments.isEmpty else { return template }
         return String(
@@ -120,6 +120,7 @@ struct LocalizedMessage: Equatable {
     }
 }
 
+@MainActor
 final class LocalizationStore: ObservableObject {
     @Published private(set) var language: AppLanguage
     @Published private(set) var locale: Locale
@@ -132,7 +133,7 @@ final class LocalizationStore: ObservableObject {
         self.settings = settings
         self.resourceBundle = resourceBundle
         language = settings.applicationLanguage
-        locale = Self.resolvedLocale(
+        locale = LocalizationSnapshot.resolvedLocale(
             for: settings.applicationLanguage,
             resourceBundle: resourceBundle
         )
@@ -141,11 +142,12 @@ final class LocalizationStore: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self, self.language == .system else { return }
-            self.locale = Self.resolvedLocale(
-                for: .system,
-                resourceBundle: self.resourceBundle
-            )
+            Task { @MainActor [weak self] in
+                guard let self, self.language == .system else { return }
+                self.locale = LocalizationSnapshot.resolvedLocale(
+                    for: .system, resourceBundle: self.resourceBundle
+                )
+            }
         }
     }
 
@@ -159,7 +161,33 @@ final class LocalizationStore: ObservableObject {
         guard self.language != language else { return }
         settings.applicationLanguage = language
         self.language = language
-        locale = Self.resolvedLocale(for: language, resourceBundle: resourceBundle)
+        locale = LocalizationSnapshot.resolvedLocale(for: language, resourceBundle: resourceBundle)
+    }
+
+    var snapshot: LocalizationSnapshot {
+        LocalizationSnapshot(locale: locale, resourceBundle: resourceBundle)
+    }
+
+    func text(_ key: String) -> String { snapshot.text(key) }
+    func localizedURL(forResource name: String, withExtension extension: String) -> URL? {
+        snapshot.localizedURL(forResource: name, withExtension: `extension`)
+    }
+    var localizedWebsiteURL: URL { snapshot.localizedWebsiteURL }
+}
+
+/// An immutable lookup for non-UI consumers; it never observes or mutates preferences.
+struct LocalizationSnapshot {
+    let locale: Locale
+    let resourceBundle: Bundle
+
+    init(locale: Locale, resourceBundle: Bundle) {
+        self.locale = locale
+        self.resourceBundle = resourceBundle
+    }
+
+    init(language: AppLanguage, resourceBundle: Bundle = .main) {
+        self.init(locale: LocalizationSnapshot.resolvedLocale(for: language, resourceBundle: resourceBundle),
+                  resourceBundle: resourceBundle)
     }
 
     func text(_ key: String) -> String {
@@ -219,7 +247,7 @@ final class LocalizationStore: ObservableObject {
         return Bundle(path: path)
     }
 
-    private static func resolvedLocale(
+    static func resolvedLocale(
         for language: AppLanguage,
         resourceBundle: Bundle
     ) -> Locale {

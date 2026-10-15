@@ -141,7 +141,7 @@ struct RemoteCatalogPhoto: View {
     var body: some View {
         Group {
             if let url = VoiceInputBuddyResourceBundle.mainOrDevelopment.url(forResource: resourceName, withExtension: "png"),
-               let photo = NSImage(contentsOf: url) {
+               let photo = OnboardingImageCache.image(at: url) {
                 Image(nsImage: photo)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
