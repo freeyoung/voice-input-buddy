@@ -778,6 +778,10 @@ enum OnboardingFlowPolicy {
         selectedDevice: PlannedRemoteDevice? = nil,
         capabilities: OnboardingCapabilities
     ) -> Bool {
+        if [.remote, .controls, .audio, .voiceTest].contains(step),
+           missingRuntimePermission(controlMethod: controlMethod, capabilities: capabilities) != nil {
+            return false
+        }
         switch step {
         case .voiceTool:
             return voiceTool != .unselected && voiceToolGuideStepsCompleted
@@ -815,6 +819,18 @@ enum OnboardingFlowPolicy {
                 capabilities.audioOutputSelected &&
                 (controlMethod.usesOnDemandAudioOutput || capabilities.audioReady)
         }
+    }
+
+    static func missingRuntimePermission(controlMethod: OnboardingControlMethod,
+                                         capabilities: OnboardingCapabilities) -> FirstUseFailureReason? {
+        if controlMethod.requiresBluetoothPermission && !capabilities.bluetoothGranted {
+            return .bluetoothPermissionDenied
+        }
+        if controlMethod.requiresInputMonitoringPermission && !capabilities.inputMonitoringGranted {
+            return .inputMonitoringPermissionDenied
+        }
+        if !capabilities.accessibilityGranted { return .accessibilityPermissionDenied }
+        return nil
     }
 
     static func recoveryStep(

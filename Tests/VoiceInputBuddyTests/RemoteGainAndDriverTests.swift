@@ -72,7 +72,7 @@ struct RemoteGainAndDriverTests {
     }
 
     @Test func driverStepRequiresAConfiguredOutputEvenForOnDemandSources() {
-        var capabilities = OnboardingCapabilities(microphoneDriverInstalled: true, audioOutputSelected: true)
+        var capabilities = OnboardingCapabilities(bluetoothGranted: true, inputMonitoringGranted: true, accessibilityGranted: true, microphoneDriverInstalled: true, audioOutputSelected: true)
         for method in [OnboardingControlMethod.physicalRemote, .iPhoneApp, .webRemote] {
             #expect(!OnboardingFlowPolicy.canContinue(from: .audio, voiceTool: .unselected,
                 controlMethod: method, capabilities: capabilities))
