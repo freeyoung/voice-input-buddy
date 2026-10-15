@@ -25,8 +25,8 @@ extension BridgeAppModel {
         updateVoiceKeyState(
             streaming: true,
             forceSoftware: true,
-            owner: .mobile
-        ) { [self] activated in
+            owner: .mobile,
+            completion: { [self] activated in
             pendingMobileVoiceActivationSource = nil
             guard activated else {
                 AppLogger.shared.write(
@@ -51,7 +51,7 @@ extension BridgeAppModel {
 
             AppLogger.shared.write("MOBILE VOICE started source=\(source.logName)")
             completion(.started)
-        }
+        })
     }
 
     func requestPhoneVoiceStart(

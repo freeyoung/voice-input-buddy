@@ -377,8 +377,8 @@ extension BridgeAppModel {
         updateVoiceKeyState(
             streaming: true,
             forceSoftware: true,
-            owner: .appleRemote
-        ) { [self] activated in
+            owner: .appleRemote,
+            completion: { [self] activated in
             guard activated else {
                 appleRemoteVoiceDevices.remove(device)
                 if shouldStartConfiguration {
@@ -450,7 +450,7 @@ extension BridgeAppModel {
                     }
                 }
             }
-        }
+        })
     }
 }
 

@@ -100,8 +100,8 @@ extension BridgeAppModel {
             streaming: true,
             forceSoftware: requiresOrderedVoiceFn ||
                 (bridge.identifiedModel?.isChromecastRemote == true && !settings.voiceFnTapModeEnabled),
-            owner: .bluetooth
-        ) { [self] activated in
+            owner: .bluetooth,
+            completion: { [self] activated in
             guard activated else {
                 _ = bridge.requestMicrophoneClose()
                 bluetoothVoiceActive = false
@@ -219,7 +219,7 @@ extension BridgeAppModel {
             if outputReadyAtStart {
                 flushPendingCommandVoiceAudio(for: bridge)
             }
-        }
+        })
     }
 
     func bluetoothBridgeDidStopVoice(_ bridge: XiaomiBluetoothBridge) {
