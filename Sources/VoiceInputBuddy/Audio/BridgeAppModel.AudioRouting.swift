@@ -47,6 +47,11 @@ extension BridgeAppModel {
         guard started, audioStartupGeneration == generation else { return }
         audioConfigurationGeneration &+= 1
         let configurationGeneration = audioConfigurationGeneration
+        if systemAudioSuspensionState.reasons.contains(.systemSleeping) {
+            finishAudioStartup(generation: generation, configurationGeneration: configurationGeneration,
+                configured: false, devices: devices)
+            return
+        }
         let configure = configureOutput ?? { self.audioOutput.configureAsync(deviceUID: $0, completion: $1) }
         configure(settings.selectedAudioDeviceUID) { [weak self] configured in
             DispatchQueue.main.async { [weak self] in
@@ -132,6 +137,10 @@ extension BridgeAppModel {
             systemAudioSuspensionState.isSuspended,
             reason: event.rawValue
         )
+        if event == .systemWillSleep {
+            suspendActiveAudioForSystemSleep()
+            return
+        }
         guard !audioStartupPending else {
             AppLogger.shared.write(
                 "SYSTEM AUDIO lifecycle_deferred event=\(event.rawValue) cause=audio_startup_pending " +
@@ -183,6 +192,44 @@ extension BridgeAppModel {
             recoverBluetoothVoiceLink(reason: "session_activated")
         }
         resumeBluetoothConnectionCyclesIfNeeded(reason: event.rawValue)
+    }
+
+    private func suspendActiveAudioForSystemSleep() {
+        // Hardware sleep cannot be deferred for an active voice source.
+        audioConfigurationGeneration &+= 1
+        cancelVirtualAudioReleaseIfPending(trigger: "system_sleep")
+        stopLongRecording(reason: "system_sleep")
+        finishRC003VoiceExtensionTest(reason: "system_sleep")
+        cancelTestToneIfNeeded(statusMessage: LocalizedMessage("audio.test_tone.cancelled_device_changed"),
+            logReason: "system_sleep")
+        pendingBluetoothVoiceStart.cancel()
+        pendingBluetoothVoiceStopRequested = false
+        bluetoothVoiceActive = false
+        activeBluetoothVoiceDeviceIdentifier = nil
+        pendingCommandVoiceAudio.cancel()
+        pendingMobileVoiceStartSource = nil
+        pendingMobileVoiceAudio.cancel()
+        pendingMobileVoiceStopRequested = false
+        _ = mobileVoiceLifecycle.reset()
+        cancelMobileVoiceNoAudioRecoveryTimer()
+        activeMobileVoiceOperationID = nil
+        activeMobileVoiceStartedAt = nil
+        let restartCompletion = pendingMobileVoiceRestartCompletion
+        pendingMobileVoiceRestartCompletion = nil
+        resetAllAppleRemoteState(reason: "system_sleep")
+        pendingAppleRemoteVoiceStarts.removeAll()
+        pendingAppleRemoteVoiceStops.removeAll()
+        appleRemoteVoiceDevices.removeAll()
+        appleRemoteVoiceStopping = false
+        appleRemoteVoiceStopOperation &+= 1
+        voiceFnTapSession.suspend()
+        releaseVoiceKeyIfNeeded()
+        endVoiceSessionIfNeeded()
+        audioOutput.stop()
+        isAudioOutputReady = false
+        testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
+        restartCompletion?(.unavailable)
+        AppLogger.shared.write("SYSTEM AUDIO suspended event=system_will_sleep active_sessions_ended=true")
     }
 
     func configureVirtualAudioOutput(
