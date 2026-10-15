@@ -7,6 +7,24 @@ import Foundation
 import BuddyRemoteCore
 
 extension BridgeAppModel {
+    /// Includes pending activation and draining tails, before their async callbacks
+    /// publish isStreaming. Transport-specific identity checks remain at each entry.
+    func canAcceptNewVoiceSession(from owner: VoiceFunctionKeyLatch.Owner) -> Bool {
+        guard !systemAudioSuspensionState.reasons.contains(.systemSleeping),
+              voiceKeyReleaseRetry == nil else { return false }
+        if let pending = pendingVoiceKeyActivationOwner, pending != owner { return false }
+        if owner != .bluetooth,
+           bluetoothVoiceActive || pendingBluetoothVoiceStart.identifier != nil ||
+            voiceFnTapSession.requiresCleanupBeforeMapping { return false }
+        if owner != .appleRemote,
+           !appleRemoteVoiceDevices.isEmpty || !pendingAppleRemoteVoiceStarts.isEmpty ||
+            appleRemoteVoiceStopping { return false }
+        if owner != .mobile,
+           activeMobileVoiceSource != nil || stoppingMobileVoiceSource != nil ||
+            pendingMobileVoiceStartSource != nil || pendingMobileVoiceActivationSource != nil { return false }
+        return true
+    }
+
     func resetCurrentVoiceSampleReceipt() {
         guard hasReceivedCurrentVoiceSamples else { return }
         hasReceivedCurrentVoiceSamples = false

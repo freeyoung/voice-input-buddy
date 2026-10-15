@@ -296,7 +296,9 @@ extension BridgeAppModel {
     }
 
     func beginAppleRemoteVoice(for device: SiriRemoteDeviceIdentity) {
-        guard pendingVoiceKeyActivationOwner == nil else {
+        guard canAcceptNewVoiceSession(from: .appleRemote),
+              appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceDevices.contains(device),
+              pendingVoiceKeyActivationOwner == nil else {
             AppLogger.shared.write("APPLE REMOTE VOICE phase=pending result=source_activation_busy")
             return
         }
