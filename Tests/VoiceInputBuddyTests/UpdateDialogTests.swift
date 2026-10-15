@@ -197,6 +197,36 @@ struct UpdateDialogTests {
         #expect(cancellations == 2)
     }
 
+    @Test func confirmationStagesRestoreTheWindowButProgressDoesNotStealFocus() throws {
+        let suite = "update-focus-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        var activations = 0
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite),
+            activateApplication: { activations += 1 })
+        defer { driver.dismissUpdateInstallation() }
+        driver.showDownloadInitiated {}
+        let window = try #require(driver.window)
+        #expect(window.collectionBehavior.contains(.moveToActiveSpace))
+        window.orderOut(nil)
+        let downloadingActivations = activations
+        driver.showDownloadDidReceiveData(ofLength: 100)
+        #expect(activations == downloadingActivations)
+        #expect(!window.isVisible)
+        driver.showReady(toInstallAndRelaunch: { _ in })
+        #expect(driver.window === window)
+        #expect(window.isVisible)
+        #expect(activations == downloadingActivations + 1)
+        window.orderOut(nil)
+        driver.showUpdateInFocus()
+        #expect(window.isVisible)
+        #expect(activations == downloadingActivations + 2)
+        driver.dismissUpdateInstallation()
+        driver.showUpdateInFocus()
+        #expect(activations == downloadingActivations + 2)
+        #expect(!window.isVisible)
+    }
+
     @Test(arguments: [AppLanguage.english, .simplifiedChinese])
     func footerActionsFitTheDialogInBothLanguages(language: AppLanguage) throws {
         let suite = "update-layout-" + UUID().uuidString
