@@ -10,9 +10,9 @@ App 的 CFBundleShortVersionString 为数字日期（例如 26.10.11），CFBund
 
 ## 更新摘要
 
-每次 workflow 先生成同一份版本变更，再供两种架构的 appcast 和 GitHub Release 使用。App 的“检查更新”从 appcast 的 description 读取这份摘要。Release 不再重复安装、卸载和证书长文，只保留相应文档与完整变化链接。
+每次 workflow 先生成同一份版本变更，再供两种架构的 appcast 和 GitHub Release 使用。App 的“检查更新”从 appcast 的 description 读取这份摘要。Release 使用带类型标志的统一变更列表，不再附加安装、签名和源码依赖说明链接，保留完整变化链接。
 
-基线是当前发布提交第一父链上最近的已发布正式 Release；排除草稿、预发布、当前提交标签和其他分支的 Release。使用第一父链上的合并 PR 标题，避免把 PR 和内部提交重复列出；squash 和直接提交也会保留。没有已发布基线时列出首次发布变化，未发布的 Git tag 不截断摘要。历史不完整或已发布标签无法解析时停止生成，避免静默遗漏变化。重跑已有 Release 仍不覆盖其内容。
+基线是当前发布提交第一父链上最近的已发布正式 Release；排除草稿、预发布、当前提交标签和其他分支的 Release。变更列表遍历该版本范围内所有分支的非 merge commit，每个 commit 一条，使用其提交标题和 commit 链接，按提交时间从旧到新排列；不再以 PR 标题代替内部提交。squash 合并后只能展示实际保留的 squash commit。没有已发布基线时列出首次发布变化，未发布的 Git tag 不截断摘要。历史不完整或已发布标签无法解析时停止生成，避免静默遗漏变化。重跑已有 Release 仍不覆盖其内容。
 
 ## 安装包与源码
 
