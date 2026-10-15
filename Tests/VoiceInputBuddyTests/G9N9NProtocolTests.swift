@@ -37,9 +37,27 @@ struct G9N9NProtocolTests {
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xe9, 0, 0, 0])) == expected)
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([2, 0x42, 0, 0xe9, 0])) == expected)
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0, 0, 0, 0])) == [])
-        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xff, 0xff])) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xff, 0xff])) == [RemoteButton.up.hidUsage])
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0, 0xe9])) == nil)
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data()) == nil)
+    }
+
+    @Test @MainActor func unknownUsageDoesNotLoseTheReleaseOfAKnownButton() throws {
+        let name = "google-unknown-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: UUID(),
+            runtimePermissions: { true }, actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "google", profileID: UUID())
+        var active: Set<RemoteButton> = []
+        monitor.onActiveButtons = { _, buttons in active = buttons }
+        monitor.handleSimulatedGoogleReport(reportID: 2, data: Data([0x42, 0, 0xff, 0xff]))
+        #expect(active == [.up])
+        monitor.handleSimulatedGoogleReport(reportID: 2, data: Data([0xff, 0xff]))
+        #expect(active.isEmpty)
+        monitor.disconnectSimulatedDevice()
     }
 
     @Test func noRemoteFamiliesProduceNoMatchingRequest() {
@@ -110,7 +128,7 @@ struct G9N9NProtocolTests {
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([2, 0, 0])) == [])
         #expect(G9N9NProtocol.usages(reportID: 1, data: Data([0x42, 0])) == nil)
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([3, 0x42, 0])) == nil)
-        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0xff, 0xff])) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0xff, 0xff])) == [])
         #expect(RemoteHIDReportParser.usages(reportID: 2, data: Data([2, 0x42, 0])) == nil)
         #expect(Set(G9N9NMappingLayout.placements.map(\.button)) == Set(G9N9NProtocol.consumerButtons.values))
     }
@@ -176,7 +194,7 @@ struct G9N9NProtocolTests {
         monitor.handleSimulatedGoogleReport(reportID: 2, data: Data([2, 0x77, 0]))
         #expect(active == [.youtube])
         #expect(invoked == [.youtube])
-        monitor.handleSimulatedGoogleReport(reportID: 2, data: Data([2, 0xff, 0xff]))
+        monitor.handleSimulatedGoogleReport(reportID: 2, data: Data([0x42]))
         #expect(active == [.youtube])
         monitor.handleSimulatedGoogleReport(reportID: 2, data: Data([2, 0, 0]))
         #expect(active.isEmpty)
