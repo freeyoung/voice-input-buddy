@@ -132,6 +132,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var voiceToolCancellable: AnyCancellable?
     var testToneGeneration = 0
     var voiceKeyLatch = VoiceFunctionKeyLatch()
+    var voiceKeyReleaseRetry: ScheduledOperation?
+    var voiceKeyReleaseRetryGeneration: UInt64 = 0
+    var scheduleVoiceKeyReleaseRetry: OperationScheduler = ScheduledOperation.mainQueue
     var heldVoiceKeyMode: VoiceKeyMode?
     var pendingVoiceKeyMode: VoiceKeyMode?
     // Main-queue state; only input-source waits can pump/reenter that queue.
@@ -398,6 +401,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     deinit {
+        voiceKeyReleaseRetry?.cancel()
         // Remove HAL registrations synchronously. Full stop also performs UI and
         // asynchronous device operations, which do not belong in destruction.
         stopObservingAudioHardware()
