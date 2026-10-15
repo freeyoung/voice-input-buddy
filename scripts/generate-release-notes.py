@@ -47,26 +47,21 @@ def generate(commit, releases, repository):
             candidates.append((distance, tag, sha))
     previous = min(candidates)[1] if candidates else None
     revision = f'{previous}..{head}' if previous else head
-    commits = git('log', '--first-parent', '--reverse', '--format=%H', revision).splitlines()
+    # Walk every merged branch, excluding merge commits themselves. Sort by
+    # committer time; keep Git's oldest-first order for equal timestamps.
+    commits = [line.split('\t') for line in
+               git('log', '--no-merges', '--reverse', '--format=%ct%x09%H', revision).splitlines()]
+    commits.sort(key=lambda entry: int(entry[0]))
     entries = []
-    for sha in commits:
-        lines = git('show', '-s', '--format=%B', sha).splitlines()
-        subject = lines[0]
-        merge = re.match(r'^Merge pull request #(\d+)\b', subject)
-        if merge:
-            title = next((line.strip() for line in lines[1:] if line.strip()), subject)
-            number = merge.group(1)
-        else:
-            squash = re.search(r' \(#(\d+)\)$', subject)
-            number = squash.group(1) if squash else None
-            title = subject[:squash.start()] if squash else subject
+    for _, sha in commits:
+        title = git('show', '-s', '--format=%s', sha)
         match = CONVENTIONAL.match(title)
         kind = match.group(1) if match else 'other'
         description = match.group(3) if match else title
         if match and match.group(2):
             description += '（不兼容变更）'
-        reference = f'#{number}' if number else sha[:7]
-        url = f'https://github.com/{repository}/' + (f'pull/{number}' if number else f'commit/{sha}')
+        reference = sha[:7]
+        url = f'https://github.com/{repository}/commit/{sha}'
         # Titles are text, not Markdown supplied by a contributor.
         escaped = re.sub(r'([\\`*_\[\]<>])', r'\\\1', description)
         entries.append((kind, description, escaped, reference, url))

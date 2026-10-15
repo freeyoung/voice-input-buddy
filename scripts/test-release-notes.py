@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise real merge history and publication boundaries for release changes."""
 import importlib.util
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -25,11 +26,15 @@ class ReleaseNotesTests(unittest.TestCase):
         notes.git = self.git
         self.addCleanup(lambda: setattr(notes, 'git', self.original_git))
 
-    def git(self, *args):
-        return subprocess.check_output(['git', '-C', str(self.root), *args], text=True, stderr=subprocess.PIPE).strip()
+    def git(self, *args, env=None):
+        return subprocess.check_output(['git', '-C', str(self.root), *args], text=True,
+                                       stderr=subprocess.PIPE, env=env).strip()
 
-    def commit(self, message):
-        self.git('commit', '-q', '--allow-empty', '-m', message)
+    def commit(self, message, timestamp=None):
+        env = os.environ.copy()
+        if timestamp:
+            env.update(GIT_AUTHOR_DATE=timestamp, GIT_COMMITTER_DATE=timestamp)
+        self.git('commit', '-q', '--allow-empty', '-m', message, env=env)
         return self.git('rev-parse', 'HEAD')
 
     def release(self, tag='v26-10-10.001', **fields):
@@ -45,14 +50,39 @@ class ReleaseNotesTests(unittest.TestCase):
         self.git('switch', '-q', 'main')
         self.git('merge', '-q', '--no-ff', 'feature', '-m', 'Merge pull request #2 from example/feature\n\nfeat(devices): add G9N9N support')
 
-    def test_merge_is_one_change_and_internal_commits_are_not_duplicated(self):
+    def test_merge_lists_each_commit_once_without_the_pr_title(self):
         self.merge_feature()
         markdown, summary = self.render([[self.release()]])
-        self.assertEqual(summary.count('add G9N9N support'), 1)
-        self.assertNotIn('internal transport', summary)
+        self.assertEqual(summary.count('internal transport implementation'), 1)
+        self.assertEqual(summary.count('internal protocol tests'), 1)
+        self.assertNotIn('add G9N9N support', summary)
+        self.assertNotIn('Merge pull request', summary)
         self.assertNotIn('initial repository', summary)
-        self.assertIn('/pull/2', markdown)
-        self.assertIn('- [新增] add G9N9N support', markdown)
+        self.assertNotIn('/pull/', markdown)
+        self.assertIn('/commit/', markdown)
+        self.assertIn('- [新增] internal transport implementation', markdown)
+        self.assertIn('- [构建与测试] internal protocol tests', markdown)
+        # Already released commits reachable through a later merge stay excluded.
+        self.git('tag', 'v26-10-11.002')
+        self.git('switch', '-q', 'feature')
+        self.commit('fix: subsequent correction')
+        self.git('switch', '-q', 'main')
+        self.git('merge', '-q', '--no-ff', 'feature', '-m', 'Merge another change')
+        _, summary = self.render([self.release(), self.release('v26-10-11.002')])
+        self.assertEqual(summary.count('subsequent correction'), 1)
+        self.assertNotIn('internal transport', summary)
+        self.assertNotIn('internal protocol', summary)
+
+    def test_commit_timestamp_order_spans_merged_branches_and_direct_commits(self):
+        self.git('switch', '-q', '-c', 'feature')
+        self.commit('fix: earliest branch change', '2026-10-11T01:00:00Z')
+        self.commit('docs: latest branch change', '2026-10-11T03:00:00Z')
+        self.git('switch', '-q', 'main')
+        self.commit('feat: middle main change', '2026-10-11T02:00:00Z')
+        self.git('merge', '-q', '--no-ff', 'feature', '-m', 'Merge feature')
+        _, summary = self.render([self.release()])
+        self.assertLess(summary.index('earliest branch'), summary.index('middle main'))
+        self.assertLess(summary.index('middle main'), summary.index('latest branch'))
 
     def test_one_list_preserves_commit_order_across_interleaved_types(self):
         changes = [
@@ -96,7 +126,8 @@ class ReleaseNotesTests(unittest.TestCase):
         self.git('tag', 'v26-10-11.002')
         after = self.render([self.release('v26-10-11.002'), self.release()])
         self.assertEqual(before, after)
-        self.assertIn('/pull/8', after[0])
+        self.assertIn('/commit/' + self.git('rev-parse', 'HEAD'), after[0])
+        self.assertIn('current correction (#8)', after[1])
 
     def test_draft_preview_future_and_side_branch_releases_are_not_baselines(self):
         self.git('switch', '-q', '-c', 'side')
