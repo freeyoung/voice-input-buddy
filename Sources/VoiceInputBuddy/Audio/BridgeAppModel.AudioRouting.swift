@@ -528,7 +528,17 @@ extension BridgeAppModel {
         startTestToneAfterAudioReady(true)
     }
 
-    private func startTestToneAfterAudioReady(_ ready: Bool) {
+    func startTestToneAfterAudioReady(_ ready: Bool) {
+        // A voice start or another tone may win while configuration is in flight.
+        guard !isPlayingTestTone else { return }
+        guard !isStreaming, !hasActiveVirtualAudioSource else {
+            testToneStatus = LocalizedMessage("audio.test_tone.blocked_voice_active")
+            return
+        }
+        guard canSendTestTone else {
+            testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
+            return
+        }
         guard ready else {
             testToneStatus = LocalizedMessage("audio.test_tone.device_not_ready")
             releaseVirtualAudioOutputIfUnused(reason: "test_tone_configure_failed")
