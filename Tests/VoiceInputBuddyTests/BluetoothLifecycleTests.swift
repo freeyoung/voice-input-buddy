@@ -276,7 +276,7 @@ struct BluetoothLifecycleTests {
         #expect(abs(cappedHighDelay - 60) < 0.000_001)
     }
 
-    @Test func failedCachedTargetIsBypassedUntilThePolicyIsReset() {
+    @Test func failedCachedTargetIsBypassedForOnlyOneDiscoveryPass() {
         var policy = BluetoothReconnectPolicy()
         #expect(policy.allowsCachedTargetRetrieval)
 
@@ -287,8 +287,11 @@ struct BluetoothLifecycleTests {
 
         #expect(delay == 3)
         #expect(!policy.allowsCachedTargetRetrieval)
+        #expect(!policy.consumeCachedTargetRetrievalPermission())
+        #expect(policy.allowsCachedTargetRetrieval)
+        #expect(policy.consumeCachedTargetRetrievalPermission())
         _ = policy.nextAutomaticDelay(bypassCachedTarget: false, jitterUnit: 0.5)
-        #expect(!policy.allowsCachedTargetRetrieval)
+        #expect(policy.allowsCachedTargetRetrieval)
 
         policy.reset()
 

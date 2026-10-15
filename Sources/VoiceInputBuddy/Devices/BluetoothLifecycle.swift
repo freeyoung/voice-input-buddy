@@ -272,6 +272,14 @@ struct BluetoothReconnectPolicy {
         return min(Self.maximumDelay, nominalDelay * jitterFactor)
     }
 
+    /// Bypass a failed cached peripheral for one discovery pass, not forever.
+    /// The scan watchdog's next pass can actively retrieve the paired remote again.
+    mutating func consumeCachedTargetRetrievalPermission() -> Bool {
+        let allowed = allowsCachedTargetRetrieval
+        allowsCachedTargetRetrieval = true
+        return allowed
+    }
+
     mutating func reset() {
         consecutiveFailureCount = 0
         allowsCachedTargetRetrieval = true
