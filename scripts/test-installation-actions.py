@@ -50,6 +50,15 @@ class InstallationActionsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(other.exists()); self.assertTrue(new.exists())
 
+    def test_cleanup_rejects_missing_relative_root_and_symlink_homes(self):
+        link = self.root / 'linked-home'
+        link.symlink_to(self.root, target_is_directory=True)
+        for home in ['', '/', '///', str(self.root / 'missing'), 'relative', str(link)]:
+            with self.subTest(home=home):
+                result = subprocess.run(['bash', '-c', 'source "$1"; buddy_cleanup_user_data "$2"',
+                                         'test', str(self.library), home], capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+
     def test_cleanup_only_removes_this_products_personal_data(self):
         for relative in ['Preferences/com.zfdang.voice-input-buddy.plist',
                          'Application Support/VoiceInputBuddy', 'Logs/VoiceInputBuddy',
