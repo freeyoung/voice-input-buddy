@@ -1,5 +1,13 @@
 #!/bin/bash
 # Shared by Installer and the standalone uninstaller. Only fixed product paths.
+buddy_driver_fingerprint() {
+    local driver="$1" details
+    # Verify the executable and sealed resources before trusting the CodeDirectory
+    # hash. This hash covers code/resources/requirements, but not signing timestamps.
+    /usr/bin/codesign --verify --deep --strict "$driver" 2>/dev/null || return 1
+    details="$(/usr/bin/codesign --display --verbose=4 "$driver" 2>&1)" || return 1
+    /usr/bin/printf '%s\n' "$details" | /usr/bin/sed -nE 's/^CDHash=([0-9a-f]{40})$/\1/p'
+}
 buddy_check_bundle() {
     local path="$1" expected="$2"
     [[ -e "$path" || -L "$path" ]] || return 0

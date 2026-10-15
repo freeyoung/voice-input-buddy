@@ -21,7 +21,7 @@ App 的 CFBundleShortVersionString 为数字日期（例如 26.10.11），CFBund
 
 Release 只附这三个 PKG，不额外上传 SHA 文件、TXT 更新摘要、appcast XML 或源码压缩包。源码使用对应 Git tag；第三方固定版本源码及构建说明见 [source-code.md](source-code.md)。
 
-安装包按 arm64 和 x86_64（文件名 intel）分别提供，要求 macOS 14 或更新版本。App 安装在 `/Applications/Voice Input Buddy.app`，驱动安装在 `/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver`。程序展示名称仍为 Voice Input Buddy；发布文件名使用下划线，App 目录保留空格，内部可执行文件为 VoiceInputBuddy。安装需要管理员授权；驱动装好后刷新 Core Audio，会短暂中断播放和录音。安装包不自动开启任何系统隐私授权，也不自动启动 App。
+安装包按 arm64 和 x86_64（文件名 intel）分别提供，要求 macOS 14 或更新版本。App 安装在 `/Applications/Voice Input Buddy.app`，驱动安装在 `/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver`。程序展示名称仍为 Voice Input Buddy；发布文件名使用下划线，App 目录保留空格，内部可执行文件为 VoiceInputBuddy。安装需要管理员授权；仅在首次安装、驱动内容变化或修复损坏的驱动时刷新 Core Audio，短暂中断播放和录音。安装前后会验证驱动签名并比较内容指纹，而非只比较版本号；驱动未变化的重装和 App 升级不会重启音频服务，重新签名的时间戳不影响判断。安装包不自动开启任何系统隐私授权，也不自动启动 App。
 
 旧开发版本若放在其他目录，应退出旧版并改用 `/Applications/Voice Input Buddy.app`，避免同时运行两个副本。首次安装和更新后请核对系统权限。
 
