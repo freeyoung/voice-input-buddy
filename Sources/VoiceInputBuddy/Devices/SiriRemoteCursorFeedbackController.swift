@@ -185,6 +185,19 @@ final class SiriRemoteCursorFeedbackController {
         self.logger = logger
     }
 
+    deinit {
+        hideWorkItem?.cancel()
+        // AppKit cleanup must still run when the last owner releases off-main.
+        // Capture the panel, not self, so destruction cannot resurrect a controller.
+        if let panel = window {
+            if Thread.isMainThread {
+                panel.orderOut(nil)
+            } else {
+                DispatchQueue.main.async { panel.orderOut(nil) }
+            }
+        }
+    }
+
     func handle(
         _ feedback: SiriRemoteTouchFeedbackKind,
         scrollArrowReversed: Bool = false
