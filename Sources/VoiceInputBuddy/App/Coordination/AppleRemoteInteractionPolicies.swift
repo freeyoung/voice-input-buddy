@@ -38,12 +38,12 @@ struct AppleRemoteCircularNavigationAccumulator {
     private(set) var pendingPixels = 0.0
 
     mutating func consume(_ pixels: Double) -> Int {
-        guard pixels != 0 else { return 0 }
+        guard pixels.isFinite, pixels != 0 else { return 0 }
         if pendingPixels != 0, pendingPixels.sign != pixels.sign {
             pendingPixels = 0
         }
         pendingPixels += pixels
-        let availableSteps = Int(abs(pendingPixels) / Self.stepThreshold)
+        let availableSteps = Int(min(Double(Self.maximumStepsPerEvent), abs(pendingPixels) / Self.stepThreshold))
         guard availableSteps > 0 else { return 0 }
 
         let emittedSteps = min(availableSteps, Self.maximumStepsPerEvent)
