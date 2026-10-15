@@ -287,9 +287,11 @@ struct BluetoothLifecycleTests {
 
         #expect(delay == 3)
         #expect(!policy.allowsCachedTargetRetrieval)
-        #expect(!policy.consumeCachedTargetRetrievalPermission())
+        let firstPass = policy.consumeCachedTargetRetrievalPermission()
+        #expect(!firstPass)
         #expect(policy.allowsCachedTargetRetrieval)
-        #expect(policy.consumeCachedTargetRetrievalPermission())
+        let nextPass = policy.consumeCachedTargetRetrievalPermission()
+        #expect(nextPass)
         _ = policy.nextAutomaticDelay(bypassCachedTarget: false, jitterUnit: 0.5)
         #expect(policy.allowsCachedTargetRetrieval)
 
