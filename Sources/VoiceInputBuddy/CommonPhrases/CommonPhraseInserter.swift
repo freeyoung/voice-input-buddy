@@ -63,6 +63,12 @@ final class CommonPhraseInserter {
         guard processID != ProcessInfo.processInfo.processIdentifier,
               NSWorkspace.shared.frontmostApplication?.processIdentifier == processID else { return "target_changed" }
         AccessibilityMessaging.prepareQueries()
+        // Electron/Chromium may not expose the focused text field until an AX
+        // client announces itself. This does not make AX writes universally safe
+        // for web editors; unsupported targets still fail without touching pasteboard.
+        _ = KeyboardInjector.announceManualAccessibility(processIdentifier: processID,
+            bundleIdentifier: NSRunningApplication(processIdentifier: processID)?.bundleIdentifier ?? "unknown",
+            attempt: 0)
         let application = AXUIElementCreateApplication(processID)
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
