@@ -11,8 +11,8 @@ struct RemoteHIDBindingPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("remote.hid_binding.title").font(.title2.bold())
-            Text("remote.hid_binding.help").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: localization.text("remote.hid_binding.title")).font(.title2.bold())
+            Text(verbatim: localization.text("remote.hid_binding.help")).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             List(candidates, selection: $selected) { candidate in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(candidate.name)
@@ -20,13 +20,13 @@ struct RemoteHIDBindingPicker: View {
                         .font(.caption.monospaced()).foregroundStyle(.secondary)
                 }.tag(candidate.id)
             }.frame(minHeight: 180)
-            if candidates.isEmpty { Text("remote.hid_binding.empty").foregroundStyle(.secondary) }
-            if failed { Text("remote.hid_binding.failed").foregroundStyle(.red) }
+            if candidates.isEmpty { Text(verbatim: localization.text("remote.hid_binding.empty")).foregroundStyle(.secondary) }
+            if failed { Text(verbatim: localization.text("remote.hid_binding.failed")).foregroundStyle(.red) }
             HStack {
-                Button("common.action.cancel") { dismiss() }
-                Button("remote.hid_binding.refresh") { refresh() }
+                Button(localization.text("common.action.cancel")) { dismiss() }
+                Button(localization.text("remote.hid_binding.refresh")) { refresh() }
                 Spacer()
-                Button("remote.hid_binding.save") {
+                Button(localization.text("remote.hid_binding.save")) {
                     guard let candidate = candidates.first(where: { $0.id == selected }) else { return }
                     if model.bindCompatibleRemote(candidate, profileID: profile.id) { dismiss() }
                     else { failed = true }

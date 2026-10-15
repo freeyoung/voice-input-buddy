@@ -120,7 +120,7 @@ extension BridgeAppModel {
     }
 
     func selectDefaultMappingRemoteIfAvailable() {
-        let localization = LocalizationStore(settings: settings)
+        let localization = LocalizationSnapshot(language: settings.applicationLanguage)
         let connectedProfiles = RemoteDeviceNamePolicy.sortedForCards(
             settings.remoteDeviceProfiles.filter { isRemoteConnected($0.id) },
             modelName: { profile in

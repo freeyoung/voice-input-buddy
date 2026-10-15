@@ -203,6 +203,7 @@ enum PermissionVisualState {
     case granted
     case pending
 
+    @MainActor
     func title(using localization: LocalizationStore) -> String {
         switch self {
         case .granted: return localization.text("permission.status.enabled")

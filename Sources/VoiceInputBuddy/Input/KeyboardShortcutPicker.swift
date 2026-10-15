@@ -30,6 +30,7 @@ enum KeyboardShortcutModifier: String, CaseIterable, Identifiable {
         }
     }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         localization.text("shortcut.modifier.\(rawValue)")
     }
@@ -104,6 +105,7 @@ enum StandaloneKeyboardModifier: String, CaseIterable, Identifiable {
         )
     }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         localization.text("shortcut.standalone_modifier.\(rawValue)")
     }
@@ -332,6 +334,7 @@ enum KeyboardShortcutPreset: String, CaseIterable, Identifiable {
         }
     }
 
+    @MainActor
     func displayName(using localization: LocalizationStore) -> String {
         localization.text("shortcut.preset.\(rawValue)")
     }

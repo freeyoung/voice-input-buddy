@@ -51,6 +51,7 @@ final class AppLogger: PublicDiagnosticEventSink {
     private let now: () -> Date
     private let reportFailure: (String) -> Void
     private var sessionDescriptor: Int32 = -1
+    private var sessionSize: UInt64 = 0
     private var oversizedRecordWasReported = false
     private var fileLoggingStopped = false
     private var nextSequence: UInt64 = 0
@@ -120,7 +121,7 @@ final class AppLogger: PublicDiagnosticEventSink {
             try withExclusiveLogLock {
                 // Session names are unique. Never overwrite an existing file or follow a link.
                 let descriptor = Darwin.open(logURL.path,
-                    O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC | O_NOFOLLOW,
+                    O_CREAT | O_EXCL | O_RDWR | O_APPEND | O_CLOEXEC | O_NOFOLLOW,
                     mode_t(S_IRUSR | S_IWUSR))
                 guard descriptor >= 0 else { throw POSIXError(.EIO) }
                 guard flock(descriptor, LOCK_SH | LOCK_NB) == 0 else {
@@ -273,23 +274,17 @@ final class AppLogger: PublicDiagnosticEventSink {
                 "ver=\(metadata.version) build=\(metadata.build) seq=\(sequence) " +
                 "\(Self.singleLine(message))\n"
             let record = Data(line.utf8)
-            let appended = try withExclusiveLogLock {
-                let existingSize = fileSize(at: logURL)
-                guard UInt64(record.count) + UInt64(Self.fileHeader.count) <= maximumFileSize else {
-                    if !oversizedRecordWasReported { reportFailure("log_record_too_large") }
-                    oversizedRecordWasReported = true
-                    return false
-                }
-                oversizedRecordWasReported = false
-                if existingSize + UInt64(record.count) > maximumFileSize {
-                    try rotateCurrentSession()
-                }
-                try appendAtomically(record)
-                return true
+            guard UInt64(record.count) + UInt64(Self.fileHeader.count) <= maximumFileSize else {
+                if !oversizedRecordWasReported { reportFailure("log_record_too_large") }
+                oversizedRecordWasReported = true
+                return
             }
-            if appended {
-                nextSequence += 1
+            oversizedRecordWasReported = false
+            if sessionSize + UInt64(record.count) > maximumFileSize {
+                try withExclusiveLogLock { try rotateCurrentSession() }
             }
+            try appendAtomically(record)
+            nextSequence += 1
         } catch {
             diagnose("log_write_failed", error: error)
         }
@@ -310,7 +305,7 @@ final class AppLogger: PublicDiagnosticEventSink {
         _ = Darwin.close(sessionDescriptor)
         sessionDescriptor = -1
         let descriptor = Darwin.open(logURL.path,
-            O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC | O_NOFOLLOW,
+            O_CREAT | O_EXCL | O_RDWR | O_APPEND | O_CLOEXEC | O_NOFOLLOW,
             mode_t(S_IRUSR | S_IWUSR))
         guard descriptor >= 0 else { throw POSIXError(.EIO) }
         guard flock(descriptor, LOCK_SH | LOCK_NB) == 0 else {
@@ -318,20 +313,14 @@ final class AppLogger: PublicDiagnosticEventSink {
             throw POSIXError(.EIO)
         }
         sessionDescriptor = descriptor
+        sessionSize = 0
         try appendAtomically(Self.fileHeader)
         try retireOldSessions(archiveCount: archiveCount, handler: nil)
     }
 
     private func appendAtomically(_ data: Data) throws {
-        let descriptor = Darwin.open(
-            logURL.path,
-            O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC | O_NOFOLLOW,
-            mode_t(S_IRUSR | S_IWUSR)
-        )
-        guard descriptor >= 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        defer { _ = Darwin.close(descriptor) }
+        let descriptor = sessionDescriptor
+        guard descriptor >= 0 else { throw POSIXError(.EBADF) }
 
         try data.withUnsafeBytes { buffer in
             guard let baseAddress = buffer.baseAddress else { return }
@@ -344,6 +333,7 @@ final class AppLogger: PublicDiagnosticEventSink {
                 )
                 if written > 0 {
                     offset += written
+                    sessionSize += UInt64(written)
                     continue
                 }
                 let errorCode = written == 0 ? EIO : errno
@@ -373,13 +363,6 @@ final class AppLogger: PublicDiagnosticEventSink {
         }
         defer { _ = flock(descriptor, LOCK_UN) }
         return try operation()
-    }
-
-    private func fileSize(at url: URL) -> UInt64 {
-        guard let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-              let value = attributes[.size] as? NSNumber
-        else { return 0 }
-        return value.uint64Value
     }
 
     private func diagnose(_ operation: String, error: Error? = nil) {

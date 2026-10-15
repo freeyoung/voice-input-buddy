@@ -123,7 +123,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         window.defaultButtonCell = content.actionButtons.last(where: { $0.keyEquivalent == "\r" })?.cell as? NSButtonCell
         if activate {
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
     }
 
@@ -291,7 +291,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         window = nil
     }
 
-    func showUpdateInFocus() { window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
+    func showUpdateInFocus() { window?.makeKeyAndOrderFront(nil); NSApp.activate() }
 #if DEBUG
     static func runPreviewIfRequested() -> Bool {
         let environment = ProcessInfo.processInfo.environment

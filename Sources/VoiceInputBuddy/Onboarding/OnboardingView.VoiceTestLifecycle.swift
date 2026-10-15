@@ -6,6 +6,11 @@ import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
+    func cancelVoiceTestTasks() {
+        voiceTestTasks.forEach { $0.cancel() }
+        voiceTestTasks.removeAll()
+    }
+
     func requestTranscriptFocus() {
         guard settings.onboardingStep == .voiceTest else { return }
         transcriptFocusRequest &+= 1
@@ -60,6 +65,7 @@ extension OnboardingView {
     }
 
     func beginVoiceAttempt(triggerPath: String) {
+        cancelVoiceTestTasks()
         voiceTranscriptDeadlineToken = UUID()
         voiceAttemptStartedAtUptime = ProcessInfo.processInfo.systemUptime
         voiceTranscriptWaitStartedAtUptime = nil
@@ -152,7 +158,7 @@ extension OnboardingView {
     private func scheduleTranscriptRecovery(attemptID: Int, candidate: String) {
         guard !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         for delay in [0.05, 0.2, 0.5] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            voiceTestTasks.append(ScheduledOperation.mainQueue(after: delay) {
                 guard settings.onboardingStep == .voiceTest,
                       voiceAttempt.attemptID == attemptID,
                       voiceSessionEnded,
@@ -164,13 +170,13 @@ extension OnboardingView {
                 AppLogger.shared.write(
                     "ONBOARDING TRANSCRIPT restored_after_voice_release=true source=voice_candidate"
                 )
-            }
+            })
         }
     }
 
     func scheduleVoiceCompletionEvaluation(attemptID: Int) {
         for delay in [0.05, 0.2, 0.5] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            voiceTestTasks.append(ScheduledOperation.mainQueue(after: delay) {
                 guard settings.onboardingStep == .voiceTest,
                       voiceAttempt.attemptID == attemptID,
                       voiceAttempt.phase == .awaitingTranscript,
@@ -183,14 +189,14 @@ extension OnboardingView {
                 if voiceAttempt.audioDelivery.result == .deliveredToSelectedDevice {
                     finishVoiceAttempt(result: .passed)
                 }
-            }
+            })
         }
     }
 
     private func scheduleVoiceTranscriptDeadline(attemptID: Int) {
         let token = UUID()
         voiceTranscriptDeadlineToken = token
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        voiceTestTasks.append(ScheduledOperation.mainQueue(after: 3) {
             guard settings.onboardingStep == .voiceTest,
                   voiceTranscriptDeadlineToken == token,
                   voiceAttempt.attemptID == attemptID,
@@ -206,11 +212,12 @@ extension OnboardingView {
                 finalObservation: true
             )
             finishVoiceAttempt(result: result)
-        }
+        })
     }
 
     func finishVoiceAttempt(result: FirstUseVoiceAttemptResult) {
         guard voiceAttempt.phase == .awaitingTranscript else { return }
+        cancelVoiceTestTasks()
         voiceTranscriptDeadlineToken = UUID()
         refreshVoiceAttemptObservableState(atDeadline: false)
         if let voiceTranscriptWaitStartedAtUptime {

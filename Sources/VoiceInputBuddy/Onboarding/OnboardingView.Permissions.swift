@@ -104,7 +104,7 @@ extension OnboardingView {
             }
 
             if isCapturingVoiceShortcut {
-                OnboardingShortcutCaptureView(
+                ShortcutCaptureView(
                     onCapture: handleLearnedShortcut,
                     onFailure: handleShortcutCaptureFailure
                 )

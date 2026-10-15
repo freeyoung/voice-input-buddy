@@ -1,57 +1,5 @@
 import Foundation
 
-struct VoiceFnTapScheduledTask {
-    private let cancellation: () -> Void
-
-    init(cancellation: @escaping () -> Void) {
-        self.cancellation = cancellation
-    }
-
-    func cancel() {
-        cancellation()
-    }
-
-    static func mainQueue(
-        after delay: TimeInterval,
-        operation: @escaping () -> Void
-    ) -> VoiceFnTapScheduledTask {
-        let pending = PendingOperation(operation)
-        let item = DispatchWorkItem { pending.perform() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
-        return VoiceFnTapScheduledTask {
-            pending.cancel()
-            item.cancel()
-        }
-    }
-}
-
-/// Owns the callback without capturing its DispatchWorkItem. Clearing it on both
-/// terminal paths also releases captured objects when the task handle is retained.
-private final class PendingOperation {
-    private let lock = NSLock()
-    private var operation: (() -> Void)?
-
-    init(_ operation: @escaping () -> Void) {
-        self.operation = operation
-    }
-
-    func perform() {
-        lock.lock()
-        let operation = self.operation
-        self.operation = nil
-        lock.unlock()
-        operation?()
-    }
-
-    func cancel() {
-        lock.lock()
-        let cancelledOperation = operation
-        operation = nil
-        lock.unlock()
-        withExtendedLifetime(cancelledOperation) {}
-    }
-}
-
 enum VoiceFnTapFailure: String, Equatable {
     case startTapFailed = "start_tap_failed"
     case stopTapFailed = "stop_tap_failed"
@@ -66,7 +14,7 @@ final class VoiceFnTapSessionController {
         case stopping(UInt64)
     }
 
-    typealias Scheduler = (TimeInterval, @escaping () -> Void) -> VoiceFnTapScheduledTask
+    typealias Scheduler = OperationScheduler
     typealias FunctionKeySetter = (Bool) -> Bool
     typealias AudioEnqueuer = ([Int16]) -> Void
     typealias AudioDrainer = (UInt64, @escaping () -> Void) -> Void
@@ -103,9 +51,9 @@ final class VoiceFnTapSessionController {
     private var preRoll: [Int16] = []
     private var remoteEnded = false
     private var pendingVoice: PendingVoice?
-    private var scheduledTasks: [VoiceFnTapScheduledTask] = []
+    private var scheduledTasks: [ScheduledOperation] = []
     private var functionKeyIsPressed = false
-    private var keyReleaseRetryTask: VoiceFnTapScheduledTask?
+    private var keyReleaseRetryTask: ScheduledOperation?
     private var nextKeyReleaseRetryDelay: TimeInterval = 1
     private var idleCompletions: [(Bool) -> Void] = []
     private var failedKeyReleaseAttempts = 0
@@ -123,7 +71,7 @@ final class VoiceFnTapSessionController {
         startDelay: TimeInterval = 0.15,
         tapDuration: TimeInterval = 0.12,
         maximumPreRollSampleCount: Int = 80_000,
-        schedule: @escaping Scheduler = VoiceFnTapScheduledTask.mainQueue,
+        schedule: @escaping Scheduler = ScheduledOperation.mainQueue,
         destinationReadiness: @escaping DestinationReadiness = { _ in .immediate },
         setFunctionKeyPressed: @escaping FunctionKeySetter,
         enqueueAudio: @escaping AudioEnqueuer,
@@ -451,7 +399,7 @@ final class VoiceFnTapSessionController {
             }
             result.finish(self.releaseFunctionKeyIfNeeded())
         }
-        scheduledTasks.append(VoiceFnTapScheduledTask {
+        scheduledTasks.append(ScheduledOperation {
             task.cancel()
             result.finish(false)
         })

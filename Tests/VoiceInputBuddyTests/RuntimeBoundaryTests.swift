@@ -158,7 +158,7 @@ struct RuntimeBoundaryTests {
     }
     @Test func focusInputWaitsForActualFocusCompletionEvenIfOldFieldWasEditable() {
         let snapshot = VoiceInputDestinationSnapshot(bundleIdentifier: "example.editor", role: "AXTextArea", subrole: "", enabled: true, editable: true, protectedContent: false, semanticText: "Composer", focusIdentity: "old")
-        let coordinator = VoiceInputDestinationCoordinator(schedule: { _, _ in VoiceFnTapScheduledTask(cancellation: {}) }, snapshot: { snapshot })
+        let coordinator = VoiceInputDestinationCoordinator(schedule: { _, _ in ScheduledOperation(cancellation: {}) }, snapshot: { snapshot })
         let intent = VoiceInputDestinationIntent.resolve(configured: .init(action: .focusInput, shortcut: nil), applicationProfile: nil)
         #expect(intent == .focusInput)
         let id = coordinator.beginTargetSwitch(intent: .focusInput)

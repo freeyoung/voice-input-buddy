@@ -56,11 +56,13 @@ extension OnboardingView {
                         in: RoundedRectangle(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(selected ? Color.accentColor.opacity(0.65) : Color.primary.opacity(0.08), lineWidth: 1)
+                    .stroke(selected ? Color.accentColor : Color.primary.opacity(colorSchemeContrast == .increased ? 0.65 : 0.2),
+                            lineWidth: colorSchemeContrast == .increased ? 2 : 1)
             }
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("control-device.\(device.rawValue)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     var gestureModeChoice: some View {

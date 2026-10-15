@@ -247,7 +247,7 @@ extension OnboardingView {
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
             }
-            if localization.locale.language.languageCode?.identifier == "en" {
+            Group {
                 Text(verbatim: localization.text(
                     "onboarding.voice_tool.guide.screenshot." +
                         resourceName.replacingOccurrences(of: "-", with: "_")

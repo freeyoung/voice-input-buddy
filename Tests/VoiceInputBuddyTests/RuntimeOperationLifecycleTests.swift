@@ -125,7 +125,7 @@ struct RuntimeOperationLifecycleTests {
         let settings = AppSettings(defaults: values)
         settings.customMappingEnabled = true
         if longPress { settings.setAction(.commandQuit, for: .up, trigger: .longPress) }
-        let scheduler = OperationScheduler()
+        let scheduler = ControlledTestScheduler()
         var filtering = true
         var actions = 0
         let profile = UUID()
@@ -139,30 +139,9 @@ struct RuntimeOperationLifecycleTests {
         let beforeLoss = actions
         #expect(beforeLoss == (longPress ? 0 : 1))
         filtering = false
-        scheduler.fire(after: longPress ? HIDRemoteTiming.longPressMilliseconds : HIDRemoteTiming.repeatStartMilliseconds)
+        scheduler.fire(afterMilliseconds: longPress ? HIDRemoteTiming.longPressMilliseconds : HIDRemoteTiming.repeatStartMilliseconds)
         #expect(actions == beforeLoss)
         monitor.disconnectSimulatedDevice()
     }
 
-}
-
-
-private final class OperationScheduler: HIDRemoteScheduling {
-    final class Task: HIDRemoteScheduledTask {
-        let delay: UInt64
-        let action: () -> Void
-        var cancelled = false
-        init(delay: UInt64, action: @escaping () -> Void) { self.delay = delay; self.action = action }
-        func cancel() { cancelled = true }
-    }
-    private var tasks: [Task] = []
-    func schedule(afterMilliseconds: UInt64, repeatingEveryMilliseconds: UInt64?,
-        _ action: @escaping () -> Void) -> HIDRemoteScheduledTask {
-        let task = Task(delay: afterMilliseconds, action: action)
-        tasks.append(task)
-        return task
-    }
-    func fire(after delay: UInt64) {
-        for task in tasks where task.delay == delay && !task.cancelled { task.action() }
-    }
 }

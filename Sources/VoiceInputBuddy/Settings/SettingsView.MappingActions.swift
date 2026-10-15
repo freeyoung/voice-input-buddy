@@ -146,17 +146,18 @@ extension SettingsView {
                 return
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                let target = KeyboardInjector.captureFocusedAccessibilityTarget(
+                KeyboardInjector.captureFocusedAccessibilityTargetAsync(
                     bundleIdentifier: profile.bundleIdentifier
-                )
-                if let target, var updated = settings.customApplicationProfile(id: profileID) {
-                    updated.accessibilityTarget = target
-                    updated.focusStrategy = .recordedAccessibility
-                    settings.updateCustomApplicationProfile(updated)
-                    settings.markPortableApplicationVerified(updated.id)
+                ) { target in
+                    if let target, var updated = settings.customApplicationProfile(id: profileID) {
+                        updated.accessibilityTarget = target
+                        updated.focusStrategy = .recordedAccessibility
+                        settings.updateCustomApplicationProfile(updated)
+                        settings.markPortableApplicationVerified(updated.id)
+                    }
+                    customApplicationLearningStates[profileID] = target == nil ? .failed : .succeeded
+                    NSApp.activate()
                 }
-                customApplicationLearningStates[profileID] = target == nil ? .failed : .succeeded
-                NSApp.activate(ignoringOtherApps: true)
             }
         }
     }

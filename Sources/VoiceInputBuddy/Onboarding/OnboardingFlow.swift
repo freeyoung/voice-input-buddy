@@ -775,13 +775,14 @@ enum OnboardingFlowPolicy {
         controlMethod: OnboardingControlMethod = .physicalRemote,
         voiceKeyMode: VoiceKeyMode = .function,
         voiceToolGuideStepsCompleted: Bool = false,
+        selectedDevice: PlannedRemoteDevice? = nil,
         capabilities: OnboardingCapabilities
     ) -> Bool {
         switch step {
         case .voiceTool:
             return voiceTool != .unselected && voiceToolGuideStepsCompleted
         case .remoteAvailability:
-            return remoteAvailability != .unselected
+            return selectedDevice != nil
         case .permissions:
             // Environment setup must work before a control device is selected.
             return capabilities.bluetoothGranted &&

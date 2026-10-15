@@ -10,6 +10,7 @@ struct OnboardingView: View {
     @ObservedObject var settings: AppSettings
     @EnvironmentObject var localization: LocalizationStore
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.colorSchemeContrast) var colorSchemeContrast
     let completeRuntimeReadyOverride: Bool?
     let allowsInputSourceSwitching: Bool
     let systemFunctionKeyAvailableOverride: Bool?
@@ -48,6 +49,7 @@ struct OnboardingView: View {
     @State var voiceTranscriptWaitStartedAtUptime: TimeInterval?
     @State var activeFocusLossStartedAtUptime: TimeInterval?
     @State var voiceTranscriptDeadlineToken = UUID()
+    @State var voiceTestTasks: [ScheduledOperation] = []
     @State var suppressConnectedPhysicalRemoteAutoRouteOnce = false
     @State var isCapturingVoiceShortcut = false
     @State var shortcutCaptureErrorKey: String?
@@ -116,9 +118,13 @@ struct OnboardingView: View {
                 refreshPermissionStates()
                 refreshSecureInputState()
                 if settings.onboardingStep == .voiceTool { refreshSystemFunctionKeyUsage() }
-                if settings.onboardingStep == .voiceTest { refreshSelectedVoiceToolRuntimeState() }
             }
         }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)
+            .merge(with: NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification))) { _ in
+                guard settings.onboardingStep == .voiceTest else { return }
+                refreshSelectedVoiceToolRuntimeState()
+            }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshPermissionStates()
             switch settings.onboardingStep {
@@ -216,7 +222,9 @@ struct OnboardingView: View {
 
     private var toolObservedContent: some View {
         remoteObservedContent
+        .onDisappear { cancelVoiceTestTasks() }
         .onChange(of: settings.onboardingStep) { _, step in
+            cancelVoiceTestTasks()
             prepareForStep(step)
         }
         .onChange(of: settings.onboardingVoiceTool) { _, _ in

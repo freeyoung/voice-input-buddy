@@ -18,7 +18,7 @@ enum VoiceInputDestinationWaitResult: Equatable {
 enum VoiceInputDestinationWait {
     case immediate
     case cancelled(VoiceInputDestinationCancellation)
-    case waiting(VoiceFnTapScheduledTask)
+    case waiting(ScheduledOperation)
 }
 
 enum VoiceInputDestinationState: Equatable {
@@ -180,7 +180,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
 }
 
 final class VoiceInputDestinationCoordinator {
-    typealias Scheduler = (TimeInterval, @escaping () -> Void) -> VoiceFnTapScheduledTask
+    typealias Scheduler = OperationScheduler
     typealias SnapshotProvider = () -> VoiceInputDestinationSnapshot
     typealias AsyncSnapshotProvider = (@escaping (VoiceInputDestinationSnapshot) -> Void) -> Void
 
@@ -213,13 +213,13 @@ final class VoiceInputDestinationCoordinator {
     private let onStateChange: (VoiceInputDestinationState) -> Void
     private var generation: UInt64 = 0
     private var pendingRequest: PendingRequest?
-    private var timeoutTask: VoiceFnTapScheduledTask?
-    private var pollTask: VoiceFnTapScheduledTask?
+    private var timeoutTask: ScheduledOperation?
+    private var pollTask: ScheduledOperation?
 
     init(
         pollInterval: TimeInterval = 0.05,
         maximumWait: TimeInterval = 5,
-        schedule: @escaping Scheduler = VoiceFnTapScheduledTask.mainQueue,
+        schedule: @escaping Scheduler = ScheduledOperation.mainQueue,
         snapshot: SnapshotProvider? = nil,
         querySnapshot: AsyncSnapshotProvider? = nil,
         onStateChange: @escaping (VoiceInputDestinationState) -> Void = { _ in }
@@ -317,7 +317,7 @@ final class VoiceInputDestinationCoordinator {
             pendingRequest = request
             onStateChange(.waiting)
             schedulePoll(requestID: request.id)
-            return .waiting(VoiceFnTapScheduledTask { [weak self] in
+            return .waiting(ScheduledOperation { [weak self] in
                 self?.removeWaiter(requestID: request.id)
             })
         }
@@ -341,7 +341,7 @@ final class VoiceInputDestinationCoordinator {
             pendingRequest = request
             onStateChange(.waiting)
             poll(requestID: request.id)
-            return .waiting(VoiceFnTapScheduledTask { [weak self] in self?.removeWaiter(requestID: request.id) })
+            return .waiting(ScheduledOperation { [weak self] in self?.removeWaiter(requestID: request.id) })
         }
         directValidationGeneration &+= 1
         let token = directValidationGeneration
@@ -363,7 +363,7 @@ final class VoiceInputDestinationCoordinator {
             }
             completion(result)
         }
-        return .waiting(VoiceFnTapScheduledTask { [weak self] in
+        return .waiting(ScheduledOperation { [weak self] in
             deadline.cancel()
             if self?.directValidationGeneration == token { self?.directValidationGeneration &+= 1 }
         })

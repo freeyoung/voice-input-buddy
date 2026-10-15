@@ -7,7 +7,7 @@ import Foundation
 import BuddyRemoteCore
 
 extension BridgeAppModel {
-    func openLogFolder() {
+    @MainActor func openLogFolder() {
         let logger = AppLogger.shared
         logger.write("LOGS opened_by_user")
         logger.flush()

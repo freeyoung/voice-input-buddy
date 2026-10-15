@@ -91,7 +91,7 @@ extension BridgeAppModel {
             CoreAudioDeviceCatalog.routeDiagnostic()
     }
 
-    func openDoubaoDriverInstructions(using localization: LocalizationStore) {
+    @MainActor func openDoubaoDriverInstructions(using localization: LocalizationStore) {
         guard let instructions = localization.localizedURL(
             forResource: "DoubaoInputMethodCompatibility",
             withExtension: "md"

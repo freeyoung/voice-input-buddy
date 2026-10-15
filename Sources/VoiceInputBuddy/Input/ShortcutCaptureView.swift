@@ -1,11 +1,7 @@
 import AppKit
-import Combine
-import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
-struct OnboardingShortcutCaptureView: NSViewRepresentable {
+struct ShortcutCaptureView: NSViewRepresentable {
     let onCapture: (CustomKeyboardShortcut) -> Void
     let onFailure: (ShortcutCaptureStartFailure) -> Void
 
@@ -41,9 +37,13 @@ struct OnboardingShortcutCaptureView: NSViewRepresentable {
             self.onFailure = onFailure
         }
 
+        func captureHandler() -> (CustomKeyboardShortcut) -> Void {
+            { [weak self] shortcut in self?.onCapture(shortcut) }
+        }
+
         func startMonitoring() {
             guard monitor == nil else { return }
-            let monitor = ShortcutCaptureMonitor(onCapture: onCapture)
+            let monitor = ShortcutCaptureMonitor(onCapture: captureHandler())
             self.monitor = monitor
             if case let .failure(failure) = monitor.start() {
                 self.monitor = nil

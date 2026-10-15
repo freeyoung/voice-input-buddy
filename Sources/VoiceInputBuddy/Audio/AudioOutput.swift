@@ -256,41 +256,17 @@ enum CoreAudioDeviceCatalog {
         }
 
         return withPropertyLock {
-            let before = virtualAudioAudibilitySnapshotLocked(for: device.id)
-            var result = VirtualAudioDeviceAudibilityRepairResult(
-                applicable: true,
-                before: before,
-                after: before
+            VirtualAudioAudibilityRepair.run(
+                read: { virtualAudioAudibilitySnapshotLocked(for: device.id) },
+                writeMute: { scope, value in
+                    setUInt32PropertyLocked(device.id, selector: kAudioDevicePropertyMute,
+                                            scope: scope, value: value)
+                },
+                writeVolume: { scope, value in
+                    setFloat32PropertyLocked(device.id, selector: kAudioDevicePropertyVolumeScalar,
+                                             scope: scope, value: value)
+                }
             )
-
-            for scope in virtualAudioScopes {
-                let observation = deviceLevelObservationLocked(for: device.id, scope: scope)
-                if VirtualAudioDeviceLevelPolicy.requiresUnmute(mute: observation.mute) {
-                    result.unmuteAttempted = true
-                    if !setUInt32PropertyLocked(
-                        device.id,
-                        selector: kAudioDevicePropertyMute,
-                        scope: scope,
-                        value: 0
-                    ) {
-                        result.writeFailed = true
-                    }
-                }
-                if VirtualAudioDeviceLevelPolicy.requiresVolumeRestore(volume: observation.volume) {
-                    result.volumeRestoreAttempted = true
-                    if !setFloat32PropertyLocked(
-                        device.id,
-                        selector: kAudioDevicePropertyVolumeScalar,
-                        scope: scope,
-                        value: 1
-                    ) {
-                        result.writeFailed = true
-                    }
-                }
-            }
-
-            result.after = virtualAudioAudibilitySnapshotLocked(for: device.id)
-            return result
         }
     }
 
@@ -433,15 +409,7 @@ enum CoreAudioDeviceCatalog {
               AudioObjectIsPropertySettable(objectID, &address, &settable) == noErr,
               settable.boolValue
         else { return false }
-        var mutableValue = value
-        return AudioObjectSetPropertyData(
-            objectID,
-            &address,
-            0,
-            nil,
-            UInt32(MemoryLayout<UInt32>.size),
-            &mutableValue
-        ) == noErr
+        return CoreAudioDevicePropertyWriter.write(value, to: objectID, address: &address)
     }
 
     private static func setFloat32PropertyLocked(
@@ -460,15 +428,7 @@ enum CoreAudioDeviceCatalog {
               AudioObjectIsPropertySettable(objectID, &address, &settable) == noErr,
               settable.boolValue
         else { return false }
-        var mutableValue = value
-        return AudioObjectSetPropertyData(
-            objectID,
-            &address,
-            0,
-            nil,
-            UInt32(MemoryLayout<Float32>.size),
-            &mutableValue
-        ) == noErr
+        return CoreAudioDevicePropertyWriter.write(value, to: objectID, address: &address)
     }
 
     private static func channelCount(
@@ -655,6 +615,7 @@ final class VirtualAudioOutput {
     private var drainGeneration: UInt64 = 0
     private var nextDrainOperationID: UInt64 = 0
     private let logger: (String) -> Void
+    private let scheduleDrainDeadline: OperationScheduler
     private let uptime: () -> TimeInterval
     private let engineQueue: DispatchQueue
     private let engineQueueKey = DispatchSpecificKey<Void>()
@@ -690,6 +651,7 @@ final class VirtualAudioOutput {
     init(
         logger: @escaping (String) -> Void = { AppLogger.shared.write($0) },
         uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+        scheduleDrainDeadline: @escaping OperationScheduler = ScheduledOperation.mainQueue,
         engineQueue: DispatchQueue = DispatchQueue(
             label: "VoiceInputBuddy.audioOutput.engine",
             qos: .userInitiated
@@ -697,6 +659,7 @@ final class VirtualAudioOutput {
     ) {
         self.logger = logger
         self.uptime = uptime
+        self.scheduleDrainDeadline = scheduleDrainDeadline
         self.engineQueue = engineQueue
         engineQueue.setSpecific(key: engineQueueKey, value: ())
     }
@@ -1114,7 +1077,7 @@ final class VirtualAudioOutput {
             return
         }
         if let maximumDelay, let generation {
-            DispatchQueue.main.asyncAfter(deadline: .now() + maximumDelay) { [weak self] in
+            _ = scheduleDrainDeadline(maximumDelay) { [weak self] in
                 self?.finishDrainIfNeeded(generation: generation)
             }
         }
