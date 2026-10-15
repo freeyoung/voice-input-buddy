@@ -112,6 +112,20 @@ enum PCMNormalization {
     }
 }
 
+enum AudioEngineSafety {
+    enum Failure: Error { case objectiveCException }
+
+    /// Swift errors and AVFoundation exceptions require separate boundaries.
+    static func perform(_ operation: @escaping () throws -> Void) throws {
+        var swiftError: Error?
+        let succeeded = VoiceInputBuddyTryAudioOperation {
+            do { try operation() } catch { swiftError = error }
+        }
+        guard succeeded else { throw Failure.objectiveCException }
+        if let swiftError { throw swiftError }
+    }
+}
+
 enum AudioPlayerNodeSafety {
     static func play(_ player: AVAudioPlayerNode) -> Bool {
         VoiceInputBuddyTryPlayAudioPlayerNode(player)
@@ -822,25 +836,26 @@ final class VirtualAudioOutput {
             return false
         }
 
-        logStage("connect_mixer")
-        engine.connect(player, to: engine.mainMixerNode, format: sourceFormat)
-
         var accepted = false
         defer {
             if !accepted {
                 _ = VoiceInputBuddyTryAudioOperation { player.stop() }
-                engine.stop()
+                _ = VoiceInputBuddyTryAudioOperation { engine.stop() }
             }
         }
         do {
-            logStage("prepare_engine")
-            engine.prepare()
-            logStage("start_engine")
-            try engine.start()
+            try AudioEngineSafety.perform {
+                logStage("connect_mixer")
+                engine.connect(player, to: engine.mainMixerNode, format: self.sourceFormat)
+                logStage("prepare_engine")
+                engine.prepare()
+                logStage("start_engine")
+                try engine.start()
+            }
             logStage("start_player")
             guard AudioPlayerNodeSafety.play(player) else {
                 _ = VoiceInputBuddyTryAudioOperation { player.stop() }
-                engine.stop()
+                _ = VoiceInputBuddyTryAudioOperation { engine.stop() }
                 status = LocalizedMessage("audio.output.selected_unavailable")
                 logger(
                     "AUDIO ERROR player_start_exception " +
@@ -1229,7 +1244,7 @@ final class VirtualAudioOutput {
         }
         removeEngineConfigurationObserver()
         if let player { _ = VoiceInputBuddyTryAudioOperation { player.stop() } }
-        engine?.stop()
+        if let engine { _ = VoiceInputBuddyTryAudioOperation { engine.stop() } }
         player = nil
         engine = nil
         updateOutputState {
