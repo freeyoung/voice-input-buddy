@@ -292,6 +292,30 @@ final class XiaomiBluetoothBridge: NSObject {
         super.init()
     }
 
+    deinit {
+        // stop() publishes state and requires a live owner. Destruction releases
+        // resources directly and never queues work capturing this dying bridge.
+        reconnectWorkItem?.cancel()
+        connectionTimeoutWorkItem?.cancel()
+        initializationTimeoutWorkItem?.cancel()
+        batteryRefreshWorkItem?.cancel()
+        microphoneKeepalive?.cancel()
+        scanWatchdog.cancel()
+        disconnectWatchdog.cancel()
+        if let token = scanSubscription {
+            if Thread.isMainThread {
+                MainActor.assumeIsolated { SharedBluetoothScanner.shared.unsubscribe(token) }
+            } else {
+                DispatchQueue.main.async { SharedBluetoothScanner.shared.unsubscribe(token) }
+            }
+        }
+        peripheral?.delegate = nil
+        central?.delegate = nil
+        if let central, let peripheral, peripheral.state != .disconnected {
+            central.cancelPeripheralConnection(peripheral)
+        }
+    }
+
     func start() {
         shouldRun = true
         reconnectWorkItem?.cancel()

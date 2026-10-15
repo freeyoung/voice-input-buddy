@@ -60,7 +60,10 @@ final class KeyboardEventSuppressor {
     /// 未命中才值得记录，避免被无关键盘输入淹没。
     private var recentArmed: [(event: RemoteNativeEvent, until: TimeInterval)] = []
 
-    private(set) var isRunning = false
+    private var tapReady = false
+    var isRunning: Bool {
+        tapReady && eventTap.map { CGEvent.tapIsEnabled(tap: $0) } == true
+    }
     var onSystemDisabled: (() -> Void)?
 
     @discardableResult
@@ -69,7 +72,9 @@ final class KeyboardEventSuppressor {
             stop()
             return false
         }
-        if isRunning { return true }
+        // An installed tap may be temporarily disabled while recovery is queued.
+        // Do not install a second port or claim filtering is available then.
+        if eventTap != nil { return isRunning }
 
         let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue) |
             CGEventMask(1 << CGEventType.keyUp.rawValue) |
@@ -99,7 +104,7 @@ final class KeyboardEventSuppressor {
         self.eventTap = eventTap
         self.runLoopSource = runLoopSource
         EventTapPort.activate(port: eventTap, source: runLoopSource)
-        isRunning = true
+        tapReady = true
         return true
     }
 
@@ -117,7 +122,7 @@ final class KeyboardEventSuppressor {
         EventTapPort.release(port: eventTap, source: runLoopSource)
         runLoopSource = nil
         eventTap = nil
-        isRunning = false
+        tapReady = false
     }
 
     func arm(button: RemoteButton, edge: RemoteEventEdge) {
@@ -174,6 +179,7 @@ final class KeyboardEventSuppressor {
 
     func handle(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            tapReady = false
             tapRecoveryGeneration += 1
             let generation = tapRecoveryGeneration
             if let port = eventTap {
@@ -182,7 +188,10 @@ final class KeyboardEventSuppressor {
                         self?.tapRecoveryGeneration == generation && self?.eventTap === port
                     },
                     permissionsGranted: { [weak self] in self?.permissionsGranted() == true },
-                    enable: { CGEvent.tapEnable(tap: port, enable: true) },
+                    enable: { [weak self] in
+                        CGEvent.tapEnable(tap: port, enable: true)
+                        self?.tapReady = CGEvent.tapIsEnabled(tap: port)
+                    },
                     stop: { [weak self] in
                         self?.stop()
                         self?.onSystemDisabled?()

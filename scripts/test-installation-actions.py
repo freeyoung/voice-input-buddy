@@ -50,6 +50,70 @@ class InstallationActionsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(other.exists()); self.assertTrue(new.exists())
 
+    def test_preinstall_can_repair_missing_or_invalid_product_metadata(self):
+        staging = self.root / 'package-scripts'; staging.mkdir()
+        for source in [self.library, SCRIPTS / 'driver-package/preinstall']:
+            shutil.copy2(source, staging / source.name)
+        for invalid in [False, True]:
+            volume = self.root / str(invalid)
+            driver = volume / 'Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver'
+            (driver / 'Contents').mkdir(parents=True)
+            if invalid:
+                (driver / 'Contents/Info.plist').write_text('broken plist')
+            result = subprocess.run(['bash', str(staging / 'preinstall'), 'package.pkg', '/', str(volume)],
+                                    capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            # Permitting repair must not weaken removal validation.
+            self.assertNotEqual(self.remove(driver, 'com.zfdang.voice-input-buddy.mic').returncode, 0)
+            link = volume / 'Applications/Voice Input Buddy.app'
+            link.parent.mkdir()
+            link.symlink_to(driver, target_is_directory=True)
+            result = subprocess.run(['bash', str(staging / 'preinstall'), 'package.pkg', '/', str(volume)],
+                                    capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_user_uninstaller_only_executes_an_intact_signed_app(self):
+        staging = self.root / 'uninstall'; staging.mkdir()
+        shutil.copy2(self.library, staging / self.library.name)
+        app = self.bundle(self.root / 'Voice Input Buddy.app', 'com.zfdang.voice-input-buddy')
+        info = app / 'Contents/Info.plist'
+        metadata = plistlib.loads(info.read_bytes())
+        metadata.update(CFBundleExecutable='VoiceInputBuddy', CFBundlePackageType='APPL',
+                        BuddySupportsUninstallPreparation=True)
+        info.write_bytes(plistlib.dumps(metadata))
+        executable = app / 'Contents/MacOS/VoiceInputBuddy'
+        executable.parent.mkdir()
+        subprocess.run(['xcrun', 'clang', '-x', 'c', '-', '-o', str(executable)],
+                       input='int main(void) { return 0; }', text=True, check=True)
+        subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', str(app)],
+                       capture_output=True, check=True)
+        source = (SCRIPTS / 'uninstaller/uninstall-user.sh').read_text()
+        source = source.replace("app='/Applications/Voice Input Buddy.app'", f"app='{app}'")
+        for original, name, body in [('/usr/bin/id', 'id', 'echo 501'),
+                                     ('/usr/bin/pkill', 'pkill', 'exit 1'),
+                                     ('/usr/bin/pgrep', 'pgrep', 'exit 1')]:
+            tool = staging / name
+            tool.write_text('#!/bin/bash\n' + body + '\n')
+            tool.chmod(0o755)
+            source = source.replace(original, str(tool))
+        script = staging / 'uninstall-user.sh'; script.write_text(source)
+        result = subprocess.run(['bash', str(script), 'prepare'], capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Tampering must skip execution (which would fail with status 37).
+        executable.write_text('#!/bin/bash\nexit 37\n')
+        result = subprocess.run(['bash', str(script), 'prepare'], capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(b'signature is invalid', result.stderr)
+
+    def test_cleanup_rejects_missing_relative_root_and_symlink_homes(self):
+        link = self.root / 'linked-home'
+        link.symlink_to(self.root, target_is_directory=True)
+        for home in ['', '/', '///', str(self.root / 'missing'), 'relative', str(link)]:
+            with self.subTest(home=home):
+                result = subprocess.run(['bash', '-c', 'source "$1"; buddy_cleanup_user_data "$2"',
+                                         'test', str(self.library), home], capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+
     def test_cleanup_only_removes_this_products_personal_data(self):
         for relative in ['Preferences/com.zfdang.voice-input-buddy.plist',
                          'Application Support/VoiceInputBuddy', 'Logs/VoiceInputBuddy',

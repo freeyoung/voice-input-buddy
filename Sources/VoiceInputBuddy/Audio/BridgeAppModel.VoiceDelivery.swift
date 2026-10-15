@@ -155,6 +155,10 @@ extension BridgeAppModel {
         keySetter: @escaping (VoiceKeyMode, Bool) -> Bool = { KeyboardInjector.setVoiceKeyPressed($0, isPressed: $1) },
         completion: @escaping (Bool) -> Void = { _ in }
     ) -> Bool {
+        guard !streaming || voiceKeyReleaseRetry == nil else {
+            completion(false)
+            return false
+        }
         let mode = streaming
             ? settings.voiceKeyMode
             : (heldVoiceKeyMode ?? pendingVoiceKeyMode ?? settings.voiceKeyMode)
@@ -267,6 +271,9 @@ extension BridgeAppModel {
             preferredInputSourceMonitor.endVoiceSession()
         }
         if shouldHold {
+            voiceKeyReleaseRetry?.cancel()
+            voiceKeyReleaseRetry = nil
+            voiceKeyReleaseRetryGeneration &+= 1
             pendingVoiceKeyMode = nil
             heldVoiceKeyMode = mode
         } else {
@@ -300,11 +307,15 @@ extension BridgeAppModel {
 
     @discardableResult
     func releaseVoiceKeyIfNeeded(
-        releaseKey: (VoiceKeyMode) -> Bool = {
+        releaseKey: @escaping (VoiceKeyMode) -> Bool = {
             KeyboardInjector.setVoiceKeyPressed($0, isPressed: false)
         }
     ) -> Bool {
         defer { flushPendingVoiceToolMappingRefresh() }
+        voiceKeyReleaseRetry?.cancel()
+        voiceKeyReleaseRetry = nil
+        voiceKeyReleaseRetryGeneration &+= 1
+        let generation = voiceKeyReleaseRetryGeneration
         guard voiceKeyLatch.isHeld else {
             heldVoiceKeyMode = nil
             pendingVoiceKeyMode = nil
@@ -326,6 +337,11 @@ extension BridgeAppModel {
         // A denied post must not erase the held-key safety state. Retry after permission recovery.
         guard releaseKey(heldVoiceKeyMode) else {
             AppLogger.shared.write("VOICE KEY cleanup deferred reason=release_failed mode=\(heldVoiceKeyMode.rawValue)")
+            voiceKeyReleaseRetry = scheduleVoiceKeyReleaseRetry(1) { [weak self] in
+                guard let self, self.voiceKeyReleaseRetryGeneration == generation,
+                      self.heldVoiceKeyMode == heldVoiceKeyMode else { return }
+                _ = self.releaseVoiceKeyIfNeeded(releaseKey: releaseKey)
+            }
             return false
         }
 

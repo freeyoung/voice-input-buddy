@@ -175,14 +175,8 @@ extension KeyboardInjector {
             .frontmostApplication?
             .processIdentifier
         else { return nil }
-        let application = AXUIElementCreateApplication(processIdentifier)
-        if let window = axAttribute(application, attribute: kAXFocusedWindowAttribute),
-           CFGetTypeID(window) == AXUIElementGetTypeID(),
-           let frame = axFrame(window as! AXUIElement),
-           frame.width > 0,
-           frame.height > 0 {
-            return frame
-        }
+        // Scroll delivery runs on the input/main run loop. Query WindowServer,
+        // never the target application's AX server, which may be unresponsive.
         guard let windowInfo = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
             kCGNullWindowID
