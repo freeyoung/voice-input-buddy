@@ -111,15 +111,22 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     private func render(activate: Bool = false) {
         guard isPresented, presentsWindows else { return }
         if window == nil {
-            let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
+            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
                                  styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             panel.isReleasedWhenClosed = false
-            panel.collectionBehavior.insert(.moveToActiveSpace)
+            panel.hidesOnDeactivate = false
+            panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
             panel.delegate = self
             panel.center()
             window = panel
         }
         guard let window else { return }
+        // Preparation finishes asynchronously, potentially while another app is
+        // active. Activation alone does not keep the restart confirmation above
+        // that app's windows. Elevate only the stages waiting for an install choice.
+        let awaitsInstallationChoice = titleKey == "update.dialog.ready"
+            || (titleKey == "update.dialog.installing" && !actions.isEmpty)
+        window.level = awaitsInstallationChoice ? .floating : .normal
         window.title = localization.text("update.dialog.window")
         let content = makeContentView()
         window.contentView = content

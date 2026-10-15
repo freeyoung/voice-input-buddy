@@ -227,6 +227,39 @@ struct UpdateDialogTests {
         #expect(!window.isVisible)
     }
 
+    @Test func restartConfirmationFloatsUntilInstallationContinuesOrIsDeferred() throws {
+        let suite = "update-restart-focus-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite), activateApplication: {})
+        defer { driver.dismissUpdateInstallation() }
+        driver.showDownloadInitiated {}
+        let panel = try #require(driver.window as? NSPanel)
+        #expect(panel.level == .normal)
+        driver.showDownloadDidStartExtractingUpdate()
+        #expect(panel.level == .normal)
+        panel.orderOut(nil)
+        var choices: [SPUUserUpdateChoice] = []
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(panel.level == .floating)
+        #expect(!panel.hidesOnDeactivate)
+        #expect(panel.collectionBehavior.contains(.moveToActiveSpace))
+        #expect(panel.collectionBehavior.contains(.fullScreenAuxiliary))
+        driver.showInstallingUpdate(withApplicationTerminated: false) {}
+        #expect(panel.level == .floating)
+        driver.showInstallingUpdate(withApplicationTerminated: true) {}
+        #expect(panel.level == .normal)
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        driver.performAction(at: 1)
+        #expect(choices == [.dismiss])
+        #expect(!panel.isVisible)
+        #expect(driver.window == nil)
+        driver.showDownloadInitiated {}
+        #expect(driver.window?.level == .normal)
+    }
+
     @Test(arguments: [AppLanguage.english, .simplifiedChinese])
     func footerActionsFitTheDialogInBothLanguages(language: AppLanguage) throws {
         let suite = "update-layout-" + UUID().uuidString
