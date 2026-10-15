@@ -167,7 +167,7 @@ struct UpdateDialogTests {
         #expect(driver.actionTitles == ["关闭"])
     }
 
-    @Test func installedAcknowledgementHasAnExplicitCompletionLabel() throws {
+    @Test func installedUpdateAcknowledgesWithoutACompletionDialog() throws {
         let suite = "update-installed-" + UUID().uuidString
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
         let language = try localization(suite)
@@ -175,7 +175,9 @@ struct UpdateDialogTests {
         let driver = LocalizedUpdateUserDriver(localization: language, presentsWindows: false)
         var acknowledgements = 0
         driver.showUpdateInstalledAndRelaunched(true) { acknowledgements += 1 }
-        #expect(driver.actionTitles == ["完成"])
+        #expect(acknowledgements == 1)
+        #expect(driver.actionTitles.isEmpty)
+        #expect(driver.window == nil)
         driver.performAction(at: 0)
         driver.performAction(at: 0)
         #expect(acknowledgements == 1)

@@ -1193,7 +1193,6 @@
 "update.dialog.install_restart" = "安装并重启";
 "update.dialog.installing" = "正在安装更新…";
 "update.dialog.retry_quit" = "退出应用并继续";
-"update.dialog.installed" = "更新已完成";
 "update.dialog.history" = "更新说明";
 
 
@@ -1230,7 +1229,6 @@
 
 "update.dialog.waiting_for_quit.detail" = "应用仍在运行。退出应用后即可继续安装。";
 
-"update.dialog.installed.detail" = "新版本已安装，可以继续使用应用。";
 
 "update.dialog.close" = "关闭";
 
@@ -1242,7 +1240,6 @@
 
 "update.dialog.latest_version" = "此渠道最新版本";
 
-"update.dialog.previous_version" = "更新前版本";
 
 // Four-device product scope. Upcoming adapters show an inline notice on Continue.
 "remote.catalog.xiaomi.title" = "小米蓝牙遥控器 2 / 2 Pro";

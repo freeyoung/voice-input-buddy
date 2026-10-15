@@ -10,6 +10,7 @@ struct VoiceInputBuddyRootView: View {
     let setStatusBarIconVisible: (Bool) -> Void
     let syncEntryPointVisibility: () -> Void
     private let initialSettingsSection: SettingsSection?
+    private let completedUpdateVersion: String?
 
     init(
         model: BridgeAppModel,
@@ -19,7 +20,8 @@ struct VoiceInputBuddyRootView: View {
         setDockIconVisible: @escaping (Bool) -> Void,
         setStatusBarIconVisible: @escaping (Bool) -> Void,
         syncEntryPointVisibility: @escaping () -> Void,
-        initialSettingsSection: SettingsSection? = nil
+        initialSettingsSection: SettingsSection? = nil,
+        completedUpdateVersion: String? = nil
     ) {
         self.model = model
         settings = model.settings
@@ -30,6 +32,7 @@ struct VoiceInputBuddyRootView: View {
         self.setStatusBarIconVisible = setStatusBarIconVisible
         self.syncEntryPointVisibility = syncEntryPointVisibility
         self.initialSettingsSection = initialSettingsSection
+        self.completedUpdateVersion = completedUpdateVersion
     }
 
     var body: some View {
@@ -49,6 +52,7 @@ struct VoiceInputBuddyRootView: View {
                 OnboardingView(model: model)
             }
         }
+        .modifier(UpdateCompletionToast(version: completedUpdateVersion))
         .onAppear {
             startRuntimeIfRequired(for: settings.onboardingStep)
         }
