@@ -50,6 +50,28 @@ class InstallationActionsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(other.exists()); self.assertTrue(new.exists())
 
+    def test_preinstall_can_repair_missing_or_invalid_product_metadata(self):
+        staging = self.root / 'package-scripts'; staging.mkdir()
+        for source in [self.library, SCRIPTS / 'driver-package/preinstall']:
+            shutil.copy2(source, staging / source.name)
+        for invalid in [False, True]:
+            volume = self.root / str(invalid)
+            driver = volume / 'Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver'
+            (driver / 'Contents').mkdir(parents=True)
+            if invalid:
+                (driver / 'Contents/Info.plist').write_text('broken plist')
+            result = subprocess.run(['bash', str(staging / 'preinstall'), 'package.pkg', '/', str(volume)],
+                                    capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            # Permitting repair must not weaken removal validation.
+            self.assertNotEqual(self.remove(driver, 'com.zfdang.voice-input-buddy.mic').returncode, 0)
+            link = volume / 'Applications/Voice Input Buddy.app'
+            link.parent.mkdir()
+            link.symlink_to(driver, target_is_directory=True)
+            result = subprocess.run(['bash', str(staging / 'preinstall'), 'package.pkg', '/', str(volume)],
+                                    capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+
     def test_cleanup_rejects_missing_relative_root_and_symlink_homes(self):
         link = self.root / 'linked-home'
         link.symlink_to(self.root, target_is_directory=True)
