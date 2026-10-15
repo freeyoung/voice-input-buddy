@@ -1180,10 +1180,10 @@
 "update.dialog.allow_checks" = "Enable Automatic Checks";
 "update.dialog.checking" = "Checking for updates…";
 "update.dialog.found" = "A new version is available";
-"update.dialog.found.detail" = "Download the new version for the latest improvements.";
+"update.dialog.found.detail" = "The update will download, then install and restart automatically after any required administrator authorization.";
 "update.dialog.later" = "Later";
 "update.dialog.skip" = "Skip Version";
-"update.dialog.install" = "Download Update";
+"update.dialog.install" = "Update and Restart";
 "update.dialog.not_found" = "No compatible update is available";
 "update.dialog.not_found.detail" = "This update channel has no newer version available for this device. You can keep using the app.";
 "update.dialog.error" = "The update could not be completed";

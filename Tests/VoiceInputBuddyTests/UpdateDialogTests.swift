@@ -44,7 +44,7 @@ struct UpdateDialogTests {
         #expect(choices.isEmpty)
         language.select(.simplifiedChinese)
         #expect(driver.versionRows.map(\.label) == ["当前版本", "更新版本"])
-        #expect(driver.actionTitles == ["稍后提醒", "跳过此版本", "下载更新"])
+        #expect(driver.actionTitles == ["稍后提醒", "跳过此版本", "升级并重启"])
         driver.performAction(at: 2)
         driver.performAction(at: 2)
         #expect(choices == [.install])
@@ -67,6 +67,55 @@ struct UpdateDialogTests {
         driver.performAction(at: 0)
         driver.performAction(at: 0)
         #expect(acknowledgements == 1)
+    }
+
+    @Test func confirmedUpgradeContinuesAfterPreparationWithoutAnotherConfirmation() throws {
+        let suite = "update-confirmed-restart-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let language = try localization(suite)
+        language.select(.english)
+        let driver = LocalizedUpdateUserDriver(localization: language, presentsWindows: false)
+        var choices: [SPUUserUpdateChoice] = []
+        driver.showAvailableUpdate(.init(version: "v26-10-15.215", commitCount: "215")) { choices.append($0) }
+        #expect(driver.actionTitles.last == "Update and Restart")
+        #expect(driver.detail.contains("administrator authorization"))
+        driver.performAction(at: 2)
+        driver.performAction(at: 2)
+        #expect(choices == [.install])
+        driver.showDownloadInitiated {}
+        driver.showDownloadDidReceiveExpectedContentLength(100)
+        driver.showDownloadDidReceiveData(ofLength: 100)
+        driver.showDownloadDidStartExtractingUpdate()
+        driver.showExtractionReceivedProgress(1)
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        #expect(choices == [.install, .install])
+        #expect(driver.actionTitles.isEmpty)
+        // The initial consent is consumed; a resumed update asks again.
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        #expect(choices.count == 2)
+        #expect(driver.actionTitles.last == "Install and Restart")
+    }
+
+    @Test(arguments: ["cancel", "dismiss", "error", "newCheck", "newCandidate"])
+    func interruptedUpgradeDoesNotReuseRestartConsent(interruption: String) throws {
+        let suite = "update-interrupted-restart-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite), presentsWindows: false)
+        let next = UpdateDialogVersion(version: "v26-10-15.215", commitCount: "215")
+        driver.showAvailableUpdate(next) { _ in }
+        driver.performAction(at: 2)
+        driver.showDownloadInitiated {}
+        switch interruption {
+        case "cancel": driver.closeWindow()
+        case "dismiss": driver.dismissUpdateInstallation()
+        case "error": driver.showUpdaterError(NSError(domain: NSURLErrorDomain, code: -1009)) {}
+        case "newCheck": driver.showUserInitiatedUpdateCheck {}
+        default: driver.showAvailableUpdate(next) { _ in }
+        }
+        var installs = 0
+        driver.showReady(toInstallAndRelaunch: { _ in installs += 1 })
+        #expect(installs == 0)
+        #expect(driver.actionTitles.count == 3)
     }
 
     @Test func readyUpdateCanBeDeferredWithoutSkippingIt() throws {
