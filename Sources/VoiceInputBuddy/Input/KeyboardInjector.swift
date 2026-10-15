@@ -113,6 +113,21 @@ enum KeyboardInjector {
 
         @discardableResult
         func cancel() -> Bool {
+            guard isActive else { return true }
+            // Releasing Command confirms the selection. Escape must dismiss the
+            // native switcher while Command is still held before we release it.
+            let pressed = post(53, isDown: true, flags: .maskCommand, role: "cancel")
+            let released = post(53, isDown: false, flags: .maskCommand, role: "cancel")
+            let commandReleased = releaseCommandKey()
+            return pressed && released && commandReleased
+        }
+
+        @discardableResult
+        func confirm() -> Bool {
+            releaseCommandKey()
+        }
+
+        private func releaseCommandKey() -> Bool {
             releaseGeneration &+= 1
             releaseTask?.cancel()
             releaseTask = nil
@@ -120,11 +135,6 @@ enum KeyboardInjector {
             let released = post(leftCommandKeyCode, isDown: false, flags: [], role: "command")
             isActive = !released
             return released
-        }
-
-        @discardableResult
-        func confirm() -> Bool {
-            cancel()
         }
 
         @discardableResult
