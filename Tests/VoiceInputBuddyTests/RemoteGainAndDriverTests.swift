@@ -1,10 +1,29 @@
 import Foundation
+import Combine
 import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Remote gain and automatic driver setup")
 @MainActor
 struct RemoteGainAndDriverTests {
+    @Test func repeatedSliderValuesDoNotRewriteTheProfileLibrary() throws {
+        let name = "gain-writes-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        let profile = settings.registerBluetoothRemote(identifier: UUID(), model: .rc003)
+        settings.selectRemoteProfile(profile)
+        var profileUpdates = 0
+        let subscription = settings.$remoteDeviceProfiles.dropFirst().sink { _ in profileUpdates += 1 }
+        defer { subscription.cancel() }
+        settings.setGainDB(8, for: profile)
+        #expect(profileUpdates == 1)
+        for _ in 0..<120 { settings.setGainDB(8, for: profile) }
+        settings.gainDB = 8
+        #expect(profileUpdates == 1)
+        #expect(AppSettings(defaults: defaults).gainDB(for: profile) == 8)
+    }
+
     @Test func gainsPersistIndependentlyAndFollowTheRecordingDevice() throws {
         let suite = "remote-gain-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))

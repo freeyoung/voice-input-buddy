@@ -174,13 +174,16 @@ extension AppSettings {
     func setGainDB(_ value: Double, for profileID: UUID) {
         guard value.isFinite, (0...24).contains(value),
               let index = remoteDeviceProfiles.firstIndex(where: { $0.id == profileID }) else { return }
-        remoteDeviceProfiles[index].gainDB = value
-        if selectedRemoteProfileID == profileID { gainDB = value }
+        if remoteDeviceProfiles[index].gainDB != value {
+            remoteDeviceProfiles[index].gainDB = value
+        }
+        if selectedRemoteProfileID == profileID, gainDB != value { gainDB = value }
     }
 
     func saveSelectedRemoteGain() {
         guard !isLoadingRemoteProfile, gainDB.isFinite, (0...24).contains(gainDB),
               let index = remoteDeviceProfiles.firstIndex(where: { $0.id == selectedRemoteProfileID }) else { return }
+        guard remoteDeviceProfiles[index].gainDB != gainDB else { return }
         remoteDeviceProfiles[index].gainDB = gainDB
     }
 
