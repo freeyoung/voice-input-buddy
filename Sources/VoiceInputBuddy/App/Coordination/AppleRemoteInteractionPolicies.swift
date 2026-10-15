@@ -42,7 +42,10 @@ struct AppleRemoteCircularNavigationAccumulator {
         if pendingPixels != 0, pendingPixels.sign != pixels.sign {
             pendingPixels = 0
         }
-        pendingPixels += pixels
+        // Emit at most one event's steps plus two retained steps. Excess motion
+        // is discarded rather than replayed long after the gesture has ended.
+        let limit = Self.stepThreshold * Double(Self.maximumStepsPerEvent + 2)
+        pendingPixels = max(-limit, min(limit, pendingPixels + pixels))
         let availableSteps = Int(min(Double(Self.maximumStepsPerEvent), abs(pendingPixels) / Self.stepThreshold))
         guard availableSteps > 0 else { return 0 }
 
