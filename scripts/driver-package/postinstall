@@ -1,7 +1,20 @@
 #!/bin/bash
 set -euo pipefail
+source "$(dirname "$0")/installation-common.sh"
+volume="${3:-/}"
+snapshot="$(dirname "$0")/driver-before-install.cdhash"
+before=""
+if [[ -f "$snapshot" ]]; then
+    before="$(/bin/cat "$snapshot")"
+fi
+/bin/rm -f "$snapshot"
+after="$(buddy_driver_fingerprint "${volume%/}/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver")" || after=""
+if [[ -n "$before" && "$before" == "$after" ]]; then
+    echo 'Microphone driver unchanged; leaving Core Audio running.'
+    exit 0
+fi
 # HAL plug-ins are enumerated by Core Audio, not by the app process.
-# Installation may briefly interrupt active playback/recording.
+# Only a new, changed, or repaired driver needs to interrupt playback/recording.
 if /usr/bin/pgrep -x coreaudiod > /dev/null; then
     if ! /usr/bin/killall coreaudiod; then
         echo 'Microphone installed. Restart your Mac to load the driver.' >&2

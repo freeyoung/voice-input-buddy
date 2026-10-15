@@ -105,4 +105,151 @@ class InstallationActionsTests(unittest.TestCase):
         self.assertFalse(app.exists())
         self.assertFalse(driver.exists())
 
+class DriverRestartTests(unittest.TestCase):
+    """Run real signing checks on fixtures; never touch the system audio daemon."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixtures = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.fixtures.cleanup)
+        root = Path(cls.fixtures.name)
+        cls.original = root / 'original.driver'
+        cls.changed = root / 'changed.driver'
+        for bundle, value in [(cls.original, 1), (cls.changed, 2)]:
+            executable = bundle / 'Contents/MacOS/Microphone'
+            executable.parent.mkdir(parents=True)
+            (bundle / 'Contents/Resources').mkdir()
+            (bundle / 'Contents/Resources/config.txt').write_text('original resource')
+            (bundle / 'Contents/Info.plist').write_bytes(plistlib.dumps({
+                'CFBundleIdentifier': 'com.zfdang.voice-input-buddy.mic',
+                'CFBundleExecutable': 'Microphone',
+                'CFBundlePackageType': 'BNDL',
+                'CFBundleVersion': '3',
+            }))
+            subprocess.run(['xcrun', 'clang', '-x', 'c', '-bundle', '-', '-o', str(executable)],
+                           input=f'int microphone(void) {{ return {value}; }}', text=True, check=True)
+            cls.sign(bundle)
+
+    @staticmethod
+    def sign(bundle):
+        subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', str(bundle)],
+                       capture_output=True, check=True)
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.driver = self.root / 'Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver'
+        self.driver.parent.mkdir(parents=True)
+        self.staging = self.root / 'scripts'
+        self.staging.mkdir()
+        self.calls = self.staging / 'audio-calls'
+        for source in [SCRIPTS / 'installation-common.sh', SCRIPTS / 'driver-package/preinstall',
+                       SCRIPTS / 'driver-package/postinstall']:
+            shutil.copy2(source, self.staging / source.name)
+        # Replace only daemon commands; fingerprint verification uses real codesign.
+        postinstall = self.staging / 'postinstall'
+        source = postinstall.read_text()
+        for command in ['pgrep', 'killall']:
+            stub = self.staging / command
+            source = source.replace('/usr/bin/' + command, str(stub))
+            self.stub(command, 0)
+        postinstall.write_text(source)
+
+    def stub(self, command, status):
+        path = self.staging / command
+        path.write_text(f'#!/bin/bash\necho {command} >> "{self.calls}"\nexit {status}\n')
+        path.chmod(0o755)
+
+    def install_driver(self, source):
+        if self.driver.exists():
+            shutil.rmtree(self.driver)
+        shutil.copytree(source, self.driver)
+
+    def run_script(self, name):
+        result = subprocess.run(['bash', str(self.staging / name), 'package.pkg', '/', str(self.root)],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result
+
+    def assert_restarted(self, expected):
+        self.run_script('postinstall')
+        calls = self.calls.read_text().splitlines() if self.calls.exists() else []
+        self.assertEqual(calls, ['pgrep', 'killall'] if expected else [])
+        self.assertFalse((self.staging / 'driver-before-install.cdhash').exists())
+
+    def test_same_driver_skips_daemon_commands_after_payload_replacement(self):
+        self.install_driver(self.original)
+        self.run_script('preinstall')
+        self.install_driver(self.original)
+        self.assert_restarted(False)
+
+    def test_resigning_identical_driver_skips_restart(self):
+        self.install_driver(self.original)
+        self.run_script('preinstall')
+        self.sign(self.driver)
+        self.assert_restarted(False)
+
+    def test_first_install_restarts_and_overwrites_stale_snapshot(self):
+        (self.staging / 'driver-before-install.cdhash').write_text('stale fingerprint')
+        self.run_script('preinstall')
+        self.assertEqual((self.staging / 'driver-before-install.cdhash').read_text(), '')
+        self.install_driver(self.original)
+        self.assert_restarted(True)
+
+    def test_code_change_with_same_version_restarts(self):
+        self.install_driver(self.original)
+        self.run_script('preinstall')
+        self.install_driver(self.changed)
+        self.assert_restarted(True)
+
+    def test_sealed_resource_change_restarts(self):
+        self.install_driver(self.original)
+        self.run_script('preinstall')
+        (self.driver / 'Contents/Resources/config.txt').write_text('new resource')
+        self.sign(self.driver)
+        self.assert_restarted(True)
+
+    def test_metadata_change_restarts(self):
+        self.install_driver(self.original)
+        self.run_script('preinstall')
+        info = self.driver / 'Contents/Info.plist'
+        metadata = plistlib.loads(info.read_bytes())
+        metadata['CFBundleVersion'] = '4'
+        info.write_bytes(plistlib.dumps(metadata))
+        self.sign(self.driver)
+        self.assert_restarted(True)
+
+    def test_repairing_invalid_signature_restarts(self):
+        self.install_driver(self.original)
+        (self.driver / 'Contents/Resources/config.txt').write_text('damaged resource')
+        self.run_script('preinstall')
+        self.install_driver(self.original)
+        self.assert_restarted(True)
+
+    def test_invalid_installed_signature_does_not_skip_restart(self):
+        self.install_driver(self.original)
+        self.run_script('preinstall')
+        (self.driver / 'Contents/Resources/config.txt').write_text('damaged resource')
+        self.assert_restarted(True)
+
+    def test_missing_snapshot_does_not_skip_restart(self):
+        self.install_driver(self.original)
+        self.assert_restarted(True)
+
+    def test_absent_daemon_is_not_killed(self):
+        self.run_script('preinstall')
+        self.install_driver(self.original)
+        self.stub('pgrep', 1)
+        self.run_script('postinstall')
+        self.assertEqual(self.calls.read_text().splitlines(), ['pgrep'])
+
+    def test_failed_restart_keeps_install_success_and_reports_reboot(self):
+        self.run_script('preinstall')
+        self.install_driver(self.original)
+        self.stub('killall', 1)
+        result = self.run_script('postinstall')
+        self.assertIn('Restart your Mac', result.stderr)
+
+
 if __name__ == '__main__': unittest.main()
