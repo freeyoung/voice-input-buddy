@@ -196,8 +196,13 @@ final class VoiceFnTapSessionController {
             return true
         }
         switch phase {
-        case .starting:
+        case let .starting(sessionGeneration):
             remoteEnded = true
+            if !functionKeyIsPressed {
+                // A released button must not start dictation after the start
+                // delay or destination wait finally completes.
+                cancelSessionAwaitingDestination(generation: sessionGeneration)
+            }
             return true
         case let .active(sessionGeneration):
             remoteEnded = true

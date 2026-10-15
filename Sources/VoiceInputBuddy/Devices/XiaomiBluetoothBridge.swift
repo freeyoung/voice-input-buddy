@@ -548,7 +548,7 @@ final class XiaomiBluetoothBridge: NSObject {
 
         BluetoothDiscoverySequence.run(
             cachedTarget: { () -> CBPeripheral? in
-                guard reconnectPolicy.allowsCachedTargetRetrieval,
+                guard reconnectPolicy.consumeCachedTargetRetrievalPermission(),
                       let identifier = targetIdentifier else { return nil }
                 return central.retrievePeripherals(withIdentifiers: [identifier]).first
             },

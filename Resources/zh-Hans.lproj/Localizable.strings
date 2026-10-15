@@ -1064,7 +1064,7 @@
 "common_phrases.local_storage" = "保存在这台 Mac，重启后仍保留。";
 "common_phrases.panel_hint" = "按方向键和OK键插入对应常用语\n按返回键关闭面板";
 "common_phrases.close" = "关闭常用语";
-"common_phrases.settings_hint" = "在按键映射中绑定“打开常用语”。内容只保存在本机；通过无障碍文本框插入，不会修改剪贴板。";
+"common_phrases.settings_hint" = "在按键映射中绑定“打开常用语”。内容只保存在本机；部分编辑器会临时使用剪贴板粘贴，随后尝试恢复原内容。检测到期间复制的新内容时会保留。";
 "common_phrases.assign_hint" = "五键分配";
 "common_phrases.assign_selected" = "将当前已保存的常用语分配到按键";
 "common_phrases.key.up" = "上";
@@ -1086,14 +1086,14 @@
 "common_phrases.english_text" = "英文完整句（可选）";
 "common_phrases.saved" = "已保存";
 "common_phrases.inserting" = "正在插入…";
-"common_phrases.paste_submitted" = "已执行粘贴，请在输入框确认文字。";
+"common_phrases.paste_submitted" = "已发送粘贴指令。";
 "common_phrases.error.resource_unavailable" = "常用语无法加载。请重新安装；已有内容可从导出的文件恢复。";
 "common_phrases.error.edit_failed" = "无法保存。请检查内容或导入文件格式；原有数据未被修改。";
 "common_phrases.error.no_phrase" = "这个按键尚未分配常用语，请在常用语页面设置。";
 "common_phrases.error.accessibility_required" = "请在系统设置中允许语音搭子使用辅助功能。";
-"common_phrases.error.input_unavailable" = "光标不在输入框中，请将光标放入输入框后再试";
+"common_phrases.error.input_unavailable" = "请将光标放入非敏感的可编辑输入框，并取消文本选区后再试。";
 "common_phrases.error.target_changed" = "输入目标已改变，请重新打开常用语。";
-"common_phrases.error.clipboard_write_failed" = "无法写入剪贴板，请重试。";
+"common_phrases.error.clipboard_write_failed" = "无法安全暂存或写入剪贴板。如系统询问，请允许剪贴板访问后重试。";
 "common_phrases.error.clipboard_restore_failed" = "粘贴后未能恢复剪贴板，请检查剪贴板内容。";
 "common_phrases.error.paste_failed" = "无法执行粘贴，请检查辅助功能权限后重试。";
 "common_phrases.error.cancelled" = "插入已取消。";

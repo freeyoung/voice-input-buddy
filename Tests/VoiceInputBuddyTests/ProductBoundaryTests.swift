@@ -257,6 +257,7 @@ struct ProductBoundaryTests {
 
     @Test func inputToolRequiresViewedStepsButNoMicrophoneCheckbox() {
         let passed = OnboardingCapabilities(
+            bluetoothGranted: true, inputMonitoringGranted: true, accessibilityGranted: true,
             voiceSessionStarted: true, voiceSamplesReceived: true,
             voiceSessionEnded: true, transcriptionAppeared: true
         )

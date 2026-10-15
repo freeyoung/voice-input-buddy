@@ -1,9 +1,14 @@
 import AppKit
 
-/// Inserts at the current caret using public AX metadata and AXSelectedText.
-/// Target text and the user's clipboard are never read or replaced.
+/// Inserts using AXSelectedText or a temporary clipboard paste after validating
+/// public focus metadata. Target text is never read.
 final class CommonPhraseInserter {
-    typealias Writer = (String, pid_t, @escaping (String?) -> Void) -> Void
+    enum WriteResult {
+        case inserted
+        case pasteSubmitted
+        case failed(String)
+    }
+    typealias Writer = (String, pid_t, @escaping (WriteResult) -> Void) -> Void
 
     private struct Request {
         let operationID: UInt64
@@ -19,10 +24,7 @@ final class CommonPhraseInserter {
     private var operation: UInt64 = 0
 
     init(write: @escaping Writer = { text, processID, completion in
-        AccessibilityMessaging.queryQueue.async {
-            let failure = insertAtCaret(text, processID: processID)
-            DispatchQueue.main.async { completion(failure) }
-        }
+        writeUsingAvailableRoute(text, processID: processID, completion: completion)
     }, logger: @escaping (String) -> Void = AppLogger.shared.write) {
         self.write = write
         self.logger = logger
@@ -46,54 +48,150 @@ final class CommonPhraseInserter {
         guard !busy, !queue.isEmpty else { return }
         busy = true
         let request = queue.removeFirst()
-        write(request.text, request.processID) { [weak self] failure in
+        write(request.text, request.processID) { [weak self] result in
             guard let self else { return }
+            let message: String
+            let status: String
+            let reason: String
+            switch result {
+            case .inserted:
+                message = "common_phrases.inserted"; status = "inserted"; reason = "ax_inserted"
+            case .pasteSubmitted:
+                message = "common_phrases.paste_submitted"; status = "event_submitted"; reason = "clipboard_paste"
+            case let .failed(failure):
+                message = "common_phrases.error." + failure; status = "failed"; reason = failure
+            }
             self.logger("COMMON_PHRASES INSERT operation_id=\(request.operationID) phase=completed " +
-                "result=\(failure == nil ? "inserted" : "failed") reason=\(failure ?? "ax_inserted") " +
+                "result=\(status) reason=\(reason) " +
                 "elapsed_ms=\(Int((ProcessInfo.processInfo.systemUptime - request.start) * 1000))")
             self.busy = false
-            request.completion(failure.map { "common_phrases.error.\($0)" } ?? "common_phrases.inserted")
+            request.completion(message)
             self.drain()
         }
     }
 
-    static func insertAtCaret(_ text: String, processID: pid_t) -> String? {
-        guard !SecureInputMonitor.isEnabled() else { return "input_unavailable" }
-        guard KeyboardInjector.isAccessibilityTrusted else { return "accessibility_required" }
-        guard processID != ProcessInfo.processInfo.processIdentifier,
-              NSWorkspace.shared.frontmostApplication?.processIdentifier == processID else { return "target_changed" }
+    private struct PasteTarget {
+        let processID: pid_t
+        let element: AXUIElement?
+        let terminal: Bool
+    }
+
+    static func prefersPaste(bundleIdentifier: String, electron: Bool, webContent: Bool) -> Bool {
+        electron || webContent || isTerminal(bundleIdentifier) ||
+            ["com.apple.Safari", "com.google.Chrome", "org.chromium.Chromium", "com.microsoft.edgemac",
+             "com.brave.Browser", "org.mozilla.firefox"].contains { bundleIdentifier == $0 || bundleIdentifier.hasPrefix($0 + ".") }
+    }
+
+    static func isTerminal(_ bundleIdentifier: String) -> Bool {
+        ["com.apple.Terminal", "com.googlecode.iterm2", "org.alacritty", "com.mitchellh.ghostty"]
+            .contains(bundleIdentifier)
+    }
+
+    private static func writeUsingAvailableRoute(_ text: String, processID: pid_t,
+                                                completion: @escaping (WriteResult) -> Void) {
+        AccessibilityMessaging.queryQueue.async {
+            func finish(_ failure: String?) { DispatchQueue.main.async { completion(failure.map { .failed($0) } ?? .inserted) } }
+            guard canSubmit(to: processID) else { finish(submissionFailure(processID)); return }
+            let app = NSRunningApplication(processIdentifier: processID)
+            let bundleID = app?.bundleIdentifier ?? ""
+            let terminal = isTerminal(bundleID)
+            _ = KeyboardInjector.announceManualAccessibility(processIdentifier: processID,
+                bundleIdentifier: bundleID, attempt: 0)
+            let element = focusedElement(processID)
+            let target = PasteTarget(processID: processID, element: element, terminal: terminal)
+            guard let element else {
+                if terminal { paste(text, target: target, completion: completion) }
+                else { finish("input_unavailable") }
+                return
+            }
+            guard safeField(element, terminal: terminal) else { finish("input_unavailable"); return }
+            let electron = app?.bundleURL.map {
+                FileManager.default.fileExists(atPath: $0.appendingPathComponent("Contents/Frameworks/Electron Framework.framework").path)
+            } ?? false
+            var webContent = false
+            var ancestor: AXUIElement? = element
+            var budget = AccessibilityTraversalBudget(maximumNodes: 8, maximumDuration: 0.15)
+            while let current = ancestor, budget.admitNode() {
+                let attributes = AccessibilityMessaging.attributes(current, keys: [kAXRoleAttribute, kAXParentAttribute])
+                if attributes[kAXRoleAttribute] as? String == "AXWebArea" { webContent = true; break }
+                ancestor = (attributes[kAXParentAttribute] as AnyObject?).flatMap {
+                    CFGetTypeID($0) == AXUIElementGetTypeID() ? unsafeBitCast($0, to: AXUIElement.self) : nil
+                }
+            }
+            var settable = DarwinBoolean(false)
+            let writable = AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable) == .success
+                && settable.boolValue
+            if prefersPaste(bundleIdentifier: bundleID, electron: electron, webContent: webContent) || !writable {
+                paste(text, target: target, completion: completion)
+                return
+            }
+            guard validate(target) == nil else { finish("target_changed"); return }
+            let result = AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString)
+            // Never retry an ambiguous AX failure as a paste: the app may already
+            // have inserted the phrase even when the IPC reply timed out.
+            if result == .attributeUnsupported || result == .notImplemented {
+                paste(text, target: target, completion: completion)
+            } else { finish(result == .success ? nil : "input_unavailable") }
+        }
+    }
+
+    private static func submissionFailure(_ processID: pid_t) -> String {
+        KeyboardInjector.isAccessibilityTrusted ? "target_changed" : "accessibility_required"
+    }
+
+    private static func canSubmit(to processID: pid_t) -> Bool {
+        KeyboardInjector.isAccessibilityTrusted && !SecureInputMonitor.isEnabled() &&
+            processID != ProcessInfo.processInfo.processIdentifier &&
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == processID
+    }
+
+    private static func focusedElement(_ processID: pid_t) -> AXUIElement? {
         AccessibilityMessaging.prepareQueries()
-        let application = AXUIElementCreateApplication(processID)
         var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return "input_unavailable" }
-        let element = unsafeBitCast(focused, to: AXUIElement.self)
-        let attributes = AccessibilityMessaging.attributes(element, keys: [kAXRoleAttribute, kAXSubroleAttribute,
-            kAXEnabledAttribute, "AXProtectedContent", kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
-            kAXPlaceholderValueAttribute, kAXHelpAttribute, kAXSelectedTextRangeAttribute])
-        guard permitsInsertion(role: attributes[kAXRoleAttribute] as? String ?? "",
-            subrole: attributes[kAXSubroleAttribute] as? String ?? "",
-            enabled: attributes[kAXEnabledAttribute] as? Bool ?? true,
-            protectedContent: attributes["AXProtectedContent"] as? Bool ?? false,
-            identifier: [kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
-                kAXPlaceholderValueAttribute, kAXHelpAttribute].compactMap { attributes[$0] as? String }.joined(separator: " "),
-            secureInputEnabled: SecureInputMonitor.isEnabled()) else { return "input_unavailable" }
-        var settable = DarwinBoolean(false)
-        guard AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable) == .success,
-              settable.boolValue,
-              let value = attributes[kAXSelectedTextRangeAttribute],
-              CFGetTypeID(value as CFTypeRef) == AXValueGetTypeID() else { return "input_unavailable" }
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(processID),
+            kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+            let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
+        return unsafeBitCast(focused, to: AXUIElement.self)
+    }
+
+    private static func safeField(_ element: AXUIElement, terminal: Bool) -> Bool {
+        let values = AccessibilityMessaging.attributes(element, keys: [kAXRoleAttribute, kAXSubroleAttribute,
+            kAXEnabledAttribute, "AXProtectedContent", kAXIdentifierAttribute, kAXTitleAttribute,
+            kAXDescriptionAttribute, kAXPlaceholderValueAttribute, kAXHelpAttribute, kAXSelectedTextRangeAttribute])
+        guard !values.isEmpty, permitsInsertion(role: terminal ? kAXTextAreaRole : values[kAXRoleAttribute] as? String ?? "",
+            subrole: values[kAXSubroleAttribute] as? String ?? "", enabled: values[kAXEnabledAttribute] as? Bool ?? true,
+            protectedContent: values["AXProtectedContent"] as? Bool ?? false,
+            identifier: [kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute, kAXPlaceholderValueAttribute,
+                kAXHelpAttribute].compactMap { values[$0] as? String }.joined(separator: " "),
+            secureInputEnabled: SecureInputMonitor.isEnabled()) else { return false }
+        guard let value = values[kAXSelectedTextRangeAttribute], CFGetTypeID(value as CFTypeRef) == AXValueGetTypeID() else {
+            return terminal
+        }
         var range = CFRange(location: 0, length: 0)
-        guard AXValueGetValue(unsafeBitCast(value as CFTypeRef, to: AXValue.self), .cfRange, &range),
-              range.length == 0 else { return "input_unavailable" }
-        // Validate focus again after IPC; do not write through a stale element.
-        var current: CFTypeRef?
-        guard !SecureInputMonitor.isEnabled(),
-              NSWorkspace.shared.frontmostApplication?.processIdentifier == processID,
-              AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &current) == .success,
-              let current, CFEqual(current, element) else { return "target_changed" }
-        return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
-            ? nil : "input_unavailable"
+        return AXValueGetValue(unsafeBitCast(value as CFTypeRef, to: AXValue.self), .cfRange, &range) && range.length == 0
+    }
+
+    private static func validate(_ target: PasteTarget) -> String? {
+        guard canSubmit(to: target.processID) else { return submissionFailure(target.processID) }
+        let current = focusedElement(target.processID)
+        if let original = target.element {
+            guard let current, CFEqual(original, current) else { return "target_changed" }
+        } else if !target.terminal { return "input_unavailable" }
+        if let current, !safeField(current, terminal: target.terminal) { return "input_unavailable" }
+        return nil
+    }
+
+    private static func paste(_ text: String, target: PasteTarget, completion: @escaping (WriteResult) -> Void) {
+        DispatchQueue.main.async {
+            CommonPhraseClipboardPaste.shared.paste(text, validate: { done in
+                AccessibilityMessaging.queryQueue.async {
+                    let failure = validate(target)
+                    DispatchQueue.main.async { done(failure) }
+                }
+            }, canSubmit: { canSubmit(to: target.processID) }) { failure in
+                completion(failure.map { .failed($0) } ?? .pasteSubmitted)
+            }
+        }
     }
 
     static func permitsInsertion(role: String, subrole: String, enabled: Bool,

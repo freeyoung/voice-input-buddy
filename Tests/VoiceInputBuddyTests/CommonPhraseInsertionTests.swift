@@ -11,7 +11,7 @@ struct CommonPhraseInsertionTests {
         board.setString("original secret", forType: .string)
         let change = board.changeCount
         var calls: [(String, pid_t)] = []
-        var reply: ((String?) -> Void)?
+        var reply: ((CommonPhraseInserter.WriteResult) -> Void)?
         var result: String?
         let inserter = CommonPhraseInserter(write: { text, pid, completion in
             calls.append((text, pid)); reply = completion
@@ -21,23 +21,30 @@ struct CommonPhraseInsertionTests {
         #expect(calls[0].0 == "phrase")
         #expect(calls[0].1 == 100)
         #expect(result == nil)
-        reply?(nil)
+        reply?(.inserted)
         #expect(result == "common_phrases.inserted")
         #expect(board.changeCount == change)
         #expect(board.string(forType: .string) == "original secret")
     }
 
+    @Test func pasteSubmissionIsNotReportedAsConfirmedTextInsertion() {
+        var result: String?
+        let inserter = CommonPhraseInserter(write: { _, _, done in done(.pasteSubmitted) }, logger: { _ in })
+        inserter.insert("phrase", into: 100) { result = $0 }
+        #expect(result == "common_phrases.paste_submitted")
+    }
+
     @Test func unavailableTargetReportsFailureWithoutSendingPaste() {
         var result: String?
         let inserter = CommonPhraseInserter(write: { _, _, completion in
-            completion("input_unavailable")
+            completion(.failed("input_unavailable"))
         }, logger: { _ in })
         inserter.insert("phrase", into: 100) { result = $0 }
         #expect(result == "common_phrases.error.input_unavailable")
     }
 
     @Test func cancellationDropsQueuedRequestsAndLetsActiveInsertionFinish() {
-        var replies: [(String?) -> Void] = []
+        var replies: [(CommonPhraseInserter.WriteResult) -> Void] = []
         var texts: [String] = []
         var results: [String: String] = [:]
         let inserter = CommonPhraseInserter(write: { text, _, completion in
@@ -48,12 +55,12 @@ struct CommonPhraseInsertionTests {
         inserter.cancelPending()
         #expect(results["second"] == "common_phrases.error.cancelled")
         #expect(texts == ["first"])
-        replies[0](nil)
+        replies[0](.inserted)
         #expect(results["first"] == "common_phrases.inserted")
     }
 
     @Test func consecutiveInsertionsCompleteInOrder() {
-        var replies: [(String?) -> Void] = []
+        var replies: [(CommonPhraseInserter.WriteResult) -> Void] = []
         var texts: [String] = []
         var results: [String] = []
         let inserter = CommonPhraseInserter(write: { text, _, completion in
@@ -62,9 +69,9 @@ struct CommonPhraseInsertionTests {
         inserter.insert("first", into: 100) { results.append($0) }
         inserter.insert("second", into: 100) { results.append($0) }
         #expect(texts == ["first"])
-        replies[0](nil)
+        replies[0](.inserted)
         #expect(texts == ["first", "second"])
-        replies[1]("target_changed")
+        replies[1](.failed("target_changed"))
         #expect(results == ["common_phrases.inserted", "common_phrases.error.target_changed"])
     }
 

@@ -19,6 +19,11 @@ extension BridgeAppModel {
 
     func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge) {
         guard let identifier = bridge.deviceIdentifier else { return }
+        guard canAcceptNewVoiceSession(from: .bluetooth) else {
+            _ = bridge.requestMicrophoneClose()
+            AppLogger.shared.write("ATVV STREAM rejected_busy reason=other_voice_source")
+            return
+        }
         if let pendingIdentifier = pendingBluetoothVoiceStart.identifier,
            pendingIdentifier != identifier {
             _ = bridge.requestMicrophoneClose()
@@ -95,8 +100,8 @@ extension BridgeAppModel {
             streaming: true,
             forceSoftware: requiresOrderedVoiceFn ||
                 (bridge.identifiedModel?.isChromecastRemote == true && !settings.voiceFnTapModeEnabled),
-            owner: .bluetooth
-        ) { [self] activated in
+            owner: .bluetooth,
+            completion: { [self] activated in
             guard activated else {
                 _ = bridge.requestMicrophoneClose()
                 bluetoothVoiceActive = false
@@ -214,7 +219,7 @@ extension BridgeAppModel {
             if outputReadyAtStart {
                 flushPendingCommandVoiceAudio(for: bridge)
             }
-        }
+        })
     }
 
     func bluetoothBridgeDidStopVoice(_ bridge: XiaomiBluetoothBridge) {

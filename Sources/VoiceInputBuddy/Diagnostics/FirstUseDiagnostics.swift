@@ -360,6 +360,11 @@ struct FirstUseDiagnosticContext: Equatable {
     }
 
     var failureReason: FirstUseFailureReason? {
+        if [.remote, .controls, .audio, .voiceTest].contains(step),
+           let permission = OnboardingFlowPolicy.missingRuntimePermission(
+               controlMethod: controlMethod, capabilities: capabilities) {
+            return permission
+        }
         switch step {
         case .voiceTool, .remoteAvailability:
             return nil

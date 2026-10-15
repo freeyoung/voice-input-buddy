@@ -10,7 +10,8 @@ extension BridgeAppModel {
     private func startPhoneVoice(source: MobileVoiceSource, completion: @escaping (RemoteVoiceStartResult) -> Void) {
         mobileVoiceOperationCounter &+= 1
         let operationID = "mobile_voice_\(mobileVoiceOperationCounter)"
-        guard activeMobileVoiceSource == nil, pendingMobileVoiceActivationSource == nil else {
+        guard canAcceptNewVoiceSession(from: .mobile),
+              activeMobileVoiceSource == nil, pendingMobileVoiceActivationSource == nil else {
             AppLogger.shared.write(
                 "MOBILE VOICE start_rejected reason=busy requested=\(source.logName) " +
                     "active=\(activeMobileVoiceSource?.logName ?? "none")"
@@ -24,8 +25,8 @@ extension BridgeAppModel {
         updateVoiceKeyState(
             streaming: true,
             forceSoftware: true,
-            owner: .mobile
-        ) { [self] activated in
+            owner: .mobile,
+            completion: { [self] activated in
             pendingMobileVoiceActivationSource = nil
             guard activated else {
                 AppLogger.shared.write(
@@ -50,7 +51,7 @@ extension BridgeAppModel {
 
             AppLogger.shared.write("MOBILE VOICE started source=\(source.logName)")
             completion(.started)
-        }
+        })
     }
 
     func requestPhoneVoiceStart(
@@ -62,7 +63,7 @@ extension BridgeAppModel {
             completion(.unavailable)
             return
         }
-        guard pendingMobileVoiceActivationSource == nil else {
+        guard canAcceptNewVoiceSession(from: .mobile), pendingMobileVoiceActivationSource == nil else {
             completion(.busy)
             return
         }

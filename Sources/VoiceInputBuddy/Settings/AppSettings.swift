@@ -57,8 +57,10 @@ final class AppSettings: ObservableObject {
 
     @Published var gainDB: Double {
         didSet {
-            defaults.set(gainDB, forKey: Keys.gainDB)
-            saveSelectedRemoteGain()
+            if gainDB != oldValue {
+                defaults.set(gainDB, forKey: Keys.gainDB)
+                saveSelectedRemoteGain()
+            }
         }
     }
 

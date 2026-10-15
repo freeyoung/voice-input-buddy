@@ -28,7 +28,8 @@ enum G9N9NProtocol {
     ]
 
     /// Known Consumer Control interface, with or without its report-ID byte.
-    /// Unknown reports are ignored, never interpreted as an all-keys release.
+    /// Malformed or unrelated reports are ignored; unknown usages in a valid
+    /// Consumer Control snapshot do not discard known key edges.
     static func usages(reportID: UInt32, data: Data) -> Set<UInt16>? {
         guard reportID == 2 else { return nil }
         var bytes = Array(data)
@@ -38,7 +39,7 @@ enum G9N9NProtocol {
         for offset in stride(from: 0, to: bytes.count, by: 2) {
             let usage = UInt16(bytes[offset]) | UInt16(bytes[offset + 1]) << 8
             if usage == 0 { continue }
-            guard let button = consumerButtons[usage] else { return nil }
+            guard let button = consumerButtons[usage] else { continue }
             usages.insert(button.hidUsage)
         }
         return usages
