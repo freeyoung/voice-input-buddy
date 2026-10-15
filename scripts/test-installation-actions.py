@@ -81,4 +81,28 @@ class InstallationActionsTests(unittest.TestCase):
                 self.assertTrue(app.exists())
                 self.assertTrue(driver.exists())
 
+    def test_removed_driver_reports_restart_without_failing_when_daemon_already_exited(self):
+        app = self.bundle(self.root / 'test.app', 'com.zfdang.voice-input-buddy')
+        driver = self.bundle(self.root / 'test.driver', 'com.zfdang.voice-input-buddy.mic')
+        staging = self.root / 'uninstall'; staging.mkdir()
+        shutil.copy2(self.library, staging / self.library.name)
+        source = (SCRIPTS / 'uninstaller/uninstall-system.sh').read_text()
+        source = source.replace("app='/Applications/Voice Input Buddy.app'", f"app='{app}'")
+        source = source.replace("driver='/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver'", f"driver='{driver}'")
+        for original, name, body in [('/usr/bin/id', 'id', 'echo 0'),
+                                     ('/usr/sbin/pkgutil', 'pkgutil', 'exit 0'),
+                                     ('/usr/bin/pgrep', 'pgrep', 'exit 0'),
+                                     ('/usr/bin/killall', 'killall', 'exit 1')]:
+            tool = staging / name
+            tool.write_text('#!/bin/bash\n' + body + '\n')
+            tool.chmod(0o755)
+            source = source.replace(original, str(tool))
+        script = staging / 'uninstall-system.sh'
+        script.write_text(source)
+        result = subprocess.run(['bash', str(script)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('restart your Mac', result.stderr)
+        self.assertFalse(app.exists())
+        self.assertFalse(driver.exists())
+
 if __name__ == '__main__': unittest.main()

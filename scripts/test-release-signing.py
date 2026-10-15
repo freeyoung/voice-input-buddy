@@ -178,10 +178,12 @@ class ReleaseSigningTests(unittest.TestCase):
         environment = {**os.environ, 'PATH': str(tool.parent) + os.pathsep + os.environ['PATH'],
                        'CODE_SIGN_IDENTITY': 'fixed-identity', 'CODE_SIGN_KEYCHAIN': '/fixture/keychain with spaces',
                        'SIGNING_FIXTURE_OUTPUT': str(output)}
-        subprocess.run(['bash', str(ROOT / 'scripts/sign-bundle.sh'), '/fixture/App With Spaces.app'],
+        app = self.directory.parent / 'App With Spaces.app'
+        app.mkdir()
+        subprocess.run(['bash', str(ROOT / 'scripts/sign-bundle.sh'), str(app)],
                        env=environment, check=True, capture_output=True)
-        self.assertEqual(output.read_text().splitlines(), ['--force', '--deep', '--sign', 'fixed-identity',
-                         '--keychain', '/fixture/keychain with spaces', '/fixture/App With Spaces.app'])
+        self.assertEqual(output.read_text().splitlines(), ['--force', '--sign', 'fixed-identity',
+                         '--keychain', '/fixture/keychain with spaces', str(app)])
 
     def test_verification_accepts_fixed_identity_and_rejects_content_hash_identity(self):
         identity = 'ABCDEF0123456789ABCDEF0123456789ABCDEF01'

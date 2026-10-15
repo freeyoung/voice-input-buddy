@@ -14,5 +14,5 @@ buddy_remove_bundle "$driver" com.zfdang.voice-input-buddy.mic
 /usr/sbin/pkgutil --forget com.zfdang.voice-input-buddy.installer >/dev/null 2>&1 || true
 /usr/sbin/pkgutil --forget com.zfdang.voice-input-buddy.mic.installer >/dev/null 2>&1 || true
 if "$had_driver" && /usr/bin/pgrep -x coreaudiod >/dev/null; then
-    /usr/bin/killall coreaudiod || { echo 'Driver removed; restart your Mac to finish unloading it.' >&2; exit 1; }
+    /usr/bin/killall coreaudiod || { echo 'Driver removed; restart your Mac to finish unloading it.' >&2; }
 fi
