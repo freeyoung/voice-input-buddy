@@ -1066,7 +1066,7 @@
 "common_phrases.local_storage" = "Saved on this Mac and retained after restarting.";
 "common_phrases.panel_hint" = "Press an arrow or OK to insert a phrase\nPress Back to close the panel";
 "common_phrases.close" = "Close Common Phrases";
-"common_phrases.settings_hint" = "Assign Open Common Phrases to a remote button. Phrases are saved on this Mac. Insertion requires an accessible text field and preserves your clipboard.";
+"common_phrases.settings_hint" = "Assign Open Common Phrases to a remote button. Phrases stay on this Mac. Some editors use a temporary clipboard paste; the app attempts to restore previous contents and keeps any detected new copy.";
 "common_phrases.assign_hint" = "Button Assignments";
 "common_phrases.assign_selected" = "Assign the saved phrase to a button";
 "common_phrases.key.up" = "Up";
@@ -1088,14 +1088,14 @@
 "common_phrases.english_text" = "Full Text (English, optional)";
 "common_phrases.saved" = "Saved";
 "common_phrases.inserting" = "Inserting…";
-"common_phrases.paste_submitted" = "Paste performed. Check the text in your input field.";
+"common_phrases.paste_submitted" = "Paste shortcut sent.";
 "common_phrases.error.resource_unavailable" = "Phrases could not load. Reinstall, or restore your exported phrases.";
 "common_phrases.error.edit_failed" = "Could not save. Check the content or imported format. Existing data was kept.";
 "common_phrases.error.no_phrase" = "No phrase is assigned to this button. Assign one in Common Phrases.";
 "common_phrases.error.accessibility_required" = "Allow Voice Input Buddy in System Settings → Accessibility.";
-"common_phrases.error.input_unavailable" = "Place the caret in a supported editable field and try again. Some terminals and web editors do not support direct insertion.";
+"common_phrases.error.input_unavailable" = "Place the caret in an editable, non-sensitive field and clear any text selection, then try again.";
 "common_phrases.error.target_changed" = "The input target changed. Open Common Phrases again.";
-"common_phrases.error.clipboard_write_failed" = "Could not write to the clipboard. Try again.";
+"common_phrases.error.clipboard_write_failed" = "Could not safely save or write the clipboard. Allow clipboard access if prompted, then try again.";
 "common_phrases.error.clipboard_restore_failed" = "Could not restore the clipboard after pasting. Check your clipboard.";
 "common_phrases.error.paste_failed" = "Could not paste. Check Accessibility permission and try again.";
 "common_phrases.error.cancelled" = "Insertion cancelled.";
