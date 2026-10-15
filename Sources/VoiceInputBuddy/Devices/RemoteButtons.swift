@@ -126,11 +126,11 @@ enum RemoteButton: String, CaseIterable, Codable, Identifiable {
         case .up: return .keyboard(keyCode: 126)
         case .menu: return .keyboard(keyCode: 110)
         case .power: return .keyboard(keyCode: 90)
-        case .volumeUp: return .systemKey(type: 0)
-        case .volumeDown: return .systemKey(type: 1)
+        case .volumeUp: return .systemKey(type: Int32(NX_KEYTYPE_SOUND_UP))
+        case .volumeDown: return .systemKey(type: Int32(NX_KEYTYPE_SOUND_DOWN))
         case .back: return nil
-        case .playPause: return .systemKey(type: 2)
-        case .mute: return .systemKey(type: 3)
+        case .playPause: return .systemKey(type: Int32(NX_KEYTYPE_PLAY))
+        case .mute: return .systemKey(type: Int32(NX_KEYTYPE_MUTE))
         // Chromecast 的三颗专有键由私有包的 HID 通道独占读取：映射开启时设备被整个独占，
         // 系统侧不会同时收到事件，因此不存在需要抑制的原生事件。
         case .youtube, .netflix, .input: return nil
