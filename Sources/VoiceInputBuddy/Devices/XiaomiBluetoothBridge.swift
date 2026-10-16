@@ -166,6 +166,8 @@ final class XiaomiBluetoothBridge: NSObject {
     private var subscribedUUIDs = Set<CBUUID>()
     private var scanSubscription: UUID?
     private let scanWatchdog = BluetoothScanWatchdog()
+    private let reconnectWakeMonitor = BluetoothReconnectWakeMonitor()
+    private var remoteWakeStartedAt: TimeInterval?
     private var reconnectWorkItem: DispatchWorkItem?
     private var connectionTimeoutWorkItem: DispatchWorkItem?
     private var initializationTimeoutWorkItem: DispatchWorkItem?
@@ -308,6 +310,7 @@ final class XiaomiBluetoothBridge: NSObject {
         batteryRefreshWorkItem?.cancel()
         microphoneKeepalive?.cancel()
         scanWatchdog.cancel()
+        reconnectWakeMonitor.cancel()
         disconnectWatchdog.cancel()
         if let token = scanSubscription {
             if Thread.isMainThread {
@@ -452,10 +455,69 @@ final class XiaomiBluetoothBridge: NSObject {
 
     private func stopScan() {
         scanWatchdog.cancel()
+        reconnectWakeMonitor.cancel()
         if let scanSubscription {
             MainActor.assumeIsolated { SharedBluetoothScanner.shared.unsubscribe(scanSubscription) }
         }
         scanSubscription = nil
+    }
+
+    private var canRecoverRemoteWake: Bool {
+        targetIdentifier != nil && BluetoothReconnectWakePolicy.canRecover(
+            phase: lifecycle, shouldRun: shouldRun, suspended: systemSuspension.isSuspended
+        )
+    }
+
+    /// Called only for activity routed to this saved remote's HID profile.
+    func recoverAfterRemoteActivity(reason: String) {
+        guard canRecoverRemoteWake, let central, central.state == .poweredOn,
+              let generation = lifecycle.generation else { return }
+        AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(lifecycle) result=retry_now")
+        remoteWakeStartedAt = ProcessInfo.processInfo.systemUptime
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
+        reconnectPolicy.reset()
+        lifecycle = .scanning(generation)
+        discoverOrScan(using: central, generation: generation)
+    }
+
+    /// HID matching can precede profile association; only the exact Bluetooth identity can wake this bridge.
+    func recoverSystemConnectedRemote(reason: String) {
+        guard canRecoverRemoteWake, let central, central.state == .poweredOn,
+              let generation = lifecycle.generation, let targetIdentifier,
+              let candidate = central.retrieveConnectedPeripherals(withServices: [serviceUUID])
+                .first(where: { $0.identifier == targetIdentifier }),
+              acceptsCandidateIdentifier(candidate.identifier) else { return }
+        let previousPhase = lifecycle
+        lifecycle = .scanning(generation)
+        guard adopt(candidate, using: central, generation: generation, source: "wake_system_connected",
+                    advertisesVoiceService: true, advertisedName: nil) else {
+            lifecycle = previousPhase
+            return
+        }
+        AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(previousPhase) result=system_connected")
+        remoteWakeStartedAt = ProcessInfo.processInfo.systemUptime
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
+        reconnectPolicy.reset()
+    }
+
+    private func monitorRemoteWake() {
+        guard canRecoverRemoteWake else { return }
+        let generation = lifecycle.generation
+        reconnectWakeMonitor.arm(isCurrent: { [weak self] in
+            guard let self else { return false }
+            return self.canRecoverRemoteWake && self.lifecycle.generation == generation
+        }, checkConnected: { [weak self] in
+            self?.recoverSystemConnectedRemote(reason: "system_connected_poll")
+        })
+    }
+
+    private func finishRemoteWakeRecovery(result: String) {
+        guard let startedAt = remoteWakeStartedAt else { return }
+        remoteWakeStartedAt = nil
+        let elapsed = Int((ProcessInfo.processInfo.systemUptime - startedAt) * 1_000)
+        AppLogger.shared.write("BLE WAKE RECOVERY phase=completed result=\(result) elapsed_ms=\(elapsed)")
     }
 
     private func beginConnectionCycle() {
@@ -614,6 +676,7 @@ final class XiaomiBluetoothBridge: NSObject {
                     self.discoverOrScan(using: central, generation: generation)
                 })
                 AppLogger.shared.write("BLE SCANNING")
+                monitorRemoteWake()
             }
         )
     }
@@ -862,6 +925,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     private func finishAttempt(reconnectAfter delay: TimeInterval?) {
+        finishRemoteWakeRecovery(result: "interrupted")
         let finishedGeneration = lifecycle.generation ?? generationCounter
         stopScan()
         requestedReconnectDelay = nil
@@ -898,6 +962,7 @@ final class XiaomiBluetoothBridge: NSObject {
         }
         reconnectWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        monitorRemoteWake()
     }
 
     static func controlWriteType(for properties: CBCharacteristicProperties) -> CBCharacteristicWriteType? {
@@ -1133,6 +1198,7 @@ final class XiaomiBluetoothBridge: NSObject {
         reconnectPolicy.reset()
         currentAttemptUsesCachedTarget = false
         lifecycle = .ready(generation)
+        finishRemoteWakeRecovery(result: "ready")
         state = .ready(peripheral.name ?? (googleCandidate ? "G9N9N" : "MI RC"))
     }
 

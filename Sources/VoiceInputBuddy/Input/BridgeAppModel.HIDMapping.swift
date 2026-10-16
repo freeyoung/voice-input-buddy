@@ -343,6 +343,16 @@ extension BridgeAppModel {
         )
     }
 
+    private func scheduleRemoteWakeRecovery(profileID: UUID, reason: String) {
+        // Reconnection can publish readiness and rebuild HID monitors. Leave the input callback first.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.started,
+                  let identifier = self.settings.remoteDeviceProfiles.first(where: { $0.id == profileID })?.bluetoothIdentifier
+            else { return }
+            self.bluetoothBridges[identifier]?.recoverAfterRemoteActivity(reason: reason)
+        }
+    }
+
     private func makeHIDMonitor(
         profileID: UUID?,
         targetFingerprint: String?,
@@ -362,7 +372,15 @@ extension BridgeAppModel {
         )
         monitor.onCandidateAvailable = { [weak self] in
             guard let self else { return }
-            for bridge in self.bluetoothBridges.values { self.learnSelectedRemoteHIDIdentity(bridge) }
+            for bridge in self.bluetoothBridges.values {
+                self.learnSelectedRemoteHIDIdentity(bridge)
+                bridge.recoverSystemConnectedRemote(reason: "hid_candidate")
+            }
+        }
+        monitor.onDeviceConnected = { [weak self] profileID, fingerprint in
+            guard let self, let resolvedProfileID = profileID
+                ?? self.settings.profileID(forHIDFingerprint: fingerprint) else { return }
+            self.scheduleRemoteWakeRecovery(profileID: resolvedProfileID, reason: "hid_connected")
         }
         monitor.claimsRuntimeButton = { [weak self] profileID, button in
             self?.commonPhrases.claims(button, source: Self.commonPhraseHIDSource(profileID)) == true
@@ -406,6 +424,7 @@ extension BridgeAppModel {
                     self.startHIDDiscoveryIfNeeded()
                 }
             }
+            self.scheduleRemoteWakeRecovery(profileID: resolvedProfileID, reason: "hid_button")
             self.selectRemoteProfile(resolvedProfileID)
             self.lastRemoteButtonPress = button
             let suppressConfiguredAction = OnboardingControlValidationPolicy
