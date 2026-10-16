@@ -95,7 +95,8 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
     }
 
     private func present(_ title: String, detail: String? = nil, arguments: [String] = [],
-                         progress: Double? = nil, diagnostic: String? = nil, closeActionIndex: Int? = nil, actions: [Action] = []) {
+                         progress: Double? = nil, diagnostic: String? = nil, closeActionIndex: Int? = nil,
+                         activate: Bool = true, actions: [Action] = []) {
         isPresented = true
         titleKey = title
         detailKey = detail ?? title + ".detail"
@@ -104,7 +105,7 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         self.diagnostic = diagnostic
         self.actions = actions
         self.closeActionIndex = closeActionIndex
-        render(activate: true)
+        render(activate: activate)
     }
 
     private func render(activate: Bool = false) {
@@ -214,10 +215,14 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
                 actions: [
             Action(key: "update.dialog.later", completes: true) { reply(.dismiss) },
             Action(key: "update.dialog.skip", completes: true) { reply(.skip) },
-            Action(key: "update.dialog.install", completes: true) { [weak self] in
+            Action(key: "update.dialog.install", completes: false) { [weak self] in
                 // The first confirmation explicitly includes restarting. Carry
                 // that choice through download and system authorization only.
-                self?.installAndRelaunchWhenReady = true
+                guard let self else { return }
+                self.installAndRelaunchWhenReady = true
+                self.expectedLength = 0
+                self.receivedLength = 0
+                self.present("update.dialog.downloading", progress: -1, activate: false)
                 reply(.install)
             },
         ])
@@ -278,25 +283,35 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
         render()
     }
 
-    func showDownloadDidStartExtractingUpdate() { present("update.dialog.extracting", progress: -1) }
+    func showDownloadDidStartExtractingUpdate() { present("update.dialog.extracting", progress: -1, activate: false) }
     func showExtractionReceivedProgress(_ progress: Double) { self.progress = min(1, max(0, progress)); render() }
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
         if installAndRelaunchWhenReady {
-            dismissUpdateInstallation()
+            beginInstallation()
             reply(.install)
             return
         }
         present("update.dialog.ready", closeActionIndex: 1, actions: [
             Action(key: "update.dialog.cancel_install", completes: true) { reply(.skip) },
             Action(key: "update.dialog.install_later", completes: true) { reply(.dismiss) },
-            Action(key: "update.dialog.install_restart", completes: true) { reply(.install) },
+            Action(key: "update.dialog.install_restart", completes: false) { [weak self] in
+                self?.beginInstallation()
+                reply(.install)
+            },
         ])
+    }
+
+    private func beginInstallation() {
+        installAndRelaunchWhenReady = false
+        // Retain the progress window across the asynchronous installer handoff.
+        present("update.dialog.installing", progress: -1, activate: false)
     }
 
     func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) {
         present("update.dialog.installing", detail: applicationTerminated
                     ? "update.dialog.installing.detail" : "update.dialog.waiting_for_quit.detail", progress: -1,
+                activate: window == nil,
                 actions: applicationTerminated ? [] : [Action(key: "update.dialog.retry_quit", completes: false, handler: retryTerminatingApplication)])
     }
 
