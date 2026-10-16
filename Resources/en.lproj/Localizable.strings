@@ -1284,3 +1284,5 @@
 "button_mapping.action.not_set_help" = "This gesture performs no action. Other gestures for this button are unchanged. Select an action below to assign it again. Changes are saved automatically.";
 
 "button_mapping.action.clear" = "Clear Assignment";
+
+"common_phrases.boundary_padding_hint" = "Leading or trailing spaces and tabs will be removed when saving or inserting. Whitespace within the text and line breaks are preserved.";

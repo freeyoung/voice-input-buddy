@@ -22,6 +22,32 @@ struct CommonPhraseStorageTests {
         try body(store, defaults, data)
     }
 
+    @Test func phraseTextRemovesOnlyBoundarySpacesAndTabs() {
+        let phrase = CommonPhrase(id: "user-padding", chineseText: " \t原始 文本\t内容\t ",
+            chineseLabel: "标签", englishText: "\t original text\t ", englishLabel: "Label")
+        #expect(phrase.text(english: false) == "原始 文本\t内容")
+        #expect(phrase.text(english: true) == "original text")
+        #expect(CommonPhrase.removingBoundaryPadding("\n  第一行\n\t第二行\n") == "\n  第一行\n\t第二行\n")
+        var fallback = phrase
+        fallback.englishText = " \t"
+        #expect(fallback.text(english: true) == "原始 文本\t内容")
+    }
+
+    @Test func savingRemovesInvisibleBoundaryPaddingAndPreservesBodyOnReload() throws {
+        try run { store, defaults, data in
+            let phrase = CommonPhrase(id: "user-padding", chineseText: "\t 正文 空格\t正文\n下一行 \t",
+                chineseLabel: "标签", englishText: "  Original\ttext ", englishLabel: "Label")
+            let id = try store.save(phrase, replacing: nil)
+            try store.assign(.right, to: id)
+            let reopened = CommonPhraseStore(defaults: defaults, builtInData: data)
+            let saved = try #require(reopened.phrase(for: .right))
+            #expect(saved.chineseText == "正文 空格\t正文\n下一行")
+            #expect(saved.englishText == "Original\ttext")
+            let builtinID = try store.save(phrase, replacing: "builtin-one")
+            #expect(store.archive.entries.first { $0.id == builtinID }?.chineseText == saved.chineseText)
+        }
+    }
+
     @Test func editingBundledPhraseCreatesUserCopyAndRetargetsEveryBinding() throws {
         try run { store, defaults, data in
             let id = try store.save(phrase("builtin-one", text: "已修改"), replacing: "builtin-one")

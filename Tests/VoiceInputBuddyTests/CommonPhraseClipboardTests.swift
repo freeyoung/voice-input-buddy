@@ -5,6 +5,29 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func consecutivePhrasesDoNotLeaveTabsBeforeTheNextInsertion() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original clipboard", forType: .string)
+        let clock = ControlledTestScheduler()
+        var editor = "已有文本："
+        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() },
+            schedule: clock.voiceSchedule, postPaste: {
+                editor += board.string(forType: .string) ?? ""
+                return true
+            })
+        for body in ["第一条\t", "\t 第二条 \t"] {
+            let phrase = CommonPhrase(id: "user-test", chineseText: body,
+                chineseLabel: "标签", englishText: "", englishLabel: "")
+            writer.paste(phrase.text(english: false), validate: { $0(nil) }, canSubmit: { true }) {
+                #expect($0 == nil)
+            }
+            clock.runAll()
+        }
+        #expect(editor == "已有文本：第一条第二条")
+        #expect(board.string(forType: .string) == "original clipboard")
+    }
+
     @Test func navigationFnFlagDoesNotBlockOrModifyPaste() {
         let flags = CommonPhraseClipboardPaste.normalizedPasteFlags([.maskSecondaryFn, .maskNumericPad], fnKeyDown: false)
         #expect(!flags.contains(.maskSecondaryFn))
