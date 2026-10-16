@@ -8,7 +8,16 @@ struct CommonPhrase: Codable, Equatable, Identifiable {
     var englishText: String
     var englishLabel: String
 
-    func text(english: Bool) -> String { english && !englishText.isEmpty ? englishText : chineseText }
+    /// Boundary spaces and tabs are easy to enter accidentally in the editor.
+    /// Keep interior whitespace and all authored line breaks unchanged.
+    static func removingBoundaryPadding(_ text: String) -> String {
+        text.trimmingCharacters(in: CharacterSet(charactersIn: " \t"))
+    }
+
+    func text(english: Bool) -> String {
+        let englishText = Self.removingBoundaryPadding(englishText)
+        return english && !englishText.isEmpty ? englishText : Self.removingBoundaryPadding(chineseText)
+    }
     func label(english: Bool) -> String { english && !englishLabel.isEmpty ? englishLabel : chineseLabel }
     var isValid: Bool {
         !id.isEmpty && !chineseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -117,11 +126,13 @@ final class CommonPhraseStore: ObservableObject {
     func save(_ phrase: CommonPhrase, replacing id: String?) throws -> String {
         var candidate = archive
         var saved = phrase
+        saved.chineseText = CommonPhrase.removingBoundaryPadding(saved.chineseText)
+        saved.englishText = CommonPhrase.removingBoundaryPadding(saved.englishText)
         if let id, let index = candidate.entries.firstIndex(where: { $0.id == id }) {
             if id.hasPrefix("builtin-") {
                 saved = CommonPhrase(id: "user-" + UUID().uuidString,
-                    chineseText: phrase.chineseText, chineseLabel: phrase.chineseLabel,
-                    englishText: phrase.englishText, englishLabel: phrase.englishLabel)
+                    chineseText: saved.chineseText, chineseLabel: phrase.chineseLabel,
+                    englishText: saved.englishText, englishLabel: phrase.englishLabel)
                 candidate.entries[index] = saved
                 for (key, value) in candidate.bindings where value == id { candidate.bindings[key] = saved.id }
             } else { candidate.entries[index] = saved }

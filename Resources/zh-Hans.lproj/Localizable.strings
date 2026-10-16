@@ -1285,3 +1285,5 @@
 "button_mapping.action.not_set_help" = "当前手势不执行任何动作；这个按键的其他手势不受影响。选择下方动作即可重新设置。修改会自动保存。";
 
 "button_mapping.action.clear" = "清除设置";
+
+"common_phrases.boundary_padding_hint" = "文本首尾含空格或 Tab，保存和输入时会自动移除。正文中间的空白和换行会保留。";

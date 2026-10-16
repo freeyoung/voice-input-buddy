@@ -221,6 +221,7 @@ struct CommonPhraseSettingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.12)))
                         .accessibilityLabel(localization.text("common_phrases.full_text"))
                         .accessibilityIdentifier("common-phrases-text")
+                    boundaryPaddingHint(for: text)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(localization.text("common_phrases.english_label")).foregroundStyle(.secondary)
@@ -238,6 +239,7 @@ struct CommonPhraseSettingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.12)))
                         .accessibilityLabel(localization.text("common_phrases.english_text"))
                         .accessibilityIdentifier("common-phrases-english-text")
+                    boundaryPaddingHint(for: englishText)
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack { editButtons }
@@ -256,12 +258,22 @@ struct CommonPhraseSettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.09)))
     }
 
+    @ViewBuilder private func boundaryPaddingHint(for text: String) -> some View {
+        if CommonPhrase.removingBoundaryPadding(text) != text {
+            Label(localization.text("common_phrases.boundary_padding_hint"), systemImage: "textformat")
+                .font(.system(size: 12))
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     @ViewBuilder private var editButtons: some View {
         Button {
             perform {
                 let phrase = CommonPhrase(id: selectedID ?? "user-" + UUID().uuidString,
                     chineseText: text, chineseLabel: shortLabel, englishText: englishText, englishLabel: englishLabel)
-                selectedID = try store.save(phrase, replacing: selectedID)
+                let savedID = try store.save(phrase, replacing: selectedID)
+                select(store.archive.entries.first { $0.id == savedID })
             }
         } label: {
             Text(localization.text("common_phrases.save"))
