@@ -263,3 +263,11 @@ output are ready, and retains installation/restart recovery on failure.
 所有离线蓝牙设备共用一个广播扫描器，连接仍由各设备自己的 manager 管理。无响应写入尊重 `canSendWriteWithoutResponse`，排队和等待均有上限；断连回调丢失后由 5 秒看门狗重启连接。测试覆盖队列流控、失效回调、帧索引、输入源不可用和 Fn 取消/关闭时序，但不能替代真实设备、休眠唤醒及输入法验收。
 
 会员、宏、私有功能占位实现及其不可用设置入口已移除，配置不再包含宏动作字段。向导的助手提示词使用实际界面流程，不提供不存在的自动配置 CLI。Appcast 保留受 1 MiB 上限保护的流式读取；异步字节迭代不会必然产生每字节一次的任务调度，不能据此改为无界全量下载。
+
+The `VoicePipelineIntegrationTests` suite drives the Fn-tap session through the
+production playback admission and chunking policies with 12k, 32k and 80k sample
+pre-rolls, verifies drain timing, and delivers stale completion callbacks after a
+new session starts. `SessionInputIntegrationTests` exercises input-source
+activation completing across session and screen suspension. Both replace keyboard
+injection and audio hardware scheduling; real remote reconnect, HAL routing and
+external dictation still require hardware acceptance.
