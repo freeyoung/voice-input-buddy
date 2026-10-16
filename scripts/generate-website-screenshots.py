@@ -11,15 +11,17 @@ APP_PATH = ROOT / "dist/Voice Input Buddy.app/Contents/MacOS/VoiceInputBuddy"
 OUTPUT_DIR = ROOT / "pages/assets/screenshots"
 
 SETTINGS_SECTIONS = [
-    ("mapping", "mapping-1020x772.png", "mapping"),
     ("connection", "connection-1020x772.png", "connection"),
-    ("integration", "integration-1020x772.png", "integration"),
+    ("mapping", "mapping-1020x772.png", "mapping"),
     ("commonPhrases", "commonPhrases-1020x772.png", "phrases"),
+    ("integration", "integration-1020x772.png", "integration"),
     ("permissions", "permissions-1020x772.png", "permissions"),
+    ("about", "about-1020x772.png", "about"),
 ]
 
 ONBOARDING_STEPS = [
     ("01-permissions.png", "wizard-permissions"),
+    ("02-control-source.png", "wizard-source"),
     ("03-remote.png", "wizard-remote"),
     ("04-controls.png", "wizard-controls"),
     ("05-audio.png", "wizard-driver"),

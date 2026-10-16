@@ -35,6 +35,14 @@ button.addEventListener('blur', stop);
   const galleryDataZh = {
     settings: [
       {
+        title: '设备连接',
+        badge: '多设备管理',
+        windowTitle: '设备连接 · Voice Input Buddy',
+        src: 'assets/screenshots/connection-zh.png',
+        alt: 'Voice Input Buddy 设备连接界面：小米与 Google G9N9N 遥控器卡片、连接状态、电量显示与麦克风独立增益滑块',
+        desc: '管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。'
+      },
+      {
         title: '按键映射',
         badge: '核心按键映射',
         windowTitle: '按键映射 · Voice Input Buddy',
@@ -43,12 +51,12 @@ button.addEventListener('blur', stop);
         desc: '中央显示遥控器按键示意图，支持为电源键、确定键、方向键、返回键、主页键、菜单键与 TV 键分别指定单击、双击和长按动作，可绑定系统操作、自定义快捷键或常用语。'
       },
       {
-        title: '设备连接',
-        badge: '多设备管理',
-        windowTitle: '设备连接 · Voice Input Buddy',
-        src: 'assets/screenshots/connection-zh.png',
-        alt: 'Voice Input Buddy 设备连接界面：多台遥控器卡片、连接状态、电量显示与麦克风独立增益滑块',
-        desc: '管理所有已配对的蓝牙遥控器，实时查看连接状态、电池电量与充电指示；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。'
+        title: '常用语编辑',
+        badge: '常用语库管理',
+        windowTitle: '常用语调整 · Voice Input Buddy',
+        src: 'assets/screenshots/phrases-zh.png',
+        alt: 'Voice Input Buddy 常用语调整界面：遥控器五键分配、常用语库与短语编辑管理',
+        desc: '按键映射内置常用语面板管理，可为圆盘方向键与 OK 键自定义短语列表，支持中英文短语编辑、词库导入导出与五键灵活分配，高频语句一键即发。'
       },
       {
         title: '输入法集成',
@@ -59,20 +67,20 @@ button.addEventListener('blur', stop);
         desc: '提供豆包输入法、微信输入法、Typeless、Vokie、VoiceCursor 及其他自定义工具的专用配置向导入口，并可自由选择语音触发按键（Fn、Command、Option 等）与长按/点按模式。'
       },
       {
-        title: '常用语面板',
-        badge: '快速输入',
-        windowTitle: '常用语调整 · Voice Input Buddy',
-        src: 'assets/screenshots/phrases-zh.png',
-        alt: 'Voice Input Buddy 常用语调整界面：遥控器五键分配、常用语库与短语编辑管理',
-        desc: '通过遥控器圆盘方向键与 OK 键快速选择并输入预设常用语句，支持中英文短语自定义、导入导出备份与五键灵活分配，高频语句一键即发。'
-      },
-      {
         title: '权限与驱动',
         badge: '环境检测',
         windowTitle: '权限与环境 · Voice Input Buddy',
         src: 'assets/screenshots/permissions-zh.png',
         alt: 'Voice Input Buddy 权限与环境界面：蓝牙、输入监控、辅助功能权限与虚拟麦克风驱动状态',
         desc: '集中核对蓝牙、输入监控与辅助功能三项系统授权，自动监控 Voice Input Buddy Mic 虚拟麦克风驱动的加载状态，并附带直观的驱动安装与重启引导。'
+      },
+      {
+        title: '关于与更新',
+        badge: '版本与更新',
+        windowTitle: '关于与设置 · Voice Input Buddy',
+        src: 'assets/screenshots/about-zh.png',
+        alt: 'Voice Input Buddy 关于与设置界面：应用版本信息、自动检查更新、发布说明与通用卸载器',
+        desc: '查看当前 App 版本与架构（Apple 芯片 / Intel），支持通过 Sparkle 自动或手动检查更新并查看更新日志；提供开源许可证信息与通用卸载工具入口。'
       }
     ],
     wizard: [
@@ -85,7 +93,15 @@ button.addEventListener('blur', stop);
         desc: '首次打开应用时，向导逐项引导授权蓝牙、输入监控和辅助功能，确保遥控器正常通信与按键发送；左下角可随时切换中文或英文。'
       },
       {
-        title: '第 2 步 · 连接遥控器',
+        title: '第 2 步 · 设备类型',
+        badge: '向导 · 设备准备',
+        windowTitle: '设备类型 · 首次使用向导',
+        src: 'assets/screenshots/wizard-source-zh.png',
+        alt: '首次使用向导：选择控制设备类型，支持实体遥控器（小米、Google G9N9N 等）或手机输入伴侣',
+        desc: '选择你使用的硬件设备：支持小米蓝牙遥控器、Google G9N9N、Apple Siri Remote 等实体遥控器，或通过扫码使用手机作为控制与语音输入伴侣。'
+      },
+      {
+        title: '第 3 步 · 连接遥控器',
         badge: '向导 · 蓝牙配对',
         windowTitle: '连接遥控器 · 首次使用向导',
         src: 'assets/screenshots/wizard-remote-zh.png',
@@ -93,7 +109,7 @@ button.addEventListener('blur', stop);
         desc: '图文图解小米及兼容遥控器的蓝牙配对按键组合（长按 TV 键或 Home+Menu 键），靠近电脑自动发现并建立蓝牙通道。'
       },
       {
-        title: '第 3 步 · 按键测试',
+        title: '第 4 步 · 按键测试',
         badge: '向导 · 按键反馈',
         windowTitle: '按键测试 · 首次使用向导',
         src: 'assets/screenshots/wizard-controls-zh.png',
@@ -101,7 +117,7 @@ button.addEventListener('blur', stop);
         desc: '在遥控器上按下方向键或确定键，屏幕对应按键实时高亮响应，快速确认 Mac 已成功接收实体按键，避免按键占用冲突。'
       },
       {
-        title: '第 4 步 · 驱动检测',
+        title: '第 5 步 · 驱动检测',
         badge: '向导 · 声卡检查',
         windowTitle: '驱动检查 · 首次使用向导',
         src: 'assets/screenshots/wizard-driver-zh.png',
@@ -109,7 +125,7 @@ button.addEventListener('blur', stop);
         desc: '自动检测并配置随安装包安装的 Voice Input Buddy Mic 虚拟声卡驱动，固定音频输出路径，无需手动调整系统声音设备。'
       },
       {
-        title: '第 5 步 · 输入工具',
+        title: '第 6 步 · 输入工具',
         badge: '向导 · 工具匹配',
         windowTitle: '输入工具 · 首次使用向导',
         src: 'assets/screenshots/wizard-tool-zh.png',
@@ -117,7 +133,7 @@ button.addEventListener('blur', stop);
         desc: '选择你喜爱的输入法或听写工具，向导右侧分步骤提供截屏指引：从输入法麦克风选择到语音快捷键设置，轻松完成对接。'
       },
       {
-        title: '第 6 步 · 试说与校准',
+        title: '第 7 步 · 试说与校准',
         badge: '向导 · 录音测试',
         windowTitle: '语音测试 · 首次使用向导',
         src: 'assets/screenshots/wizard-test-zh.png',
@@ -130,6 +146,14 @@ button.addEventListener('blur', stop);
   const galleryDataEn = {
     settings: [
       {
+        title: 'Devices',
+        badge: 'Multi-device',
+        windowTitle: 'Devices · Voice Input Buddy',
+        src: 'assets/screenshots/connection-en.png',
+        alt: 'Voice Input Buddy Devices interface: Xiaomi and Google G9N9N remote cards, connection status, battery levels, and independent microphone gain sliders',
+        desc: 'Manage connected Bluetooth remotes (Xiaomi, Google G9N9N), check live battery percentages and charging states, and adjust individual microphone gain (0 dB to 20 dB).'
+      },
+      {
         title: 'Button Mapping',
         badge: 'Core Mapping',
         windowTitle: 'Button Mapping · Voice Input Buddy',
@@ -138,12 +162,12 @@ button.addEventListener('blur', stop);
         desc: 'The central remote diagram shows each physical button, supporting single-press, double-press, and long-press shortcuts for Power, OK, Navigation, Back, Home, Menu, and TV keys.'
       },
       {
-        title: 'Devices',
-        badge: 'Multi-device',
-        windowTitle: 'Devices · Voice Input Buddy',
-        src: 'assets/screenshots/connection-en.png',
-        alt: 'Voice Input Buddy Devices interface: remote cards, connection status, battery levels, and independent microphone gain sliders',
-        desc: 'Manage connected Bluetooth remotes, check live battery percentages and charging states, and adjust individual microphone gain (0 dB to 20 dB) for each remote.'
+        title: 'Common Phrases',
+        badge: 'Phrase Editor',
+        windowTitle: 'Common Phrases · Voice Input Buddy',
+        src: 'assets/screenshots/phrases-en.png',
+        alt: 'Voice Input Buddy Common Phrases interface: 5-way directional pad assignment and custom phrase library editor',
+        desc: 'Edit common phrase libraries inside button mapping. Assign custom phrases to directional buttons and OK button for instant text insertion, with backup import/export.'
       },
       {
         title: 'Voice Tools',
@@ -154,20 +178,20 @@ button.addEventListener('blur', stop);
         desc: 'Guided setup for Doubao, WeType, Typeless, Vokie, VoiceCursor, and custom tools, with flexible trigger key options (Fn/Globe, Command, Option).'
       },
       {
-        title: 'Common Phrases',
-        badge: 'Quick Typing',
-        windowTitle: 'Common Phrases · Voice Input Buddy',
-        src: 'assets/screenshots/phrases-en.png',
-        alt: 'Voice Input Buddy Common Phrases interface: 5-way directional pad assignment and custom phrase library',
-        desc: 'Assign phrases to directional buttons and the OK button for instant text insertion, with custom phrase editing and backup import/export.'
-      },
-      {
         title: 'Permissions & Driver',
         badge: 'System Environment',
         windowTitle: 'Permissions & Driver · Voice Input Buddy',
         src: 'assets/screenshots/permissions-en.png',
         alt: 'Voice Input Buddy Permissions interface: Bluetooth, Input Monitoring, Accessibility permissions and virtual microphone driver status',
         desc: 'Centralized overview of Bluetooth, Input Monitoring, and Accessibility permissions, along with the status and instructions for the Voice Input Buddy Mic driver.'
+      },
+      {
+        title: 'About & Updates',
+        badge: 'Version & Updates',
+        windowTitle: 'About & Settings · Voice Input Buddy',
+        src: 'assets/screenshots/about-en.png',
+        alt: 'Voice Input Buddy About interface: application version, Sparkle automatic updates, release notes, and universal uninstaller',
+        desc: 'Check app version and architecture (Apple silicon / Intel), manage automatic Sparkle updates, inspect release notes, and access the uninstaller.'
       }
     ],
     wizard: [
@@ -180,7 +204,15 @@ button.addEventListener('blur', stop);
         desc: 'Step-by-step guidance to authorize Bluetooth, Input Monitoring, and Accessibility permissions, ensuring reliable communication and key posting.'
       },
       {
-        title: 'Step 2 · Connect Remote',
+        title: 'Step 2 · Device Type',
+        badge: 'Wizard · Device Choice',
+        windowTitle: 'Control Source · Setup Wizard',
+        src: 'assets/screenshots/wizard-source-en.png',
+        alt: 'Setup Wizard: Select control hardware, supporting physical remotes (Xiaomi, Google G9N9N) or phone companion',
+        desc: 'Select your preferred control hardware: physical remotes such as Xiaomi, Google G9N9N, Apple Siri Remote, or a mobile phone companion via QR code.'
+      },
+      {
+        title: 'Step 3 · Connect Remote',
         badge: 'Wizard · Pairing',
         windowTitle: 'Connect Remote · Setup Wizard',
         src: 'assets/screenshots/wizard-remote-en.png',
@@ -188,7 +220,7 @@ button.addEventListener('blur', stop);
         desc: 'Illustrated instructions for Bluetooth pairing key combinations on Xiaomi and compatible remotes, discovering and pairing automatically.'
       },
       {
-        title: 'Step 3 · Button Test',
+        title: 'Step 4 · Button Test',
         badge: 'Wizard · Button Check',
         windowTitle: 'Button Test · Setup Wizard',
         src: 'assets/screenshots/wizard-controls-en.png',
@@ -196,7 +228,7 @@ button.addEventListener('blur', stop);
         desc: 'Press directional or OK buttons on the remote to see corresponding highlights on screen, confirming physical button delivery without key remapper conflicts.'
       },
       {
-        title: 'Step 4 · Driver Check',
+        title: 'Step 5 · Driver Check',
         badge: 'Wizard · Audio Ready',
         windowTitle: 'Driver Check · Setup Wizard',
         src: 'assets/screenshots/wizard-driver-en.png',
@@ -204,7 +236,7 @@ button.addEventListener('blur', stop);
         desc: 'Automatically checks and routes audio through the bundled Voice Input Buddy Mic driver, locking in dedicated virtual microphone output.'
       },
       {
-        title: 'Step 5 · Voice Tool',
+        title: 'Step 6 · Voice Tool',
         badge: 'Wizard · Tool Setup',
         windowTitle: 'Input Tool · Setup Wizard',
         src: 'assets/screenshots/wizard-tool-en.png',
@@ -212,7 +244,7 @@ button.addEventListener('blur', stop);
         desc: 'Choose your preferred input method or dictation tool, with step-by-step screenshots guiding microphone selection and voice shortcut keys.'
       },
       {
-        title: 'Step 6 · Voice Test & Gain',
+        title: 'Step 7 · Voice Test & Gain',
         badge: 'Wizard · Speech Test',
         windowTitle: 'Voice Test · Setup Wizard',
         src: 'assets/screenshots/wizard-test-en.png',

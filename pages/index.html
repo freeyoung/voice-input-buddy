@@ -33,22 +33,22 @@
 <section class="how section" id="how"><div class="wrap"><p class="eyebrow">工作原理</p><h2 class="section-title">搭一座桥，<br>让硬件和输入工具合作。</h2><div class="flow"><div><span>①</span><h3>遥控器</h3><p>麦克风音频 + 按键</p></div><b aria-hidden="true">→</b><div class="flow-buddy"><span>②</span><h3>Voice Input Buddy</h3><p>解码音频 · 触发快捷键</p></div><b aria-hidden="true">→</b><div><span>③</span><h3>输入法 / 听写工具</h3><p>识别声音 · 写入文本</p></div></div><p class="explanation">遥控器通过蓝牙传来声音，语音搭子解码后送入虚拟麦克风，同时发送对应的语音快捷键。识别、实时文字与文本修正由输入工具完成；语音搭子本身不运行识别模型。</p></div></section>
 <section class="section wrap interface-section" id="interface" aria-labelledby="interface-title">
   <div class="interface-heading">
-    <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">原生 SwiftUI 精心打造，从按键动作映射、多设备管理，到主流输入法集成与常用语速选，一目了然。</p></div>
+    <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">原生 SwiftUI 精心打造，从设备连接、按键动作映射、常用语编辑，到主流输入法集成与关于更新，一目了然。</p></div>
     <div class="gallery-category-switch" role="tablist" aria-label="界面展示分类">
-      <button class="category-btn is-active" type="button" role="tab" aria-selected="true" data-track="settings">主程序界面 (5)</button>
-      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">新手设置向导 (6)</button>
+      <button class="category-btn is-active" type="button" role="tab" aria-selected="true" data-track="settings">主程序界面 (6)</button>
+      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">新手设置向导 (7)</button>
     </div>
   </div>
   <div class="cathedral-gallery">
     <div class="gallery-stage-container" role="region" aria-label="3D 界面画廊">
       <button class="stage-nav stage-prev" type="button" aria-label="上一张界面截图">‹</button>
       <div class="gallery-stage" id="gallery-stage" tabindex="0" role="region" aria-label="界面展示舞台">
-        <div class="stage-slide slide-active" role="group" aria-label="按键映射 (1/5)">
+        <div class="stage-slide slide-active" role="group" aria-label="设备连接 (1/6)">
           <div class="window-top" aria-hidden="true">
             <div class="window-dots"><i></i><i></i><i></i></div>
-            <span class="window-title">按键映射 · Voice Input Buddy</span>
+            <span class="window-title">设备连接 · Voice Input Buddy</span>
           </div>
-          <img src="assets/screenshots/mapping-zh.png" alt="Voice Input Buddy 按键映射设置界面：可视化遥控器按键映射，支持单击、双击、长按与自定义快捷键" width="1020" height="772" loading="eager">
+          <img src="assets/screenshots/connection-zh.png" alt="Voice Input Buddy 设备连接界面：小米与 Google G9N9N 遥控器卡片、连接状态、电量显示与麦克风独立增益滑块" width="1020" height="772" loading="eager">
         </div>
       </div>
       <button class="stage-nav stage-next" type="button" aria-label="下一张界面截图">›</button>
@@ -56,10 +56,10 @@
     <div class="gallery-indicators" id="gallery-indicators" role="tablist" aria-label="截图快速选择"></div>
     <div class="gallery-caption-card" aria-live="polite">
       <div class="caption-header">
-        <span class="caption-badge" id="caption-badge">核心按键映射</span>
-        <h3 class="caption-title" id="caption-title">按键映射</h3>
+        <span class="caption-badge" id="caption-badge">多设备管理</span>
+        <h3 class="caption-title" id="caption-title">设备连接</h3>
       </div>
-      <p class="caption-desc" id="caption-desc">中央显示遥控器按键示意图，支持为电源键、确定键、方向键、返回键、主页键、菜单键与 TV 键分别指定单击、双击和长按动作，可绑定系统操作、自定义快捷键或常用语。</p>
+      <p class="caption-desc" id="caption-desc">管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。</p>
       <div class="caption-hint">
         <span>💡 点击中央界面可全屏放大；可使用键盘方向键 ← / → 或左右拖拽滑动切换。</span>
       </div>
@@ -71,7 +71,7 @@
         <span class="lightbox-title" id="lightbox-title">界面预览</span>
         <button class="lightbox-close" type="button" aria-label="关闭">✕</button>
       </div>
-      <img id="lightbox-img" src="assets/screenshots/mapping-zh.png" alt="界面大图预览" width="1020" height="772">
+      <img id="lightbox-img" src="assets/screenshots/connection-zh.png" alt="界面大图预览" width="1020" height="772">
     </div>
   </dialog>
 </section>

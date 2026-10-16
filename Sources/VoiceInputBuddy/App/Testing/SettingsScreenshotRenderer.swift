@@ -90,18 +90,15 @@ enum SettingsScreenshotRenderer {
             )
             settings.updateRemoteProfileModel(xiaomiID, model: .rc003)
             settings.bindHIDFingerprint("settings-screenshot-xiaomi", to: xiaomiID)
-            let appleID = settings.registerAppleSiriRemote(fingerprint: "settings-screenshot-apple-remote")
-            settings.updateRemoteProfileModel(appleID, model: .appleSiriRemoteA2854)
             let chromecastID = settings.registerChromecastRemote()
-            settings.selectRemoteProfile(appleID)
+            settings.selectRemoteProfile(xiaomiID)
             remoteCardSystemNames = [
-                xiaomiID: "书房遥控器",
-                appleID: "客厅 Apple TV",
-                chromecastID: "Bedroom Remote",
+                xiaomiID: language == .simplifiedChinese ? "书房遥控器" : "Study Remote",
+                chromecastID: language == .simplifiedChinese ? "客厅 G9N9N" : "Living Room G9N9N",
             ]
             remoteCardBatteryLevels = [
                 xiaomiID: 78,
-                chromecastID: 42,
+                chromecastID: 64,
             ]
             remoteCardPowerStates = [
                 xiaomiID: .charging,
