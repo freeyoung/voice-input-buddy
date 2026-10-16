@@ -84,9 +84,9 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-                .frame(width: 108)
+                .frame(width: SettingsPageBehavior.sidebarWidth)
             Color(nsColor: .separatorColor)
-                .frame(width: 1)
+                .frame(width: SettingsPageBehavior.sidebarDividerWidth)
                 .frame(maxHeight: .infinity)
                 .ignoresSafeArea(.container, edges: .top)
             selectedPage

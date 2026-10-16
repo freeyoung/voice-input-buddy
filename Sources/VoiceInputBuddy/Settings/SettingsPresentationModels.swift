@@ -99,6 +99,10 @@ enum RemoteBatteryPresentationPolicy {
 }
 
 enum SettingsPageBehavior {
+    static let sidebarWidth: CGFloat = 108
+    static let sidebarDividerWidth: CGFloat = 1
+    static var contentLeadingInset: CGFloat { sidebarWidth + sidebarDividerWidth }
+
     static let sidebarTopDragHeight: CGFloat = 5
 
     static let sidebarSectionOrder: [SettingsSection] = [
