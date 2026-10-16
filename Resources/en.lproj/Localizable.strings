@@ -1293,3 +1293,9 @@
 "connection.device.frame" = "Audio frame";
 "connection.device.frame_bytes" = "%@ bytes";
 "onboarding.remote.chromecast_pairing.third" = "Select the remote in your Mac’s Bluetooth list and connect. Then press a button other than Voice to check input. When pairing again, forget the device in Bluetooth settings first if needed.";
+
+"remote.rebind.title" = "Rebind remote";
+"remote.rebind.help" = "Pair the remote in macOS Bluetooth settings first. Select its new connected entry below. The original button mappings and gain will be preserved, and the selected replacement entry will be combined with this profile.";
+"remote.rebind.empty" = "No compatible connected replacement is available.";
+"remote.rebind.failed" = "Could not rebind. Stop voice input and check that the replacement is still connected.";
+"remote.rebind.confirm" = "Rebind and keep settings";

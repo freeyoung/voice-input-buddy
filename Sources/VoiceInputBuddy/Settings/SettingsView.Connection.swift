@@ -38,6 +38,9 @@ extension SettingsView {
                 }
             }
         }
+        .sheet(item: $remoteRebindingProfile) { profile in
+            RemoteRebindingPicker(model: model, profile: profile).environmentObject(localization)
+        }
         .onAppear {
             model.refreshVoiceKeyCompatibilityWarning()
         }
@@ -75,6 +78,10 @@ extension SettingsView {
                 VStack(spacing: 14) {
                     remoteDeviceCard(profile, fillsWidth: true)
                     connectionRemotePhoto(profile)
+                    if profile.bluetoothIdentifier != nil, !model.isRemoteConnected(profile.id) {
+                        Button("remote.rebind.title") { remoteRebindingProfile = profile }
+                            .compatibilityButtonStyle(.standard).disabled(model.isStreaming)
+                    }
                     if profile.bluetoothIdentifier != nil {
                         Button("connection.action.reconnect") {
                             model.selectRemoteProfile(profile.id)

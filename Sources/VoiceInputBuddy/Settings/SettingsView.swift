@@ -23,6 +23,7 @@ struct SettingsView: View {
     private let minimumContentSize: CGSize
     let initialShortcutPickerShowsKeyboard: Bool
 
+    @State var remoteRebindingProfile: RemoteDeviceProfile?
     @State var selectedSection: SettingsSection
     @State var selectedRemoteButton: RemoteButton = .ok
     @State private var selectedSiriRemoteControlID = "select"
