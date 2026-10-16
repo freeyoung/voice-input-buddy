@@ -1094,7 +1094,7 @@
 "common_phrases.error.target_changed" = "输入目标已改变，请重新打开常用语。";
 "common_phrases.error.clipboard_write_failed" = "无法安全暂存或写入剪贴板。如系统询问，请允许剪贴板访问后重试。";
 "common_phrases.error.clipboard_restore_failed" = "粘贴后未能恢复剪贴板，请检查剪贴板内容。";
-"common_phrases.error.paste_failed" = "无法执行粘贴，请检查辅助功能权限后重试。";
+"common_phrases.error.paste_failed" = "粘贴指令未能发送。请松开修饰键后重试，并确认辅助功能权限仍已开启。";
 "common_phrases.error.cancelled" = "插入已取消。";
 "custom_application.accessibility.test" = "测试输入框";
 

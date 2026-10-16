@@ -1096,7 +1096,7 @@
 "common_phrases.error.target_changed" = "The input target changed. Open Common Phrases again.";
 "common_phrases.error.clipboard_write_failed" = "Could not safely save or write the clipboard. Allow clipboard access if prompted, then try again.";
 "common_phrases.error.clipboard_restore_failed" = "Could not restore the clipboard after pasting. Check your clipboard.";
-"common_phrases.error.paste_failed" = "Could not paste. Check Accessibility permission and try again.";
+"common_phrases.error.paste_failed" = "The paste command could not be sent. Release modifier keys and retry, and confirm Accessibility permission is still enabled.";
 "common_phrases.error.cancelled" = "Insertion cancelled.";
 "custom_application.accessibility.test" = "Test input field";
 

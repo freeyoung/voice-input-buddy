@@ -18,16 +18,41 @@ final class CommonPhraseClipboardPaste {
          readClipboard: @escaping (@escaping () -> Void) -> Void = { work in snapshotQueue.async { work() } },
          schedule: @escaping OperationScheduler = ScheduledOperation.mainQueue,
          postPaste: @escaping () -> Bool = {
-             guard KeyboardInjector.isAccessibilityTrusted, !SecureInputMonitor.isEnabled() else { return false }
-             let hardware = CGEventSource.flagsState(.hidSystemState)
-             guard hardware.intersection([.maskControl, .maskAlternate, .maskShift, .maskSecondaryFn]).isEmpty else { return false }
+             guard KeyboardInjector.isAccessibilityTrusted else {
+                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=accessibility_required")
+                 return false
+             }
+             guard !SecureInputMonitor.isEnabled() else {
+                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=secure_input")
+                 return false
+             }
+             let hardware = pasteHardwareFlags()
+             guard permitsPasteShortcut(flags: hardware) else {
+                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held flags=\(hardware.rawValue)")
+                 return false
+             }
              return ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
-                 hardwareFlags: { CGEventSource.flagsState(.hidSystemState) }, eventPoster: ShortcutEventSequence.post)
+                 hardwareFlags: { pasteHardwareFlags() }, eventPoster: ShortcutEventSequence.post)
          }) {
         self.board = board
         self.readClipboard = readClipboard
         self.schedule = schedule
         self.postPaste = postPaste
+    }
+
+    // Navigation keys can carry the Fn event flag without an actual Fn key
+    // press. Do not let that decoration block or alter Command-V.
+    static func normalizedPasteFlags(_ flags: CGEventFlags, fnKeyDown: Bool) -> CGEventFlags {
+        fnKeyDown ? flags.union(.maskSecondaryFn) : flags.subtracting(.maskSecondaryFn)
+    }
+
+    private static func pasteHardwareFlags() -> CGEventFlags {
+        normalizedPasteFlags(CGEventSource.flagsState(.hidSystemState),
+            fnKeyDown: CGEventSource.keyState(.hidSystemState, key: 63))
+    }
+
+    static func permitsPasteShortcut(flags: CGEventFlags) -> Bool {
+        flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskSecondaryFn]).isEmpty
     }
 
     func paste(_ text: String, validate: @escaping Validation, canSubmit: @escaping () -> Bool,
