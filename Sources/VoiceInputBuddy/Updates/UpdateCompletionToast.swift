@@ -5,6 +5,7 @@ struct UpdateCompletionToast: ViewModifier {
     @EnvironmentObject private var localization: LocalizationStore
     @State private var showsUpdateCompletion = true
     let version: String?
+    var contentLeadingInset: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
@@ -24,11 +25,14 @@ struct UpdateCompletionToast: ViewModifier {
                         }
                     }
                     .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 6)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.08)))
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+                    .padding(.top, 4)
                     .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.leading, contentLeadingInset)
                     .allowsHitTesting(false)
                     .accessibilityElement(children: .combine)
                     .transition(.opacity.combined(with: .move(edge: .top)))

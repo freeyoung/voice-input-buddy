@@ -52,7 +52,10 @@ struct VoiceInputBuddyRootView: View {
                 OnboardingView(model: model)
             }
         }
-        .modifier(UpdateCompletionToast(version: completedUpdateVersion))
+        .modifier(UpdateCompletionToast(
+            version: completedUpdateVersion,
+            contentLeadingInset: settings.isOnboardingComplete ? SettingsPageBehavior.contentLeadingInset : 0
+        ))
         .onAppear {
             startRuntimeIfRequired(for: settings.onboardingStep)
         }

@@ -191,7 +191,7 @@ enum SettingsScreenshotRenderer {
             )
             .modifier(UpdateCompletionToast(version: ProcessInfo.processInfo.environment[
                 "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_COMPLETED_UPDATE_VERSION"
-            ]))
+            ], contentLeadingInset: SettingsPageBehavior.contentLeadingInset))
             .environmentObject(localization)
             .frame(width: size.width, height: size.height)
             let hostingController = NSHostingController(rootView: rootView)
