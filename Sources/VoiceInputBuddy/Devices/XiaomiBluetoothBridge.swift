@@ -544,6 +544,7 @@ final class XiaomiBluetoothBridge: NSObject {
 
     @discardableResult
     func requestMicrophoneOpen() -> Bool {
+        guard !systemSuspension.isSuspended else { return false }
         guard let generation = currentGeneration(),
               ATVVSessionGate.canOpenMicrophone(
                   phase: lifecycle,
@@ -1215,6 +1216,10 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     private func startStreaming() {
+        guard !systemSuspension.isSuspended || streaming else {
+            _ = requestMicrophoneClose()
+            return
+        }
         let partialFrameBytes = audioDecoder.pendingByteCount
         if partialFrameBytes > 0 {
             AppLogger.shared.write(

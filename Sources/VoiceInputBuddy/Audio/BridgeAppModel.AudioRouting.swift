@@ -137,8 +137,13 @@ extension BridgeAppModel {
             systemAudioSuspensionState.isSuspended,
             reason: event.rawValue
         )
-        if event == .systemWillSleep {
-            suspendActiveAudioForSystemSleep()
+        if event == .sessionDidResignActive {
+            commonPhrases.close(reason: "session_inactive")
+            stopHIDMonitors()
+            hidMonitoringInterrupted = true
+        }
+        if event == .systemWillSleep || event == .sessionDidResignActive {
+            suspendActiveAudio(reason: event.rawValue)
             return
         }
         guard !audioStartupPending else {
@@ -173,6 +178,7 @@ extension BridgeAppModel {
             )
             return
         }
+        if hidMonitoringInterrupted { applyHIDSettings() }
         resumeVirtualAudioOutputIfNeeded(reason: "system_\(event.rawValue)")
         if BluetoothWakeRecoveryPolicy.shouldForceReconnect(event: event, started: started) {
             recoverBluetoothVoiceLink(reason: "system_wake")
@@ -194,7 +200,9 @@ extension BridgeAppModel {
         resumeBluetoothConnectionCyclesIfNeeded(reason: event.rawValue)
     }
 
-    private func suspendActiveAudioForSystemSleep() {
+    private func suspendActiveAudio(reason: String) {
+        for bridge in bluetoothBridges.values { _ = bridge.requestMicrophoneClose() }
+        _ = discoveryBluetoothBridge?.requestMicrophoneClose()
         // Hardware sleep cannot be deferred for an active voice source.
         audioConfigurationGeneration &+= 1
         cancelVirtualAudioReleaseIfPending(trigger: "system_sleep")
@@ -229,7 +237,7 @@ extension BridgeAppModel {
         isAudioOutputReady = false
         testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
         restartCompletion?(.unavailable)
-        AppLogger.shared.write("SYSTEM AUDIO suspended event=system_will_sleep active_sessions_ended=true")
+        AppLogger.shared.write("SYSTEM AUDIO suspended event=\(reason) active_sessions_ended=true")
     }
 
     func configureVirtualAudioOutput(
