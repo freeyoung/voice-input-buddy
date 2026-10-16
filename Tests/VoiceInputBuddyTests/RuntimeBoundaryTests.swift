@@ -141,12 +141,13 @@ struct RuntimeBoundaryTests {
             let selectors: [AudioObjectPropertySelector] = [kAudioHardwarePropertyDevices,
                 kAudioHardwarePropertyDefaultInputDevice, kAudioHardwarePropertyDefaultOutputDevice,
                 kAudioHardwarePropertyDefaultSystemOutputDevice]
-            model?.observedAudioHardwareAddresses = selectors.map {
+            model?.audio.retainHardwareListener { _, _ in }
+            model?.audio.observedHardwareAddresses = selectors.map {
                 AudioObjectPropertyAddress(mSelector: $0, mScope: kAudioObjectPropertyScopeGlobal,
                     mElement: kAudioObjectPropertyElementMain)
             }
             var removed: [AudioObjectPropertySelector] = []
-            model?.audioHardwareListenerRemover = { address, _, _ in
+            model?.audio.hardwareListenerRemover = { address, _, _ in
                 removed.append(address.mSelector)
                 return noErr
             }

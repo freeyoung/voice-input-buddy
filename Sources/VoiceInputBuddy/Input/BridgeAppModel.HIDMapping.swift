@@ -334,7 +334,7 @@ extension BridgeAppModel {
             guard let self, self.started,
                   let identifier = self.settings.remoteDeviceProfiles.first(where: { $0.id == profileID })?.bluetoothIdentifier
             else { return }
-            self.bluetoothBridges[identifier]?.recoverAfterRemoteActivity(reason: reason)
+            self.connections.bridges[identifier]?.recoverAfterRemoteActivity(reason: reason)
         }
     }
 
@@ -357,7 +357,7 @@ extension BridgeAppModel {
         )
         monitor.onCandidateAvailable = { [weak self] in
             guard let self else { return }
-            for bridge in self.bluetoothBridges.values {
+            for bridge in self.connections.bridges.values {
                 self.learnSelectedRemoteHIDIdentity(bridge)
                 bridge.recoverSystemConnectedRemote(reason: "hid_candidate")
             }

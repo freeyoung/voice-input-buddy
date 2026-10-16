@@ -8,12 +8,12 @@ import Foundation
 extension BridgeAppModel {
     var selectedBluetoothBridge: XiaomiBluetoothBridge? {
         guard let identifier = settings.selectedRemoteProfile?.bluetoothIdentifier else { return nil }
-        return bluetoothBridges[identifier]
+        return connections.bridges[identifier]
     }
 
     func startBluetoothConnections() {
         let identifiers = Set(settings.remoteDeviceProfiles.compactMap(\.bluetoothIdentifier))
-        for identifier in identifiers where bluetoothBridges[identifier] == nil {
+        for identifier in identifiers where connections.bridges[identifier] == nil {
             let bridge = XiaomiBluetoothBridge(
                 settings: settings,
                 delegate: self,
@@ -21,9 +21,9 @@ extension BridgeAppModel {
                 allowsG9N9N: true
             )
             observeRemoteHIDIdentity(bridge)
-            bluetoothBridges[identifier] = bridge
+            connections.bridges[identifier] = bridge
             bridge.setSystemSuspended(
-                systemAudioSuspensionState.isSuspended,
+                audio.suspensionState.isSuspended,
                 reason: "bridge_start"
             )
             bridge.start()
@@ -32,20 +32,20 @@ extension BridgeAppModel {
     }
 
     func startBluetoothDiscoveryIfNeeded() {
-        guard started, discoveryBluetoothBridge == nil else { return }
+        guard started, connections.discoveryBridge == nil else { return }
         let bridge = XiaomiBluetoothBridge(
             settings: settings,
             delegate: self,
             allowsG9N9N: true,
             excludedIdentifiers: { [weak self] in
                 guard let self else { return [] }
-                return Set(self.bluetoothBridges.keys)
+                return Set(self.connections.bridges.keys)
             }
         )
         observeRemoteHIDIdentity(bridge)
-        discoveryBluetoothBridge = bridge
+        connections.discoveryBridge = bridge
         bridge.setSystemSuspended(
-            systemAudioSuspensionState.isSuspended,
+            audio.suspensionState.isSuspended,
             reason: "bridge_start"
         )
         bridge.start()
@@ -66,12 +66,12 @@ extension BridgeAppModel {
         }
         let existingProfileID = settings.profileID(forBluetoothIdentifier: identifier)
         let profileID = existingProfileID ?? settings.registerBluetoothRemote(identifier: identifier, model: bridge.identifiedModel ?? .unknown)
-        if discoveryBluetoothBridge === bridge {
-            discoveryBluetoothBridge = nil
-            bluetoothBridges[identifier] = bridge
+        if connections.discoveryBridge === bridge {
+            connections.discoveryBridge = nil
+            connections.bridges[identifier] = bridge
             startBluetoothDiscoveryIfNeeded()
-        } else if bluetoothBridges[identifier] == nil {
-            bluetoothBridges[identifier] = bridge
+        } else if connections.bridges[identifier] == nil {
+            connections.bridges[identifier] = bridge
         }
         applyPendingRemoteTelemetry(identifier: identifier, profileID: profileID)
         AppLogger.shared.write(
@@ -104,7 +104,7 @@ extension BridgeAppModel {
     }
 
     func bluetoothIdentifier(for bridge: XiaomiBluetoothBridge) -> UUID? {
-        bridge.deviceIdentifier ?? bluetoothBridges.first(where: { $0.value === bridge })?.key
+        bridge.deviceIdentifier ?? connections.bridges.first(where: { $0.value === bridge })?.key
     }
 
     func remoteProfileID(for bridge: XiaomiBluetoothBridge) -> UUID? {
@@ -172,7 +172,7 @@ extension BridgeAppModel {
         var requested = 0
         var resolved = 0
         var changed = 0
-        for (identifier, bridge) in bluetoothBridges {
+        for (identifier, bridge) in connections.bridges {
             guard let profileID = settings.profileID(forBluetoothIdentifier: identifier),
                   connectedRemoteProfileIDs.contains(profileID)
             else { continue }
@@ -195,10 +195,10 @@ extension BridgeAppModel {
     }
 
     func refreshBluetoothPresentation() {
-        let allStates = bluetoothBridgeStates.values
-        let connectedBluetoothProfileIDs = Set<UUID>(bluetoothBridges.compactMap { identifier, bridge in
+        let allStates = connections.states.values
+        let connectedBluetoothProfileIDs = Set<UUID>(connections.bridges.compactMap { identifier, bridge in
             guard let profileID = settings.profileID(forBluetoothIdentifier: identifier),
-                  let state = bluetoothBridgeStates[ObjectIdentifier(bridge)],
+                  let state = connections.states[ObjectIdentifier(bridge)],
                   case .ready = state
             else { return nil }
             return profileID
@@ -218,7 +218,7 @@ extension BridgeAppModel {
                   connectedChromecastProfileIDs.contains(selectedRemoteProfileID) {
             connectionStatus = LocalizedMessage("connection.status.chromecast_connected")
         } else if let selectedBluetoothBridge,
-           let state = bluetoothBridgeStates[ObjectIdentifier(selectedBluetoothBridge)] {
+           let state = connections.states[ObjectIdentifier(selectedBluetoothBridge)] {
             connectionStatus = state.message
         } else if let ready = allStates.first(where: { state in
             if case .ready = state { return true }

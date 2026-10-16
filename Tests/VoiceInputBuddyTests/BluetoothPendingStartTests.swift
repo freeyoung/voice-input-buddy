@@ -14,15 +14,15 @@ struct BluetoothPendingStartTests {
         let owner = UUID(), rejected = UUID()
         let selected = settings.registerBluetoothRemote(identifier: owner)
         settings.selectRemoteProfile(selected)
-        model.activeBluetoothVoiceDeviceIdentifier = owner
-        model.bluetoothVoiceActive = true
+        model.voiceSession.activeDeviceIdentifier = owner
+        model.voiceSession.isActive = true
         let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: rejected)
         model.bluetoothBridgeDidStartVoice(bridge)
         #expect(settings.selectedRemoteProfileID == selected)
         #expect(settings.profileID(forBluetoothIdentifier: rejected) == nil)
-        #expect(model.activeBluetoothVoiceDeviceIdentifier == owner)
-        #expect(model.bluetoothVoiceActive)
-        #expect(model.pendingBluetoothVoiceStart.identifier == nil)
+        #expect(model.voiceSession.activeDeviceIdentifier == owner)
+        #expect(model.voiceSession.isActive)
+        #expect(model.voiceSession.pendingStart.identifier == nil)
     }
 
     @Test func oldConfigurationCompletionCannotConsumeRestartedAudio() {
@@ -50,16 +50,16 @@ struct BluetoothPendingStartTests {
         let owner = UUID()
         let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: owner)
         let other = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: UUID())
-        model.pendingBluetoothVoiceStart.begin(for: owner)
-        model.pendingBluetoothVoiceStopRequested = true
-        let accepted = model.pendingBluetoothVoiceStart.audio.appendIfWaiting([1, 2])
+        model.voiceSession.pendingStart.begin(for: owner)
+        model.voiceSession.stopRequested = true
+        let accepted = model.voiceSession.pendingStart.audio.appendIfWaiting([1, 2])
         #expect(accepted)
         model.bluetoothBridge(other, didChange: .reconnecting)
-        #expect(model.pendingBluetoothVoiceStart.identifier == owner)
-        #expect(model.pendingBluetoothVoiceStopRequested)
+        #expect(model.voiceSession.pendingStart.identifier == owner)
+        #expect(model.voiceSession.stopRequested)
         model.bluetoothBridge(bridge, didChange: .reconnecting)
-        #expect(model.pendingBluetoothVoiceStart.identifier == nil)
-        #expect(!model.pendingBluetoothVoiceStopRequested)
-        #expect(model.pendingBluetoothVoiceStart.drain().isEmpty)
+        #expect(model.voiceSession.pendingStart.identifier == nil)
+        #expect(!model.voiceSession.stopRequested)
+        #expect(model.voiceSession.pendingStart.drain().isEmpty)
     }
 }

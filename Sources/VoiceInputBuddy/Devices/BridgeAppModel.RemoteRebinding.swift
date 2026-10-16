@@ -4,17 +4,17 @@ extension BridgeAppModel {
     func rebindRemote(profileID: UUID, to replacementProfileID: UUID) -> Bool {
         guard !hasActiveVirtualAudioSource, !voiceKeyLatch.isHeld,
               !voiceFnTapSession.requiresCleanupBeforeMapping,
-              pendingBluetoothVoiceStart.identifier == nil,
+              voiceSession.pendingStart.identifier == nil,
               !isRemoteConnected(profileID), isRemoteConnected(replacementProfileID),
               let original = settings.remoteDeviceProfiles.first(where: { $0.id == profileID }),
               let replacement = settings.remoteDeviceProfiles.first(where: { $0.id == replacementProfileID }),
               let identifier = replacement.bluetoothIdentifier,
-              let bridge = bluetoothBridges[identifier], case .ready = bridge.state,
+              let bridge = connections.bridges[identifier], case .ready = bridge.state,
               settings.rebindBluetoothRemote(profileID: profileID, to: replacementProfileID) else { return false }
         if let oldIdentifier = original.bluetoothIdentifier {
-            if let oldBridge = bluetoothBridges.removeValue(forKey: oldIdentifier) {
+            if let oldBridge = connections.bridges.removeValue(forKey: oldIdentifier) {
                 oldBridge.stop()
-                bluetoothBridgeStates.removeValue(forKey: ObjectIdentifier(oldBridge))
+                connections.states.removeValue(forKey: ObjectIdentifier(oldBridge))
             }
             remoteDeviceInformation.removeValue(forKey: oldIdentifier)
             pendingRemoteBatteryLevels.removeValue(forKey: oldIdentifier)

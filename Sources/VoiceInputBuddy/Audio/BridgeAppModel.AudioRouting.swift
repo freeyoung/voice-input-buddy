@@ -7,16 +7,16 @@ import Foundation
 
 extension BridgeAppModel {
     func refreshAudioDevices() {
-        audioDeviceRefreshGeneration &+= 1
-        let generation = audioDeviceRefreshGeneration
+        audio.deviceRefreshGeneration &+= 1
+        let generation = audio.deviceRefreshGeneration
         AppLogger.shared.write("AUDIO DEVICES refresh_requested id=\(generation)")
-        audioPreparationQueue.async { [weak self] in
+        audio.preparationQueue.async { [weak self] in
             let devices = CoreAudioDeviceCatalog.outputDevices()
             let diagnostic = Self.audioDevicesDiagnostic(devices)
             DispatchQueue.main.async { [weak self] in
                 guard let self,
                       self.started,
-                      self.audioDeviceRefreshGeneration == generation
+                      self.audio.deviceRefreshGeneration == generation
                 else { return }
                 self.publishAudioDevices(devices)
                 AppLogger.shared.write("AUDIO DEVICES refreshed id=\(generation) \(diagnostic)")
@@ -25,13 +25,13 @@ extension BridgeAppModel {
     }
 
     func startAudioSubsystem() {
-        audioStartupGeneration &+= 1
-        let generation = audioStartupGeneration
-        audioStartupPending = true
+        audio.startupGeneration &+= 1
+        let generation = audio.startupGeneration
+        audio.startupPending = true
         AppLogger.shared.write("AUDIO STARTUP scheduled id=\(generation)")
         // Device enumeration is the only work on this queue. Route ownership is decided
         // on the main actor after enumeration, using the user's current selection.
-        audioPreparationQueue.async { [weak self] in
+        audio.preparationQueue.async { [weak self] in
             let devices = CoreAudioDeviceCatalog.outputDevices()
             let diagnostic = Self.audioDevicesDiagnostic(devices)
             AppLogger.shared.write("AUDIO DEVICES startup id=\(generation) \(diagnostic)")
@@ -43,15 +43,15 @@ extension BridgeAppModel {
 
     func prepareAudioStartup(generation: UInt64, devices: [AudioDeviceInfo],
         configureOutput: ((String, @escaping (Bool) -> Void) -> Void)? = nil) {
-        guard started, audioStartupGeneration == generation else { return }
-        audioConfigurationGeneration &+= 1
-        let configurationGeneration = audioConfigurationGeneration
-        if systemAudioSuspensionState.reasons.contains(.systemSleeping) {
+        guard started, audio.startupGeneration == generation else { return }
+        audio.configurationGeneration &+= 1
+        let configurationGeneration = audio.configurationGeneration
+        if audio.suspensionState.reasons.contains(.systemSleeping) {
             finishAudioStartup(generation: generation, configurationGeneration: configurationGeneration,
                 configured: false, devices: devices)
             return
         }
-        let configure = configureOutput ?? { self.audioOutput.configureAsync(deviceUID: $0, completion: $1) }
+        let configure = configureOutput ?? { self.audio.output.configureAsync(deviceUID: $0, completion: $1) }
         configure(settings.selectedAudioDeviceUID) { [weak self] configured in
             DispatchQueue.main.async { [weak self] in
                 self?.finishAudioStartup(generation: generation,
@@ -64,24 +64,24 @@ extension BridgeAppModel {
     func finishAudioStartup(generation: UInt64, configurationGeneration: UInt64,
         configured: Bool, devices: [AudioDeviceInfo]) {
         // stop() owns teardown. An old completion must never tear down a newer route.
-        guard started, audioStartupGeneration == generation else { return }
-        if audioConfigurationGeneration == configurationGeneration {
-            audioStatus = audioOutput.status
-            isAudioOutputReady = audioOutput.isReadyForTestTone
+        guard started, audio.startupGeneration == generation else { return }
+        if audio.configurationGeneration == configurationGeneration {
+            audioStatus = audio.output.status
+            isAudioOutputReady = audio.output.isReadyForTestTone
             testToneStatus = isAudioOutputReady
                 ? LocalizedMessage("audio.test_tone.ready")
                 : LocalizedMessage("audio.output.none_or_unavailable")
         }
-        audioStartupPending = false
+        audio.startupPending = false
         publishAudioDevices(devices)
         startObservingAudioHardware()
-        if systemAudioSuspensionState.isSuspended {
+        if audio.suspensionState.isSuspended {
             releaseVirtualAudioOutputIfUnused(reason: "startup_system_suspended")
         }
         startBluetoothConnections()
         AppLogger.shared.write(
             "AUDIO REBIND finished reason=startup success=\(configured) status=\(audioStatus.key) " +
-                "state={\(audioOutput.diagnosticState())}"
+                "state={\(audio.output.diagnosticState())}"
         )
     }
 
@@ -119,21 +119,21 @@ extension BridgeAppModel {
     }
 
     func handleSystemAudioLifecycle(_ event: SystemAudioLifecycleEvent) {
-        let changed = systemAudioSuspensionState.apply(event)
+        let changed = audio.suspensionState.apply(event)
         AppLogger.shared.write(
             "SYSTEM AUDIO event=\(event.rawValue) changed=\(changed) " +
-                "suspended=\(systemAudioSuspensionState.isSuspended) " +
-                "reasons=\(systemAudioSuspensionState.diagnostic) started=\(started) " +
+                "suspended=\(audio.suspensionState.isSuspended) " +
+                "reasons=\(audio.suspensionState.diagnostic) started=\(started) " +
                 "ready_bridges=\(readyBluetoothBridgeCount) " +
-                "configured_bridges=\(bluetoothBridges.count) " +
-                "discovery_bridge=\(discoveryBluetoothBridge != nil) " +
-                "bluetooth_voice=\(bluetoothVoiceActive) " +
+                "configured_bridges=\(connections.bridges.count) " +
+                "discovery_bridge=\(connections.discoveryBridge != nil) " +
+                "bluetooth_voice=\(voiceSession.isActive) " +
                 "" +
                 "test_tone=\(isPlayingTestTone) audio_ready=\(isAudioOutputReady)"
         )
         guard started, changed else { return }
         setBluetoothSystemSuspended(
-            systemAudioSuspensionState.isSuspended,
+            audio.suspensionState.isSuspended,
             reason: event.rawValue
         )
         if event == .sessionDidResignActive {
@@ -145,12 +145,12 @@ extension BridgeAppModel {
             suspendActiveAudio(reason: event.rawValue)
             return
         }
-        guard !audioStartupPending else {
+        guard !audio.startupPending else {
             AppLogger.shared.write(
                 "SYSTEM AUDIO lifecycle_deferred event=\(event.rawValue) cause=audio_startup_pending " +
-                    "suspended=\(systemAudioSuspensionState.isSuspended)"
+                    "suspended=\(audio.suspensionState.isSuspended)"
             )
-            if !systemAudioSuspensionState.isSuspended {
+            if !audio.suspensionState.isSuspended {
                 resumeBluetoothConnectionCyclesIfNeeded(reason: event.rawValue)
             }
             return
@@ -160,7 +160,7 @@ extension BridgeAppModel {
             if hasActiveVirtualAudioSource {
                 AppLogger.shared.write(
                     "SYSTEM AUDIO suspend_deferred event=\(event.rawValue) " +
-                        "bluetooth_voice=\(bluetoothVoiceActive) " +
+                        "bluetooth_voice=\(voiceSession.isActive) " +
                         "" +
                         "test_tone=\(isPlayingTestTone)"
                 )
@@ -170,10 +170,10 @@ extension BridgeAppModel {
             return
         }
 
-        guard !systemAudioSuspensionState.isSuspended else {
+        guard !audio.suspensionState.isSuspended else {
             AppLogger.shared.write(
                 "SYSTEM AUDIO resume_deferred event=\(event.rawValue) " +
-                    "remaining_reasons=\(systemAudioSuspensionState.diagnostic)"
+                    "remaining_reasons=\(audio.suspensionState.diagnostic)"
             )
             return
         }
@@ -183,15 +183,15 @@ extension BridgeAppModel {
             recoverBluetoothVoiceLink(reason: "system_wake")
         } else if BluetoothWakeRecoveryPolicy.shouldRecoverVoiceLinkAfterResume(
             started: started,
-            configuredBridgeCount: bluetoothBridges.count,
+            configuredBridgeCount: connections.bridges.count,
             readyBridgeCount: readyBluetoothBridgeCount,
             voiceLinkActive: hasActiveVirtualAudioSource
         ) {
             AppLogger.shared.write(
                 "SYSTEM AUDIO voice_link_recovery event=\(event.rawValue) " +
                     "cause=no_ready_bridge ready_bridges=0 " +
-                    "configured_bridges=\(bluetoothBridges.count) " +
-                    "discovery_bridge=\(discoveryBluetoothBridge != nil) " +
+                    "configured_bridges=\(connections.bridges.count) " +
+                    "discovery_bridge=\(connections.discoveryBridge != nil) " +
                     "audio_ready=\(isAudioOutputReady)"
             )
             recoverBluetoothVoiceLink(reason: "session_activated")
@@ -200,24 +200,24 @@ extension BridgeAppModel {
     }
 
     private func suspendActiveAudio(reason: String) {
-        for bridge in bluetoothBridges.values { _ = bridge.requestMicrophoneClose() }
-        _ = discoveryBluetoothBridge?.requestMicrophoneClose()
+        for bridge in connections.bridges.values { _ = bridge.requestMicrophoneClose() }
+        _ = connections.discoveryBridge?.requestMicrophoneClose()
         // Hardware sleep cannot be deferred for an active voice source.
-        audioConfigurationGeneration &+= 1
+        audio.configurationGeneration &+= 1
         cancelVirtualAudioReleaseIfPending(trigger: "system_sleep")
         stopLongRecording(reason: "system_sleep")
         finishRC003VoiceExtensionTest(reason: "system_sleep")
         cancelTestToneIfNeeded(statusMessage: LocalizedMessage("audio.test_tone.cancelled_device_changed"),
             logReason: "system_sleep")
-        pendingBluetoothVoiceStart.cancel()
-        pendingBluetoothVoiceStopRequested = false
-        bluetoothVoiceActive = false
-        activeBluetoothVoiceDeviceIdentifier = nil
-        pendingCommandVoiceAudio.cancel()
+        voiceSession.pendingStart.cancel()
+        voiceSession.stopRequested = false
+        voiceSession.isActive = false
+        voiceSession.activeDeviceIdentifier = nil
+        voiceSession.commandAudio.cancel()
         voiceFnTapSession.suspend()
         releaseVoiceKeyIfNeeded()
         endVoiceSessionIfNeeded()
-        audioOutput.stop()
+        audio.output.stop()
         isAudioOutputReady = false
         testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
         AppLogger.shared.write("SYSTEM AUDIO suspended event=\(reason) active_sessions_ended=true")
@@ -228,33 +228,33 @@ extension BridgeAppModel {
         completion: @escaping (Bool) -> Void = { _ in }
     ) {
         cancelVirtualAudioReleaseIfPending(trigger: "rebind_\(reason)")
-        virtualAudioReleaseGeneration &+= 1
-        audioConfigurationGeneration &+= 1
-        let generation = audioConfigurationGeneration
+        audio.virtualAudioReleaseGeneration &+= 1
+        audio.configurationGeneration &+= 1
+        let generation = audio.configurationGeneration
         let deviceUID = settings.selectedAudioDeviceUID
-        AppLogger.shared.write("AUDIO REBIND begin reason=\(reason) state={\(audioOutput.diagnosticState())}")
+        AppLogger.shared.write("AUDIO REBIND begin reason=\(reason) state={\(audio.output.diagnosticState())}")
         cancelTestToneIfNeeded(
             statusMessage: LocalizedMessage("audio.test_tone.cancelled_device_changed"),
             logReason: "device_reconfigure"
         )
-        audioOutput.configureAsync(deviceUID: deviceUID) { [weak self] configured in
+        audio.output.configureAsync(deviceUID: deviceUID) { [weak self] configured in
             DispatchQueue.main.async {
                 guard let self,
                       self.started,
-                      self.audioConfigurationGeneration == generation
+                      self.audio.configurationGeneration == generation
                 else {
                     completion(false)
                     return
                 }
-                self.audioStatus = self.audioOutput.status
-                self.isAudioOutputReady = self.audioOutput.isReadyForTestTone
+                self.audioStatus = self.audio.output.status
+                self.isAudioOutputReady = self.audio.output.isReadyForTestTone
                 self.testToneStatus = self.isAudioOutputReady
                     ? LocalizedMessage("audio.test_tone.ready")
                     : LocalizedMessage("audio.output.none_or_unavailable")
                 AppLogger.shared.write(
                     "AUDIO REBIND finished reason=\(reason) success=\(configured) status=\(self.audioStatus.key) " +
                         "ready=\(self.isAudioOutputReady) selected_available=\(self.selectedAudioDeviceIsAvailable) " +
-                        "state={\(self.audioOutput.diagnosticState())}"
+                        "state={\(self.audio.output.diagnosticState())}"
                 )
                 completion(configured)
             }
@@ -263,15 +263,15 @@ extension BridgeAppModel {
 
     @discardableResult
     func ensureVirtualAudioOutputReady(reason: String) -> Bool {
-        isAudioOutputReady = audioOutput.isReadyForTestTone
+        isAudioOutputReady = audio.output.isReadyForTestTone
         guard !isAudioOutputReady else {
             AppLogger.shared.write(
-                "AUDIO HEALTH ready reason=\(reason) state={\(audioOutput.diagnosticState())}"
+                "AUDIO HEALTH ready reason=\(reason) state={\(audio.output.diagnosticState())}"
             )
             return true
         }
         AppLogger.shared.write(
-            "AUDIO HEALTH stale reason=\(reason) state={\(audioOutput.diagnosticState())}"
+            "AUDIO HEALTH stale reason=\(reason) state={\(audio.output.diagnosticState())}"
         )
         configureVirtualAudioOutput(reason: reason)
         return false
@@ -281,19 +281,20 @@ extension BridgeAppModel {
         reason: String,
         completion: @escaping (Bool) -> Void
     ) {
-        if audioOutput.isReadyForTestTone {
+        if audio.output.isReadyForTestTone {
             isAudioOutputReady = true
             completion(true)
             return
         }
         AppLogger.shared.write(
-            "AUDIO HEALTH stale reason=\(reason) state={\(audioOutput.diagnosticState())}"
+            "AUDIO HEALTH stale reason=\(reason) state={\(audio.output.diagnosticState())}"
         )
         configureVirtualAudioOutput(reason: reason, completion: completion)
     }
 
     private func startObservingAudioHardware() {
-        guard observedAudioHardwareAddresses.isEmpty else { return }
+        guard audio.observedHardwareAddresses.isEmpty else { return }
+        audio.retainHardwareListener(audioHardwareListener)
         for selector in [
             kAudioHardwarePropertyDevices,
             kAudioHardwarePropertyDefaultInputDevice,
@@ -308,11 +309,11 @@ extension BridgeAppModel {
             let result = AudioObjectAddPropertyListenerBlock(
                 AudioObjectID(kAudioObjectSystemObject),
                 &address,
-                audioHardwareListenerQueue,
+                audio.hardwareListenerQueue,
                 audioHardwareListener
             )
             if result == noErr {
-                observedAudioHardwareAddresses.append(address)
+                audio.observedHardwareAddresses.append(address)
             } else {
                 AppLogger.shared.write(
                     "AUDIO RECOVERY listener_failed selector=\(selector) " +
@@ -320,17 +321,14 @@ extension BridgeAppModel {
                 )
             }
         }
-        AppLogger.shared.write("AUDIO ROUTE_MONITOR started properties=\(Self.audioHardwarePropertyNames(for: observedAudioHardwareAddresses))")
+        AppLogger.shared.write("AUDIO ROUTE_MONITOR started properties=\(Self.audioHardwarePropertyNames(for: audio.observedHardwareAddresses))")
     }
 
     func stopObservingAudioHardware() {
-        for var address in observedAudioHardwareAddresses {
-            _ = audioHardwareListenerRemover(&address, audioHardwareListenerQueue, audioHardwareListener)
+        if !audio.observedHardwareAddresses.isEmpty {
+            AppLogger.shared.write("AUDIO ROUTE_MONITOR stopped properties=\(Self.audioHardwarePropertyNames(for: audio.observedHardwareAddresses))")
         }
-        if !observedAudioHardwareAddresses.isEmpty {
-            AppLogger.shared.write("AUDIO ROUTE_MONITOR stopped properties=\(Self.audioHardwarePropertyNames(for: observedAudioHardwareAddresses))")
-        }
-        observedAudioHardwareAddresses.removeAll()
+        audio.stopObservingHardware()
     }
 
     func scheduleAudioRecovery(reason: String, details: String = "") {
@@ -347,7 +345,7 @@ extension BridgeAppModel {
                 )
                 return
             }
-            let configurationHealthy = self.audioOutput.isConfigurationHealthyForDiagnostics
+            let configurationHealthy = self.audio.output.isConfigurationHealthyForDiagnostics
             guard !VirtualAudioRecoveryPolicy.shouldIgnoreDefaultSystemOutputChange(
                 details: details,
                 configurationHealthy: configurationHealthy
@@ -355,7 +353,7 @@ extension BridgeAppModel {
                 self.refreshAudioDevices()
                 AppLogger.shared.write(
                     "AUDIO RECOVERY ignored reason=\(reason) detail=\(details) " +
-                        "explicit_output_healthy=true state={\(self.audioOutput.diagnosticState())}"
+                        "explicit_output_healthy=true state={\(self.audio.output.diagnosticState())}"
                 )
                 return
             }
@@ -366,17 +364,17 @@ extension BridgeAppModel {
                 )
                 return
             }
-            self.audioRecoveryCoalescingState.recordEvent(reason: reason)
-            self.audioRecoveryGeneration &+= 1
-            let generation = self.audioRecoveryGeneration
-            self.audioRecoveryWorkItem?.cancel()
+            self.audio.recoveryCoalescingState.recordEvent(reason: reason)
+            self.audio.recoveryGeneration &+= 1
+            let generation = self.audio.recoveryGeneration
+            self.audio.recoveryWorkItem?.cancel()
             let work = DispatchWorkItem { [weak self] in
                 guard let self,
                       self.started,
-                      self.audioRecoveryGeneration == generation
+                      self.audio.recoveryGeneration == generation
                 else { return }
                 let startedAtUptime = ProcessInfo.processInfo.systemUptime
-                let coalesced = self.audioRecoveryCoalescingState.consumePendingEvents()
+                let coalesced = self.audio.recoveryCoalescingState.consumePendingEvents()
                 let effectiveReason = coalesced.includesHardwareChange
                     ? "hardware_change"
                     : reason
@@ -387,7 +385,7 @@ extension BridgeAppModel {
                         "includes_hardware_change=\(coalesced.includesHardwareChange)"
                 )
                 if reason == "engine_configuration_change" && !coalesced.includesHardwareChange {
-                    let snapshot = self.audioOutput.diagnosticSnapshot()
+                    let snapshot = self.audio.output.diagnosticSnapshot()
                     let configurationHealthy = snapshot.engineRunning &&
                         snapshot.playerPlaying &&
                         snapshot.boundToSelectedDevice == true
@@ -410,9 +408,9 @@ extension BridgeAppModel {
                                 "engine_running=\(snapshot.engineRunning) player_playing=\(snapshot.playerPlaying) " +
                                 "bound_to_selected=\(self.optionalDiagnosticBool(snapshot.boundToSelectedDevice)) " +
                                 "elapsed_ms=\(self.elapsedMilliseconds(since: startedAtUptime)) " +
-                                "state={\(self.audioOutput.diagnosticState())}"
+                                "state={\(self.audio.output.diagnosticState())}"
                         )
-                        self.audioRecoveryWorkItem = nil
+                        self.audio.recoveryWorkItem = nil
                         return
                     }
                 }
@@ -421,14 +419,14 @@ extension BridgeAppModel {
                         "reason=\(effectiveReason) detail=\(details) " +
                         "coalesced_events=\(coalesced.count) " +
                         "includes_hardware_change=\(coalesced.includesHardwareChange) " +
-                        "state={\(self.audioOutput.diagnosticState())}"
+                        "state={\(self.audio.output.diagnosticState())}"
                 )
                 self.refreshAudioDevices()
                 self.applyAudioSettings(reason: "recovery_\(effectiveReason)") { [weak self] _ in
                     guard let self,
-                          self.audioRecoveryGeneration == generation
+                          self.audio.recoveryGeneration == generation
                     else { return }
-                    let completedSnapshot = self.audioOutput.diagnosticSnapshot()
+                    let completedSnapshot = self.audio.output.diagnosticSnapshot()
                     let ready = completedSnapshot.engineRunning &&
                         completedSnapshot.playerPlaying &&
                         completedSnapshot.boundToSelectedDevice == true
@@ -441,12 +439,12 @@ extension BridgeAppModel {
                             "pending_buffers=\(completedSnapshot.pendingBuffers) " +
                             "pending_samples=\(completedSnapshot.pendingSamples) " +
                             "elapsed_ms=\(self.elapsedMilliseconds(since: startedAtUptime)) " +
-                            "state={\(self.audioOutput.diagnosticState())}"
+                            "state={\(self.audio.output.diagnosticState())}"
                     )
-                    self.audioRecoveryWorkItem = nil
+                    self.audio.recoveryWorkItem = nil
                 }
             }
-            self.audioRecoveryWorkItem = work
+            self.audio.recoveryWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
         }
     }
@@ -510,7 +508,7 @@ extension BridgeAppModel {
         }
 
         cancelVirtualAudioReleaseIfPending(trigger: "test_tone_start")
-        if !audioOutput.isReadyForTestTone {
+        if !audio.output.isReadyForTestTone {
             ensureVirtualAudioOutputReady(reason: "test_tone") { [weak self] ready in
                 self?.startTestToneAfterAudioReady(ready)
             }
@@ -537,7 +535,7 @@ extension BridgeAppModel {
         }
         testToneGeneration &+= 1
         let generation = testToneGeneration
-        let started = audioOutput.playTestTone { [weak self] finished in
+        let started = audio.output.playTestTone { [weak self] finished in
             DispatchQueue.main.async {
                 self?.handleTestToneCompletion(generation: generation, finished: finished)
             }
@@ -564,7 +562,7 @@ extension BridgeAppModel {
         guard isPlayingTestTone else { return }
         testToneGeneration &+= 1
         isPlayingTestTone = false
-        audioOutput.cancelTestTone()
+        audio.output.cancelTestTone()
         testToneStatus = statusMessage
         AppLogger.shared.write("AUDIO TEST_TONE cancelled reason=\(logReason)")
     }

@@ -12,25 +12,25 @@ struct SystemSleepAudioTests {
         let model = BridgeAppModel(settings: AppSettings(defaults: values), initialAudioDevices: [])
         model.started = true
         defer { model.started = false }
-        model.audioStartupPending = true
-        model.bluetoothVoiceActive = true
+        model.audio.startupPending = true
+        model.voiceSession.isActive = true
         model.isStreaming = true
         model.isAudioOutputReady = true
-        model.audioOutput.registerPendingVoiceBuffer()
+        model.audio.output.registerPendingVoiceBuffer()
         model.handleSystemAudioLifecycle(.systemWillSleep)
-        #expect(!model.bluetoothVoiceActive)
+        #expect(!model.voiceSession.isActive)
         #expect(!model.isStreaming)
         #expect(!model.isAudioOutputReady)
-        model.audioStartupGeneration = 42
+        model.audio.startupGeneration = 42
         var configurations = 0
         model.prepareAudioStartup(generation: 42, devices: [], configureOutput: { _, _ in configurations += 1 })
         #expect(configurations == 0)
-        #expect(!model.audioStartupPending)
+        #expect(!model.audio.startupPending)
         // Wait for the real output queue without allocating an audio device.
         await withCheckedContinuation { continuation in
-            DispatchQueue.global().async { model.audioOutput.stop(); continuation.resume() }
+            DispatchQueue.global().async { model.audio.output.stop(); continuation.resume() }
         }
-        #expect(model.audioOutput.pendingVoiceBufferCountForDiagnostics == 0)
+        #expect(model.audio.output.pendingVoiceBufferCountForDiagnostics == 0)
     }
 
     @Test func screenSleepPreservesActiveVoice() throws {
@@ -40,10 +40,10 @@ struct SystemSleepAudioTests {
         let model = BridgeAppModel(settings: AppSettings(defaults: values), initialAudioDevices: [])
         model.started = true
         defer { model.started = false }
-        model.bluetoothVoiceActive = true
+        model.voiceSession.isActive = true
         model.isStreaming = true
         model.handleSystemAudioLifecycle(.screenDidSleep)
-        #expect(model.bluetoothVoiceActive)
+        #expect(model.voiceSession.isActive)
         #expect(model.isStreaming)
     }
 }

@@ -133,7 +133,7 @@ extension BridgeAppModel {
 
     func reconnect() {
         guard started else { return }
-        if bluetoothBridges.isEmpty && discoveryBluetoothBridge == nil {
+        if connections.bridges.isEmpty && connections.discoveryBridge == nil {
             AppLogger.shared.write("BLE RECONNECT starting_missing_bridges")
             startBluetoothConnections()
             return
@@ -141,8 +141,8 @@ extension BridgeAppModel {
         if let selectedBluetoothBridge {
             selectedBluetoothBridge.reconnectNow()
         } else {
-            bluetoothBridges.values.forEach { $0.reconnectNow() }
-            discoveryBluetoothBridge?.reconnectNow()
+            connections.bridges.values.forEach { $0.reconnectNow() }
+            connections.discoveryBridge?.reconnectNow()
         }
     }
 
@@ -180,15 +180,15 @@ extension BridgeAppModel {
         if let selectedBluetoothBridge {
             targets = [selectedBluetoothBridge]
         } else {
-            targets = Array(bluetoothBridges.values)
+            targets = Array(connections.bridges.values)
         }
         AppLogger.shared.write(
             "BLE RECOVERY phase=begin trigger=\(reason) target_bridges=\(targets.count) " +
-                "configured_bridges=\(bluetoothBridges.count) " +
-                "discovery=\(discoveryBluetoothBridge != nil) " +
+                "configured_bridges=\(connections.bridges.count) " +
+                "discovery=\(connections.discoveryBridge != nil) " +
                 "ready_bridges=\(readyBluetoothBridgeCount)"
         )
-        if targets.isEmpty, discoveryBluetoothBridge == nil {
+        if targets.isEmpty, connections.discoveryBridge == nil {
             startBluetoothConnections()
             AppLogger.shared.write(
                 "BLE RECOVERY phase=begin trigger=\(reason) cause=started_missing_bridges"
@@ -196,29 +196,29 @@ extension BridgeAppModel {
             return
         }
         targets.forEach { $0.recoverVoiceLink(reason: reason) }
-        discoveryBluetoothBridge?.recoverVoiceLink(reason: reason)
+        connections.discoveryBridge?.recoverVoiceLink(reason: reason)
     }
 
     func setBluetoothSystemSuspended(_ suspended: Bool, reason: String) {
-        bluetoothBridges.values.forEach {
+        connections.bridges.values.forEach {
             $0.setSystemSuspended(suspended, reason: reason)
         }
-        discoveryBluetoothBridge?.setSystemSuspended(suspended, reason: reason)
+        connections.discoveryBridge?.setSystemSuspended(suspended, reason: reason)
     }
 
     func resumeBluetoothConnectionCyclesIfNeeded(reason: String) {
-        bluetoothBridges.values.forEach {
+        connections.bridges.values.forEach {
             $0.resumeConnectionCycleIfNeeded(reason: reason)
         }
-        discoveryBluetoothBridge?.resumeConnectionCycleIfNeeded(reason: reason)
+        connections.discoveryBridge?.resumeConnectionCycleIfNeeded(reason: reason)
     }
 
     func refreshRemoteDiscovery() {
         guard started else { return }
-        if discoveryBluetoothBridge == nil {
+        if connections.discoveryBridge == nil {
             startBluetoothDiscoveryIfNeeded()
         } else {
-            discoveryBluetoothBridge?.reconnectNow()
+            connections.discoveryBridge?.reconnectNow()
         }
         AppLogger.shared.write("BLE DISCOVERY refreshed_from_foreground")
     }

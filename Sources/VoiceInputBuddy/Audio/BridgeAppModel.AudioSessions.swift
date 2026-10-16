@@ -7,24 +7,20 @@ import Foundation
 
 extension BridgeAppModel {
     var readyBluetoothBridgeCount: Int {
-        bluetoothBridgeStates.values.reduce(into: 0) { count, state in
-            if case .ready = state {
-                count += 1
-            }
-        }
+        connections.readyCount
     }
 
     var shouldKeepVirtualAudioActive: Bool {
         VirtualAudioConnectionLifecyclePolicy.shouldBeActive(
             readyBluetoothBridgeCount: readyBluetoothBridgeCount,
-            bluetoothVoiceActive: bluetoothVoiceActive,
+            bluetoothVoiceActive: voiceSession.isActive,
             testToneActive: isPlayingTestTone,
-            systemSuspended: systemAudioSuspensionState.isSuspended
+            systemSuspended: audio.suspensionState.isSuspended
         )
     }
 
     var hasActiveVirtualAudioSource: Bool {
-        bluetoothVoiceActive || isPlayingTestTone
+        voiceSession.isActive || isPlayingTestTone
     }
 
     func resumeVirtualAudioOutputIfNeeded(reason: String) {
@@ -40,11 +36,11 @@ extension BridgeAppModel {
             AppLogger.shared.write("SYSTEM AUDIO resume_skipped reason=\(reason) selected=false")
             return
         }
-        isAudioOutputReady = audioOutput.isReadyForTestTone
+        isAudioOutputReady = audio.output.isReadyForTestTone
         guard !isAudioOutputReady else {
             AppLogger.shared.write(
                 "SYSTEM AUDIO resume_skipped reason=\(reason) already_ready=true " +
-                    "state={\(audioOutput.diagnosticState())}"
+                    "state={\(audio.output.diagnosticState())}"
             )
             return
         }
@@ -53,7 +49,7 @@ extension BridgeAppModel {
             AppLogger.shared.write(
                 "SYSTEM AUDIO resume_completed reason=\(reason) configured=\(configured) " +
                     "selected_available=\(self.selectedAudioDeviceIsAvailable) " +
-                    "state={\(self.audioOutput.diagnosticState())}"
+                    "state={\(self.audio.output.diagnosticState())}"
             )
         }
     }
@@ -67,59 +63,58 @@ extension BridgeAppModel {
         guard !shouldKeepVirtualAudioActive else {
             AppLogger.shared.write(
                 "AUDIO RELEASE skipped reason=\(reason) still_required=true " +
-                    "system_suspended=\(systemAudioSuspensionState.isSuspended) " +
-                    "bluetooth_voice=\(bluetoothVoiceActive) " +
+                    "system_suspended=\(audio.suspensionState.isSuspended) " +
+                    "bluetooth_voice=\(voiceSession.isActive) " +
                     "test_tone=\(isPlayingTestTone)"
             )
             return
         }
-        guard pendingVirtualAudioRelease == nil else { return }
-        let pendingVoiceBufferCount = audioOutput.pendingVoiceBufferCountForDiagnostics
+        guard audio.pendingVirtualAudioRelease == nil else { return }
+        let pendingVoiceBufferCount = audio.output.pendingVoiceBufferCountForDiagnostics
         guard VirtualAudioConnectionLifecyclePolicy.shouldScheduleRelease(
-            hasPendingRelease: pendingVirtualAudioRelease != nil,
-            hasAllocatedOutputResources: audioOutput.hasAllocatedOutputResources,
+            hasPendingRelease: audio.pendingVirtualAudioRelease != nil,
+            hasAllocatedOutputResources: audio.output.hasAllocatedOutputResources,
             pendingVoiceBufferCount: pendingVoiceBufferCount
         ) else {
             isAudioOutputReady = false
             testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
             return
         }
-        virtualAudioReleaseGeneration &+= 1
-        let generation = virtualAudioReleaseGeneration
-        pendingVirtualAudioRelease = (generation, reason)
+        audio.virtualAudioReleaseGeneration &+= 1
+        let generation = audio.virtualAudioReleaseGeneration
+        audio.pendingVirtualAudioRelease = (generation, reason)
         AppLogger.shared.write(
             "AUDIO RELEASE requested reason=\(reason) generation=\(generation) " +
-                "system_suspended=\(systemAudioSuspensionState.isSuspended) " +
+                "system_suspended=\(audio.suspensionState.isSuspended) " +
                 "pending_buffers=\(pendingVoiceBufferCount) " +
-                "state={\(audioOutput.diagnosticState())}"
+                "state={\(audio.output.diagnosticState())}"
         )
-        audioOutput.endSessionAfterDraining(
+        audio.output.endSessionAfterDraining(
             source: "audio_release",
             operationID: generation
         ) { [weak self] outcome in
             guard let self else { return }
-            guard self.virtualAudioReleaseGeneration == generation else {
+            guard self.audio.virtualAudioReleaseGeneration == generation else {
                 return
             }
-            self.pendingVirtualAudioRelease = nil
+            self.audio.pendingVirtualAudioRelease = nil
             guard !self.shouldKeepVirtualAudioActive else {
                 AppLogger.shared.write(
                     "AUDIO RELEASE cancelled reason=\(reason) generation=\(generation) " +
-                        "cause=required_again system_suspended=\(self.systemAudioSuspensionState.isSuspended) " +
-                        "bluetooth_voice=\(self.bluetoothVoiceActive) " +
-                        "" +
+                        "cause=required_again system_suspended=\(self.audio.suspensionState.isSuspended) " +
+                        "bluetooth_voice=\(self.voiceSession.isActive) " +
                         "test_tone=\(self.isPlayingTestTone)"
                 )
                 return
             }
-            self.audioOutput.stop()
+            self.audio.output.stop()
             self.isAudioOutputReady = false
             self.testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
             AppLogger.shared.write(
                 "AUDIO RELEASE completed reason=\(reason) completion=\(outcome.rawValue) generation=\(generation) " +
-                    "system_suspended=\(self.systemAudioSuspensionState.isSuspended) " +
+                    "system_suspended=\(self.audio.suspensionState.isSuspended) " +
                     "ready_bridges=\(self.readyBluetoothBridgeCount) " +
-                    "state={\(self.audioOutput.diagnosticState())}"
+                    "state={\(self.audio.output.diagnosticState())}"
             )
         }
     }
@@ -128,17 +123,17 @@ extension BridgeAppModel {
         trigger: String,
         cause: String = "required_again"
     ) {
-        guard let pendingVirtualAudioRelease else { return }
-        virtualAudioReleaseGeneration &+= 1
-        self.pendingVirtualAudioRelease = nil
-        audioOutput.cancelPendingDrain()
+        guard let pendingRelease = audio.pendingVirtualAudioRelease else { return }
+        audio.virtualAudioReleaseGeneration &+= 1
+        self.audio.pendingVirtualAudioRelease = nil
+        audio.output.cancelPendingDrain()
         AppLogger.shared.write(
-            "AUDIO RELEASE cancelled reason=\(pendingVirtualAudioRelease.reason) " +
-                "generation=\(pendingVirtualAudioRelease.generation) " +
-                "current_generation=\(virtualAudioReleaseGeneration) cause=\(cause) " +
-                "trigger=\(trigger) system_suspended=\(systemAudioSuspensionState.isSuspended) " +
+            "AUDIO RELEASE cancelled reason=\(pendingRelease.reason) " +
+                "generation=\(pendingRelease.generation) " +
+                "current_generation=\(audio.virtualAudioReleaseGeneration) cause=\(cause) " +
+                "trigger=\(trigger) system_suspended=\(audio.suspensionState.isSuspended) " +
                 "ready_bridges=\(readyBluetoothBridgeCount) " +
-                "bluetooth_voice=\(bluetoothVoiceActive) " +
+                "bluetooth_voice=\(voiceSession.isActive) " +
                 "test_tone=\(isPlayingTestTone)"
         )
     }

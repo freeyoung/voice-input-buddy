@@ -31,13 +31,13 @@ struct ConfigurationImportSessionTests {
         settings.gainDB = 21
         let model = BridgeAppModel(settings: settings)
         switch phase {
-        case "audio_start": model.pendingBluetoothVoiceStart.begin(for: UUID())
+        case "audio_start": model.voiceSession.pendingStart.begin(for: UUID())
         case "activation": model.voiceKeyActivationInProgress = true
-        default: model.bluetoothVoiceActive = true
+        default: model.voiceSession.isActive = true
         }
         #expect(model.isVoiceConfigurationBusy)
         #expect(throws: AppConfigurationError.self) { try model.importConfiguration(from: payload) }
         #expect(settings.gainDB == 21)
-        #expect(model.audioConfigurationGeneration == 0)
+        #expect(model.audio.configurationGeneration == 0)
     }
 }

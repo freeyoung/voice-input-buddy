@@ -12,6 +12,10 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     static let rc003VoiceExtensionInterval: TimeInterval = 8
     static let rc003VoiceExtensionMaximumDuration: TimeInterval = 120
 
+    let connections = BluetoothConnectionRegistry()
+    let voiceSession = VoiceSessionRuntime()
+    let audio = AudioRuntime()
+
     let settings: AppSettings
     let commonPhraseStore: CommonPhraseStore
     lazy var commonPhrases = CommonPhraseController(store: commonPhraseStore)
@@ -44,7 +48,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var activeVoiceSource: RemoteInputSource?
     @Published var voiceShortcutStatus = LocalizedMessage("voice_button.status.preparing")
     @Published var voiceKeyCompatibilityWarning: VoiceKeyCompatibilityWarning?
-    let audioOutput = VirtualAudioOutput()
 
     func isOnboardingControlSourceConnected(_ source: OnboardingControlSource) -> Bool {
         switch source {
@@ -67,8 +70,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     var activePhysicalVoiceControlSource: OnboardingControlSource? {
-        if bluetoothVoiceActive {
-            let profile = activeBluetoothVoiceDeviceIdentifier.flatMap { settings.profileID(forBluetoothIdentifier: $0) }
+        if voiceSession.isActive {
+            let profile = voiceSession.activeDeviceIdentifier.flatMap { settings.profileID(forBluetoothIdentifier: $0) }
                 .flatMap { id in settings.remoteDeviceProfiles.first { $0.id == id } }
             return profile?.model.isChromecastRemote == true ? .chromecastRemote : .xiaomiRemote
         }
@@ -99,10 +102,10 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 completion()
                 return
             }
-            self.audioOutput.endSessionAfterDraining(
+            self.audio.output.endSessionAfterDraining(
                 source: "voice_fn_tap",
                 operationID: operationID,
-                maximumDelay: self.audioOutput.pendingPlaybackDuration + 0.75
+                maximumDelay: self.audio.output.pendingPlaybackDuration + 0.75
             ) { outcome in
                 AppLogger.shared.write(
                     "VOICE FN TAP playback_stop operation_id=\(operationID) " +
@@ -115,7 +118,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             self?.handleVoiceFnTapFailure(failure)
         },
         enqueuePreRollAudio: { [weak self] in self?.enqueueVoiceFnTapAudio($0, isPreRoll: true) },
-        pendingPlaybackDuration: { [weak self] in self?.audioOutput.pendingPlaybackDuration ?? 0 },
+        pendingPlaybackDuration: { [weak self] in self?.audio.output.pendingPlaybackDuration ?? 0 },
         logger: { AppLogger.shared.write($0) },
         onIdle: { [weak self] in self?.flushPendingVoiceToolMappingRefresh() }
     )
@@ -133,12 +136,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var pendingVoiceKeyActivationOwner: VoiceFunctionKeyLatch.Owner?
     var pendingVoiceKeyActivationCompletion: ((Bool) -> Void)?
     var pendingVoiceToolMappingRefresh = false
-    var pendingCommandVoiceAudio = CommandVoiceActivationAudioBuffer()
-    var voiceSessionID: UUID?
-    var voiceAudioDeliveryGeneration = 0
-    var voiceAudioDeliveryDiagnostic = VoiceAudioDeliveryDiagnostic()
-    var bluetoothVoiceActive = false
-    var loggedBluetoothVoiceAudioDeviceIdentifier: UUID?
     var longRecordingRequested = false
     var longRecordingGeneration: UInt64 = 0
     var longRecordingOpenTimer: DispatchSourceTimer?
@@ -152,21 +149,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var rc003VoiceExtensionTimer: DispatchSourceTimer?
     var rc003VoiceExtensionOpenTimer: DispatchSourceTimer?
     var rc003VoiceExtensionDeadlineTimer: DispatchSourceTimer?
-    var bluetoothBridges: [UUID: XiaomiBluetoothBridge] = [:]
-    var bluetoothBridgeStates: [ObjectIdentifier: BluetoothBridgeState] = [:]
-    var discoveryBluetoothBridge: XiaomiBluetoothBridge?
-    let pendingBluetoothVoiceStart = BluetoothPendingAudioStart()
-    var pendingBluetoothVoiceStopRequested = false
-    var activeBluetoothVoiceDeviceIdentifier: UUID?
-    var bluetoothVoiceTraceCounter: UInt64 = 0
-    var activeBluetoothVoiceTraceID: UInt64?
-    var bluetoothVoiceTraceStartedAt: Date?
-    var bluetoothVoiceTraceModel: XiaomiRemoteModel = .unknown
-    var bluetoothVoiceDecodedBatchCount = 0
-    var bluetoothVoiceDecodedSampleCount = 0
-    var bluetoothVoiceEnqueueFailureCount = 0
-    var bluetoothVoiceTraceRoute = "none"
-    var bluetoothVoiceTailDiagnostics = BluetoothVoiceTailDiagnostics()
     let hidEventSuppressor = KeyboardEventSuppressor()
     var hidMonitoringInterrupted = false
     var hidMonitors: [String: HIDRemoteMonitor] = [:]
@@ -187,25 +169,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var hidMappingRecoveryWorkItem: DispatchWorkItem?
     var hidMappingRecoveryAttempt = 0
     var hidMappingRecoveryGeneration: UInt64 = 0
-    let audioPreparationQueue = DispatchQueue(label: "VoiceInputBuddy.audioPreparation", qos: .userInitiated)
-    var audioConfigurationGeneration: UInt64 = 0
-    var audioStartupGeneration: UInt64 = 0
-    var audioDeviceRefreshGeneration: UInt64 = 0
-    var audioStartupPending = false
-    typealias AudioHardwareListenerRemover = (
-        inout AudioObjectPropertyAddress, DispatchQueue, @escaping AudioObjectPropertyListenerBlock
-    ) -> OSStatus
-    var audioHardwareListenerRemover: AudioHardwareListenerRemover = { address, queue, listener in
-        AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
-    }
-    let audioHardwareListenerQueue = DispatchQueue(label: "VoiceInputBuddy.audioHardware")
-    var observedAudioHardwareAddresses: [AudioObjectPropertyAddress] = []
-    var audioRecoveryWorkItem: DispatchWorkItem?
-    var audioRecoveryGeneration: UInt64 = 0
-    var audioRecoveryCoalescingState = AudioRecoveryCoalescingState()
-    var virtualAudioReleaseGeneration: UInt64 = 0
-    var pendingVirtualAudioRelease: (generation: UInt64, reason: String)?
-    var systemAudioSuspensionState = SystemAudioSuspensionState()
     lazy var audioHardwareListener: AudioObjectPropertyListenerBlock = { [weak self] count, addresses in
         let properties = Self.audioHardwarePropertyNames(count: count, addresses: addresses)
         self?.scheduleAudioRecovery(reason: "hardware_change", details: "properties=\(properties)")
@@ -251,7 +214,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             .sink { [weak self] _ in
                 self?.voiceToolDidChange()
             }
-        audioOutput.onConfigurationChange = { [weak self] in
+        audio.output.onConfigurationChange = { [weak self] in
             self?.scheduleAudioRecovery(reason: "engine_configuration_change")
         }
 
@@ -280,9 +243,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     deinit {
         voiceKeyReleaseRetry?.cancel()
-        // Remove HAL registrations synchronously. Full stop also performs UI and
-        // asynchronous device operations, which do not belong in destruction.
-        stopObservingAudioHardware()
     }
 
     func stop() {
@@ -293,13 +253,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         cancelHIDMappingRecovery(reason: "app_stop")
         completedUpdateHIDRecoveryWorkItem?.cancel()
         completedUpdateHIDRecoveryWorkItem = nil
-        audioStartupGeneration &+= 1
-        audioDeviceRefreshGeneration &+= 1
-        audioStartupPending = false
-        audioRecoveryGeneration &+= 1
-        audioRecoveryWorkItem?.cancel()
-        audioRecoveryWorkItem = nil
-        audioRecoveryCoalescingState.reset()
+        audio.invalidatePendingWork()
         stopObservingAudioHardware()
         cancelTestToneIfNeeded(
             statusMessage: LocalizedMessage("app.status.stopped"),
@@ -309,23 +263,14 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         finishRC003VoiceExtensionTest(reason: "app_stop")
         voiceInputDestinationCoordinator.shutdown()
         voiceFnTapSession.shutdown()
-        bluetoothBridges.values.forEach { $0.stop() }
-        discoveryBluetoothBridge?.stop()
-        bluetoothBridges.removeAll()
-        bluetoothBridgeStates.removeAll()
-        discoveryBluetoothBridge = nil
-        pendingBluetoothVoiceStart.cancel()
-        pendingBluetoothVoiceStopRequested = false
-        activeBluetoothVoiceDeviceIdentifier = nil
-        bluetoothVoiceActive = false
+        connections.stopAll()
+        voiceSession.end()
         releaseVoiceKeyIfNeeded()
         stopHIDMonitors()
         isAudioOutputReady = false
-        virtualAudioReleaseGeneration &+= 1
-        pendingVirtualAudioRelease = nil
         // Stop is serialized with configurations on the engine queue. Enumeration no
         // longer allocates audio resources, so a delayed preparation-queue stop is unsafe.
-        audioOutput.stop()
+        audio.output.stop()
         voiceFunctionMapper.restore()
         if let terminationObserver {
             NotificationCenter.default.removeObserver(terminationObserver)

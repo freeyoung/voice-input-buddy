@@ -13,7 +13,7 @@ struct InactiveSessionInputTests {
         var edges: [Bool] = []
         #expect(model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .bluetooth,
             keySetter: { _, down in edges.append(down); return true }))
-        model.systemAudioSuspensionState.apply(event)
+        model.audio.suspensionState.apply(event)
         #expect(!model.canAcceptNewVoiceSession(from: .bluetooth))
         #expect(!model.performExternalConfiguredAction(.init(action: .arrowRight, shortcut: nil)))
         #expect(!model.performInternalAction(.openCommonPhrases))
@@ -24,7 +24,7 @@ struct InactiveSessionInputTests {
         #expect(edges == [true, false])
         let resume: SystemAudioLifecycleEvent = event == .sessionDidResignActive ? .sessionDidBecomeActive
             : (event == .screenDidSleep ? .screenDidWake : .systemDidWake)
-        model.systemAudioSuspensionState.apply(resume)
+        model.audio.suspensionState.apply(resume)
         #expect(model.canAcceptNewVoiceSession(from: .bluetooth))
     }
 }

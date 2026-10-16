@@ -105,7 +105,7 @@ struct VoiceInputActivationTests {
         #expect(posts == 0)
         #expect(!model.voiceKeyLatch.isHeld)
         #expect(model.pendingVoiceKeyMode == nil)
-        #expect(!model.pendingCommandVoiceAudio.isWaiting)
+        #expect(!model.voiceSession.commandAudio.isWaiting)
     }
 
     @Test func failedFnUpAndConfirmedCleanupBothRetainSourceForComposition() throws {
@@ -414,7 +414,7 @@ struct VoiceInputActivationTests {
         let setter: (VoiceKeyMode, Bool) -> Bool = { _, down in posted.append(down); return true }
         #expect(model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .bluetooth, keySetter: setter))
         #expect(posted.isEmpty)
-        #expect(model.pendingCommandVoiceAudio.isWaiting)
+        #expect(model.voiceSession.commandAudio.isWaiting)
         #expect(model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .bluetooth, keySetter: setter))
         #expect(model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .bluetooth, keySetter: setter))
         confirmations[0](true)

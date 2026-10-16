@@ -16,3 +16,16 @@ Voice Input Buddy 是硬件到语音输入工具的桥接应用，首先实现 m
 此前反馈中的实时预览、识别尾部延迟和语义整理涉及识别引擎。如果将来增加自有识别后端，应分开测量识别、整理和交付阶段；桥接第三方软件时无法保证这些体验。专用 USB / 蓝牙按钮和脚踏设备可作为后续触发源，不应将其标为当前已验证设备。
 
 Windows 尚未迁入源码，不具备可发布能力。后续需要独立实现系统权限、BLE、音频回环与键盘注入，并进行真实设备测试。
+
+### Runtime ownership
+
+`BridgeAppModel` publishes UI state and coordinates input, connections and audio.
+Its main-queue runtime state has three explicit owners:
+
+- `BluetoothConnectionRegistry` owns configured/discovery bridges and their ready states; `stopAll()` stops and removes the whole connection set.
+- `VoiceSessionRuntime` owns the active voice device, pending start, command pre-roll and diagnostics; `end()` clears device ownership and buffered work together.
+- `AudioRuntime` owns the output, preparation queue, generation tokens, recovery task and HAL registrations. Shutdown invalidates every audio completion token; destruction cancels recovery and removes the exact registered listener block synchronously.
+
+Engine operations and HAL callbacks retain their dedicated queues. Their callbacks
+return to the main queue before mutating application state. The UI model does not
+own HAL registrations or perform asynchronous teardown from its destructor.

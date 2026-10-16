@@ -7,7 +7,7 @@ import Foundation
 
 extension BridgeAppModel {
     func performExternalConfiguredAction(_ configured: ConfiguredButtonAction) -> Bool {
-        guard !systemAudioSuspensionState.isSuspended else { return false }
+        guard !audio.suspensionState.isSuspended else { return false }
         let applicationProfile = settings.customApplicationProfile(
             id: configured.applicationProfileID
         )
@@ -69,7 +69,7 @@ extension BridgeAppModel {
 
     @discardableResult
     func performInternalAction(_ action: ButtonAction, source: String = "host_action") -> Bool {
-        guard !systemAudioSuspensionState.isSuspended else { return false }
+        guard !audio.suspensionState.isSuspended else { return false }
         if action == .openCommonPhrases {
             guard Thread.isMainThread else { return false }
             return MainActor.assumeIsolated {

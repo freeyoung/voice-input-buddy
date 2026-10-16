@@ -13,10 +13,10 @@ struct BluetoothDiscoveryPromotionTests {
         let model = BridgeAppModel(settings: settings)
         let identifier = UUID()
         let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model,
-            excludedIdentifiers: { Set(model.bluetoothBridges.keys) })
+            excludedIdentifiers: { Set(model.connections.bridges.keys) })
         // Exercise registration's known-bridge identity fallback without a CBPeripheral.
-        model.bluetoothBridges[identifier] = bridge
-        model.discoveryBluetoothBridge = bridge
+        model.connections.bridges[identifier] = bridge
+        model.connections.discoveryBridge = bridge
         #expect(bridge.targetIdentifier == nil)
         #expect(!bridge.acceptsCandidateIdentifier(identifier))
         let profileID = try #require(model.registerBluetoothBridgeIfNeeded(bridge))
@@ -24,7 +24,7 @@ struct BluetoothDiscoveryPromotionTests {
         #expect(bridge.targetIdentifier == identifier)
         #expect(bridge.deviceIdentifier == identifier)
         #expect(bridge.acceptsCandidateIdentifier(identifier))
-        #expect(model.discoveryBluetoothBridge == nil)
+        #expect(model.connections.discoveryBridge == nil)
     }
 
     @Test func promotedDiscoveryBridgeRetainsItsDeviceAndCanReconnect() throws {
@@ -36,16 +36,16 @@ struct BluetoothDiscoveryPromotionTests {
         let identifier = UUID()
         let other = UUID()
         let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model,
-            excludedIdentifiers: { Set(model.bluetoothBridges.keys) })
-        model.discoveryBluetoothBridge = bridge
+            excludedIdentifiers: { Set(model.connections.bridges.keys) })
+        model.connections.discoveryBridge = bridge
         #expect(bridge.deviceIdentifier == nil)
         #expect(bridge.acceptsCandidateIdentifier(identifier))
 
         // Simulate the verified handshake identity, without creating a Bluetooth manager.
         #expect(bridge.bindVerifiedIdentity(identifier))
         let profileID = try #require(model.registerBluetoothBridgeIfNeeded(bridge))
-        #expect(model.discoveryBluetoothBridge == nil)
-        #expect(model.bluetoothBridges[identifier] === bridge)
+        #expect(model.connections.discoveryBridge == nil)
+        #expect(model.connections.bridges[identifier] === bridge)
         #expect(settings.profileID(forBluetoothIdentifier: identifier) == profileID)
 
         // No peripheral is retained here, just as after sleep/disconnect teardown.
