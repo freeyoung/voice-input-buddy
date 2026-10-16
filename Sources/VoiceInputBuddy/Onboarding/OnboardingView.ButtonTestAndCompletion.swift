@@ -121,7 +121,7 @@ extension OnboardingView {
                 "onboarding.remote.chromecast_pairing.title",
                 "onboarding.remote.chromecast_pairing.first",
                 "onboarding.remote.chromecast_pairing.second",
-                nil
+                "onboarding.remote.chromecast_pairing.third"
             )
         case .xiaomiRemote, .appleCompanion, .webRemote, .unselected:
             return (

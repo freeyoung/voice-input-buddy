@@ -814,7 +814,7 @@
 "onboarding.permissions.web_remote.title" = "小程序连接将在下一页检查";
 "onboarding.permissions.web_remote.detail" = "三项系统权限开启后，下一页检查小程序与这台 Mac 的真实连接。";
 "onboarding.remote.title" = "连接遥控器，再按一下实体键";
-"onboarding.remote.detail" = "首次连接请先完成下面两步。配对成功后，按任意一个普通按键确认 Mac 能收到它。";
+"onboarding.remote.detail" = "首次连接请按下方步骤完成配对。配对成功后，按任意一个普通按键确认 Mac 能收到它。";
 "onboarding.remote.first_pairing.title" = "首次连接遥控器";
 "onboarding.remote.first_pairing.wake" = "长按 TV 键约 2 秒，直到遥控器底部白灯开始闪烁。";
 "onboarding.remote.first_pairing.pair" = "同时长按 Home（主页）+ Menu（菜单）键，进入蓝牙配对模式。";
@@ -822,9 +822,9 @@
 "onboarding.remote.siri_pairing.first" = "打开“系统设置 → 蓝牙”，让苹果遥控器靠近 Mac。";
 "onboarding.remote.siri_pairing.second" = "同时按住返回键和音量加键约 5 秒，看到遥控器后完成连接。";
 "onboarding.remote.siri_pairing.third" = "蓝牙名称可能不会显示为“苹果遥控器”。重置后请关注蓝牙列表中新出现的设备，不要只按名称判断。";
-"onboarding.remote.chromecast_pairing.title" = "首次连接 Chromecast 语音遥控器";
-"onboarding.remote.chromecast_pairing.first" = "打开“系统设置 → 蓝牙”，让遥控器靠近 Mac 并保持唤醒。";
-"onboarding.remote.chromecast_pairing.second" = "如果没有出现，请按遥控器说明重新进入配对模式；连接后按一个普通按键唤醒。";
+"onboarding.remote.chromecast_pairing.title" = "Google 遥控器配对（G9N9N / GY3LE）";
+"onboarding.remote.chromecast_pairing.first" = "打开“系统设置 → 蓝牙”，将遥控器靠近 Mac。";
+"onboarding.remote.chromecast_pairing.second" = "同时按住返回（Back）和主页（Home）约 3 秒，直到指示灯开始闪烁。";
 "onboarding.remote.connected" = "所选遥控器已连接";
 "onboarding.remote.connected_detail" = "语音搭子已与遥控器建立可用连接。";
 "onboarding.remote.hid_connected" = "已识别实体遥控器";
@@ -1293,3 +1293,4 @@
 "connection.device.audio" = "音频格式";
 "connection.device.frame" = "音频帧大小";
 "connection.device.frame_bytes" = "%@ 字节";
+"onboarding.remote.chromecast_pairing.third" = "在 Mac 的蓝牙列表中选择遥控器并连接。连接后按一个普通按键，确认电脑收到输入。重新配对时，可先在蓝牙设置中忽略设备。";
