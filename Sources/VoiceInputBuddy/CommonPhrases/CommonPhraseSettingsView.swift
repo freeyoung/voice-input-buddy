@@ -12,21 +12,18 @@ struct CommonPhraseSettingsView: View {
     @State private var draggedPhraseID: String?
     @State private var text = ""
     @State private var shortLabel = ""
-    @State private var englishText = ""
-    @State private var englishLabel = ""
     @State private var messageKey: String?
     @State private var importing = false
     @State private var fileOperation: UInt64 = 0
     @State private var selectionOperation: UInt64 = 0
-    private var english: Bool { localization.locale.language.languageCode?.identifier == "en" }
     private var canSave: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !shortLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && store.isAvailable
     }
     private var filteredPhrases: [CommonPhrase] {
         store.archive.entries.filter {
-            search.isEmpty || $0.label(english: english).localizedCaseInsensitiveContains(search)
-                || $0.text(english: english).localizedCaseInsensitiveContains(search)
+            search.isEmpty || $0.label.localizedCaseInsensitiveContains(search)
+                || $0.insertionText.localizedCaseInsensitiveContains(search)
         }
     }
 
@@ -149,7 +146,7 @@ struct CommonPhraseSettingsView: View {
                 }
                     .frame(width: 10).foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                Text(phrase.label(english: english))
+                Text(phrase.label)
                     .foregroundStyle(selectedID == phrase.id ? Color.blue : Color.primary)
                     .fontWeight(selectedID == phrase.id ? .semibold : .regular)
                     .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
@@ -177,7 +174,7 @@ struct CommonPhraseSettingsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(phrase.text(english: english))
+        .help(phrase.insertionText)
         .accessibilityIdentifier("common-phrases-entry-\(phrase.id)")
         .onDrag {
             draggedPhraseID = phrase.id
@@ -223,24 +220,6 @@ struct CommonPhraseSettingsView: View {
                         .accessibilityIdentifier("common-phrases-text")
                     boundaryPaddingHint(for: text)
                 }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(localization.text("common_phrases.english_label")).foregroundStyle(.secondary)
-                    TextField("", text: $englishLabel)
-                        .textFieldStyle(.plain).padding(10).frame(minHeight: 36)
-                        .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.12)))
-                        .accessibilityLabel(localization.text("common_phrases.english_label"))
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(localization.text("common_phrases.english_text")).foregroundStyle(.secondary)
-                    TextEditor(text: $englishText)
-                        .scrollContentBackground(.hidden).frame(height: 90).padding(8)
-                        .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.12)))
-                        .accessibilityLabel(localization.text("common_phrases.english_text"))
-                        .accessibilityIdentifier("common-phrases-english-text")
-                    boundaryPaddingHint(for: englishText)
-                }
                 ViewThatFits(in: .horizontal) {
                     HStack { editButtons }
                     VStack(alignment: .leading) { editButtons }
@@ -271,7 +250,7 @@ struct CommonPhraseSettingsView: View {
         Button {
             perform {
                 let phrase = CommonPhrase(id: selectedID ?? "user-" + UUID().uuidString,
-                    chineseText: text, chineseLabel: shortLabel, englishText: englishText, englishLabel: englishLabel)
+                    text: text, label: shortLabel)
                 let savedID = try store.save(phrase, replacing: selectedID)
                 select(store.archive.entries.first { $0.id == savedID })
             }
@@ -330,10 +309,8 @@ struct CommonPhraseSettingsView: View {
 
     private func select(_ phrase: CommonPhrase?) {
         selectedID = phrase?.id
-        text = phrase?.chineseText ?? ""
-        shortLabel = phrase?.chineseLabel ?? ""
-        englishText = phrase?.englishText ?? ""
-        englishLabel = phrase?.englishLabel ?? ""
+        text = phrase?.text ?? ""
+        shortLabel = phrase?.label ?? ""
         messageKey = nil
     }
 

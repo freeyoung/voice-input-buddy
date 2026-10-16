@@ -125,7 +125,7 @@ final class CommonPhraseController: ObservableObject {
     func claims(_ button: RemoteButton, source: String) -> Bool { routing.claims(button, source: source) }
 
     func insert(_ button: RemoteButton) {
-        guard isVisible, let targetPID, let localization else { return }
+        guard isVisible, let targetPID else { return }
         let phrase = store.phrase(for: button)
         // End the one-shot panel before submitting. Its held release remains
         // claimed, and the new insertion survives the panel's cancellation.
@@ -136,7 +136,7 @@ final class CommonPhraseController: ObservableObject {
             return
         }
         let current = generation
-        inserter.insert(phrase.text(english: localization.locale.language.languageCode?.identifier == "en"), into: targetPID) { [weak self] key in
+        inserter.insert(phrase.insertionText, into: targetPID) { [weak self] key in
             guard let self, self.generation == current, key.hasPrefix("common_phrases.error.") else { return }
             self.showFailure(key)
         }
@@ -221,7 +221,6 @@ struct CommonPhrasePad: View {
     var selectedButton: RemoteButton? = nil
     var onSelect: (RemoteButton) -> Void
     @EnvironmentObject private var localization: LocalizationStore
-    private var english: Bool { localization.locale.language.languageCode?.identifier == "en" }
 
     var body: some View {
         ZStack {
@@ -250,7 +249,7 @@ struct CommonPhrasePad: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("OK"))
-            .accessibilityValue(store.phrase(for: .ok)?.label(english: english) ?? localization.text("common_phrases.unassigned"))
+            .accessibilityValue(store.phrase(for: .ok)?.label ?? localization.text("common_phrases.unassigned"))
             .accessibilityIdentifier("common-phrases-position-ok")
             .accessibilityAddTraits(selectedButton == .ok ? .isSelected : [])
         }
@@ -292,13 +291,13 @@ struct CommonPhrasePad: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(localization.text("common_phrases.key.\(button.rawValue)"))
-        .accessibilityValue(store.phrase(for: button)?.label(english: english) ?? localization.text("common_phrases.unassigned"))
+        .accessibilityValue(store.phrase(for: button)?.label ?? localization.text("common_phrases.unassigned"))
         .accessibilityIdentifier("common-phrases-position-\(button.rawValue)")
         .accessibilityAddTraits(selectedButton == button ? .isSelected : [])
     }
 
     private func phraseLabel(_ button: RemoteButton) -> some View {
-        Text(store.phrase(for: button)?.label(english: english) ?? localization.text("common_phrases.unassigned"))
+        Text(store.phrase(for: button)?.label ?? localization.text("common_phrases.unassigned"))
             .font(.system(size: diameter > 300 ? 15 : 12))
             .lineLimit(2).multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

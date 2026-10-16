@@ -17,9 +17,9 @@ struct CommonPhraseClipboardTests {
                 return true
             })
         for body in ["第一条\t", "\t 第二条 \t"] {
-            let phrase = CommonPhrase(id: "user-test", chineseText: body,
-                chineseLabel: "标签", englishText: "", englishLabel: "")
-            writer.paste(phrase.text(english: false), validate: { $0(nil) }, canSubmit: { true }) {
+            let phrase = CommonPhrase(id: "user-test", text: body,
+                label: "标签")
+            writer.paste(phrase.insertionText, validate: { $0(nil) }, canSubmit: { true }) {
                 #expect($0 == nil)
             }
             clock.runAll()

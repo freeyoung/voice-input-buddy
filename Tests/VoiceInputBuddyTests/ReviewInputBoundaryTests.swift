@@ -41,8 +41,8 @@ struct ReviewInputBoundaryTests {
         defer { try? FileManager.default.removeItem(at: url) }
         try Data(repeating: 32, count: CommonPhraseStore.maximumImportBytes + 1).write(to: url)
         #expect(throws: AppConfigurationError.self) { try CommonPhraseStore.readImport(from: url) }
-        let archive = CommonPhraseArchive(entries: [CommonPhrase(id: "test", chineseText: "测试",
-            chineseLabel: "测试", englishText: "Test", englishLabel: "Test")], bindings: ["ok": "test"])
+        let archive = CommonPhraseArchive(entries: [CommonPhrase(id: "test", text: "测试",
+            label: "测试")], bindings: ["ok": "test"])
         try JSONEncoder().encode(archive).write(to: url)
         #expect(try CommonPhraseStore.readImport(from: url) == archive)
         try Data(repeating: 0, count: 12).write(to: url)
