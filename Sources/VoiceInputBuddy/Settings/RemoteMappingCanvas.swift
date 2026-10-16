@@ -17,32 +17,27 @@ struct RemoteMappingPlacement: Identifiable {
 
 enum RemoteMappingLayout {
     static let canvasHeight: CGFloat = 570
-    static let remoteSize = CGSize(width: 251, height: 251.0 * 850 / 508)
+    // Match the 508 × 1030 artwork without stretching buttons or their anchors.
+    static let remoteSize = CGSize(width: 232, height: 232.0 * 1030 / 508)
     static let arrowCardGap: CGFloat = 7
 
     static let buttonPlacements: [RemoteMappingPlacement] = [
-        RemoteMappingPlacement(button: .power, side: .left, anchor: illustrationAnchor(x: 0.386, y: 0.099), targetY: 0.08),
-        RemoteMappingPlacement(button: .up, side: .left, anchor: illustrationAnchor(x: 0.502, y: 0.179), targetY: 0.23),
-        RemoteMappingPlacement(button: .left, side: .left, anchor: illustrationAnchor(x: 0.362, y: 0.246), targetY: 0.38),
-        RemoteMappingPlacement(button: .back, side: .left, anchor: illustrationAnchor(x: 0.406, y: 0.389), targetY: 0.53),
-        RemoteMappingPlacement(button: .home, side: .left, anchor: illustrationAnchor(x: 0.406, y: 0.479), targetY: 0.68),
-        RemoteMappingPlacement(button: .menu, side: .left, anchor: illustrationAnchor(x: 0.406, y: 0.569), targetY: 0.83),
-        RemoteMappingPlacement(button: .right, side: .right, anchor: illustrationAnchor(x: 0.638, y: 0.246), targetY: 0.215),
-        RemoteMappingPlacement(button: .ok, side: .right, anchor: illustrationAnchor(x: 0.502, y: 0.246), targetY: 0.36),
-        RemoteMappingPlacement(button: .down, side: .right, anchor: illustrationAnchor(x: 0.502, y: 0.317), targetY: 0.505),
-        RemoteMappingPlacement(button: .volumeUp, side: .right, anchor: illustrationAnchor(x: 0.604, y: 0.390), targetY: 0.65),
-        RemoteMappingPlacement(button: .volumeDown, side: .right, anchor: illustrationAnchor(x: 0.604, y: 0.480), targetY: 0.795),
-        RemoteMappingPlacement(button: .tv, side: .right, anchor: illustrationAnchor(x: 0.604, y: 0.569), targetY: 0.94),
+        RemoteMappingPlacement(button: .power, side: .left, anchor: UnitPoint(x: 0.386, y: 0.099), targetY: 0.08),
+        RemoteMappingPlacement(button: .up, side: .left, anchor: UnitPoint(x: 0.502, y: 0.179), targetY: 0.23),
+        RemoteMappingPlacement(button: .left, side: .left, anchor: UnitPoint(x: 0.362, y: 0.246), targetY: 0.38),
+        RemoteMappingPlacement(button: .back, side: .left, anchor: UnitPoint(x: 0.406, y: 0.389), targetY: 0.53),
+        RemoteMappingPlacement(button: .home, side: .left, anchor: UnitPoint(x: 0.406, y: 0.479), targetY: 0.68),
+        RemoteMappingPlacement(button: .menu, side: .left, anchor: UnitPoint(x: 0.406, y: 0.569), targetY: 0.83),
+        RemoteMappingPlacement(button: .right, side: .right, anchor: UnitPoint(x: 0.638, y: 0.246), targetY: 0.215),
+        RemoteMappingPlacement(button: .ok, side: .right, anchor: UnitPoint(x: 0.502, y: 0.246), targetY: 0.36),
+        RemoteMappingPlacement(button: .down, side: .right, anchor: UnitPoint(x: 0.502, y: 0.317), targetY: 0.505),
+        RemoteMappingPlacement(button: .volumeUp, side: .right, anchor: UnitPoint(x: 0.604, y: 0.390), targetY: 0.65),
+        RemoteMappingPlacement(button: .volumeDown, side: .right, anchor: UnitPoint(x: 0.604, y: 0.480), targetY: 0.795),
+        RemoteMappingPlacement(button: .tv, side: .right, anchor: UnitPoint(x: 0.604, y: 0.569), targetY: 0.94),
     ]
 
-    static let voiceAnchor = illustrationAnchor(x: 0.630, y: 0.099)
+    static let voiceAnchor = UnitPoint(x: 0.630, y: 0.099)
     static let voiceTargetY: CGFloat = 0.07
-
-    // The artwork uses the original 1030-point button coordinates on an 850-point
-    // image after shortening the grip. Store anchors normalized to the actual image.
-    private static func illustrationAnchor(x: CGFloat, y: CGFloat) -> UnitPoint {
-        UnitPoint(x: x, y: y * 1030 / 850)
-    }
 
     static func remotePoint(
         for anchor: UnitPoint,
