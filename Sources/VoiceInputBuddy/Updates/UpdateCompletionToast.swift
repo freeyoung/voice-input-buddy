@@ -28,7 +28,6 @@ struct UpdateCompletionToast: ViewModifier {
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.08)))
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
-                    .padding(.top, 16)
                     .padding(.horizontal, 24)
                     .allowsHitTesting(false)
                     .accessibilityElement(children: .combine)
