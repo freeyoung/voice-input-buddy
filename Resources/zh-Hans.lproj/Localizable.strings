@@ -211,7 +211,6 @@
 "button_mapping.action_group.system_and_media" = "系统与媒体";
 "button_mapping.action_group.custom" = "自定义动作";
 "button_mapping.action_group.applications" = "打开具体 APP";
-"button_mapping.action.disable_switch" = "禁用按键";
 "custom_application.target" = "目标 APP";
 "custom_application.not_configured" = "尚未选择 APP";
 "custom_application.add" = "添加 APP";
@@ -1091,11 +1090,11 @@
 "common_phrases.error.edit_failed" = "无法保存。请检查内容或导入文件格式；原有数据未被修改。";
 "common_phrases.error.no_phrase" = "这个按键尚未分配常用语，请在常用语页面设置。";
 "common_phrases.error.accessibility_required" = "请在系统设置中允许语音搭子使用辅助功能。";
-"common_phrases.error.input_unavailable" = "请将光标放入非敏感的可编辑输入框，并取消文本选区后再试。";
+"common_phrases.error.input_unavailable" = "无法确认当前输入位置。请先点击目标编辑区再试；该应用也可能未提供可用的辅助功能输入信息。";
 "common_phrases.error.target_changed" = "输入目标已改变，请重新打开常用语。";
 "common_phrases.error.clipboard_write_failed" = "无法安全暂存或写入剪贴板。如系统询问，请允许剪贴板访问后重试。";
 "common_phrases.error.clipboard_restore_failed" = "粘贴后未能恢复剪贴板，请检查剪贴板内容。";
-"common_phrases.error.paste_failed" = "无法执行粘贴，请检查辅助功能权限后重试。";
+"common_phrases.error.paste_failed" = "粘贴指令未能发送。请松开修饰键后重试，并确认辅助功能权限仍已开启。";
 "common_phrases.error.cancelled" = "插入已取消。";
 "custom_application.accessibility.test" = "测试输入框";
 
@@ -1202,7 +1201,6 @@
 
 "button_mapping.unsupported_device" = "此遥控器目前尚未支持。请选择小米或 G9N9N 遥控器进行按键设置。";
 
-"button_mapping.action.disable_restore_scope" = "当前设置窗口内重新启用会还原之前的动作。关闭窗口后重新启用，将使用该按键的默认动作；双击和长按需要重新选择动作。";
 
 "onboarding.voice_tool.guide.screenshot.doubao_input_microphone" = "豆包输入法：选择语音搭子的麦克风";
 "onboarding.voice_tool.guide.screenshot.weixin_input_microphone" = "微信输入法：选择语音搭子的麦克风";
@@ -1281,3 +1279,9 @@
 "onboarding.integration.complete.detail" = "输入法已完成配置，并已通过现有设备的语音输入验证。";
 
 "common_phrases.inserted" = "常用语已插入。";
+
+"button_mapping.editor.confirm" = "确定";
+
+"button_mapping.action.not_set_help" = "当前手势不执行任何动作；这个按键的其他手势不受影响。选择下方动作即可重新设置。修改会自动保存。";
+
+"button_mapping.action.clear" = "清除设置";

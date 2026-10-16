@@ -5,6 +5,23 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func navigationFnFlagDoesNotBlockOrModifyPaste() {
+        let flags = CommonPhraseClipboardPaste.normalizedPasteFlags([.maskSecondaryFn, .maskNumericPad], fnKeyDown: false)
+        #expect(!flags.contains(.maskSecondaryFn))
+        #expect(flags.contains(.maskNumericPad))
+        #expect(CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
+    }
+
+    @Test func physicallyHeldModifiersStillBlockPaste() {
+        let fn = CommonPhraseClipboardPaste.normalizedPasteFlags([], fnKeyDown: true)
+        #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: fn))
+        for modifier: CGEventFlags in [.maskControl, .maskAlternate, .maskShift] {
+            let flags = CommonPhraseClipboardPaste.normalizedPasteFlags([modifier, .maskSecondaryFn], fnKeyDown: false)
+            #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
+        }
+        #expect(CommonPhraseClipboardPaste.permitsPasteShortcut(flags: .maskCommand))
+    }
+
     @Test func restoresEveryItemAndFormatAfterPaste() {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }

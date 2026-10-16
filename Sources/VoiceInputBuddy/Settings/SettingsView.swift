@@ -29,7 +29,6 @@ struct SettingsView: View {
     @State private var selectedChromecastControlID = "select"
     @State var isMappingSelectionLocked = true
     @State var mappingEditingTarget: ShortcutEditingTarget?
-    @State var mappingDisableEditor = MappingDisableEditor()
     @State var mappingActionFilter: MappingActionFilter = .all
     @State var shortcutCaptureTarget: ShortcutEditingTarget?
     @State var applicationShortcutCaptureProfileID: UUID?

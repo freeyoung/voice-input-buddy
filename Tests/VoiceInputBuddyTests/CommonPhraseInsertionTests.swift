@@ -75,6 +75,19 @@ struct CommonPhraseInsertionTests {
         #expect(results == ["common_phrases.inserted", "common_phrases.error.target_changed"])
     }
 
+    @Test func sublimeCustomBufferUsesPasteWithoutAllowingArbitraryWindows() {
+        #expect(CommonPhraseInserter.permitsWindowEditor(bundleIdentifier: "com.sublimetext.4",
+            role: kAXWindowRole, subrole: kAXStandardWindowSubrole))
+        for (bundle, role, subrole) in [
+            ("com.google.Chrome", kAXWindowRole, kAXStandardWindowSubrole),
+            ("com.sublimetext.4", kAXWindowRole, kAXDialogSubrole),
+            ("com.sublimetext.4", kAXTextFieldRole, kAXSecureTextFieldSubrole)
+        ] {
+            #expect(!CommonPhraseInserter.permitsWindowEditor(bundleIdentifier: bundle, role: role, subrole: subrole))
+        }
+        #expect(CommonPhraseInserter.prefersPaste(bundleIdentifier: "com.sublimetext.4", electron: false, webContent: false))
+    }
+
     @Test func secureFieldMetadataBlocksInsertionButOrdinaryFieldsRemainAvailable() {
         func permits(subrole: String = "", enabled: Bool = true, protected: Bool = false,
                      identifier: String = "") -> Bool {
