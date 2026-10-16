@@ -139,6 +139,7 @@ extension SettingsView {
                                     .fixedSize(horizontal: true, vertical: false)
                                     .frame(width: 150)
                                 Button("about.configuration.import", action: importConfiguration)
+                                    .disabled(model.isVoiceConfigurationBusy)
                                     .compatibilityButtonStyle(.standard)
                                     .fixedSize(horizontal: true, vertical: false)
                                     .frame(width: 150)

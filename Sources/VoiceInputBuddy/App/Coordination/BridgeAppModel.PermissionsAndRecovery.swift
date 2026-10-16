@@ -78,8 +78,9 @@ extension BridgeAppModel {
         let importedVoiceKeyConfiguration = try settings.voiceKeyConfigurationState(in: data)
         let changesVoiceKeyConfiguration =
             importedVoiceKeyConfiguration != settings.voiceKeyConfigurationState
+        guard !isStreaming else { throw AppConfigurationError.unsafeVoiceKeyChange }
         if changesVoiceKeyConfiguration {
-            guard !isStreaming, releaseVoiceKey() else {
+            guard releaseVoiceKey() else {
                 throw AppConfigurationError.unsafeVoiceKeyChange
             }
         }

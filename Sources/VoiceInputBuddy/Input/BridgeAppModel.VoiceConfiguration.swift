@@ -53,7 +53,14 @@ extension BridgeAppModel {
         }
     }
 
+    var isVoiceConfigurationBusy: Bool {
+        isStreaming || hasActiveVirtualAudioSource || voiceKeyLatch.isHeld ||
+            voiceKeyActivationInProgress || pendingBluetoothVoiceStart.identifier != nil ||
+            voiceFnTapSession.requiresCleanupBeforeMapping || voiceKeyReleaseRetry != nil
+    }
+
     func importConfiguration(from data: Data) throws {
+        guard !isVoiceConfigurationBusy else { throw AppConfigurationError.unsafeVoiceKeyChange }
         let changedVoiceKeyConfiguration: Bool
         do {
             changedVoiceKeyConfiguration = try Self.importConfiguration(
