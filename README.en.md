@@ -11,7 +11,7 @@ Supports **macOS 14 and later**, on Apple Silicon and Intel Macs. Windows suppor
 ## What can it do?
 
 - Use a remote's microphone for voice input, without reaching for the keyboard.
-- Map remote buttons to keyboard shortcuts, application actions, or common phrases.
+- Map remote buttons to keyboard shortcuts, application actions, or common phrases. Phrase content can mix languages and stays the same when the interface language changes.
 - Configure hold-to-talk or press-to-start/stop behavior for your input tool.
 - Set up permissions, the microphone driver, device connection, and input integration in one guide.
 

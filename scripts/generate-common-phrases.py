@@ -19,13 +19,12 @@ def generate(text):
         if section == '常用语表':
             if cells[0] == '#' or all(set(c) <= set('-:') for c in cells):
                 continue
-            if len(cells) != 5 or not all(cells) or not cells[0].isdigit() or int(cells[0]) != len(phrases) + 1:
-                raise ValueError('Phrase rows must contain five nonempty columns and consecutive numbers')
-            number, zh, zh_label, en, en_label = cells
-            if max(len(zh), len(en)) > 4000 or max(len(zh_label), len(en_label)) > 80:
+            if len(cells) != 3 or not all(cells) or not cells[0].isdigit() or int(cells[0]) != len(phrases) + 1:
+                raise ValueError('Phrase rows must contain three nonempty columns and consecutive numbers')
+            number, content, label = cells
+            if len(content) > 4000 or len(label) > 80:
                 raise ValueError('Phrase text or label is too long')
-            phrases.append(dict(id=f'builtin-{int(number):03}', chineseText=zh, chineseLabel=zh_label,
-                                englishText=en, englishLabel=en_label))
+            phrases.append(dict(id=f'builtin-{int(number):03}', text=content, label=label))
         elif section == '默认键位':
             if cells[0] == '按键' or all(set(c) <= set('-:') for c in cells):
                 continue
@@ -33,12 +32,12 @@ def generate(text):
                 raise ValueError('Invalid default binding row')
             button = buttons[cells[0]]
             index = int(cells[1]) - 1
-            if button in defaults or index not in range(min(5, len(phrases))) or cells[2] != phrases[index]['chineseText']:
+            if button in defaults or index not in range(min(5, len(phrases))) or cells[2] != phrases[index]['text']:
                 raise ValueError('Duplicate, unknown or inconsistent default binding')
             defaults[button] = phrases[index]['id']
     if not 5 <= len(phrases) <= 500 or set(defaults) != set(buttons.values()) or len(set(defaults.values())) != 5:
         raise ValueError('Missing phrases or defaults')
-    return dict(schemaVersion=1, entries=phrases, bindings=defaults, builtInIDs=[p['id'] for p in phrases])
+    return dict(schemaVersion=2, entries=phrases, bindings=defaults, builtInIDs=[p['id'] for p in phrases])
 
 
 if __name__ == '__main__':

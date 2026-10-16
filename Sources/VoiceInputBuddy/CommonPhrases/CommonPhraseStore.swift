@@ -3,10 +3,8 @@ import Foundation
 
 struct CommonPhrase: Codable, Equatable, Identifiable {
     let id: String
-    var chineseText: String
-    var chineseLabel: String
-    var englishText: String
-    var englishLabel: String
+    var text: String
+    var label: String
 
     /// Boundary spaces and tabs are easy to enter accidentally in the editor.
     /// Keep interior whitespace and all authored line breaks unchanged.
@@ -14,21 +12,16 @@ struct CommonPhrase: Codable, Equatable, Identifiable {
         text.trimmingCharacters(in: CharacterSet(charactersIn: " \t"))
     }
 
-    func text(english: Bool) -> String {
-        let englishText = Self.removingBoundaryPadding(englishText)
-        return english && !englishText.isEmpty ? englishText : Self.removingBoundaryPadding(chineseText)
-    }
-    func label(english: Bool) -> String { english && !englishLabel.isEmpty ? englishLabel : chineseLabel }
+    var insertionText: String { Self.removingBoundaryPadding(text) }
     var isValid: Bool {
-        !id.isEmpty && !chineseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !chineseLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        chineseText.count <= 4_000 && englishText.count <= 4_000 &&
-        chineseLabel.count <= 80 && englishLabel.count <= 80
+        !id.isEmpty && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        text.count <= 4_000 && label.count <= 80
     }
 }
 
 struct CommonPhraseArchive: Codable, Equatable {
-    var schemaVersion = 1
+    var schemaVersion = 2
     var website: String?
     var github: String?
     var entries: [CommonPhrase]
@@ -36,7 +29,7 @@ struct CommonPhraseArchive: Codable, Equatable {
     var builtInIDs: [String]?
 
     init(
-        schemaVersion: Int = 1,
+        schemaVersion: Int = 2,
         website: String? = nil,
         github: String? = nil,
         entries: [CommonPhrase],
@@ -52,7 +45,7 @@ struct CommonPhraseArchive: Codable, Equatable {
     }
 
     func validate() throws {
-        guard schemaVersion == 1, entries.count <= 500,
+        guard schemaVersion == 2, entries.count <= 500,
               entries.allSatisfy(\.isValid), Set(entries.map(\.id)).count == entries.count,
               Set(bindings.keys).isSubset(of: Set(CommonPhraseStore.buttons.map(\.rawValue))),
               bindings.values.allSatisfy({ id in entries.contains { $0.id == id } })
@@ -66,7 +59,7 @@ final class CommonPhraseStore: ObservableObject {
     static let buttons: [RemoteButton] = [.ok, .left, .up, .right, .down]
     static let exportWebsite = "https://github.com/zfdang/voice-input-buddy"
     static let exportGitHub = "https://github.com/zfdang/voice-input-buddy"
-    private static let defaultsKey = "commonPhrases.archive.v1"
+    private static let defaultsKey = "commonPhrases.archive.v2"
     @Published private(set) var archive = CommonPhraseArchive(entries: [], bindings: [:])
     @Published private(set) var isAvailable = false
     @Published private(set) var loadFailed = false
@@ -126,13 +119,11 @@ final class CommonPhraseStore: ObservableObject {
     func save(_ phrase: CommonPhrase, replacing id: String?) throws -> String {
         var candidate = archive
         var saved = phrase
-        saved.chineseText = CommonPhrase.removingBoundaryPadding(saved.chineseText)
-        saved.englishText = CommonPhrase.removingBoundaryPadding(saved.englishText)
+        saved.text = saved.insertionText
         if let id, let index = candidate.entries.firstIndex(where: { $0.id == id }) {
             if id.hasPrefix("builtin-") {
                 saved = CommonPhrase(id: "user-" + UUID().uuidString,
-                    chineseText: saved.chineseText, chineseLabel: phrase.chineseLabel,
-                    englishText: saved.englishText, englishLabel: phrase.englishLabel)
+                    text: saved.text, label: saved.label)
                 candidate.entries[index] = saved
                 for (key, value) in candidate.bindings where value == id { candidate.bindings[key] = saved.id }
             } else { candidate.entries[index] = saved }
@@ -192,8 +183,7 @@ final class CommonPhraseStore: ObservableObject {
                 guard phrase.id.hasPrefix("builtin-"),
                       builtInEntries.first(where: { $0.id == phrase.id }) != phrase else { continue }
                 let copy = CommonPhrase(id: "user-" + UUID().uuidString,
-                    chineseText: phrase.chineseText, chineseLabel: phrase.chineseLabel,
-                    englishText: phrase.englishText, englishLabel: phrase.englishLabel)
+                    text: phrase.text, label: phrase.label)
                 candidate.entries[index] = copy
                 for (key, id) in candidate.bindings where id == phrase.id { candidate.bindings[key] = copy.id }
             }

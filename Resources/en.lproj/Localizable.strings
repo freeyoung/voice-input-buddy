@@ -1062,7 +1062,7 @@
 "common_phrases.choose_phrase" = "Choose a phrase to save this assignment.";
 "common_phrases.assign_only" = "Assignments only. No text is inserted.";
 "common_phrases.import_hint" = "Import replaces your current phrases and five-button assignments.";
-"common_phrases.local_storage" = "Saved on this Mac and retained after restarting.";
+"common_phrases.local_storage" = "Saved on this Mac and retained after restarting. Phrase content stays the same when you change the interface language.";
 "common_phrases.panel_hint" = "Press an arrow or OK to insert a phrase\nPress Back to close the panel";
 "common_phrases.close" = "Close Common Phrases";
 "common_phrases.settings_hint" = "Assign Open Common Phrases to a remote button. Phrases stay on this Mac. Some editors use a temporary clipboard paste; the app attempts to restore previous contents and keeps any detected new copy.";
@@ -1081,10 +1081,8 @@
 "common_phrases.delete" = "Delete Phrase";
 "common_phrases.move_up" = "Move Up";
 "common_phrases.move_down" = "Move Down";
-"common_phrases.short_label" = "Short Label (Chinese)";
-"common_phrases.full_text" = "Full Text (Chinese)";
-"common_phrases.english_label" = "Short Label (English, optional)";
-"common_phrases.english_text" = "Full Text (English, optional)";
+"common_phrases.short_label" = "Short Label";
+"common_phrases.full_text" = "Full Text";
 "common_phrases.saved" = "Saved";
 "common_phrases.inserting" = "Inserting…";
 "common_phrases.paste_submitted" = "Paste shortcut sent.";
