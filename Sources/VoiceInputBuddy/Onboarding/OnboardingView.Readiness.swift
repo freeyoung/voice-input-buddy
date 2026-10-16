@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -194,34 +192,10 @@ extension OnboardingView {
         return model.isOnboardingControlSourceConnected(settings.onboardingControlSource)
     }
 
-    var webRemoteConnected: Bool {
-        if case .connected = model.webRemoteState { return true }
-        return false
-    }
-
-    var webRemoteConnectionTitle: String {
-        switch model.webRemoteState {
-        case .connected:
-            return localization.text("onboarding.web_remote.connected")
-        case .unavailable, .failed:
-            return localization.text("onboarding.web_remote.unavailable")
-        case .connecting:
-            return localization.text("onboarding.web_remote.connecting")
-        case .disabled:
-            return localization.text("onboarding.web_remote.preparing")
-        case .waitingForPhone, .awaitingApproval:
-            return localization.text("onboarding.web_remote.waiting")
-        }
-    }
-
     var selectedControlConnectedKey: String {
         switch settings.onboardingControlMethod {
         case .physicalRemote:
             return "onboarding.side.remote_connected"
-        case .iPhoneApp:
-            return "onboarding.side.iphone_connected"
-        case .webRemote:
-            return "onboarding.side.web_connected"
         case .unselected:
             return "onboarding.side.control_selected"
         }

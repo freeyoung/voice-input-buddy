@@ -4,13 +4,10 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 /// Identifies the live control/voice source, without collecting usage statistics.
 enum RemoteInputSource: String, Codable, CaseIterable, Hashable {
     case bluetoothRemote = "bluetooth_remote"
-    case nearbyPhone = "nearby_phone"
-    case webRemote = "web_remote"
     case unknown
 }
 
@@ -49,5 +46,13 @@ enum OrderedVoiceActivationPolicy {
     static func needsSoftwareFn(mode: VoiceKeyMode, fnTapEnabled: Bool,
                                preferredInputSourceID: String?) -> Bool {
         mode == .function && !fnTapEnabled && preferredInputSourceID != nil
+    }
+}
+
+/// Events without a Bluetooth identity cannot own a voice session.
+enum BluetoothVoiceDeviceOwnershipPolicy {
+    static func matches(_ identifier: UUID?, active: UUID?) -> Bool {
+        guard let identifier else { return false }
+        return identifier == active
     }
 }

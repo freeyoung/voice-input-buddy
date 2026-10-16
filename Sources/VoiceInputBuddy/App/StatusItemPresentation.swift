@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import BuddyRemoteCore
 
 /// Presentation only: a connection is not proof that audio or input permissions are ready.
 enum StatusItemPresentation: String, Equatable {
@@ -10,41 +9,15 @@ enum StatusItemPresentation: String, Equatable {
 
     var descriptionKey: String { "status_item.state.\(rawValue)" }
 
-    static func resolve(
-        physicalConnected: Bool,
-        phoneConnected: Bool,
-        watchConnected: Bool,
-        webState: WebRemoteSessionState,
-        isStreaming: Bool
-    ) -> Self {
-        if isStreaming { return .streaming }
-        if physicalConnected || phoneConnected || watchConnected { return .connected }
-        if case .connected = webState { return .connected }
-        return .disconnected
+    static func resolve(physicalConnected: Bool, isStreaming: Bool) -> Self {
+        isStreaming ? .streaming : (physicalConnected ? .connected : .disconnected)
     }
 
-    static func publisher(
-        physicalConnected: AnyPublisher<Bool, Never>,
-        phoneConnected: AnyPublisher<Bool, Never>,
-        watchConnected: AnyPublisher<Bool, Never>,
-        webState: AnyPublisher<WebRemoteSessionState, Never>,
-        isStreaming: AnyPublisher<Bool, Never>
-    ) -> AnyPublisher<Self, Never> {
-        Publishers.CombineLatest4(
-            physicalConnected, phoneConnected, watchConnected, webState
-        )
-        .combineLatest(isStreaming)
-        .map { connections, streaming in
-            resolve(
-                physicalConnected: connections.0,
-                phoneConnected: connections.1,
-                watchConnected: connections.2,
-                webState: connections.3,
-                isStreaming: streaming
-            )
-        }
-        .removeDuplicates()
-        .eraseToAnyPublisher()
+    static func publisher(physicalConnected: AnyPublisher<Bool, Never>,
+                          isStreaming: AnyPublisher<Bool, Never>) -> AnyPublisher<Self, Never> {
+        physicalConnected.combineLatest(isStreaming)
+            .map { resolve(physicalConnected: $0, isStreaming: $1) }
+            .removeDuplicates().eraseToAnyPublisher()
     }
 
     @MainActor

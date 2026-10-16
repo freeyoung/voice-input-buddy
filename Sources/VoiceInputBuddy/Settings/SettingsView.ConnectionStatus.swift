@@ -1,44 +1,12 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteCore
-import BuddyRemoteUI
 import SwiftUI
 import UniformTypeIdentifiers
 
 extension SettingsView {
     private var connectionBadge: String {
         localization.text(model.isConnected ? "common.status.connected" : "common.status.connecting")
-    }
-
-    var webRemoteStatusText: String {
-        switch model.webRemoteState {
-        case .disabled:
-            return localization.text("connection.web.disabled")
-        case .unavailable:
-            return localization.text("connection.web.unavailable")
-        case .connecting:
-            return localization.text("connection.web.connecting")
-        case .waitingForPhone:
-            return localization.text("connection.web.waiting_scan")
-        case .awaitingApproval:
-            return localization.text("connection.web.waiting_approval")
-        case .connected:
-            return localization.text("connection.web.connected")
-        case .failed:
-            return localization.text("connection.web.failed")
-        }
-    }
-
-    var webRemoteStatusTint: Color {
-        switch model.webRemoteState {
-        case .connected:
-            return .green
-        case .failed, .unavailable:
-            return .orange
-        default:
-            return .secondary
-        }
     }
 
     func copyRepositoryLink() {

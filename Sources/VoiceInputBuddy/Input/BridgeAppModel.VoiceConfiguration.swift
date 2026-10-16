@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     // Main-queue lifecycle, like HID settings and the remote voice callbacks.
@@ -15,8 +14,7 @@ extension BridgeAppModel {
 
     func flushPendingVoiceToolMappingRefresh(applyMappings: (() -> Void)? = nil) {
         guard pendingVoiceToolMappingRefresh, started, !isStreaming,
-              !bluetoothVoiceActive, activeMobileVoiceSource == nil,
-              appleRemoteVoiceDevices.isEmpty, !appleRemoteVoiceStopping,
+              !voiceSession.isActive,
               !voiceKeyLatch.isHeld, !voiceKeyActivationInProgress,
               !voiceFnTapSession.requiresCleanupBeforeMapping else { return }
         pendingVoiceToolMappingRefresh = false
@@ -53,7 +51,14 @@ extension BridgeAppModel {
         }
     }
 
+    var isVoiceConfigurationBusy: Bool {
+        isStreaming || hasActiveVirtualAudioSource || voiceKeyLatch.isHeld ||
+            voiceKeyActivationInProgress || voiceSession.pendingStart.identifier != nil ||
+            voiceFnTapSession.requiresCleanupBeforeMapping || voiceKeyReleaseRetry != nil
+    }
+
     func importConfiguration(from data: Data) throws {
+        guard !isVoiceConfigurationBusy else { throw AppConfigurationError.unsafeVoiceKeyChange }
         let changedVoiceKeyConfiguration: Bool
         do {
             changedVoiceKeyConfiguration = try Self.importConfiguration(

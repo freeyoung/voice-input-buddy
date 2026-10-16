@@ -30,7 +30,8 @@ final class VoiceFnTapSessionController {
     /// Upper bound on `.draining`. Comfortably above the audio side's own drain fallback,
     /// so a healthy session always leaves `.draining` through `drainAudio` and this only
     /// fires when no drain answer arrives at all.
-    private let drainTimeout: TimeInterval = 2
+    private let pendingPlaybackDuration: () -> TimeInterval
+    private var drainTimeout: TimeInterval { max(2, pendingPlaybackDuration() + 1.5) }
     private let startDelay: TimeInterval
     private let tapDuration: TimeInterval
     private let maximumPreRollSampleCount: Int
@@ -38,6 +39,7 @@ final class VoiceFnTapSessionController {
     private let destinationReadiness: DestinationReadiness
     private let setFunctionKeyPressed: FunctionKeySetter
     private let enqueueAudio: AudioEnqueuer
+    private let enqueuePreRollAudio: AudioEnqueuer
     private let drainAudio: AudioDrainer
     private let onFailure: (VoiceFnTapFailure) -> Void
     private let logger: (String) -> Void
@@ -70,13 +72,15 @@ final class VoiceFnTapSessionController {
     init(
         startDelay: TimeInterval = 0.15,
         tapDuration: TimeInterval = 0.12,
-        maximumPreRollSampleCount: Int = 80_000,
+        maximumPreRollSampleCount: Int = VoicePlaybackQueueCapacity.maximumPreRollSamples,
         schedule: @escaping Scheduler = ScheduledOperation.mainQueue,
         destinationReadiness: @escaping DestinationReadiness = { _ in .immediate },
         setFunctionKeyPressed: @escaping FunctionKeySetter,
         enqueueAudio: @escaping AudioEnqueuer,
         drainAudio: @escaping AudioDrainer,
         onFailure: @escaping (VoiceFnTapFailure) -> Void,
+        enqueuePreRollAudio: AudioEnqueuer? = nil,
+        pendingPlaybackDuration: @escaping () -> TimeInterval = { 0 },
         logger: @escaping (String) -> Void = { _ in },
         uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
         onIdle: @escaping () -> Void = {}
@@ -88,6 +92,8 @@ final class VoiceFnTapSessionController {
         self.destinationReadiness = destinationReadiness
         self.setFunctionKeyPressed = setFunctionKeyPressed
         self.enqueueAudio = enqueueAudio
+        self.enqueuePreRollAudio = enqueuePreRollAudio ?? enqueueAudio
+        self.pendingPlaybackDuration = pendingPlaybackDuration
         self.drainAudio = drainAudio
         self.onFailure = onFailure
         self.logger = logger
@@ -166,7 +172,7 @@ final class VoiceFnTapSessionController {
     }
 
     @discardableResult
-    func receive(_ samples: [Int16]) -> Bool {
+    func receive(_ samples: [Int16], isPreRoll: Bool = false) -> Bool {
         guard !samples.isEmpty else {
             return phase != .idle || pendingVoice != nil || suppressAudioUntilRemoteStop
         }
@@ -179,7 +185,7 @@ final class VoiceFnTapSessionController {
             appendPreRoll(samples, toPendingVoice: false)
             return true
         case .active:
-            enqueueAudio(samples)
+            if isPreRoll { enqueuePreRollAudio(samples) } else { enqueueAudio(samples) }
             return true
         case .draining, .stopping:
             return true
@@ -315,7 +321,7 @@ final class VoiceFnTapSessionController {
             }
             self.phase = .active(sessionGeneration)
             if !self.preRoll.isEmpty {
-                self.enqueueAudio(self.preRoll)
+                self.enqueuePreRollAudio(self.preRoll)
                 self.preRoll.removeAll(keepingCapacity: false)
             }
             if self.remoteEnded {

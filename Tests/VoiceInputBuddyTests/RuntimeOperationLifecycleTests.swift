@@ -29,14 +29,14 @@ struct RuntimeOperationLifecycleTests {
         let model = BridgeAppModel(settings: AppSettings(defaults: values))
         model.started = true
         defer { model.started = false }
-        model.audioStartupGeneration = 2
-        model.audioOutput.registerPendingVoiceBuffer()
+        model.audio.startupGeneration = 2
+        model.audio.output.registerPendingVoiceBuffer()
         model.finishAudioStartup(generation: 1, configurationGeneration: 1, configured: false, devices: [])
         // Wait for the actual production cleanup queue; no live HAL device is allocated.
         await withCheckedContinuation { continuation in
-            model.audioPreparationQueue.async { continuation.resume() }
+            model.audio.preparationQueue.async { continuation.resume() }
         }
-        #expect(model.audioOutput.pendingVoiceBufferCountForDiagnostics == 1)
+        #expect(model.audio.output.pendingVoiceBufferCountForDiagnostics == 1)
     }
     @Test func currentRecorderDeliversOnceAndDoesNotRetainStoppedMonitor() throws {
         var pending: [() -> Void] = []
@@ -85,7 +85,7 @@ struct RuntimeOperationLifecycleTests {
         let model = BridgeAppModel(settings: settings)
         model.started = true
         defer { model.started = false }
-        model.audioStartupGeneration = 2
+        model.audio.startupGeneration = 2
         // Represents the main-actor handoff after a slow background enumeration.
         var requests: [String] = []
         model.prepareAudioStartup(generation: 1, devices: [], configureOutput: { uid, _ in requests.append(uid) })
@@ -93,7 +93,7 @@ struct RuntimeOperationLifecycleTests {
         model.prepareAudioStartup(generation: 2, devices: [], configureOutput: { uid, _ in requests.append(uid) })
         #expect(requests == [DoubaoAudioDevicePolicy.deviceUID])
         #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
-        #expect(model.audioOutput.pendingVoiceBufferCountForDiagnostics == 0)
+        #expect(model.audio.output.pendingVoiceBufferCountForDiagnostics == 0)
     }
 
     @Test(arguments: [false, true])

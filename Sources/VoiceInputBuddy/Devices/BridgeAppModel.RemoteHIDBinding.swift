@@ -44,7 +44,7 @@ extension BridgeAppModel {
     func bindCompatibleRemote(_ candidate: RemoteHIDCandidate, profileID: UUID, select: Bool = true) -> Bool {
         guard let profile = settings.remoteDeviceProfiles.first(where: { $0.id == profileID }),
               let identifier = profile.bluetoothIdentifier,
-              let bridge = bluetoothBridges[identifier], case .ready = bridge.state,
+              let bridge = connections.bridges[identifier], case .ready = bridge.state,
               !profile.model.isChromecastRemote || bridge.identifiedModel == .chromecastVoiceRemote,
               candidate.binding.identity != .xiaomi || !profile.model.isChromecastRemote,
               candidate.binding.identity != .chromecast || profile.model.isChromecastRemote,

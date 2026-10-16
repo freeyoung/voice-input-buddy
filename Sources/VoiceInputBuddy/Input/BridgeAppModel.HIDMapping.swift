@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     func applyHIDSettings(
@@ -168,16 +167,6 @@ extension BridgeAppModel {
         refreshVoiceKeyCompatibilityWarning()
     }
 
-    func setSiriRemoteEnabled(_ enabled: Bool) {
-        guard enabled || activePhysicalVoiceControlSource != .siriRemote else { return }
-        settings.siriRemoteEnabled = enabled
-        AppLogger.shared.write("SIRI REMOTE ACTIVATION phase=changed enabled=\(enabled)")
-    }
-
-    /// Call only from enable/retry controls, never from startup or device discovery.
-    func prepareSiriRemoteFromUserAction() {
-    }
-
     func scheduleHIDMappingRecoveryIfNeeded(
         restartSiriRemote: Bool = true
     ) {
@@ -308,10 +297,6 @@ extension BridgeAppModel {
     func cancelButtonMappingInteractions(device: UUID?) {
         hidMonitors.values.filter { $0.profileID == device }.forEach { $0.cancelMappingInteractions() }
         if discoveryHIDMonitor?.profileID == device { discoveryHIDMonitor?.cancelMappingInteractions() }
-        if settings.selectedRemoteProfileID == device {
-            resetMobileButtonGestures(source: .nearbyPhone)
-            resetMobileButtonGestures(source: .webRemote)
-        }
         AppLogger.shared.write("BUTTON CONFIGURATION phase=completed result=interactions_cancelled")
     }
 
@@ -349,7 +334,7 @@ extension BridgeAppModel {
             guard let self, self.started,
                   let identifier = self.settings.remoteDeviceProfiles.first(where: { $0.id == profileID })?.bluetoothIdentifier
             else { return }
-            self.bluetoothBridges[identifier]?.recoverAfterRemoteActivity(reason: reason)
+            self.connections.bridges[identifier]?.recoverAfterRemoteActivity(reason: reason)
         }
     }
 
@@ -372,7 +357,7 @@ extension BridgeAppModel {
         )
         monitor.onCandidateAvailable = { [weak self] in
             guard let self else { return }
-            for bridge in self.bluetoothBridges.values {
+            for bridge in self.connections.bridges.values {
                 self.learnSelectedRemoteHIDIdentity(bridge)
                 bridge.recoverSystemConnectedRemote(reason: "hid_candidate")
             }

@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -41,15 +39,6 @@ extension OnboardingView {
                     detailKey: "onboarding.permissions.accessibility.detail",
                     granted: accessibilityGranted,
                     action: requestAccessibilityPermission
-                )
-            }
-
-            if settings.onboardingControlMethod.usesOnDemandAudioOutput {
-                statusCard(
-                    icon: "network",
-                    title: localization.text(mobilePermissionTitleKey),
-                    detail: localization.text(mobilePermissionDetailKey),
-                    isComplete: true
                 )
             }
 
@@ -169,7 +158,7 @@ extension OnboardingView {
             model.applyHIDSettings()
         case .chromecastRemote:
             prepareSelectedControlConnection()
-        case .appleCompanion, .webRemote, .unselected:
+        case .unselected:
             break
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {

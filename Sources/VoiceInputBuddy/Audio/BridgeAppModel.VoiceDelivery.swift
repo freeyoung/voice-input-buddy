@@ -4,24 +4,17 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     /// Includes pending activation and draining tails, before their async callbacks
     /// publish isStreaming. Transport-specific identity checks remain at each entry.
     func canAcceptNewVoiceSession(from owner: VoiceFunctionKeyLatch.Owner) -> Bool {
-        guard !systemAudioSuspensionState.reasons.contains(.systemSleeping),
+        guard !audio.suspensionState.isSuspended,
               voiceKeyReleaseRetry == nil else { return false }
         if let pending = pendingVoiceKeyActivationOwner, pending != owner { return false }
         if owner != .bluetooth,
-           bluetoothVoiceActive || pendingBluetoothVoiceStart.identifier != nil ||
+           voiceSession.isActive || voiceSession.pendingStart.identifier != nil ||
             voiceFnTapSession.requiresCleanupBeforeMapping { return false }
-        if owner != .appleRemote,
-           !appleRemoteVoiceDevices.isEmpty || !pendingAppleRemoteVoiceStarts.isEmpty ||
-            appleRemoteVoiceStopping { return false }
-        if owner != .mobile,
-           activeMobileVoiceSource != nil || stoppingMobileVoiceSource != nil ||
-            pendingMobileVoiceStartSource != nil || pendingMobileVoiceActivationSource != nil { return false }
         return true
     }
 
@@ -39,8 +32,8 @@ extension BridgeAppModel {
     }
 
     func voiceAudioDeliveryDiagnosticSnapshot() -> VoiceAudioDeliveryDiagnostic {
-        var diagnostic = voiceAudioDeliveryDiagnostic
-        diagnostic.outputAtObservation = audioOutput.diagnosticSnapshot(
+        var diagnostic = voiceSession.voiceAudioDeliveryDiagnostic
+        diagnostic.outputAtObservation = audio.output.diagnosticSnapshot(
             deliveryGeneration: diagnostic.generation
         )
         return diagnostic
@@ -50,12 +43,12 @@ extension BridgeAppModel {
         samples: [Int16],
         route: VoiceAudioDeliveryRoute
     ) {
-        guard !samples.isEmpty, voiceAudioDeliveryDiagnostic.generation > 0 else { return }
-        voiceAudioDeliveryDiagnostic.route = route
-        voiceAudioDeliveryDiagnostic.receivedBatches += 1
-        voiceAudioDeliveryDiagnostic.receivedSamples += samples.count
-        voiceAudioDeliveryDiagnostic.outputAtObservation = audioOutput.diagnosticSnapshot(
-            deliveryGeneration: voiceAudioDeliveryDiagnostic.generation
+        guard !samples.isEmpty, voiceSession.voiceAudioDeliveryDiagnostic.generation > 0 else { return }
+        voiceSession.voiceAudioDeliveryDiagnostic.route = route
+        voiceSession.voiceAudioDeliveryDiagnostic.receivedBatches += 1
+        voiceSession.voiceAudioDeliveryDiagnostic.receivedSamples += samples.count
+        voiceSession.voiceAudioDeliveryDiagnostic.outputAtObservation = audio.output.diagnosticSnapshot(
+            deliveryGeneration: voiceSession.voiceAudioDeliveryDiagnostic.generation
         )
     }
 
@@ -65,26 +58,27 @@ extension BridgeAppModel {
     ) {
         guard !accepted,
               deliveryGeneration > 0,
-              voiceAudioDeliveryDiagnostic.generation == deliveryGeneration
+              voiceSession.voiceAudioDeliveryDiagnostic.generation == deliveryGeneration
         else { return }
-        voiceAudioDeliveryDiagnostic.enqueueFailures += 1
-        voiceAudioDeliveryDiagnostic.outputAtObservation = audioOutput.diagnosticSnapshot(
+        voiceSession.voiceAudioDeliveryDiagnostic.enqueueFailures += 1
+        voiceSession.voiceAudioDeliveryDiagnostic.outputAtObservation = audio.output.diagnosticSnapshot(
             deliveryGeneration: deliveryGeneration
         )
     }
 
-    func enqueueVoiceFnTapAudio(_ samples: [Int16]) {
-        let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
-        let accepted = audioOutput.enqueue(
+    func enqueueVoiceFnTapAudio(_ samples: [Int16], isPreRoll: Bool = false) {
+        let deliveryGeneration = voiceSession.voiceAudioDeliveryDiagnostic.generation
+        let accepted = audio.output.enqueue(
             samples: samples,
-            deliveryGeneration: deliveryGeneration
+            deliveryGeneration: deliveryGeneration,
+            isPreRoll: isPreRoll
         )
         recordVoiceAudioEnqueueOutcome(
             accepted: accepted,
             deliveryGeneration: deliveryGeneration
         )
         if !accepted {
-            bluetoothVoiceEnqueueFailureCount += 1
+            voiceSession.bluetoothVoiceEnqueueFailureCount += 1
         }
     }
 
@@ -97,53 +91,41 @@ extension BridgeAppModel {
         )
         let source = currentVoiceSource
         let sessionID = UUID()
-        voiceAudioDeliveryGeneration &+= 1
-        let audioSnapshot = audioOutput.diagnosticSnapshot(
-            deliveryGeneration: voiceAudioDeliveryGeneration
+        voiceSession.voiceAudioDeliveryGeneration &+= 1
+        let audioSnapshot = audio.output.diagnosticSnapshot(
+            deliveryGeneration: voiceSession.voiceAudioDeliveryGeneration
         )
-        voiceAudioDeliveryDiagnostic = VoiceAudioDeliveryDiagnostic(
-            generation: voiceAudioDeliveryGeneration,
+        voiceSession.voiceAudioDeliveryDiagnostic = VoiceAudioDeliveryDiagnostic(
+            generation: voiceSession.voiceAudioDeliveryGeneration,
             source: source.rawValue,
             outputAtStart: audioSnapshot,
             outputAtObservation: audioSnapshot,
             countersAtStart: audioSnapshot.counters
         )
         activeVoiceSource = source
-        voiceSessionID = sessionID
+        voiceSession.voiceSessionID = sessionID
         isStreaming = true
     }
 
     func endVoiceSessionIfNeeded(flushAudio: Bool = true, applyPendingMappings: (() -> Void)? = nil) {
         defer { flushPendingVoiceToolMappingRefresh(applyMappings: applyPendingMappings) }
-        guard !bluetoothVoiceActive,
-              appleRemoteVoiceDevices.isEmpty,
-              !appleRemoteVoiceStopping,
-              activeMobileVoiceSource == nil,
+        guard !voiceSession.isActive,
               isStreaming
         else { return }
-        voiceSessionID = nil
-        voiceAudioDeliveryDiagnostic.sessionEnded = true
-        voiceAudioDeliveryDiagnostic.outputAtObservation = audioOutput.diagnosticSnapshot(
-            deliveryGeneration: voiceAudioDeliveryDiagnostic.generation
+        voiceSession.voiceSessionID = nil
+        voiceSession.voiceAudioDeliveryDiagnostic.sessionEnded = true
+        voiceSession.voiceAudioDeliveryDiagnostic.outputAtObservation = audio.output.diagnosticSnapshot(
+            deliveryGeneration: voiceSession.voiceAudioDeliveryDiagnostic.generation
         )
         isStreaming = false
         activeVoiceSource = nil
         if flushAudio {
-            audioOutput.endSession()
+            audio.output.endSession()
         }
 
     }
 
-    private var currentVoiceSource: RemoteInputSource {
-        if bluetoothVoiceActive || !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping {
-            return .bluetoothRemote
-        }
-        switch activeMobileVoiceSource {
-        case .nearbyPhone, .nearbyWatch: return .nearbyPhone
-        case .web: return .webRemote
-        case nil: return .unknown
-        }
-    }
+    private var currentVoiceSource: RemoteInputSource { voiceSession.isActive ? .bluetoothRemote : .unknown }
 
     @discardableResult
     func applyVoiceFunctionMapping(neutralizeVoiceKey: Bool) -> Bool {
@@ -173,7 +155,7 @@ extension BridgeAppModel {
         keySetter: @escaping (VoiceKeyMode, Bool) -> Bool = { KeyboardInjector.setVoiceKeyPressed($0, isPressed: $1) },
         completion: @escaping (Bool) -> Void = { _ in }
     ) -> Bool {
-        guard !streaming || voiceKeyReleaseRetry == nil else {
+        guard !streaming || (!audio.suspensionState.isSuspended && voiceKeyReleaseRetry == nil) else {
             completion(false)
             return false
         }
@@ -206,7 +188,7 @@ extension BridgeAppModel {
             let generation = voiceKeyActivationGeneration
             pendingVoiceKeyActivationOwner = owner
             pendingVoiceKeyActivationCompletion = completion
-            if owner == .bluetooth { pendingCommandVoiceAudio.begin() }
+            if owner == .bluetooth { voiceSession.commandAudio.begin() }
             var immediateResult: Bool?
             preferredInputSourceMonitor.beginVoiceSession { [weak self] activated in
                 guard let self else { completion(false); return }
@@ -217,9 +199,9 @@ extension BridgeAppModel {
                 let finish = self.pendingVoiceKeyActivationCompletion
                 self.pendingVoiceKeyActivationCompletion = nil
                 defer { self.flushPendingVoiceToolMappingRefresh() }
-                guard activated, self.pendingVoiceKeyMode == mode else {
+                guard activated, !self.audio.suspensionState.isSuspended, self.pendingVoiceKeyMode == mode else {
                     self.pendingVoiceKeyMode = nil
-                    if owner == .bluetooth { self.pendingCommandVoiceAudio.cancel() }
+                    if owner == .bluetooth { self.voiceSession.commandAudio.cancel() }
                     self.voiceKeyLatch.rollback(transition, owner: owner)
                     immediateResult = false
                     finish?(false)
@@ -238,7 +220,7 @@ extension BridgeAppModel {
            heldVoiceKeyMode == nil, pendingVoiceKeyMode != nil {
             pendingVoiceKeyMode = nil
             if owner == .bluetooth {
-                pendingCommandVoiceAudio.cancel()
+                voiceSession.commandAudio.cancel()
             }
             cancelPendingVoiceKeyActivation()
             isVoiceTriggerEnabled = true
@@ -273,7 +255,7 @@ extension BridgeAppModel {
             if shouldHold {
                 pendingVoiceKeyMode = nil
                 if owner == .bluetooth {
-                    pendingCommandVoiceAudio.cancel()
+                    voiceSession.commandAudio.cancel()
                 }
                 preferredInputSourceMonitor.endVoiceSession()
             }
@@ -337,7 +319,7 @@ extension BridgeAppModel {
         guard voiceKeyLatch.isHeld else {
             heldVoiceKeyMode = nil
             pendingVoiceKeyMode = nil
-            pendingCommandVoiceAudio.cancel()
+            voiceSession.commandAudio.cancel()
             if pendingVoiceKeyActivationCompletion != nil { cancelPendingVoiceKeyActivation() }
             return true
         }
@@ -345,7 +327,7 @@ extension BridgeAppModel {
             guard pendingVoiceKeyMode != nil else { return false }
             voiceKeyLatch.reset()
             pendingVoiceKeyMode = nil
-            pendingCommandVoiceAudio.cancel()
+            voiceSession.commandAudio.cancel()
             cancelPendingVoiceKeyActivation()
             isVoiceTriggerEnabled = true
             AppLogger.shared.write("VOICE KEY pending_down_cancelled reason=forced_release")
@@ -378,14 +360,4 @@ extension BridgeAppModel {
     }
 
     /// 苹果遥控器自报能力的日志标记（真机核对用）。
-    private static func describeSiri(_ declared: SiriRemoteDeclaredCapabilities) -> String {
-        var names: [String] = []
-        if declared.contains(.controlEdges) { names.append("control_edges") }
-        if declared.contains(.touchSurface) { names.append("touch_surface") }
-        if declared.contains(.continuousScroll) { names.append("continuous_scroll") }
-        if declared.contains(.voiceStream) { names.append("voice_stream") }
-        if declared.contains(.batteryLevel) { names.append("battery_level") }
-        if declared.contains(.powerState) { names.append("power_state") }
-        return names.isEmpty ? "none" : names.joined(separator: "+")
-    }
 }

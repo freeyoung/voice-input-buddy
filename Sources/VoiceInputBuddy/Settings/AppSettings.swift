@@ -24,17 +24,10 @@ final class AppSettings: ObservableObject {
         static let checksForPreReleaseUpdates = "checksForPreReleaseUpdates"
         static let experimentalContinuousRecordingEnabled = "experimentalContinuousRecordingEnabled"
         static let voiceFnTapModeEnabled = "voiceFnTapModeEnabled"
-        static let chromecastAllowSystemReservedKeys = "chromecast.allowSystemReservedKeys"
-        static let chromecastSystemReservedExceptions = "chromecast.systemReservedExceptions"
         static let voiceKeyMode = "voiceKeyMode"
-        static let siriRemoteScrollArrowReversed = "siriRemote.scrollArrowReversed"
-        static let siriRemoteEnabled = "siriRemote.enabled"
-        static let siriRemoteNeedsUserAction = "siriRemote.needsUserAction"
-        static let chromecastEnabled = "chromecast.enabled"
         static let chromecastVoiceMode = "chromecast.voiceMode"
         static let continuousRecordingPowerBindingBackup = "continuousRecordingPowerBindingBackup"
         static let lastLaunchedBuild = "launch.lastLaunchedBuild"
-        static let trustedPhoneIdentityFingerprints = "security.trustedPhoneIdentityFingerprints"
         static let onboardingPurpose = "onboarding.purpose"
         static let onboardingCompletedVersion = "onboarding.completedVersion"
         static let onboardingStep = "onboarding.step"
@@ -181,56 +174,15 @@ final class AppSettings: ObservableObject {
     }
 
     /// 历史系统占用键豁免。保留读取兼容；当前普通键不受此值限制。
-    @Published var chromecastAllowSystemReservedKeys: Bool {
-        didSet {
-            defaults.set(
-                chromecastAllowSystemReservedKeys,
-                forKey: Keys.chromecastAllowSystemReservedKeys
-            )
-        }
-    }
-
     /// 历史逐键豁免，保留旧配置的读取兼容。
-    @Published var chromecastSystemReservedExceptions: Set<String> {
-        didSet {
-            defaults.set(
-                chromecastSystemReservedExceptions.sorted().joined(separator: ","),
-                forKey: Keys.chromecastSystemReservedExceptions
-            )
-        }
-    }
-
     @Published var voiceKeyMode: VoiceKeyMode {
         didSet {
             defaults.set(voiceKeyMode.rawValue, forKey: Keys.voiceKeyMode)
         }
     }
 
-    @Published var siriRemoteScrollArrowReversed: Bool {
-        didSet {
-            defaults.set(
-                siriRemoteScrollArrowReversed,
-                forKey: Keys.siriRemoteScrollArrowReversed
-            )
-        }
-    }
-
     /// Only an explicit user action enables Apple Remote runtime services.
-    @Published var siriRemoteEnabled: Bool {
-        didSet { defaults.set(siriRemoteEnabled, forKey: Keys.siriRemoteEnabled) }
-    }
-
-    @Published var siriRemoteNeedsUserAction: Bool {
-        didSet { defaults.set(siriRemoteNeedsUserAction, forKey: Keys.siriRemoteNeedsUserAction) }
-    }
-
     /// Chromecast 遥控器总开关。私有包缺失时该设置无副作用，设置页也不会展示。
-    @Published var chromecastEnabled: Bool {
-        didSet {
-            defaults.set(chromecastEnabled, forKey: Keys.chromecastEnabled)
-        }
-    }
-
     /// Chromecast 语音手势模式。默认 `toggle`（按一下开始、再按一下结束）。
     @Published var chromecastVoiceMode: ChromecastVoiceMode {
         didSet {
@@ -244,15 +196,6 @@ final class AppSettings: ObservableObject {
 
     var isLoadingRemoteProfile = false
     var isResettingBindings = false
-
-    @Published var trustedPhoneIdentityFingerprints: Set<String> {
-        didSet {
-            defaults.set(
-                trustedPhoneIdentityFingerprints.sorted(),
-                forKey: Keys.trustedPhoneIdentityFingerprints
-            )
-        }
-    }
 
     @Published var onboardingPurpose: OnboardingPurpose {
         didSet { defaults.set(onboardingPurpose.rawValue, forKey: Keys.onboardingPurpose) }
@@ -506,26 +449,9 @@ final class AppSettings: ObservableObject {
             forKey: Keys.experimentalContinuousRecordingEnabled
         )
         voiceFnTapModeEnabled = defaults.bool(forKey: Keys.voiceFnTapModeEnabled)
-        chromecastAllowSystemReservedKeys = defaults.bool(
-            forKey: Keys.chromecastAllowSystemReservedKeys
-        )
-        chromecastSystemReservedExceptions = Set(
-            (defaults.string(forKey: Keys.chromecastSystemReservedExceptions) ?? "")
-                .split(separator: ",")
-                .map(String.init)
-        )
         voiceKeyMode = VoiceKeyMode(
             rawValue: defaults.string(forKey: Keys.voiceKeyMode) ?? ""
         ) ?? .function
-        siriRemoteScrollArrowReversed = defaults.bool(
-            forKey: Keys.siriRemoteScrollArrowReversed
-        )
-        siriRemoteEnabled = defaults.bool(forKey: Keys.siriRemoteEnabled)
-        siriRemoteNeedsUserAction = defaults.bool(forKey: Keys.siriRemoteNeedsUserAction)
-        // 首次运行默认开启：私有包只会被编入有该硬件的构建，让用户先找开关再测试没有意义。
-        chromecastEnabled = defaults.object(forKey: Keys.chromecastEnabled) == nil
-            ? true
-            : defaults.bool(forKey: Keys.chromecastEnabled)
         chromecastVoiceMode = ChromecastVoiceMode(
             rawValue: defaults.string(forKey: Keys.chromecastVoiceMode) ?? ""
         ) ?? .productDefault
@@ -534,9 +460,6 @@ final class AppSettings: ObservableObject {
             forKey: Keys.continuousRecordingPowerBindingBackup,
             from: defaults,
             corrupted: &corruptedKeys
-        )
-        trustedPhoneIdentityFingerprints = Set(
-            defaults.stringArray(forKey: Keys.trustedPhoneIdentityFingerprints) ?? []
         )
         onboardingPurpose = defaults.string(forKey: Keys.onboardingPurpose)
             .flatMap(OnboardingPurpose.init(rawValue:)) ?? .initialSetup

@@ -12,7 +12,7 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 当前发行使用固定自签名证书为 App 和驱动签名，PKG 未签名，不具备 Apple Developer ID，也未公证。证书只生成一次，私钥由 GitHub Secrets 保存；构建时导入 runner 的临时 Keychain，不添加证书信任设置。普通本地开发和 PR 构建仍默认 ad-hoc 签名。更新包另由本项目的 Sparkle Ed25519 密钥签名；push main 自动发布。配置和验收要求见 [releases.md](releases.md)。若以后取得 Developer ID，应加入 Application / Installer 签名和公证。驱动安装卸载仍需真机回归。不会沿用原作者更新密钥、会员后端或发布服务。
 
-当前保留未开放的 Siri Remote 能力边界与公开兼容类型；Apple 音频捕获、PacketLogger、HCI 辅助进程、上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。构建成功不代表未支持设备可用。
+手机、Watch、Web Remote 和 Siri Remote 的退休运行逻辑、占位模块与开关已移除，仅保留计划设备的目录展示；Apple 音频捕获、PacketLogger、HCI 辅助进程、上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。构建成功不代表未支持设备可用。
 
 ## 运行时权限变化
 
@@ -35,6 +35,8 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 快捷键录制结果在回调送达时再次检查录制代次。停止、重置或销毁录制器后，排队中的普通按键和独立修饰键结果均作废。HID 映射只有在设备被独占或原始按键过滤器运行时才附加动作；过滤不可用时停止重复与延迟手势动作，保留默认左右方向键的原生直通。
 
 更新源使用独立的临时 URLSession，空闲和总请求超时均为 30 秒。响应头和流式读取均检查 1 MiB 上限，超限时取消该请求。不会修改共享 URLSession 的配置，不增加常驻轮询或逐输入事件的权限查询。
+
+启动前预录音与实时 PCM 使用独立的队列额度：预录音最多 80,000 个采样（5 秒），实时待播放音频最多 8,000 个采样（半秒）。预录音分成不超过半秒的播放块，按原顺序送入播放器，不通过放大实时额度消化积压。Fn 点按停止的排空期限按待播放时长加余量计算，保留取消、输出中断和过期回调隔离。
 
 ## 本地开发
 
@@ -181,7 +183,7 @@ confirmation of GY3LE compatibility.
 The public macOS connection flow admits Xiaomi RC001/RC003 and G9N9N. Phone, watch,
 Web Remote and Siri Remote have no supported setup entry. G9N9N uses the public ATVV and HID pipeline;
 GY3LE is not admitted as a G9N9N device.
-Their management panels are deliberately absent from the shipped connection page.
+Their runtime adapters, session orchestration, management panels, compatibility modules and persisted switches have been removed. Planned physical devices remain catalog-only.
 Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
 Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
 Screenshot fixture entry points are debug-only.
@@ -261,3 +263,19 @@ output are ready, and retains installation/restart recovery on failure.
 所有离线蓝牙设备共用一个广播扫描器，连接仍由各设备自己的 manager 管理。无响应写入尊重 `canSendWriteWithoutResponse`，排队和等待均有上限；断连回调丢失后由 5 秒看门狗重启连接。测试覆盖队列流控、失效回调、帧索引、输入源不可用和 Fn 取消/关闭时序，但不能替代真实设备、休眠唤醒及输入法验收。
 
 会员、宏、私有功能占位实现及其不可用设置入口已移除，配置不再包含宏动作字段。向导的助手提示词使用实际界面流程，不提供不存在的自动配置 CLI。Appcast 保留受 1 MiB 上限保护的流式读取；异步字节迭代不会必然产生每字节一次的任务调度，不能据此改为无界全量下载。
+
+The `VoicePipelineIntegrationTests` suite drives the Fn-tap session through the
+production playback admission and chunking policies with 12k, 32k and 80k sample
+pre-rolls, verifies drain timing, and delivers stale completion callbacks after a
+new session starts. `SessionInputIntegrationTests` exercises input-source
+activation completing across session and screen suspension. Both replace keyboard
+injection and audio hardware scheduling; real remote reconnect, HAL routing and
+external dictation still require hardware acceptance.
+
+Compact window checks: the settings window fits the current screen's visible
+frame on opening and screen changes. Both settings and onboarding keep a readable
+980×732 canvas inside a two-axis scroll view when space is smaller. Debug preview
+rendering accepts `VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIZE=720x500` and
+`VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_SIZE=720x500`; set
+`VOICE_INPUT_BUDDY_SCREENSHOT_SCROLL_TO_END=1` to verify bottom/right navigation
+remains reachable. Preview fixtures do not start remote or audio hardware.

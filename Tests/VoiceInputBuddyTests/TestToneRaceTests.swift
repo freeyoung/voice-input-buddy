@@ -13,7 +13,7 @@ struct TestToneRaceTests {
         let device = AudioDeviceInfo(id: 123, uid: DoubaoAudioDevicePolicy.deviceUID, name: "Test")
         let model = BridgeAppModel(settings: AppSettings(defaults: values), initialAudioDevices: [device])
         model.isStreaming = streaming
-        model.bluetoothVoiceActive = !streaming
+        model.voiceSession.isActive = !streaming
         let generation = model.testToneGeneration
         model.startTestToneAfterAudioReady(true)
         #expect(model.testToneGeneration == generation)

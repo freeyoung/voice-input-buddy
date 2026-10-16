@@ -141,12 +141,13 @@ struct RuntimeBoundaryTests {
             let selectors: [AudioObjectPropertySelector] = [kAudioHardwarePropertyDevices,
                 kAudioHardwarePropertyDefaultInputDevice, kAudioHardwarePropertyDefaultOutputDevice,
                 kAudioHardwarePropertyDefaultSystemOutputDevice]
-            model?.observedAudioHardwareAddresses = selectors.map {
+            model?.audio.retainHardwareListener { _, _ in }
+            model?.audio.observedHardwareAddresses = selectors.map {
                 AudioObjectPropertyAddress(mSelector: $0, mScope: kAudioObjectPropertyScopeGlobal,
                     mElement: kAudioObjectPropertyElementMain)
             }
             var removed: [AudioObjectPropertySelector] = []
-            model?.audioHardwareListenerRemover = { address, _, _ in
+            model?.audio.hardwareListenerRemover = { address, _, _ in
                 removed.append(address.mSelector)
                 return noErr
             }
@@ -184,19 +185,6 @@ struct RuntimeBoundaryTests {
         _ = coordinator.waitUntilReady { result = $0 }
         coordinator.completeFocusOperation(requestID: failed, succeeded: false)
         #expect(result == .cancelled(.actionFailed))
-    }
-
-    @Test func deferredVoiceStopsRemainBoundToTheirOwnDevice() {
-        var stops = DeviceVoiceStopRequests<String>()
-        stops.request("first")
-        #expect(stops.take(pending: ["second"]).isEmpty)
-        #expect(stops.take(pending: ["first", "second"]) == ["first"])
-        stops.request("first")
-        stops.cancel("first") // pressed again before setup completed
-        #expect(stops.take(pending: ["first"]).isEmpty)
-        stops.request("second")
-        stops.removeAll()
-        #expect(stops.take(pending: ["second"]).isEmpty)
     }
 
     @Test func unifiedMappingCorruptionIsPreservedAfterSavingNewMappings() {

@@ -180,8 +180,6 @@ extension AppSettings {
         switch source {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             onboardingRemoteAvailability = .hasRemote
-        case .appleCompanion, .webRemote:
-            onboardingRemoteAvailability = .noRemote
         case .unselected:
             onboardingRemoteAvailability = .unselected
         }

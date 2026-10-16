@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteCore
-import BuddyRemoteUI
 import SwiftUI
 import UniformTypeIdentifiers
 

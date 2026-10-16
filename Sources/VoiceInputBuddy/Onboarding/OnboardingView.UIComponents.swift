@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -44,9 +42,7 @@ extension OnboardingView {
                 sideCheck("onboarding.side.voice_key", isComplete: voiceSessionStarted && voiceSessionEnded)
                 sideCheck("onboarding.side.samples", isComplete: voiceSamplesReceived)
                 sideCheck(
-                    settings.onboardingControlMethod.usesOnDemandAudioOutput
-                        ? "onboarding.side.audio_on_demand"
-                        : "onboarding.side.audio_ready",
+                    "onboarding.side.audio_ready",
                     isComplete: onboardingAudioReady
                 )
                 sideCheck("onboarding.side.transcript", isComplete: verifiedTranscriptionAppeared)

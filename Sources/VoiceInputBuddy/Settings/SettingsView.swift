@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteCore
-import BuddyRemoteUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -23,6 +21,7 @@ struct SettingsView: View {
     private let minimumContentSize: CGSize
     let initialShortcutPickerShowsKeyboard: Bool
 
+    @State var remoteRebindingProfile: RemoteDeviceProfile?
     @State var selectedSection: SettingsSection
     @State var selectedRemoteButton: RemoteButton = .ok
     @State private var selectedSiriRemoteControlID = "select"
@@ -55,7 +54,7 @@ struct SettingsView: View {
         initialMappingEditingButton: RemoteButton? = nil,
         initialMappingEditingTrigger: ButtonTrigger = .singleClick,
         initialShortcutPickerShowsKeyboard: Bool = false,
-        minimumContentSize: CGSize = CGSize(width: 980, height: 732)
+        minimumContentSize: CGSize = SettingsWindowLayout.minimumCanvasSize
     ) {
         self.model = model
         settings = model.settings
@@ -82,6 +81,12 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        AdaptiveSettingsViewport(minimumSize: minimumContentSize) {
+            settingsContent
+        }
+    }
+
+    private var settingsContent: some View {
         HStack(spacing: 0) {
             sidebar
                 .frame(width: SettingsPageBehavior.sidebarWidth)
@@ -93,10 +98,6 @@ struct SettingsView: View {
         }
         .background(Color(nsColor: .controlBackgroundColor).ignoresSafeArea())
         .environment(\.locale, localization.locale)
-        .frame(
-            minWidth: minimumContentSize.width,
-            minHeight: minimumContentSize.height
-        )
         .onAppear {
             if selectedSection == .mapping {
                 model.selectDefaultMappingRemoteIfAvailable()

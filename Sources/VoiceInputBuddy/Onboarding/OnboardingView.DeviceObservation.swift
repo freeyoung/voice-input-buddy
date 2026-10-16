@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -88,12 +86,6 @@ extension OnboardingView {
         case .chromecastRemote:
             model.refreshRemoteDiscovery()
             model.applyHIDSettings()
-        case .appleCompanion:
-            model.enablePhoneRemoteConnection()
-        case .webRemote:
-            if !model.webRemoteState.isEnabled {
-                model.enableWebRemoteConnection()
-            }
         case .unselected:
             break
         }
@@ -116,10 +108,6 @@ extension OnboardingView {
 
     func selectedControlAccepts(_ source: RemoteInputSource) -> Bool {
         switch settings.onboardingControlMethod {
-        case .iPhoneApp:
-            return source == .nearbyPhone
-        case .webRemote:
-            return source == .webRemote
         case .physicalRemote, .unselected:
             return false
         }
@@ -131,10 +119,6 @@ extension OnboardingView {
             return source == .bluetoothRemote &&
                 (model.activePhysicalVoiceControlSource.map { $0 == settings.onboardingControlSource }
                     ?? selectedPhysicalRemoteProfileMatchesSource)
-        case .appleCompanion:
-            return source == .nearbyPhone
-        case .webRemote:
-            return source == .webRemote
         case .unselected:
             return false
         }
@@ -151,7 +135,7 @@ extension OnboardingView {
             return model == generation.model
         case .chromecastRemote:
             return model.isChromecastRemote
-        case .appleCompanion, .webRemote, .unselected:
+        case .unselected:
             return false
         }
     }

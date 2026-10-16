@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteCore
-import BuddyRemoteUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -80,7 +78,6 @@ extension SettingsView {
     }
 
     private func hardwareMappingPage<HardwareCanvas: View>(
-        includeSiriScrollArrow: Bool = false,
         @ViewBuilder hardwareCanvas: @escaping () -> HardwareCanvas
     ) -> some View {
         VStack(spacing: 0) {
@@ -114,7 +111,7 @@ extension SettingsView {
                                     .id("mapping-action-editor")
                             }
 
-                            mappingFooter(includeSiriScrollArrow: includeSiriScrollArrow)
+                            mappingFooter()
                             Color.clear.frame(height: 1).id("mapping-page-bottom")
                         }
                         .padding(22)
@@ -285,44 +282,20 @@ extension SettingsView {
         }
     }
 
-    private func mappingFooter(includeSiriScrollArrow: Bool = false) -> some View {
+    private func mappingFooter() -> some View {
         // 能力一律取自「链路自报优先、型号默认兜底」的判定结果（见 RemoteVoiceCapabilities）。
-        let capabilities = model.selectedRemoteVoiceCapabilities
         return GlassPanel {
             VStack(alignment: .leading, spacing: 12) {
                 mappingHIDStatus
                 Divider()
                 mappingSelectionLockControl
                 Divider()
-                // 触摸面（滑动箭头/光标）只有具备触摸面的遥控器才显示，页面请求之外再加一道能力门禁。
-                if TouchSurfaceControlApplicability.isApplicable(
-                    capabilities: capabilities,
-                    pageRequestsControl: includeSiriScrollArrow
-                ) {
-                    Divider()
-                    siriRemoteScrollArrowControl
-                }
                 HStack {
                     Spacer(minLength: 0)
                     mappingRestoreDefaultsButton
                 }
             }
         }
-    }
-
-    private var siriRemoteScrollArrowControl: some View {
-        Toggle(isOn: $settings.siriRemoteScrollArrowReversed) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(localization.text("siri_remote.scroll_arrow.reverse.title"))
-                    .font(.system(size: 13, weight: .medium))
-                Text(localization.text("siri_remote.scroll_arrow.reverse.detail"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .toggleStyle(.switch)
-        .help(localization.text("siri_remote.scroll_arrow.reverse.help"))
     }
 
     private var mappingHIDStatus: some View {

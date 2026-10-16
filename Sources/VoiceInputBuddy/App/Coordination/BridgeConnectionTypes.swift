@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 struct LocalTestRemoteSessionResponse: Decodable {
     let relayMode: String

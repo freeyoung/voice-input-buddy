@@ -90,15 +90,15 @@ struct RemoteGainAndDriverTests {
         #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "BlackHole2ch_UID", name: "BlackHole 2ch"))
     }
 
-    @Test func driverStepRequiresAConfiguredOutputEvenForOnDemandSources() {
+    @Test func driverStepRequiresAConfiguredOutput() {
         var capabilities = OnboardingCapabilities(bluetoothGranted: true, inputMonitoringGranted: true, accessibilityGranted: true, microphoneDriverInstalled: true, audioOutputSelected: true)
-        for method in [OnboardingControlMethod.physicalRemote, .iPhoneApp, .webRemote] {
+        for method in [OnboardingControlMethod.physicalRemote] {
             #expect(!OnboardingFlowPolicy.canContinue(from: .audio, voiceTool: .unselected,
                 controlMethod: method, capabilities: capabilities))
         }
         capabilities.audioReady = true
         #expect(OnboardingFlowPolicy.canContinue(from: .audio, voiceTool: .unselected,
-            controlMethod: .webRemote, capabilities: capabilities))
+            controlMethod: .physicalRemote, capabilities: capabilities))
     }
 
     @Test func driverCheckAdvancesOnlyWhenBothChecksPassAndKeepsButtonsBeforeDriver() {

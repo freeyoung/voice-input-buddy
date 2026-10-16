@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 struct OnboardingView: View {
@@ -86,6 +84,12 @@ struct OnboardingView: View {
     }
 
     private var lifecycleContent: some View {
+        AdaptiveSettingsViewport {
+            onboardingCanvas
+        }
+    }
+
+    private var onboardingCanvas: some View {
         VStack(spacing: 0) {
             phaseHeader
             GeometryReader { proxy in
@@ -98,7 +102,6 @@ struct OnboardingView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
         .environment(\.locale, localization.locale)
-        .frame(minWidth: 980, minHeight: 732)
         .sheet(item: $hidBindingProfile) { profile in
             RemoteHIDBindingPicker(model: model, profile: profile)
                 .environmentObject(localization)
@@ -180,14 +183,6 @@ struct OnboardingView: View {
                 recoverRemoteConnectionIfNeeded()
             } else if settings.onboardingStep == .controls {
                 testedControlButtons.insert(button)
-            }
-        }
-        .onReceive(model.$lastMobileRemoteButtonObservation.compactMap { $0 }) { observation in
-            guard selectedControlAccepts(observation.source) else { return }
-            if settings.onboardingStep == .remote {
-                recordRemoteControlButtons(Set([observation.button]), source: observation.source.rawValue)
-            } else if settings.onboardingStep == .controls {
-                testedControlButtons.insert(observation.button)
             }
         }
         .onReceive(model.$isStreaming) { isStreaming in

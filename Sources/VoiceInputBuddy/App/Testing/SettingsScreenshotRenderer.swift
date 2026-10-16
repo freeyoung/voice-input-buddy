@@ -95,7 +95,7 @@ enum SettingsScreenshotRenderer {
                     frameSize: 120, selectedCodec: 2, sampleRate: 16_000)
             )
             settings.bindHIDFingerprint("settings-screenshot-xiaomi", to: xiaomiID)
-            let chromecastID = settings.registerChromecastRemote()
+            let chromecastID = settings.registerBluetoothRemote(identifier: UUID(), model: .chromecastVoiceRemote)
             settings.selectRemoteProfile(xiaomiID)
             remoteCardSystemNames = [
                 xiaomiID: language == .simplifiedChinese ? "书房遥控器" : "Study Remote",
@@ -172,7 +172,8 @@ enum SettingsScreenshotRenderer {
             window.isMovableByWindowBackground = false
             window.hidesOnDeactivate = false
             window.isReleasedWhenClosed = false
-            window.minSize = NSSize(width: 1020, height: 772)
+            window.minSize = SettingsWindowLayout.minimumWindowSize(in: NSScreen.main?.visibleFrame
+                ?? NSRect(origin: .zero, size: size))
             window.contentViewController = controller
             window.setContentSize(size)
             window.center()
@@ -192,7 +193,7 @@ enum SettingsScreenshotRenderer {
                     ? .ok
                     : nil,
                 initialShortcutPickerShowsKeyboard: showsStandardKeyboard,
-                minimumContentSize: .zero
+                minimumContentSize: SettingsWindowLayout.minimumCanvasSize
             )
             .modifier(UpdateCompletionToast(version: ProcessInfo.processInfo.environment[
                 "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_COMPLETED_UPDATE_VERSION"
@@ -223,6 +224,7 @@ enum SettingsScreenshotRenderer {
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
             window.contentView?.layoutSubtreeIfNeeded()
+            scrollCanvasToEndIfRequested(in: window.contentView)
             window.contentView?.displayIfNeeded()
 
             guard let contentView = window.contentView,
@@ -286,14 +288,30 @@ enum SettingsScreenshotRenderer {
         )
     }
 
-    private static func screenshotSize(from value: String?) throws -> NSSize {
+    /// Exercise the compact canvas's actual AppKit scroll range in isolated previews.
+    static func scrollCanvasToEndIfRequested(in view: NSView?) {
+        guard ProcessInfo.processInfo.environment["VOICE_INPUT_BUDDY_SCREENSHOT_SCROLL_TO_END"] == "1",
+              let view else { return }
+        func firstScrollView(_ view: NSView) -> NSScrollView? {
+            if let scroll = view as? NSScrollView { return scroll }
+            return view.subviews.lazy.compactMap { firstScrollView($0) }.first
+        }
+        guard let scroll = firstScrollView(view), let document = scroll.documentView else { return }
+        let x = max(0, document.bounds.width - scroll.contentView.bounds.width)
+        let y = document.isFlipped ? max(0, document.bounds.height - scroll.contentView.bounds.height) : 0
+        scroll.contentView.scroll(to: NSPoint(x: x, y: y))
+        scroll.reflectScrolledClipView(scroll.contentView)
+    }
+
+    static func screenshotSize(from value: String?) throws -> NSSize {
         let value = value ?? "1020x772"
         let components = value.lowercased().split(separator: "x")
         guard components.count == 2,
               let width = Double(components[0]),
               let height = Double(components[1]),
-              width >= 800,
-              height >= 650
+              width.isFinite, height.isFinite,
+              width >= 320, width <= 8192,
+              height >= 240, height <= 8192
         else {
             throw RenderingError.invalidSize(value)
         }

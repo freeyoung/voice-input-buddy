@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 struct CommandVoiceActivationAudioBuffer {
     let maximumSampleCount: Int
@@ -125,10 +124,10 @@ struct BluetoothVoiceTailDiagnostics {
 
     func snapshot(at stopUptime: TimeInterval) -> BluetoothVoiceTailSnapshot {
         let samples = recentSamples
-        var metrics = WatchBluetoothAudioSignalMetrics()
+        var metrics = VoiceAudioSignalMetrics()
         metrics.append(samples)
         let finalWindowSamples = Array(samples.suffix(Self.sampleRate / 10))
-        var finalWindowMetrics = WatchBluetoothAudioSignalMetrics()
+        var finalWindowMetrics = VoiceAudioSignalMetrics()
         finalWindowMetrics.append(finalWindowSamples)
         return BluetoothVoiceTailSnapshot(
             sampleCount: metrics.sampleCount,
@@ -146,5 +145,29 @@ struct BluetoothVoiceTailDiagnostics {
                 max(0, Int(((stopUptime - $0) * 1_000).rounded()))
             }
         )
+    }
+}
+
+struct VoiceAudioSignalMetrics: Equatable, Sendable {
+    private(set) var sampleCount = 0
+    private(set) var nonZeroSampleCount = 0
+    private(set) var peak = 0
+    private(set) var squaredSampleSum: UInt64 = 0
+
+    init() {}
+
+    var rms: Int {
+        guard sampleCount > 0 else { return 0 }
+        return Int(sqrt(Double(squaredSampleSum) / Double(sampleCount)))
+    }
+
+    mutating func append(_ samples: [Int16]) {
+        for sample in samples {
+            let magnitude = abs(Int(sample))
+            sampleCount += 1
+            if sample != 0 { nonZeroSampleCount += 1 }
+            peak = max(peak, magnitude)
+            squaredSampleSum += UInt64(magnitude * magnitude)
+        }
     }
 }

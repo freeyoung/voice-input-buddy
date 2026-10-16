@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteCore
-import BuddyRemoteUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -139,6 +137,7 @@ extension SettingsView {
                                     .fixedSize(horizontal: true, vertical: false)
                                     .frame(width: 150)
                                 Button("about.configuration.import", action: importConfiguration)
+                                    .disabled(model.isVoiceConfigurationBusy)
                                     .compatibilityButtonStyle(.standard)
                                     .fixedSize(horizontal: true, vertical: false)
                                     .frame(width: 150)

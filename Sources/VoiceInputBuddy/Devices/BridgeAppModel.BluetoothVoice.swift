@@ -4,17 +4,16 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     func bluetoothBridgeDeviceNameDidChange(_ bridge: XiaomiBluetoothBridge) {
-        guard bluetoothBridges.values.contains(where: { $0 === bridge }) else { return }
+        guard connections.bridges.values.contains(where: { $0 === bridge }) else { return }
         refreshRemoteDeviceNames(reason: .peripheralEvent)
     }
 
     private func cancelPendingBluetoothVoiceStart(for identifier: UUID) {
-        guard pendingBluetoothVoiceStart.cancel(ifOwnedBy: identifier) else { return }
-        pendingBluetoothVoiceStopRequested = false
+        guard voiceSession.pendingStart.cancel(ifOwnedBy: identifier) else { return }
+        voiceSession.stopRequested = false
     }
 
     func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge) {
@@ -24,21 +23,21 @@ extension BridgeAppModel {
             AppLogger.shared.write("ATVV STREAM rejected_busy reason=other_voice_source")
             return
         }
-        if let pendingIdentifier = pendingBluetoothVoiceStart.identifier,
+        if let pendingIdentifier = voiceSession.pendingStart.identifier,
            pendingIdentifier != identifier {
             _ = bridge.requestMicrophoneClose()
             cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM rejected_busy reason=pending_start")
             return
         }
-        let outputReadyAtStart = audioOutput.isReadyForTestTone
+        let outputReadyAtStart = audio.output.isReadyForTestTone
         if !outputReadyAtStart {
-            let shouldStartConfiguration = pendingBluetoothVoiceStart.identifier == nil
+            let shouldStartConfiguration = voiceSession.pendingStart.identifier == nil
             if shouldStartConfiguration {
-                pendingBluetoothVoiceStart.begin(for: identifier)
+                voiceSession.pendingStart.begin(for: identifier)
             }
         }
-        if identifier == activeBluetoothVoiceDeviceIdentifier, bluetoothVoiceActive {
+        if identifier == voiceSession.activeDeviceIdentifier, voiceSession.isActive {
             cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM ignored_duplicate_start")
 
@@ -48,8 +47,8 @@ extension BridgeAppModel {
             rc003VoiceExtensionActive &&
             rc003VoiceExtensionAwaitingReopen &&
             rc003VoiceExtensionBridge === bridge
-        if let activeBluetoothVoiceDeviceIdentifier,
-           activeBluetoothVoiceDeviceIdentifier != identifier {
+        if let activeIdentifier = voiceSession.activeDeviceIdentifier,
+           activeIdentifier != identifier {
             _ = bridge.requestMicrophoneClose()
             cancelPendingBluetoothVoiceStart(for: identifier)
             AppLogger.shared.write("ATVV STREAM rejected_busy")
@@ -87,15 +86,12 @@ extension BridgeAppModel {
             }
         }
         let pendingStartAudio: [Int16]
-        if outputReadyAtStart, pendingBluetoothVoiceStart.identifier == identifier {
-            pendingStartAudio = pendingBluetoothVoiceStart.drain()
+        if outputReadyAtStart, voiceSession.pendingStart.identifier == identifier {
+            pendingStartAudio = voiceSession.pendingStart.drain()
         } else {
             pendingStartAudio = []
         }
-        pendingCommandVoiceAudio.cancel()
-        activeBluetoothVoiceDeviceIdentifier = identifier
-        loggedBluetoothVoiceAudioDeviceIdentifier = nil
-        bluetoothVoiceActive = true
+        voiceSession.begin(deviceIdentifier: identifier)
         updateVoiceKeyState(
             streaming: true,
             forceSoftware: requiresOrderedVoiceFn ||
@@ -104,10 +100,10 @@ extension BridgeAppModel {
             completion: { [self] activated in
             guard activated else {
                 _ = bridge.requestMicrophoneClose()
-                bluetoothVoiceActive = false
-                activeBluetoothVoiceDeviceIdentifier = nil
-                pendingBluetoothVoiceStart.cancel()
-                pendingBluetoothVoiceStopRequested = false
+                voiceSession.isActive = false
+                voiceSession.activeDeviceIdentifier = nil
+                voiceSession.pendingStart.cancel()
+                voiceSession.stopRequested = false
                 AppLogger.shared.write(
                     "ATVV STREAM rejected reason=voice_key mode=\(settings.voiceKeyMode.rawValue)"
                 )
@@ -117,18 +113,18 @@ extension BridgeAppModel {
             let model = profileID
                 .flatMap { id in settings.remoteDeviceProfiles.first(where: { $0.id == id })?.model }
                 ?? .unknown
-            bluetoothVoiceTraceCounter &+= 1
-            activeBluetoothVoiceTraceID = bluetoothVoiceTraceCounter
-            bluetoothVoiceTraceStartedAt = Date()
-            bluetoothVoiceTraceModel = model
-            bluetoothVoiceDecodedBatchCount = 0
-            bluetoothVoiceDecodedSampleCount = 0
+            voiceSession.bluetoothVoiceTraceCounter &+= 1
+            voiceSession.activeBluetoothVoiceTraceID = voiceSession.bluetoothVoiceTraceCounter
+            voiceSession.bluetoothVoiceTraceStartedAt = Date()
+            voiceSession.bluetoothVoiceTraceModel = model
+            voiceSession.bluetoothVoiceDecodedBatchCount = 0
+            voiceSession.bluetoothVoiceDecodedSampleCount = 0
             resetCurrentVoiceSampleReceipt()
-            bluetoothVoiceEnqueueFailureCount = 0
-            bluetoothVoiceTraceRoute = "none"
-            bluetoothVoiceTailDiagnostics.reset()
+            voiceSession.bluetoothVoiceEnqueueFailureCount = 0
+            voiceSession.bluetoothVoiceTraceRoute = "none"
+            voiceSession.bluetoothVoiceTailDiagnostics.reset()
             AppLogger.shared.write(
-                "ATVV STREAM accepted trace=\(bluetoothVoiceTraceCounter) model=\(model.rawValue)"
+                "ATVV STREAM accepted trace=\(voiceSession.bluetoothVoiceTraceCounter) model=\(model.rawValue)"
             )
 
             cancelVirtualAudioReleaseIfPending(trigger: "bluetooth_voice_start")
@@ -143,7 +139,7 @@ extension BridgeAppModel {
                 rc003VoiceExtensionOpenTimer?.cancel()
                 rc003VoiceExtensionOpenTimer = nil
                 AppLogger.shared.write(
-                    "RC003 EXTENSION physical_segment_reopened trace=\(activeBluetoothVoiceTraceID ?? 0)"
+                    "RC003 EXTENSION physical_segment_reopened trace=\(voiceSession.activeBluetoothVoiceTraceID ?? 0)"
                 )
             } else {
                 _ = voiceFnTapSession.startVoice()
@@ -163,28 +159,28 @@ extension BridgeAppModel {
                 }
             }
             if !outputReadyAtStart {
-                guard let operationID = pendingBluetoothVoiceStart.operationID else { return }
+                guard let operationID = voiceSession.pendingStart.operationID else { return }
                 AppLogger.shared.write(
                     "SYSTEM AUDIO voice_start_recovery configured=pending " +
-                        "suspended=\(systemAudioSuspensionState.isSuspended) " +
-                        "reasons=\(systemAudioSuspensionState.diagnostic)"
+                        "suspended=\(audio.suspensionState.isSuspended) " +
+                        "reasons=\(audio.suspensionState.diagnostic)"
                 )
                 ensureVirtualAudioOutputReady(reason: "bluetooth_voice_start") { [weak self, weak bridge] ready in
                     guard let self, self.started,
-                          self.pendingBluetoothVoiceStart.matches(
+                          self.voiceSession.pendingStart.matches(
                             identifier: identifier, operationID: operationID
                           ) else { return }
                     guard let bridge else {
-                        self.pendingBluetoothVoiceStart.cancel(ifOwnedBy: identifier)
-                        self.pendingBluetoothVoiceStopRequested = false
+                        self.voiceSession.pendingStart.cancel(ifOwnedBy: identifier)
+                        self.voiceSession.stopRequested = false
                         self.releaseVirtualAudioOutputIfUnused(reason: "bluetooth_source_released")
                         return
                     }
-                    let stopRequested = self.pendingBluetoothVoiceStopRequested
-                    self.pendingBluetoothVoiceStopRequested = false
-                    let bufferedAudio = self.pendingBluetoothVoiceStart.drain()
+                    let stopRequested = self.voiceSession.stopRequested
+                    self.voiceSession.stopRequested = false
+                    let bufferedAudio = self.voiceSession.pendingStart.drain()
                     guard ready else {
-                        self.pendingBluetoothVoiceStart.audio.cancel()
+                        self.voiceSession.pendingStart.audio.cancel()
                         _ = bridge.requestMicrophoneClose()
                         AppLogger.shared.write("ATVV STREAM rejected_audio_output")
                         self.bluetoothBridgeDidStopVoice(bridge)
@@ -197,7 +193,7 @@ extension BridgeAppModel {
                         self.routeBluetoothVoiceSamples(
                             bufferedAudio,
                             from: bridge,
-                            identifier: identifier
+                            identifier: identifier, isPreRoll: true
                         )
                     }
                     self.flushPendingCommandVoiceAudio(for: bridge)
@@ -213,7 +209,7 @@ extension BridgeAppModel {
                 routeBluetoothVoiceSamples(
                     pendingStartAudio,
                     from: bridge,
-                    identifier: identifier
+                    identifier: identifier, isPreRoll: true
                 )
             }
             if outputReadyAtStart {
@@ -224,31 +220,31 @@ extension BridgeAppModel {
 
     func bluetoothBridgeDidStopVoice(_ bridge: XiaomiBluetoothBridge) {
         guard let identifier = bridge.deviceIdentifier else { return }
-        if identifier == activeBluetoothVoiceDeviceIdentifier, pendingVoiceKeyActivationOwner == .bluetooth {
+        if identifier == voiceSession.activeDeviceIdentifier, pendingVoiceKeyActivationOwner == .bluetooth {
             _ = releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: true)
             return
         }
-        if pendingBluetoothVoiceStart.identifier == identifier,
-           activeBluetoothVoiceDeviceIdentifier == nil {
-            pendingBluetoothVoiceStart.cancel()
-            pendingBluetoothVoiceStopRequested = false
+        if voiceSession.pendingStart.identifier == identifier,
+           voiceSession.activeDeviceIdentifier == nil {
+            voiceSession.pendingStart.cancel()
+            voiceSession.stopRequested = false
             AppLogger.shared.write("ATVV STREAM stop_before_audio_ready result=cancelled")
             return
         }
-        if pendingBluetoothVoiceStart.identifier == identifier {
-            pendingBluetoothVoiceStopRequested = true
+        if voiceSession.pendingStart.identifier == identifier {
+            voiceSession.stopRequested = true
             AppLogger.shared.write(
                 "ATVV STREAM stop_deferred_until_audio_ready result=pending_tail " +
-                    "pending_samples=\(pendingBluetoothVoiceStart.audio.bufferedSampleCount)"
+                    "pending_samples=\(voiceSession.pendingStart.audio.bufferedSampleCount)"
             )
             return
         }
-        guard identifier == activeBluetoothVoiceDeviceIdentifier else { return }
+        guard identifier == voiceSession.activeDeviceIdentifier else { return }
         if rc003VoiceExtensionTestEnabled,
            rc003VoiceExtensionActive,
            rc003VoiceExtensionBridge === bridge {
-            bluetoothVoiceActive = false
-            loggedBluetoothVoiceAudioDeviceIdentifier = nil
+            voiceSession.isActive = false
+            voiceSession.loggedBluetoothVoiceAudioDeviceIdentifier = nil
             rc003VoiceExtensionAwaitingReopen = true
             rc003VoiceExtensionDidReceiveAudio = false
             rc003VoiceExtensionTimer?.cancel()
@@ -268,13 +264,9 @@ extension BridgeAppModel {
             )
             return
         }
-        activeBluetoothVoiceDeviceIdentifier = nil
-        loggedBluetoothVoiceAudioDeviceIdentifier = nil
-        bluetoothVoiceActive = false
-        pendingBluetoothVoiceStart.cancel()
-        pendingBluetoothVoiceStopRequested = false
+        voiceSession.end()
         releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: true)
-        pendingCommandVoiceAudio.cancel()
+        voiceSession.commandAudio.cancel()
         if longRecordingRequested {
             finishLongRecording(reason: "remote_stop")
         } else if longRecordingCloseTimer != nil {
@@ -283,29 +275,29 @@ extension BridgeAppModel {
             AppLogger.shared.write("LONG RECORDING close_confirmed")
         }
         let handledByFnTapMode = voiceFnTapSession.stopVoice()
-        let traceID = activeBluetoothVoiceTraceID ?? 0
-        let durationMilliseconds = bluetoothVoiceTraceStartedAt.map {
+        let traceID = voiceSession.activeBluetoothVoiceTraceID ?? 0
+        let durationMilliseconds = voiceSession.bluetoothVoiceTraceStartedAt.map {
             max(0, Int(Date().timeIntervalSince($0) * 1_000))
         } ?? 0
         let shouldFlushAudio = BluetoothVoiceStopPolicy.shouldFlushAudio(
             handledByFnTapMode: handledByFnTapMode
         )
-        let pendingBuffers = audioOutput.pendingVoiceBufferCountForDiagnostics
-        let tailSnapshot = bluetoothVoiceTailDiagnostics.snapshot(
+        let pendingBuffers = audio.output.pendingVoiceBufferCountForDiagnostics
+        let tailSnapshot = voiceSession.bluetoothVoiceTailDiagnostics.snapshot(
             at: ProcessInfo.processInfo.systemUptime
         )
         AppLogger.shared.write(
-            "ATVV STREAM summary trace=\(traceID) model=\(bluetoothVoiceTraceModel.rawValue) " +
-                "duration_ms=\(durationMilliseconds) batches=\(bluetoothVoiceDecodedBatchCount) " +
-                "samples=\(bluetoothVoiceDecodedSampleCount) " +
-                "enqueue_failures=\(bluetoothVoiceEnqueueFailureCount) " +
-                "route=\(bluetoothVoiceTraceRoute) pending_buffers=\(pendingBuffers) " +
-                "flush=\(shouldFlushAudio) audio_ready=\(audioOutput.isReadyForTestTone) " +
-                "audio_state={\(audioOutput.diagnosticState())}"
+            "ATVV STREAM summary trace=\(traceID) model=\(voiceSession.bluetoothVoiceTraceModel.rawValue) " +
+                "duration_ms=\(durationMilliseconds) batches=\(voiceSession.bluetoothVoiceDecodedBatchCount) " +
+                "samples=\(voiceSession.bluetoothVoiceDecodedSampleCount) " +
+                "enqueue_failures=\(voiceSession.bluetoothVoiceEnqueueFailureCount) " +
+                "route=\(voiceSession.bluetoothVoiceTraceRoute) pending_buffers=\(pendingBuffers) " +
+                "flush=\(shouldFlushAudio) audio_ready=\(audio.output.isReadyForTestTone) " +
+                "audio_state={\(audio.output.diagnosticState())}"
         )
         AppLogger.shared.write(
-            "ATVV STREAM tail trace=\(traceID) model=\(bluetoothVoiceTraceModel.rawValue) " +
-                "route=\(bluetoothVoiceTraceRoute) " +
+            "ATVV STREAM tail trace=\(traceID) model=\(voiceSession.bluetoothVoiceTraceModel.rawValue) " +
+                "route=\(voiceSession.bluetoothVoiceTraceRoute) " +
                 "fn_pressed_at_stop=\(preferredInputSourceMonitor.functionKeyIsPressedForDiagnostics) " +
                 "last_audio_age_ms=\(tailSnapshot.lastAudioAgeMilliseconds.map(String.init) ?? "none") " +
                 "tail_ms=\(tailSnapshot.durationMilliseconds) " +
@@ -318,33 +310,33 @@ extension BridgeAppModel {
                 "final_window_peak=\(tailSnapshot.finalWindowPeak) " +
                 "final_window_rms=\(tailSnapshot.finalWindowRMS)"
         )
-        audioOutput.logWhenPendingVoiceAudioDrains(
-            context: "trace=\(traceID) model=\(bluetoothVoiceTraceModel.rawValue)"
+        audio.output.logWhenPendingVoiceAudioDrains(
+            context: "trace=\(traceID) model=\(voiceSession.bluetoothVoiceTraceModel.rawValue)"
         )
-        activeBluetoothVoiceTraceID = nil
-        bluetoothVoiceTraceStartedAt = nil
-        bluetoothVoiceTailDiagnostics.reset()
+        voiceSession.activeBluetoothVoiceTraceID = nil
+        voiceSession.bluetoothVoiceTraceStartedAt = nil
+        voiceSession.bluetoothVoiceTailDiagnostics.reset()
         endVoiceSessionIfNeeded(flushAudio: shouldFlushAudio)
-        if systemAudioSuspensionState.isSuspended {
+        if audio.suspensionState.isSuspended {
             releaseVirtualAudioOutputIfUnused(reason: "system_suspended_after_bluetooth_voice")
         }
     }
 
     func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didDecode samples: [Int16]) {
         guard let identifier = bridge.deviceIdentifier else { return }
-        if identifier == pendingBluetoothVoiceStart.identifier,
-           pendingBluetoothVoiceStart.audio.appendIfWaiting(samples) {
+        if identifier == voiceSession.pendingStart.identifier,
+           voiceSession.pendingStart.audio.appendIfWaiting(samples) {
             AppLogger.shared.write(
                 "ATVV AUDIO buffered_during_configuration samples=\(samples.count) " +
-                    "total=\(pendingBluetoothVoiceStart.audio.bufferedSampleCount)"
+                    "total=\(voiceSession.pendingStart.audio.bufferedSampleCount)"
             )
             return
         }
-        guard identifier == activeBluetoothVoiceDeviceIdentifier else { return }
-        if pendingCommandVoiceAudio.appendIfWaiting(samples) {
+        guard identifier == voiceSession.activeDeviceIdentifier else { return }
+        if voiceSession.commandAudio.appendIfWaiting(samples) {
             AppLogger.shared.write(
                 "ATVV AUDIO buffered_before_command samples=\(samples.count) " +
-                    "total=\(pendingCommandVoiceAudio.bufferedSampleCount)"
+                    "total=\(voiceSession.commandAudio.bufferedSampleCount)"
             )
             return
         }
@@ -352,27 +344,29 @@ extension BridgeAppModel {
     }
 
     private func flushPendingCommandVoiceAudio(for bridge: XiaomiBluetoothBridge) {
-        let samples = pendingCommandVoiceAudio.drain()
+        let samples = voiceSession.commandAudio.drain()
         guard !samples.isEmpty, let identifier = bridge.deviceIdentifier else { return }
         AppLogger.shared.write("ATVV AUDIO flush_before_command samples=\(samples.count)")
-        routeBluetoothVoiceSamples(samples, from: bridge, identifier: identifier)
+        routeBluetoothVoiceSamples(samples, from: bridge, identifier: identifier, isPreRoll: true)
     }
 
     private func routeBluetoothVoiceSamples(
         _ samples: [Int16],
         from bridge: XiaomiBluetoothBridge,
-        identifier: UUID
+        identifier: UUID,
+        isPreRoll: Bool = false
     ) {
-        guard identifier == activeBluetoothVoiceDeviceIdentifier else { return }
-        let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
-        let handledByFnTapMode = voiceFnTapSession.receive(samples)
+        guard identifier == voiceSession.activeDeviceIdentifier else { return }
+        let deliveryGeneration = voiceSession.voiceAudioDeliveryDiagnostic.generation
+        let handledByFnTapMode = voiceFnTapSession.receive(samples, isPreRoll: isPreRoll)
         let enqueued: Bool
         if handledByFnTapMode {
             enqueued = true
         } else {
-            enqueued = audioOutput.enqueue(
+            enqueued = audio.output.enqueue(
                 samples: samples,
-                deliveryGeneration: deliveryGeneration
+                deliveryGeneration: deliveryGeneration,
+                isPreRoll: isPreRoll
             )
             recordVoiceAudioEnqueueOutcome(
                 accepted: enqueued,
@@ -383,24 +377,24 @@ extension BridgeAppModel {
             samples: samples,
             route: handledByFnTapMode ? .virtualAudioViaFnTap : .virtualAudioDirect
         )
-        bluetoothVoiceDecodedBatchCount += 1
-        bluetoothVoiceDecodedSampleCount += samples.count
-        bluetoothVoiceTailDiagnostics.append(samples, at: ProcessInfo.processInfo.systemUptime)
+        voiceSession.bluetoothVoiceDecodedBatchCount += 1
+        voiceSession.bluetoothVoiceDecodedSampleCount += samples.count
+        voiceSession.bluetoothVoiceTailDiagnostics.append(samples, at: ProcessInfo.processInfo.systemUptime)
         publishCurrentVoiceSampleReceiptIfNeeded(sampleCount: samples.count)
         if !enqueued {
-            bluetoothVoiceEnqueueFailureCount += 1
+            voiceSession.bluetoothVoiceEnqueueFailureCount += 1
         }
-        bluetoothVoiceTraceRoute = handledByFnTapMode ? "fn_tap" : "virtual_audio"
-        if loggedBluetoothVoiceAudioDeviceIdentifier != identifier {
-            loggedBluetoothVoiceAudioDeviceIdentifier = identifier
+        voiceSession.bluetoothVoiceTraceRoute = handledByFnTapMode ? "fn_tap" : "virtual_audio"
+        if voiceSession.loggedBluetoothVoiceAudioDeviceIdentifier != identifier {
+            voiceSession.loggedBluetoothVoiceAudioDeviceIdentifier = identifier
             let model = settings.profileID(forBluetoothIdentifier: identifier)
                 .flatMap { id in settings.remoteDeviceProfiles.first(where: { $0.id == id })?.model }
                 ?? .unknown
             AppLogger.shared.write(
-                "ATVV AUDIO routed trace=\(activeBluetoothVoiceTraceID ?? 0) " +
-                    "model=\(model.rawValue) route=\(bluetoothVoiceTraceRoute) " +
+                "ATVV AUDIO routed trace=\(voiceSession.activeBluetoothVoiceTraceID ?? 0) " +
+                    "model=\(model.rawValue) route=\(voiceSession.bluetoothVoiceTraceRoute) " +
                     "accepted=\(enqueued) first_batch_samples=\(samples.count) " +
-                    "pending_buffers=\(audioOutput.pendingVoiceBufferCountForDiagnostics)"
+                    "pending_buffers=\(audio.output.pendingVoiceBufferCountForDiagnostics)"
             )
         }
         if rc003VoiceExtensionTestEnabled,
@@ -411,7 +405,7 @@ extension BridgeAppModel {
             rc003VoiceExtensionDidReceiveAudio = true
             startRC003VoiceExtensionTimer()
             AppLogger.shared.write(
-                "RC003 EXTENSION AUDIO_READY session_segment=\(activeBluetoothVoiceTraceID ?? 0) " +
+                "RC003 EXTENSION AUDIO_READY session_segment=\(voiceSession.activeBluetoothVoiceTraceID ?? 0) " +
                     "samples=\(samples.count)"
             )
         }
@@ -517,12 +511,12 @@ extension BridgeAppModel {
         didChange state: BluetoothBridgeState
     ) {
         let bridgeObjectID = ObjectIdentifier(bridge)
-        let previousState = bluetoothBridgeStates[bridgeObjectID]
+        let previousState = connections.states[bridgeObjectID]
         let shouldReapplyHIDSettings = Self.shouldReapplyHIDSettings(
             previousState: previousState,
             currentState: state
         )
-        bluetoothBridgeStates[bridgeObjectID] = state
+        connections.states[bridgeObjectID] = state
         if case .ready = state {
             _ = registerBluetoothBridgeIfNeeded(bridge)
             learnSelectedRemoteHIDIdentity(bridge)
@@ -553,16 +547,16 @@ extension BridgeAppModel {
                     remotePowerStates.removeValue(forKey: profileID)
                 }
             }
-            let voiceWasActive = BluetoothVoiceDeviceOwnershipPolicy.matches(identifier, active: activeBluetoothVoiceDeviceIdentifier)
+            let voiceWasActive = BluetoothVoiceDeviceOwnershipPolicy.matches(identifier, active: voiceSession.activeDeviceIdentifier)
             if voiceWasActive {
                 if rc003VoiceExtensionTestEnabled,
                    rc003VoiceExtensionActive,
                    rc003VoiceExtensionBridge === bridge {
                     finishRC003VoiceExtensionTest(reason: "bluetooth_not_ready")
                 }
-                bluetoothVoiceActive = false
-                activeBluetoothVoiceDeviceIdentifier = nil
-                pendingCommandVoiceAudio.cancel()
+                voiceSession.isActive = false
+                voiceSession.activeDeviceIdentifier = nil
+                voiceSession.commandAudio.cancel()
                 _ = voiceFnTapSession.stopVoice()
                 releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: true)
                 endVoiceSessionIfNeeded(flushAudio: false)
@@ -581,8 +575,8 @@ extension BridgeAppModel {
             } else if !isAudioOutputReady {
                 AppLogger.shared.write(
                     "AUDIO REBIND deferred reason=bluetooth_ready " +
-                        "system_suspended=\(systemAudioSuspensionState.isSuspended) " +
-                        "reasons=\(systemAudioSuspensionState.diagnostic)"
+                        "system_suspended=\(audio.suspensionState.isSuspended) " +
+                        "reasons=\(audio.suspensionState.diagnostic)"
                 )
             }
         } else {

@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -154,84 +152,10 @@ extension OnboardingView {
         switch settings.onboardingControlMethod {
         case .physicalRemote, .unselected:
             remoteIllustration
-        case .iPhoneApp:
-            iPhoneRemoteIllustration
-        case .webRemote:
-            webRemoteIllustration
         }
-    }
-
-    private var iPhoneRemoteIllustration: some View {
-        VStack(spacing: 18) {
-            if !model.isPhoneRemoteConnected,
-               let invitation = model.phoneRemoteInvitation,
-               let qrCode = PhoneRemoteInvitationQRCode.image(for: invitation) {
-                Image(nsImage: qrCode)
-                    .interpolation(.none)
-                    .resizable()
-                    .frame(width: 220, height: 220)
-        .padding(8)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-                Text(verbatim: localization.text("onboarding.iphone_remote.scan"))
-                    .font(.system(size: 15, weight: .semibold))
-                    .multilineTextAlignment(.center)
-            } else {
-                Image(systemName: model.isPhoneRemoteConnected
-                    ? "iphone.gen3.radiowaves.left.and.right"
-                    : "iphone.gen3")
-                    .font(.system(size: 150, weight: .light))
-                    .foregroundStyle(
-                        model.isPhoneRemoteConnected ? Color.green : Color.accentColor
-                    )
-            }
-            sideStatusPanel
-        }
-        .padding(28)
     }
 
     @ViewBuilder
-    private var webRemoteIllustration: some View {
-        VStack(spacing: 16) {
-            switch model.webRemoteState {
-            case .waitingForPhone, .awaitingApproval:
-                WebRemoteMiniProgramCodeView(
-                    model: model,
-                    localization: WebRemoteSessionLocalization(
-                        locale: localization.locale,
-                        text: localization.text
-                    ),
-                    size: 250,
-                    onDiagnostic: { AppLogger.shared.write($0) }
-                )
-            case let .connected(deviceName):
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 96))
-                    .foregroundStyle(Color.green)
-                Text(deviceName)
-                    .font(.system(size: 16, weight: .semibold))
-            case .connecting:
-                ProgressView()
-                    .controlSize(.large)
-                Text(verbatim: localization.text("onboarding.web_remote.connecting"))
-                    .font(.system(size: 15, weight: .semibold))
-            case .unavailable, .failed:
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.system(size: 82))
-                    .foregroundStyle(Color.orange)
-                Text(verbatim: localization.text("onboarding.web_remote.unavailable"))
-                    .font(.system(size: 15, weight: .semibold))
-            case .disabled:
-                Image(systemName: "qrcode.viewfinder")
-                    .font(.system(size: 100))
-                    .foregroundStyle(Color.accentColor)
-                Text(verbatim: localization.text("onboarding.web_remote.preparing"))
-                    .font(.system(size: 15, weight: .semibold))
-            }
-            sideStatusPanel
-        }
-        .padding(28)
-    }
-
     private var completeIllustration: some View {
         VStack(spacing: 22) {
             ZStack {

@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -84,18 +82,6 @@ extension OnboardingView {
         }
     }
 
-    var mobilePermissionTitleKey: String {
-        settings.onboardingControlSource == .appleCompanion
-            ? "onboarding.permissions.apple_companion.title"
-            : "onboarding.permissions.web_remote.title"
-    }
-
-    var mobilePermissionDetailKey: String {
-        settings.onboardingControlSource == .appleCompanion
-            ? "onboarding.permissions.apple_companion.detail"
-            : "onboarding.permissions.web_remote.detail"
-    }
-
     var physicalRemotePairingKeys: (
         title: String,
         firstStep: String,
@@ -123,7 +109,7 @@ extension OnboardingView {
                 "onboarding.remote.chromecast_pairing.second",
                 "onboarding.remote.chromecast_pairing.third"
             )
-        case .xiaomiRemote, .appleCompanion, .webRemote, .unselected:
+        case .xiaomiRemote, .unselected:
             return (
                 "onboarding.remote.first_pairing.title",
                 "onboarding.remote.first_pairing.wake",
@@ -145,10 +131,6 @@ extension OnboardingView {
             return "onboarding.controls.siri.detail"
         case .chromecastRemote:
             return "onboarding.controls.chromecast.detail"
-        case .appleCompanion:
-            return "onboarding.controls.apple_companion.detail"
-        case .webRemote:
-            return "onboarding.controls.web_remote.detail"
         case .unselected:
             return "onboarding.controls.detail"
         }
@@ -174,7 +156,7 @@ extension OnboardingView {
                 .power, .up, .left, .ok, .right, .down, .back,
                 .home, .volumeUp, .volumeDown, .mute, .youtube, .netflix, .input,
             ]
-        case .appleCompanion, .webRemote, .unselected:
+        case .unselected:
             return nil
         }
     }
@@ -332,10 +314,6 @@ extension OnboardingView {
         switch source {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return "onboarding.recovery.remote.not_found.physical_detail"
-        case .appleCompanion:
-            return "onboarding.recovery.remote.not_found.apple_companion_detail"
-        case .webRemote:
-            return "onboarding.recovery.remote.not_found.web_remote_detail"
         case .unselected:
             return "onboarding.recovery.remote.not_found.detail"
         }

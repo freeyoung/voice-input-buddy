@@ -245,14 +245,14 @@ struct G9N9NProtocolTests {
         settings.selectRemoteProfile(google)
         settings.setOnboardingControlSource(.chromecastRemote)
         let model = BridgeAppModel(settings: settings, initialAudioDevices: [])
-        model.bluetoothVoiceActive = true
-        model.activeBluetoothVoiceDeviceIdentifier = xiaomiID
+        model.voiceSession.isActive = true
+        model.voiceSession.activeDeviceIdentifier = xiaomiID
         let view = OnboardingView(model: model)
         #expect(!view.selectedControlAcceptsVoice(.bluetoothRemote))
-        model.activeBluetoothVoiceDeviceIdentifier = googleID
+        model.voiceSession.activeDeviceIdentifier = googleID
         #expect(view.selectedControlAcceptsVoice(.bluetoothRemote))
-        model.bluetoothVoiceActive = false
-        model.activeBluetoothVoiceDeviceIdentifier = nil
+        model.voiceSession.isActive = false
+        model.voiceSession.activeDeviceIdentifier = nil
     }
 
     @Test func authenticationFailureIsNotProofOfAnAbsentVoiceService() {

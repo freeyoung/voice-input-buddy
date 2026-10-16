@@ -266,7 +266,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         )
         observeModel()
         observeLocalization()
-        observePhoneRemoteButtonTitles()
         installWorkspaceAudioLifecycleObservers()
 
         if OnboardingLaunchPolicy.shouldStartRuntime(
@@ -453,9 +452,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         appliedStatusItemPresentation = nil
         statusItemPresentation = .resolve(
             physicalConnected: model.isConnected,
-            phoneConnected: model.isPhoneRemoteConnected,
-            watchConnected: model.isWatchRemoteConnected,
-            webState: model.webRemoteState,
             isStreaming: model.isStreaming
         )
         refreshStatusItemPresentation()
@@ -680,9 +676,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private func observeModel() {
         StatusItemPresentation.publisher(
             physicalConnected: model.$isConnected.eraseToAnyPublisher(),
-            phoneConnected: model.$isPhoneRemoteConnected.eraseToAnyPublisher(),
-            watchConnected: model.$isWatchRemoteConnected.eraseToAnyPublisher(),
-            webState: model.$webRemoteState.eraseToAnyPublisher(),
             isStreaming: model.$isStreaming.eraseToAnyPublisher()
         )
         .receive(on: RunLoop.main)
@@ -721,31 +714,6 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
                 }
             }
             .store(in: &subscriptions)
-    }
-
-    private func observePhoneRemoteButtonTitles() {
-        Publishers.CombineLatest(
-            Publishers.CombineLatest4(
-                model.settings.$buttonBindings,
-                model.settings.$buttonShortcuts,
-                model.settings.$buttonApplicationProfileIDs,
-                model.settings.$customApplicationProfiles
-            ),
-            localization.$locale
-        )
-        .receive(on: RunLoop.main)
-        .sink { [weak self] values, _ in
-            guard let self else { return }
-            let (bindings, shortcuts, applicationProfileIDs, customApplicationProfiles) = values
-            model.updatePhoneRemoteButtonTitles(
-                bindings: bindings,
-                shortcuts: shortcuts,
-                applicationProfileIDs: applicationProfileIDs,
-                customApplicationProfiles: customApplicationProfiles,
-                localization: localization
-            )
-        }
-        .store(in: &subscriptions)
     }
 
     private func observeUpdatePreferences() {
@@ -898,6 +866,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
               let window = windowController.window else { return }
         isSettingsWindowOpen = true
         updateDockActivationPolicy()
+        fitSettingsWindowToScreen(window)
         windowController.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -945,11 +914,23 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         window.delegate = self
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 1020, height: 772)
-        window.setContentSize(NSSize(width: 1020, height: 772))
+        window.setContentSize(SettingsWindowLayout.preferredContentSize)
         window.setFrameAutosaveName("VoiceInputBuddySettings")
         window.center()
+        fitSettingsWindowToScreen(window)
         return NSWindowController(window: window)
+    }
+
+    private func fitSettingsWindowToScreen(_ window: NSWindow) {
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        window.minSize = SettingsWindowLayout.minimumWindowSize(in: screen.visibleFrame)
+        window.setFrame(SettingsWindowLayout.fittedFrame(window.frame, in: screen.visibleFrame), display: true)
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === settingsWindowController?.window else { return }
+        fitSettingsWindowToScreen(window)
     }
 
     func windowWillClose(_ notification: Notification) {

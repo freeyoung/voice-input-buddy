@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -11,10 +9,6 @@ extension OnboardingView {
         switch settings.onboardingControlMethod {
         case .physicalRemote:
             physicalRemoteContent
-        case .iPhoneApp:
-            iPhoneRemoteContent
-        case .webRemote:
-            webRemoteContent
         case .unselected:
             remoteAvailabilityContent
         }
@@ -208,74 +202,6 @@ extension OnboardingView {
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.orange.opacity(0.25), lineWidth: 1)
-        }
-    }
-
-    private var iPhoneRemoteContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            onboardingTitle("onboarding.apple_companion.title")
-            Text(verbatim: localization.text("onboarding.apple_companion.detail"))
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            onboardingLink(id: "iphone.install", destination: AppLinks.githubRepository) {
-                Label {
-                    Text(verbatim: localization.text("about.support.github"))
-                } icon: {
-                    Image(systemName: "arrow.up.right.square")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-
-            statusCard(
-                icon: selectedControlConnected
-                    ? "checkmark.circle.fill"
-                    : "iphone.and.arrow.forward",
-                title: localization.text(
-                    selectedControlConnected
-                        ? "onboarding.apple_companion.connected"
-                        : "onboarding.apple_companion.waiting"
-                ),
-                detail: localization.text("onboarding.apple_companion.connection_detail"),
-                isComplete: selectedControlConnected
-            )
-
-            controllerButtonStatusCard(
-                waitingDetailKey: "onboarding.apple_companion.button_detail"
-            )
-        }
-    }
-
-    private var webRemoteContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            onboardingTitle("onboarding.web_remote.title")
-            Text(verbatim: localization.text("onboarding.web_remote.detail"))
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            statusCard(
-                icon: webRemoteConnected
-                    ? "checkmark.circle.fill"
-                    : "qrcode.viewfinder",
-                title: webRemoteConnectionTitle,
-                detail: localization.text("onboarding.web_remote.connection_detail"),
-                isComplete: webRemoteConnected
-            )
-
-            controllerButtonStatusCard(
-                waitingDetailKey: "onboarding.web_remote.button_detail"
-            )
-
-            if !model.webRemoteState.isEnabled {
-                onboardingActionButton(id: "web.retry") {
-                    model.enableWebRemoteConnection()
-                } label: {
-                    Text(verbatim: localization.text("onboarding.web_remote.retry"))
-                }
-                .buttonStyle(.bordered)
-            }
         }
     }
 
