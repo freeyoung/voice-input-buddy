@@ -1280,3 +1280,5 @@
 "onboarding.integration.complete.detail" = "Your voice input tool has been configured and tested with your existing device.";
 
 "common_phrases.inserted" = "Phrase inserted.";
+
+"button_mapping.editor.confirm" = "OK";

@@ -1281,3 +1281,5 @@
 "onboarding.integration.complete.detail" = "输入法已完成配置，并已通过现有设备的语音输入验证。";
 
 "common_phrases.inserted" = "常用语已插入。";
+
+"button_mapping.editor.confirm" = "确定";

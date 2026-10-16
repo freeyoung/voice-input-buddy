@@ -288,7 +288,7 @@ extension SettingsView {
                             target.trigger == .singleClick &&
                             settings.experimentalContinuousRecordingEnabled
                     )
-                    Button("common.action.close") {
+                    Button("button_mapping.editor.confirm") {
                         mappingEditingTarget = nil
                         shortcutCaptureTarget = nil
                         applicationShortcutCaptureProfileID = nil
