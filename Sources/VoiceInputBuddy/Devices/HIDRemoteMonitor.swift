@@ -115,6 +115,7 @@ final class HIDRemoteMonitor {
     var onInputReset: ((UUID?) -> Void)?
     var onMonitoringInterrupted: (() -> Void)?
     var onCandidateAvailable: (() -> Void)?
+    var onDeviceConnected: ((UUID?, String) -> Void)?
     var isMonitoring: Bool { manager != nil }
     var onInternalAction: ((UUID?, ButtonAction) -> Void)?
 
@@ -390,6 +391,7 @@ final class HIDRemoteMonitor {
                 : "button_mapping.status.connected_system_actions_may_remain"
         ))
         AppLogger.shared.write("HID CONNECTED mode=probed")
+        onDeviceConnected?(profileID, fingerprint)
         return true
     }
 
@@ -408,6 +410,7 @@ final class HIDRemoteMonitor {
             activeDeviceIsSeized = true
             updateStatus(LocalizedMessage("button_mapping.status.connected"))
             AppLogger.shared.write("HID CONNECTED mode=seized")
+            onDeviceConnected?(profileID, fingerprint)
             return true
         }
 
@@ -447,6 +450,7 @@ final class HIDRemoteMonitor {
             "HID CONNECTED mode=monitored " +
                 AppLogger.errorFields(domain: "io_return", code: Int(seizeResult), fieldPrefix: "seize_error")
         )
+        onDeviceConnected?(profileID, fingerprint)
         return true
     }
 
@@ -565,6 +569,7 @@ final class HIDRemoteMonitor {
         deviceFingerprint = fingerprint
         self.profileID = profileID
         activeDeviceIsSeized = isSeized
+        onDeviceConnected?(profileID, fingerprint)
     }
 
     func handleSimulatedGoogleReport(reportID: UInt32, data: Data) {
