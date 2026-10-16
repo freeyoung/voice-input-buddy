@@ -255,7 +255,7 @@ extension SettingsView {
                         shortcutCaptureTarget = nil
                         applicationShortcutCaptureProfileID = nil
                     } label: {
-                        Label(localization.text("button_mapping.action.not_set"), systemImage:
+                        Label(localization.text("button_mapping.action.clear"), systemImage:
                             mappingConfiguration(for: target.button, trigger: target.trigger).action == .disabled
                                 ? "checkmark.circle.fill" : "circle")
                     }

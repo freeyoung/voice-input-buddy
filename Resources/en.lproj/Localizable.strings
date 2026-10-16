@@ -1282,3 +1282,5 @@
 "button_mapping.editor.confirm" = "OK";
 
 "button_mapping.action.not_set_help" = "This gesture performs no action. Other gestures for this button are unchanged. Select an action below to assign it again. Changes are saved automatically.";
+
+"button_mapping.action.clear" = "Clear Assignment";

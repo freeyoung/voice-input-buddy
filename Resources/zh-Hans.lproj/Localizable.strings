@@ -1283,3 +1283,5 @@
 "button_mapping.editor.confirm" = "确定";
 
 "button_mapping.action.not_set_help" = "当前手势不执行任何动作；这个按键的其他手势不受影响。选择下方动作即可重新设置。修改会自动保存。";
+
+"button_mapping.action.clear" = "清除设置";
