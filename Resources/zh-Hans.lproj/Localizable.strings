@@ -1285,3 +1285,6 @@
 "button_mapping.action.clear" = "清除设置";
 
 "common_phrases.boundary_padding_hint" = "文本首尾含空格或 Tab，保存和输入时会自动移除。正文中间的空白和换行会保留。";
+
+"connection.device.firmware" = "固件";
+"connection.device.audio_help" = "已协商的 ATVV 音频：编码、采样率和每帧字节数。";

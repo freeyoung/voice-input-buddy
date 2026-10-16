@@ -135,6 +135,12 @@ final class XiaomiBluetoothBridge: NSObject {
     private(set) var identifiedModel: XiaomiRemoteModel?
     private(set) var reportedHIDIdentity: RemoteHIDIdentity?
     var onHIDIdentityUpdate: (() -> Void)?
+    private(set) var deviceInformation = RemoteDeviceInformation() {
+        didSet {
+            if deviceInformation != oldValue { onDeviceInformationUpdate?() }
+        }
+    }
+    var onDeviceInformationUpdate: (() -> Void)?
     private weak var delegate: XiaomiBluetoothBridgeDelegate?
     private(set) var targetIdentifier: UUID?
     private let excludedIdentifiers: () -> Set<UUID>
@@ -221,6 +227,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private let deviceInformationServiceUUID = CBUUID(string: "180A")
     private let modelNumberUUID = CBUUID(string: "2A24")
     private let pnpIDUUID = CBUUID(string: "2A50")
+    private let firmwareRevisionUUID = CBUUID(string: "2A26")
 
     var deviceIdentifier: UUID? {
         peripheral?.identifier ?? targetIdentifier
@@ -697,6 +704,7 @@ final class XiaomiBluetoothBridge: NSObject {
         unacknowledgedWrites.reset()
         disconnectWatchdog.cancel()
         stopBatteryPolling(reason: "peripheral_reset")
+        deviceInformation = RemoteDeviceInformation()
         peripheral?.delegate = nil
         peripheral = nil
         peripheralDelegateProxy = nil
@@ -1034,6 +1042,7 @@ final class XiaomiBluetoothBridge: NSObject {
                 rejectUnsupportedAudio(LocalizedMessage("google.remote.unsupported_protocol"))
                 return
             }
+            deviceInformation.capabilities = parsed
             capabilities = parsed
             AppLogger.shared.write(
                 "ATVV CAPS version=\(parsed.version) codec=\(parsed.selectedCodec) frame=\(parsed.frameSize)"
@@ -1080,6 +1089,7 @@ final class XiaomiBluetoothBridge: NSObject {
                 rejectUnsupportedAudio(LocalizedMessage("connection.error.unsupported_8khz_codec"))
                 return
             }
+            deviceInformation.capabilities = capabilities
             let receivedSessionID = bytes.count >= 4 ? bytes[3] : 0
             if ATVVSessionGate.shouldIgnoreStreamAfterCancelledOpen(
                 cancelledAt: cancelledMicrophoneOpenAt
@@ -1489,7 +1499,7 @@ extension XiaomiBluetoothBridge {
         if let deviceInformationService = peripheral.services?.first(where: {
             $0.uuid == deviceInformationServiceUUID
         }) {
-            peripheral.discoverCharacteristics([modelNumberUUID, pnpIDUUID], for: deviceInformationService)
+            peripheral.discoverCharacteristics([modelNumberUUID, pnpIDUUID, firmwareRevisionUUID], for: deviceInformationService)
         }
     }
 
@@ -1571,7 +1581,8 @@ extension XiaomiBluetoothBridge {
                 return
             }
             for characteristic in service.characteristics ?? [] where
-                characteristic.uuid == modelNumberUUID || characteristic.uuid == pnpIDUUID {
+                characteristic.uuid == modelNumberUUID || characteristic.uuid == pnpIDUUID ||
+                characteristic.uuid == firmwareRevisionUUID {
                 peripheral.readValue(for: characteristic)
             }
             return
@@ -1716,7 +1727,12 @@ extension XiaomiBluetoothBridge {
         guard let data = characteristic.value else { return }
         if characteristic.uuid == pnpIDUUID {
             reportedHIDIdentity = RemoteHIDIdentity.fromPnP(data)
+            deviceInformation.identity = reportedHIDIdentity
             onHIDIdentityUpdate?()
+            return
+        }
+        if characteristic.uuid == firmwareRevisionUUID {
+            deviceInformation.firmwareRevision = RemoteDeviceInformation.deviceString(data)
             return
         }
         if characteristic.uuid == batteryLevelUUID {
@@ -1740,6 +1756,7 @@ extension XiaomiBluetoothBridge {
             return
         }
         if characteristic.uuid == modelNumberUUID {
+            deviceInformation.modelNumber = RemoteDeviceInformation.deviceString(data)
             guard let modelNumber = String(data: data, encoding: .utf8) else {
                 AppLogger.shared.write("BLE MODEL unreadable")
                 return
