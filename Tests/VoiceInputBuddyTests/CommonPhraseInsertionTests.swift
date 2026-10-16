@@ -75,6 +75,15 @@ struct CommonPhraseInsertionTests {
         #expect(results == ["common_phrases.inserted", "common_phrases.error.target_changed"])
     }
 
+    @Test func codexComposerUsesPasteEvenWithoutWebOrElectronMetadata() {
+        // Its AX selected-text write can return success without updating the
+        // composer. Use the application's normal paste handler instead.
+        #expect(CommonPhraseInserter.prefersPaste(bundleIdentifier: "com.openai.codex",
+            electron: false, webContent: false))
+        #expect(!CommonPhraseInserter.prefersPaste(bundleIdentifier: "com.apple.TextEdit",
+            electron: false, webContent: false))
+    }
+
     @Test func sublimeCustomBufferUsesPasteWithoutAllowingArbitraryWindows() {
         #expect(CommonPhraseInserter.permitsWindowEditor(bundleIdentifier: "com.sublimetext.4",
             role: kAXWindowRole, subrole: kAXStandardWindowSubrole))

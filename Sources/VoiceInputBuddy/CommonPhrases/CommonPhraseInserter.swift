@@ -79,7 +79,7 @@ final class CommonPhraseInserter {
 
     static func prefersPaste(bundleIdentifier: String, electron: Bool, webContent: Bool) -> Bool {
         electron || webContent || isTerminal(bundleIdentifier) || bundleIdentifier == "com.sublimetext.4" ||
-            ["com.apple.Safari", "com.google.Chrome", "org.chromium.Chromium", "com.microsoft.edgemac",
+            ["com.openai.codex", "com.apple.Safari", "com.google.Chrome", "org.chromium.Chromium", "com.microsoft.edgemac",
              "com.brave.Browser", "org.mozilla.firefox"].contains { bundleIdentifier == $0 || bundleIdentifier.hasPrefix($0 + ".") }
     }
 
