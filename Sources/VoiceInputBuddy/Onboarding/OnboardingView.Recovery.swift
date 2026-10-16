@@ -48,11 +48,6 @@ extension OnboardingView {
             if lastLoggedSecureInputState != nil { lastLoggedSecureInputState = nil }
             prepareSelectedControlConnection()
             model.refreshAudioDevices()
-        default:
-            if secureInputActive != nil { secureInputActive = nil }
-            if secureInputWaitStartedAtUptime != nil { secureInputWaitStartedAtUptime = nil }
-            if lastLoggedSecureInputState != nil { lastLoggedSecureInputState = nil }
-            break
         }
         settings.recordFirstUseEvent(.entered, step: step)
         lastRecordedFailure = nil
