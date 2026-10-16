@@ -74,10 +74,11 @@ final class CommonPhraseInserter {
         let processID: pid_t
         let element: AXUIElement?
         let terminal: Bool
+        let bundleIdentifier: String
     }
 
     static func prefersPaste(bundleIdentifier: String, electron: Bool, webContent: Bool) -> Bool {
-        electron || webContent || isTerminal(bundleIdentifier) ||
+        electron || webContent || isTerminal(bundleIdentifier) || bundleIdentifier == "com.sublimetext.4" ||
             ["com.apple.Safari", "com.google.Chrome", "org.chromium.Chromium", "com.microsoft.edgemac",
              "com.brave.Browser", "org.mozilla.firefox"].contains { bundleIdentifier == $0 || bundleIdentifier.hasPrefix($0 + ".") }
     }
@@ -98,13 +99,13 @@ final class CommonPhraseInserter {
             _ = KeyboardInjector.announceManualAccessibility(processIdentifier: processID,
                 bundleIdentifier: bundleID, attempt: 0)
             let element = focusedElement(processID)
-            let target = PasteTarget(processID: processID, element: element, terminal: terminal)
+            let target = PasteTarget(processID: processID, element: element, terminal: terminal, bundleIdentifier: bundleID)
             guard let element else {
                 if terminal { paste(text, target: target, completion: completion) }
                 else { finish("input_unavailable") }
                 return
             }
-            guard safeField(element, terminal: terminal) else { finish("input_unavailable"); return }
+            guard safeField(element, target: target) else { finish("input_unavailable"); return }
             let electron = app?.bundleURL.map {
                 FileManager.default.fileExists(atPath: $0.appendingPathComponent("Contents/Frameworks/Electron Framework.framework").path)
             } ?? false
@@ -154,16 +155,26 @@ final class CommonPhraseInserter {
         return unsafeBitCast(focused, to: AXUIElement.self)
     }
 
-    private static func safeField(_ element: AXUIElement, terminal: Bool) -> Bool {
+    private static func safeField(_ element: AXUIElement, target: PasteTarget) -> Bool {
+        let terminal = target.terminal
         let values = AccessibilityMessaging.attributes(element, keys: [kAXRoleAttribute, kAXSubroleAttribute,
             kAXEnabledAttribute, "AXProtectedContent", kAXIdentifierAttribute, kAXTitleAttribute,
             kAXDescriptionAttribute, kAXPlaceholderValueAttribute, kAXHelpAttribute, kAXSelectedTextRangeAttribute])
-        guard !values.isEmpty, permitsInsertion(role: terminal ? kAXTextAreaRole : values[kAXRoleAttribute] as? String ?? "",
-            subrole: values[kAXSubroleAttribute] as? String ?? "", enabled: values[kAXEnabledAttribute] as? Bool ?? true,
+        let role = values[kAXRoleAttribute] as? String ?? ""
+        let subrole = values[kAXSubroleAttribute] as? String ?? ""
+        let semanticText = [kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+            kAXPlaceholderValueAttribute, kAXHelpAttribute]
+            .compactMap { values[$0] as? String }.joined(separator: " ")
+        // Sublime's custom editor exposes its standard window as the focused
+        // element, not an AX text area. Require its enabled public Paste command
+        // instead of rejecting the buffer for lacking a text-selection attribute.
+        let windowEditor = permitsWindowEditor(bundleIdentifier: target.bundleIdentifier,
+            role: role, subrole: subrole)
+        guard !values.isEmpty, permitsInsertion(role: terminal || windowEditor ? kAXTextAreaRole : role,
+            subrole: subrole, enabled: values[kAXEnabledAttribute] as? Bool ?? true,
             protectedContent: values["AXProtectedContent"] as? Bool ?? false,
-            identifier: [kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute, kAXPlaceholderValueAttribute,
-                kAXHelpAttribute].compactMap { values[$0] as? String }.joined(separator: " "),
-            secureInputEnabled: SecureInputMonitor.isEnabled()) else { return false }
+            identifier: semanticText, secureInputEnabled: SecureInputMonitor.isEnabled()) else { return false }
+        if windowEditor { return hasEnabledPasteCommand(processID: target.processID) }
         guard let value = values[kAXSelectedTextRangeAttribute], CFGetTypeID(value as CFTypeRef) == AXValueGetTypeID() else {
             return terminal
         }
@@ -177,7 +188,7 @@ final class CommonPhraseInserter {
         if let original = target.element {
             guard let current, CFEqual(original, current) else { return "target_changed" }
         } else if !target.terminal { return "input_unavailable" }
-        if let current, !safeField(current, terminal: target.terminal) { return "input_unavailable" }
+        if let current, !safeField(current, target: target) { return "input_unavailable" }
         return nil
     }
 
@@ -192,6 +203,28 @@ final class CommonPhraseInserter {
                 completion(failure.map { .failed($0) } ?? .pasteSubmitted)
             }
         }
+    }
+
+    static func permitsWindowEditor(bundleIdentifier: String, role: String, subrole: String) -> Bool {
+        bundleIdentifier == "com.sublimetext.4" && role == kAXWindowRole && subrole == kAXStandardWindowSubrole
+    }
+
+    private static func hasEnabledPasteCommand(processID: pid_t) -> Bool {
+        let app = AXUIElementCreateApplication(processID)
+        let attributes = AccessibilityMessaging.attributes(app, keys: [kAXMenuBarAttribute])
+        guard let value = attributes[kAXMenuBarAttribute], CFGetTypeID(value as CFTypeRef) == AXUIElementGetTypeID() else { return false }
+        var pending = [unsafeBitCast(value as CFTypeRef, to: AXUIElement.self)]
+        var budget = AccessibilityTraversalBudget(maximumNodes: 120, maximumDuration: 0.35)
+        while !pending.isEmpty, budget.admitNode() {
+            let element = pending.removeFirst()
+            let values = AccessibilityMessaging.attributes(element,
+                keys: [kAXIdentifierAttribute, kAXEnabledAttribute, kAXChildrenAttribute])
+            if values[kAXIdentifierAttribute] as? String == "paste:" {
+                return values[kAXEnabledAttribute] as? Bool == true
+            }
+            if let children = values[kAXChildrenAttribute] as? [AXUIElement] { pending.append(contentsOf: children) }
+        }
+        return false
     }
 
     static func permitsInsertion(role: String, subrole: String, enabled: Bool,
