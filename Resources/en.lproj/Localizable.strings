@@ -1284,3 +1284,6 @@
 "button_mapping.action.clear" = "Clear Assignment";
 
 "common_phrases.boundary_padding_hint" = "Leading or trailing spaces and tabs will be removed when saving or inserting. Whitespace within the text and line breaks are preserved.";
+
+"connection.device.firmware" = "Firmware";
+"connection.device.audio_help" = "Negotiated ATVV audio: codec, sample rate and frame size in bytes.";

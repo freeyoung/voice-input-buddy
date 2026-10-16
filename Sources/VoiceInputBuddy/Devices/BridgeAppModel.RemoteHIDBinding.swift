@@ -2,6 +2,10 @@ import Foundation
 
 extension BridgeAppModel {
     func observeRemoteHIDIdentity(_ bridge: XiaomiBluetoothBridge) {
+        bridge.onDeviceInformationUpdate = { [weak self, weak bridge] in
+            guard let self, let bridge, let identifier = bridge.deviceIdentifier else { return }
+            self.remoteDeviceInformation[identifier] = bridge.deviceInformation
+        }
         bridge.onHIDIdentityUpdate = { [weak self, weak bridge] in
             guard let self, let bridge else { return }
             self.learnSelectedRemoteHIDIdentity(bridge)

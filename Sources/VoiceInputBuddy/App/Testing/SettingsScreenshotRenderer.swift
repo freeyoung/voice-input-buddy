@@ -89,6 +89,11 @@ enum SettingsScreenshotRenderer {
                 identifier: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!
             )
             settings.updateRemoteProfileModel(xiaomiID, model: .rc003)
+            model.remoteDeviceInformation[UUID(uuidString: "00000000-0000-0000-0000-000000000101")!] = RemoteDeviceInformation(
+                modelNumber: "RC003", firmwareRevision: "2671", identity: .xiaomi,
+                capabilities: ATVVCapabilities(version: 0x0100, codecs: 2, interaction: 3,
+                    frameSize: 120, selectedCodec: 2, sampleRate: 16_000)
+            )
             settings.bindHIDFingerprint("settings-screenshot-xiaomi", to: xiaomiID)
             let chromecastID = settings.registerChromecastRemote()
             settings.selectRemoteProfile(xiaomiID)

@@ -37,6 +37,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var pendingRemotePowerStates: [UUID: RemotePowerState] = [:]
     var pendingRemoteModels: [UUID: XiaomiRemoteModel] = [:]
     @Published var remoteSystemDeviceNames: [UUID: String] = [:]
+    @Published var remoteDeviceInformation: [UUID: RemoteDeviceInformation] = [:]
     @Published var audioDevices: [AudioDeviceInfo] = []
     @Published var testToneStatus = LocalizedMessage("audio.output.none_selected")
     @Published var isPlayingTestTone = false

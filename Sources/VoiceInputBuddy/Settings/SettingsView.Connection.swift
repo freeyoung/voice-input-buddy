@@ -97,9 +97,36 @@ extension SettingsView {
                     if settings.selectedRemoteProfileID == profile.id {
                         connectionStatusLine(symbol: "mic.fill", text: model.voiceShortcutStatus.text(using: localization), tint: .blue)
                     }
+                    if let identifier = profile.bluetoothIdentifier,
+                       let information = model.remoteDeviceInformation[identifier],
+                       information != RemoteDeviceInformation() {
+                        connectionDeviceInformation(information)
+                    }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10)
             }
         }
+    }
+
+    private func connectionDeviceInformation(_ information: RemoteDeviceInformation) -> some View {
+        let identityLine = [
+            information.modelNumber,
+            information.identitySummary,
+            information.firmwareRevision.map { localization.text("connection.device.firmware") + " " + $0 },
+        ].compactMap { $0 }.joined(separator: " · ")
+        return VStack(alignment: .leading, spacing: 4) {
+            Divider().padding(.bottom, 6)
+            if !identityLine.isEmpty {
+                Text(identityLine).help(identityLine)
+            }
+            if let audioLine = information.audioSummary {
+                Text(audioLine).help(localization.text("connection.device.audio_help"))
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
