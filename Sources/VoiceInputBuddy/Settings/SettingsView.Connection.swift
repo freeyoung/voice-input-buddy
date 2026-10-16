@@ -108,24 +108,37 @@ extension SettingsView {
     }
 
     private func connectionDeviceInformation(_ information: RemoteDeviceInformation) -> some View {
-        let identityLine = [
-            information.modelNumber,
-            information.identitySummary,
-            information.firmwareRevision.map { localization.text("connection.device.firmware") + " " + $0 },
-        ].compactMap { $0 }.joined(separator: " · ")
-        return VStack(alignment: .leading, spacing: 4) {
-            Divider().padding(.bottom, 6)
-            if !identityLine.isEmpty {
-                Text(identityLine).help(identityLine)
-            }
-            if let audioLine = information.audioSummary {
-                Text(audioLine).help(localization.text("connection.device.audio_help"))
+        let readings: [(String, String?)] = [
+            ("connection.device.model", information.modelNumber),
+            ("connection.device.identity", information.identityValue),
+            ("connection.device.firmware", information.firmwareRevision),
+            ("connection.device.protocol", information.protocolVersion),
+            ("connection.device.audio", information.audioFormat),
+            ("connection.device.frame", information.capabilities.map {
+                LocalizedMessage("connection.device.frame_bytes", arguments: [String($0.frameSize)]).text(using: localization)
+            }),
+        ]
+        let available = readings.compactMap { key, value -> (String, String)? in
+            value.map { (key, $0) }
+        }
+        return VStack(alignment: .leading, spacing: 10) {
+            Divider()
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3),
+                      alignment: .leading, spacing: 12) {
+                ForEach(available, id: \.0) { key, value in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(localization.text(key))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(value)
+                            .font(.system(size: 12, weight: .medium))
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .help(value)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-        .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

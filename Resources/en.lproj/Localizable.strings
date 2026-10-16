@@ -1286,4 +1286,9 @@
 "common_phrases.boundary_padding_hint" = "Leading or trailing spaces and tabs will be removed when saving or inserting. Whitespace within the text and line breaks are preserved.";
 
 "connection.device.firmware" = "Firmware";
-"connection.device.audio_help" = "Negotiated ATVV audio: codec, sample rate and frame size in bytes.";
+"connection.device.model" = "Model";
+"connection.device.identity" = "Vendor / Product ID";
+"connection.device.protocol" = "Voice protocol";
+"connection.device.audio" = "Audio format";
+"connection.device.frame" = "Audio frame";
+"connection.device.frame_bytes" = "%@ bytes";
