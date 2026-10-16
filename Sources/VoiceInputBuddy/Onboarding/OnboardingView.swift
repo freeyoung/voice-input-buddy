@@ -84,6 +84,12 @@ struct OnboardingView: View {
     }
 
     private var lifecycleContent: some View {
+        AdaptiveSettingsViewport {
+            onboardingCanvas
+        }
+    }
+
+    private var onboardingCanvas: some View {
         VStack(spacing: 0) {
             phaseHeader
             GeometryReader { proxy in
@@ -96,7 +102,6 @@ struct OnboardingView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
         .environment(\.locale, localization.locale)
-        .frame(minWidth: 980, minHeight: 732)
         .sheet(item: $hidBindingProfile) { profile in
             RemoteHIDBindingPicker(model: model, profile: profile)
                 .environmentObject(localization)

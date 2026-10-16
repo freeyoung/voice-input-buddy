@@ -866,6 +866,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
               let window = windowController.window else { return }
         isSettingsWindowOpen = true
         updateDockActivationPolicy()
+        fitSettingsWindowToScreen(window)
         windowController.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -913,11 +914,23 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         window.delegate = self
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 1020, height: 772)
-        window.setContentSize(NSSize(width: 1020, height: 772))
+        window.setContentSize(SettingsWindowLayout.preferredContentSize)
         window.setFrameAutosaveName("VoiceInputBuddySettings")
         window.center()
+        fitSettingsWindowToScreen(window)
         return NSWindowController(window: window)
+    }
+
+    private func fitSettingsWindowToScreen(_ window: NSWindow) {
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        window.minSize = SettingsWindowLayout.minimumWindowSize(in: screen.visibleFrame)
+        window.setFrame(SettingsWindowLayout.fittedFrame(window.frame, in: screen.visibleFrame), display: true)
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === settingsWindowController?.window else { return }
+        fitSettingsWindowToScreen(window)
     }
 
     func windowWillClose(_ notification: Notification) {

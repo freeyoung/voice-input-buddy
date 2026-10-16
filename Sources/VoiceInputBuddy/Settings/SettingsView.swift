@@ -54,7 +54,7 @@ struct SettingsView: View {
         initialMappingEditingButton: RemoteButton? = nil,
         initialMappingEditingTrigger: ButtonTrigger = .singleClick,
         initialShortcutPickerShowsKeyboard: Bool = false,
-        minimumContentSize: CGSize = CGSize(width: 980, height: 732)
+        minimumContentSize: CGSize = SettingsWindowLayout.minimumCanvasSize
     ) {
         self.model = model
         settings = model.settings
@@ -81,6 +81,12 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        AdaptiveSettingsViewport(minimumSize: minimumContentSize) {
+            settingsContent
+        }
+    }
+
+    private var settingsContent: some View {
         HStack(spacing: 0) {
             sidebar
                 .frame(width: SettingsPageBehavior.sidebarWidth)
@@ -92,10 +98,6 @@ struct SettingsView: View {
         }
         .background(Color(nsColor: .controlBackgroundColor).ignoresSafeArea())
         .environment(\.locale, localization.locale)
-        .frame(
-            minWidth: minimumContentSize.width,
-            minHeight: minimumContentSize.height
-        )
         .onAppear {
             if selectedSection == .mapping {
                 model.selectDefaultMappingRemoteIfAvailable()

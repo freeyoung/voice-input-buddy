@@ -271,3 +271,11 @@ new session starts. `SessionInputIntegrationTests` exercises input-source
 activation completing across session and screen suspension. Both replace keyboard
 injection and audio hardware scheduling; real remote reconnect, HAL routing and
 external dictation still require hardware acceptance.
+
+Compact window checks: the settings window fits the current screen's visible
+frame on opening and screen changes. Both settings and onboarding keep a readable
+980×732 canvas inside a two-axis scroll view when space is smaller. Debug preview
+rendering accepts `VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIZE=720x500` and
+`VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_SIZE=720x500`; set
+`VOICE_INPUT_BUDDY_SCREENSHOT_SCROLL_TO_END=1` to verify bottom/right navigation
+remains reachable. Preview fixtures do not start remote or audio hardware.

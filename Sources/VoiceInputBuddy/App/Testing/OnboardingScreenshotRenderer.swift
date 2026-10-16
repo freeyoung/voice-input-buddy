@@ -83,6 +83,9 @@ enum OnboardingScreenshotRenderer {
     }
 
     static func renderAll(to outputDirectory: URL, appearanceName: String?) throws {
+        let size = try SettingsScreenshotRenderer.screenshotSize(from: ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_SIZE"
+        ])
         let screenshotAppearance = try ScreenshotAppearance(environmentValue: appearanceName)
         let screenshotLanguage = try ScreenshotLanguage(
             environmentValue: ProcessInfo.processInfo.environment[
@@ -215,9 +218,9 @@ enum OnboardingScreenshotRenderer {
                 interactionProbe: actionProbe
             )
                 .environmentObject(localization)
-                .frame(width: 1020, height: 772)
+                .frame(width: size.width, height: size.height)
             let hostingController = NSHostingController(rootView: rootView)
-            let window = makeWindow(hostingController: hostingController)
+            let window = makeWindow(hostingController: hostingController, size: size)
 
             window.makeKeyAndOrderFront(nil)
             if !interactive, step == .remoteAvailability,
@@ -247,6 +250,7 @@ enum OnboardingScreenshotRenderer {
 #endif
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
             window.contentView?.layoutSubtreeIfNeeded()
+            SettingsScreenshotRenderer.scrollCanvasToEndIfRequested(in: window.contentView)
             window.contentView?.displayIfNeeded()
 
             guard let frameView = window.contentView?.superview else {
@@ -292,10 +296,10 @@ enum OnboardingScreenshotRenderer {
     }
 
     private static func makeWindow<Content: View>(
-        hostingController: NSHostingController<Content>
+        hostingController: NSHostingController<Content>, size: NSSize
     ) -> NSWindow {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1020, height: 772),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -306,8 +310,7 @@ enum OnboardingScreenshotRenderer {
         window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = false
         window.contentViewController = hostingController
-        window.minSize = NSSize(width: 1020, height: 772)
-        window.setContentSize(NSSize(width: 1020, height: 772))
+        window.setContentSize(size)
         window.center()
         return window
     }
