@@ -69,6 +69,75 @@ struct UpdateDialogTests {
         #expect(acknowledgements == 1)
     }
 
+    @Test(arguments: [true, false])
+    func installationHandoffKeepsTheSameVisibleWindow(initialConsent: Bool) throws {
+        let suite = "update-continuity-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        var activations = 0
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite),
+            activateApplication: { activations += 1 })
+        defer { driver.dismissUpdateInstallation() }
+        var choices: [SPUUserUpdateChoice] = []
+        driver.showAvailableUpdate(.init(version: "v26-10-15.215", commitCount: "215")) { choices.append($0) }
+        let panel = try #require(driver.window)
+        if initialConsent {
+            driver.performAction(at: 2)
+            #expect(driver.window === panel)
+            #expect(panel.isVisible)
+        }
+        driver.showDownloadInitiated {}
+        let downloadActivations = activations
+        driver.showDownloadDidStartExtractingUpdate()
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(activations == downloadActivations)
+        driver.showExtractionReceivedProgress(1)
+        driver.showReady(toInstallAndRelaunch: { choices.append($0) })
+        if !initialConsent { driver.performAction(at: 2) }
+        let installationActivations = activations
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(driver.actionTitles.isEmpty)
+        #expect(driver.displayedProgress == -1)
+        #expect(choices == (initialConsent ? [.install, .install] : [.install]))
+        driver.showInstallingUpdate(withApplicationTerminated: false) {}
+        driver.showInstallingUpdate(withApplicationTerminated: true) {}
+        #expect(driver.window === panel)
+        #expect(panel.isVisible)
+        #expect(activations == installationActivations)
+        var acknowledged = false
+        driver.showUpdateInstalledAndRelaunched(true) { acknowledged = true }
+        #expect(acknowledged)
+        #expect(!panel.isVisible)
+        #expect(driver.window == nil)
+    }
+
+    @Test func hiddenProgressDoesNotReappearDuringAutomaticInstallation() throws {
+        let suite = "update-hidden-continuity-" + UUID().uuidString
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        _ = NSApplication.shared
+        var activations = 0
+        let driver = LocalizedUpdateUserDriver(localization: try localization(suite),
+            activateApplication: { activations += 1 })
+        defer { driver.dismissUpdateInstallation() }
+        driver.showAvailableUpdate(.init(version: "v26-10-15.215", commitCount: "215")) { _ in }
+        driver.performAction(at: 2)
+        driver.showDownloadInitiated {}
+        driver.showDownloadDidStartExtractingUpdate()
+        let panel = try #require(driver.window)
+        driver.closeWindow()
+        let previousActivations = activations
+        driver.showReady(toInstallAndRelaunch: { _ in })
+        driver.showInstallingUpdate(withApplicationTerminated: false) {}
+        #expect(driver.window === panel)
+        #expect(!panel.isVisible)
+        #expect(activations == previousActivations)
+        driver.showUpdateInFocus()
+        #expect(panel.isVisible)
+        #expect(!driver.actionTitles.isEmpty)
+    }
+
     @Test func confirmedUpgradeContinuesAfterPreparationWithoutAnotherConfirmation() throws {
         let suite = "update-confirmed-restart-" + UUID().uuidString
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
