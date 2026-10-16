@@ -1,8 +1,8 @@
 import AppKit
 
 // Original schematic. Coordinates share the mapping canvas's normalized anchors.
-let size = NSSize(width: 508, height: 850)
-// Keep the button positions while shortening only the unused lower grip.
+let size = NSSize(width: 508, height: 1030)
+// Preserve the original button geometry and restore a longer, narrower grip.
 let buttonCoordinateHeight: CGFloat = 1030
 let image = NSImage(size: size)
 image.lockFocusFlipped(true)
@@ -11,7 +11,7 @@ func round(_ rect: NSRect, radius: CGFloat, color: NSColor) {
     NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
 }
 // Brushed-metal schematic, redrawn without any manufacturer's logo or photo.
-let body = NSBezierPath(roundedRect: NSRect(x: 88, y: 4, width: 332, height: 842), xRadius: 22, yRadius: 22)
+let body = NSBezierPath(roundedRect: NSRect(x: 104, y: 4, width: 300, height: 1022), xRadius: 22, yRadius: 22)
 let shadow = NSShadow(); shadow.shadowColor = NSColor.black.withAlphaComponent(0.18)
 shadow.shadowBlurRadius = 10; shadow.shadowOffset = NSSize(width: 0, height: -2)
 NSGraphicsContext.saveGraphicsState(); shadow.set()
@@ -29,9 +29,9 @@ metal.draw(in: body, angle: 0)
 NSColor(calibratedWhite: 0.56, alpha: 1).setStroke(); body.lineWidth = 1.5; body.stroke()
 // Light machining texture is clipped to the body, not a downloaded product image.
 NSGraphicsContext.saveGraphicsState(); body.addClip()
-for y in stride(from: CGFloat(8), to: CGFloat(846), by: 3) {
-    let line = NSBezierPath(); line.move(to: NSPoint(x: 92, y: y)); line.line(to: NSPoint(x: 416, y: y))
-    line.lineWidth = 0.35; NSColor.white.withAlphaComponent(0.075).setStroke(); line.stroke()
+for y in stride(from: CGFloat(8), to: CGFloat(1026), by: 3) {
+    let line = NSBezierPath(); line.move(to: NSPoint(x: 108, y: y)); line.line(to: NSPoint(x: 400, y: y))
+    line.lineWidth = 0.35; NSColor.white.withAlphaComponent(0.035).setStroke(); line.stroke()
 }
 NSGraphicsContext.restoreGraphicsState()
 let ring = NSBezierPath(ovalIn: NSRect(x: 138, y: 139, width: 234, height: 234))
@@ -73,7 +73,7 @@ for (x, y, label) in buttons {
         text.draw(at: NSPoint(x: rect.midX - measured.width / 2, y: rect.midY - measured.height / 2))
     }
 }
-for (label, y, fontSize) in [("Voice Input Buddy", CGFloat(715), CGFloat(25)), ("语音搭子", CGFloat(752), CGFloat(27))] {
+for (label, y, fontSize) in [("Voice Input Buddy", CGFloat(885), CGFloat(18)), ("语音搭子", CGFloat(915), CGFloat(20))] {
     let text = NSAttributedString(string: label, attributes: [
         .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
         .foregroundColor: NSColor(calibratedWhite: 0.30, alpha: 1)

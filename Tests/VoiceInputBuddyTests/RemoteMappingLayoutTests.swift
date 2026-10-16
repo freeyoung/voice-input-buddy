@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 import Testing
@@ -6,7 +7,7 @@ import Testing
 @Suite("Remote mapping illustration alignment")
 struct RemoteMappingLayoutTests {
     @Test func xiaomiConnectorsMeetIllustratedButtonCenters() throws {
-        // Pixel centers in the 508 × 850 artwork (the PNG is rendered at 2×).
+        // Pixel centers in the 508 × 1030 artwork (the PNG is rendered at 2×).
         let centers: [(RemoteButton, CGPoint)] = [
             (.power, CGPoint(x: 196.09, y: 101.97)),
             (.up, CGPoint(x: 255.02, y: 184.37)),
@@ -38,6 +39,16 @@ struct RemoteMappingLayoutTests {
             #expect(abs(voice.x - (origin.x + 320.04 * scale)) < 0.01)
             #expect(abs(voice.y - (origin.y + 101.97 * scale)) < 0.01)
         }
+    }
+
+    @Test func xiaomiRenderedAspectRatioMatchesTheActualArtwork() throws {
+        let url = try #require(VoiceInputBuddyResourceBundle.mainOrDevelopment.url(
+            forResource: "BuddyRemoteIllustration", withExtension: "png"))
+        let bitmap = try #require(NSBitmapImageRep(data: Data(contentsOf: url)))
+        let imageRatio = Double(bitmap.pixelsHigh) / Double(bitmap.pixelsWide)
+        let layoutRatio = RemoteMappingLayout.remoteSize.height / RemoteMappingLayout.remoteSize.width
+        #expect(abs(imageRatio - layoutRatio) < 0.0001)
+        #expect(RemoteMappingLayout.remoteSize.height < RemoteMappingLayout.canvasHeight)
     }
 
     @Test func chromecastAnchorsRemainNormalizedToItsOwnIllustration() {

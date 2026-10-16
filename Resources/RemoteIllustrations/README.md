@@ -24,3 +24,12 @@ rsvg-convert Resources/RemoteIllustrations/SiriRemoteA2854Illustration.svg -o Re
 
 `rsvg-convert` is only an artwork regeneration tool; normal application builds
 use the checked-in PNGs and do not require it.
+
+The Xiaomi schematic is generated from the AppKit drawing source rather than an
+SVG. Its 508 × 1030 canvas and normalized button centers must match
+`RemoteMappingLayout`; preserve the native aspect ratio when rendering it.
+After changing the drawing, regenerate the PNG and check the mapping page:
+
+```sh
+swift scripts/generate-remote-layout-reference.swift Resources/BuddyRemoteIllustration.png
+```
