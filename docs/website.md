@@ -14,7 +14,7 @@ python3 -m http.server 8765 --directory pages
 
 页面中的麦克风按钮示意仅改变本地显示，不申请麦克风权限、不录音，也不发起网络请求；页面及视频资源加载仍会产生正常 HTTP 请求。网站不使用分析或追踪脚本。下载链接指向 GitHub 最新 Release。
 
-中英文页面的 `#interface` 区域提供程序界面的交互式展示，涵盖按键映射、设备连接、输入法集成、常用语面板和权限环境五项核心视图。截图资产位于 `pages/assets/screenshots/`，包含中英文版本。可通过 `python3 scripts/generate-website-screenshots.py` 自动由 Debug App 渲染并无损优化 PNG。
+中英文页面的 `#interface` 区域提供程序界面的 3D 画廊（Cathedral 效果）交互式展示，分为“主程序界面”（按键映射、设备连接、输入法集成、常用语面板、权限与驱动）与“新手设置向导”（系统权限、连接遥控器、按键测试、驱动检查、输入工具、试说与校准）两个分类。支持 3D 舞台层叠切换、左右拖拽/手势、键盘方向键切换及点击全屏放大查看高清细节。截图资产位于 `pages/assets/screenshots/`，包含中英文版本。可通过 `python3 scripts/generate-website-screenshots.py` 自动由 Debug App 渲染设置窗口与向导各步骤，并无损优化 PNG。
 
 中英文页面的 `#demo` 区域提供两分钟卡通视频。MP4、封面和可选中文字幕轨道位于
 `pages/assets/video/`，由 Pages 一起部署。视频为中文旁白与画内中文字幕；英文页面明确标注视频语言。

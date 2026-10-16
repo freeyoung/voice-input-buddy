@@ -34,59 +34,46 @@
 <section class="section wrap interface-section" id="interface" aria-labelledby="interface-title">
   <div class="interface-heading">
     <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">原生 SwiftUI 精心打造，从按键动作映射、多设备管理，到主流输入法集成与常用语速选，一目了然。</p></div>
-  </div>
-  <div class="interface-showcase">
-    <div class="interface-tabs" role="tablist" aria-label="程序界面各功能区域">
-      <button class="interface-tab is-active" role="tab" id="tab-mapping" aria-selected="true" aria-controls="panel-mapping" data-panel="panel-mapping">
-        <span class="tab-title">按键映射</span>
-        <span class="tab-desc">可视化设置单击、双击与长按</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-connection" aria-selected="false" aria-controls="panel-connection" data-panel="panel-connection">
-        <span class="tab-title">设备连接</span>
-        <span class="tab-desc">连接状态、电量与独立增益</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-integration" aria-selected="false" aria-controls="panel-integration" data-panel="panel-integration">
-        <span class="tab-title">输入法集成</span>
-        <span class="tab-desc">微信、豆包、Typeless 等工具</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-phrases" aria-selected="false" aria-controls="panel-phrases" data-panel="panel-phrases">
-        <span class="tab-title">常用语面板</span>
-        <span class="tab-desc">方向键快速输入与词库管理</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-permissions" aria-selected="false" aria-controls="panel-permissions" data-panel="panel-permissions">
-        <span class="tab-title">权限与环境</span>
-        <span class="tab-desc">系统权限与虚拟麦克风驱动</span>
-      </button>
+    <div class="gallery-category-switch" role="tablist" aria-label="界面展示分类">
+      <button class="category-btn is-active" type="button" role="tab" aria-selected="true" data-track="settings">主程序界面 (5)</button>
+      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">新手设置向导 (6)</button>
     </div>
-    <div class="interface-window" role="region" aria-label="界面预览窗口">
-      <div class="window-top" aria-hidden="true">
-        <div class="window-dots"><i></i><i></i><i></i></div>
-        <span class="window-title" id="interface-window-title">按键映射 · Voice Input Buddy</span>
-      </div>
-      <div class="window-body">
-        <div class="interface-panel is-active" id="panel-mapping" role="tabpanel" aria-labelledby="tab-mapping">
+  </div>
+  <div class="cathedral-gallery">
+    <div class="gallery-stage-container" role="region" aria-label="3D 界面画廊">
+      <button class="stage-nav stage-prev" type="button" aria-label="上一张界面截图">‹</button>
+      <div class="gallery-stage" id="gallery-stage" tabindex="0" role="region" aria-label="界面展示舞台">
+        <div class="stage-slide slide-active" role="group" aria-label="按键映射 (1/5)">
+          <div class="window-top" aria-hidden="true">
+            <div class="window-dots"><i></i><i></i><i></i></div>
+            <span class="window-title">按键映射 · Voice Input Buddy</span>
+          </div>
           <img src="assets/screenshots/mapping-zh.png" alt="Voice Input Buddy 按键映射设置界面：可视化遥控器按键映射，支持单击、双击、长按与自定义快捷键" width="1020" height="772" loading="eager">
-          <p class="panel-caption">按键映射：中央显示遥控器按键示意图，支持为电源键、确定键、方向键、返回键、主页键、菜单键与 TV 键分别指定单击、双击和长按动作或快捷键。</p>
         </div>
-        <div class="interface-panel" id="panel-connection" role="tabpanel" aria-labelledby="tab-connection" hidden>
-          <img src="assets/screenshots/connection-zh.png" alt="Voice Input Buddy 设备连接界面：多台遥控器卡片、连接状态、电量显示与麦克风独立增益滑块" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">设备连接：显示已配对的蓝牙遥控器卡片与电量状态，支持添加新设备，并可单独调节每台遥控器的麦克风输入增益（0 dB 至 20 dB）。</p>
-        </div>
-        <div class="interface-panel" id="panel-integration" role="tabpanel" aria-labelledby="tab-integration" hidden>
-          <img src="assets/screenshots/integration-zh.png" alt="Voice Input Buddy 输入法与语音工具集成界面：微信输入法、豆包、Typeless、Vokie、VoiceCursor 等配置入口" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">输入法集成：提供豆包输入法、微信输入法、Typeless、Vokie、VoiceCursor 及其他自定义工具的专用配置向导入口，并可自由选择语音触发按键（Fn、Command、Option 等）。</p>
-        </div>
-        <div class="interface-panel" id="panel-phrases" role="tabpanel" aria-labelledby="tab-phrases" hidden>
-          <img src="assets/screenshots/phrases-zh.png" alt="Voice Input Buddy 常用语调整界面：遥控器五键分配、常用语库与短语编辑管理" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">常用语管理：通过圆盘方向键与 OK 键快速选择并输入常用语句，支持中英文短语自定义、词库导入导出与五键分配。</p>
-        </div>
-        <div class="interface-panel" id="panel-permissions" role="tabpanel" aria-labelledby="tab-permissions" hidden>
-          <img src="assets/screenshots/permissions-zh.png" alt="Voice Input Buddy 权限与环境界面：蓝牙、输入监控、辅助功能权限与虚拟麦克风驱动状态" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">权限与环境：集中管理蓝牙、输入监控与辅助功能三项系统授权，监控 Voice Input Buddy Mic 虚拟麦克风驱动的加载状态，并提供安装指引。</p>
-        </div>
+      </div>
+      <button class="stage-nav stage-next" type="button" aria-label="下一张界面截图">›</button>
+    </div>
+    <div class="gallery-indicators" id="gallery-indicators" role="tablist" aria-label="截图快速选择"></div>
+    <div class="gallery-caption-card" aria-live="polite">
+      <div class="caption-header">
+        <span class="caption-badge" id="caption-badge">核心按键映射</span>
+        <h3 class="caption-title" id="caption-title">按键映射</h3>
+      </div>
+      <p class="caption-desc" id="caption-desc">中央显示遥控器按键示意图，支持为电源键、确定键、方向键、返回键、主页键、菜单键与 TV 键分别指定单击、双击和长按动作，可绑定系统操作、自定义快捷键或常用语。</p>
+      <div class="caption-hint">
+        <span>💡 点击中央界面可全屏放大；可使用键盘方向键 ← / → 或左右拖拽滑动切换。</span>
       </div>
     </div>
   </div>
+  <dialog id="gallery-lightbox" class="gallery-lightbox" aria-label="高清截图查看">
+    <div class="lightbox-content">
+      <div class="lightbox-top">
+        <span class="lightbox-title" id="lightbox-title">界面预览</span>
+        <button class="lightbox-close" type="button" aria-label="关闭">✕</button>
+      </div>
+      <img id="lightbox-img" src="assets/screenshots/mapping-zh.png" alt="界面大图预览" width="1020" height="772">
+    </div>
+  </dialog>
 </section>
 <section class="section wrap demo-section" id="demo" aria-labelledby="demo-title">
   <div class="demo-heading"><div><p class="eyebrow">两分钟上手</p><h2 class="section-title" id="demo-title">从设置，到说出第一句话。</h2><p>两分钟卡通演示：权限准备、遥控器连接、按键映射，以及用微信输入法完成语音输入。</p></div><p class="demo-language">2 分钟 · 中文旁白 · 中文字幕</p></div>

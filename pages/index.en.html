@@ -34,59 +34,46 @@
 <section class="section wrap interface-section" id="interface" aria-labelledby="interface-title">
   <div class="interface-heading">
     <div><p class="eyebrow">APP INTERFACE</p><h2 class="section-title" id="interface-title">Intuitive and clear. Every setting within reach.</h2><p class="lead-sub">Thoughtfully crafted with native SwiftUI. Easily map button actions, manage multiple remotes, connect favorite voice tools, and insert phrases with radial controls.</p></div>
-  </div>
-  <div class="interface-showcase">
-    <div class="interface-tabs" role="tablist" aria-label="Application interface sections">
-      <button class="interface-tab is-active" role="tab" id="tab-mapping" aria-selected="true" aria-controls="panel-mapping" data-panel="panel-mapping">
-        <span class="tab-title">Button Mapping</span>
-        <span class="tab-desc">Single, double, and long press actions</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-connection" aria-selected="false" aria-controls="panel-connection" data-panel="panel-connection">
-        <span class="tab-title">Devices</span>
-        <span class="tab-desc">Connection, battery, and gain control</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-integration" aria-selected="false" aria-controls="panel-integration" data-panel="panel-integration">
-        <span class="tab-title">Voice Tools</span>
-        <span class="tab-desc">WeType, Doubao, Typeless, Vokie, etc.</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-phrases" aria-selected="false" aria-controls="panel-phrases" data-panel="panel-phrases">
-        <span class="tab-title">Common Phrases</span>
-        <span class="tab-desc">Directional shortcuts and phrase library</span>
-      </button>
-      <button class="interface-tab" role="tab" id="tab-permissions" aria-selected="false" aria-controls="panel-permissions" data-panel="panel-permissions">
-        <span class="tab-title">Permissions & Driver</span>
-        <span class="tab-desc">System permissions and virtual microphone</span>
-      </button>
+    <div class="gallery-category-switch" role="tablist" aria-label="Interface category">
+      <button class="category-btn is-active" type="button" role="tab" aria-selected="true" data-track="settings">Main Settings (5)</button>
+      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">Setup Wizard (6)</button>
     </div>
-    <div class="interface-window" role="region" aria-label="Interface preview window">
-      <div class="window-top" aria-hidden="true">
-        <div class="window-dots"><i></i><i></i><i></i></div>
-        <span class="window-title" id="interface-window-title">Button Mapping · Voice Input Buddy</span>
-      </div>
-      <div class="window-body">
-        <div class="interface-panel is-active" id="panel-mapping" role="tabpanel" aria-labelledby="tab-mapping">
+  </div>
+  <div class="cathedral-gallery">
+    <div class="gallery-stage-container" role="region" aria-label="3D Interface Gallery">
+      <button class="stage-nav stage-prev" type="button" aria-label="Previous screenshot">‹</button>
+      <div class="gallery-stage" id="gallery-stage" tabindex="0" role="region" aria-label="Interface stage">
+        <div class="stage-slide slide-active" role="group" aria-label="Button Mapping (1/5)">
+          <div class="window-top" aria-hidden="true">
+            <div class="window-dots"><i></i><i></i><i></i></div>
+            <span class="window-title">Button Mapping · Voice Input Buddy</span>
+          </div>
           <img src="assets/screenshots/mapping-en.png" alt="Voice Input Buddy Button Mapping interface: visual remote layout mapping single, double, and long press shortcuts" width="1020" height="772" loading="eager">
-          <p class="panel-caption">Button Mapping: The central remote diagram shows each physical button, supporting single-press, double-press, and long-press shortcuts for Power, OK, Navigation, Back, Home, Menu, and TV keys.</p>
         </div>
-        <div class="interface-panel" id="panel-connection" role="tabpanel" aria-labelledby="tab-connection" hidden>
-          <img src="assets/screenshots/connection-en.png" alt="Voice Input Buddy Devices interface: remote cards, connection status, battery levels, and independent microphone gain sliders" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">Devices: Manage connected Bluetooth remotes, check live battery percentages and charging states, and adjust individual microphone gain (0 dB to 20 dB) for each remote.</p>
-        </div>
-        <div class="interface-panel" id="panel-integration" role="tabpanel" aria-labelledby="tab-integration" hidden>
-          <img src="assets/screenshots/integration-en.png" alt="Voice Input Buddy Voice Tools interface: setup guides for WeType, Doubao, Typeless, Vokie, VoiceCursor, and custom shortcuts" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">Voice Tools Integration: Guided setup for Doubao, WeType, Typeless, Vokie, VoiceCursor, and custom tools, with flexible trigger key options (Fn/Globe, Command, Option).</p>
-        </div>
-        <div class="interface-panel" id="panel-phrases" role="tabpanel" aria-labelledby="tab-phrases" hidden>
-          <img src="assets/screenshots/phrases-en.png" alt="Voice Input Buddy Common Phrases interface: 5-way directional pad assignment and custom phrase library" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">Common Phrases: Assign phrases to directional buttons and the OK button for instant text insertion, with custom phrase editing and backup import/export.</p>
-        </div>
-        <div class="interface-panel" id="panel-permissions" role="tabpanel" aria-labelledby="tab-permissions" hidden>
-          <img src="assets/screenshots/permissions-en.png" alt="Voice Input Buddy Permissions interface: Bluetooth, Input Monitoring, Accessibility permissions and virtual microphone driver status" width="1020" height="772" loading="lazy">
-          <p class="panel-caption">Permissions & Driver: Centralized overview of Bluetooth, Input Monitoring, and Accessibility permissions, along with the status and instructions for the Voice Input Buddy Mic driver.</p>
-        </div>
+      </div>
+      <button class="stage-nav stage-next" type="button" aria-label="Next screenshot">›</button>
+    </div>
+    <div class="gallery-indicators" id="gallery-indicators" role="tablist" aria-label="Quick slide selection"></div>
+    <div class="gallery-caption-card" aria-live="polite">
+      <div class="caption-header">
+        <span class="caption-badge" id="caption-badge">Core Mapping</span>
+        <h3 class="caption-title" id="caption-title">Button Mapping</h3>
+      </div>
+      <p class="caption-desc" id="caption-desc">The central remote diagram shows each physical button, supporting single-press, double-press, and long-press shortcuts for Power, OK, Navigation, Back, Home, Menu, and TV keys.</p>
+      <div class="caption-hint">
+        <span>💡 Click active window for full-screen preview; use ← / → arrow keys or swipe horizontally to navigate.</span>
       </div>
     </div>
   </div>
+  <dialog id="gallery-lightbox" class="gallery-lightbox" aria-label="High-resolution screenshot preview">
+    <div class="lightbox-content">
+      <div class="lightbox-top">
+        <span class="lightbox-title" id="lightbox-title">Interface Preview</span>
+        <button class="lightbox-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <img id="lightbox-img" src="assets/screenshots/mapping-en.png" alt="High-resolution interface preview" width="1020" height="772">
+    </div>
+  </dialog>
 </section>
 <section class="section wrap demo-section" id="demo" aria-labelledby="demo-title">
   <div class="demo-heading"><div><p class="eyebrow">WATCH IT IN ACTION</p><h2 class="section-title" id="demo-title">From setup to your first sentence.</h2><p>A two-minute cartoon walkthrough of permissions, remote connection, button mapping, and voice input with WeType.</p></div><p class="demo-language">2 min · Mandarin audio · Chinese captions</p></div>
