@@ -1,5 +1,4 @@
 import Foundation
-import BuddyRemoteCore
 import Testing
 @testable import VoiceInputBuddy
 
@@ -240,9 +239,9 @@ struct BluetoothVoiceTailDiagnosticsTests {
             allSamples += samples
             diagnostics.append(samples, at: Double(batch))
         }
-        var expected = WatchBluetoothAudioSignalMetrics()
+        var expected = VoiceAudioSignalMetrics()
         expected.append(Array(allSamples.suffix(4800)))
-        var final = WatchBluetoothAudioSignalMetrics()
+        var final = VoiceAudioSignalMetrics()
         final.append(Array(allSamples.suffix(1600)))
         let result = diagnostics.snapshot(at: 250)
         #expect(result.sampleCount == 4800)

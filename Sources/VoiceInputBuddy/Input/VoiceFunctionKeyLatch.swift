@@ -10,10 +10,8 @@ struct VoiceFunctionKeyLatch {
     /// 只有最后一个 owner 释放才会真正抬起语音键，因此各路硬件互不取消。
     enum Owner: Hashable {
         case bluetooth
-        case appleRemote
         /// Chromecast 遥控器。与 Siri Remote 独立，两者同时收音时互不影响。
         case chromecast
-        case mobile
     }
 
     private var owners: Set<Owner> = []

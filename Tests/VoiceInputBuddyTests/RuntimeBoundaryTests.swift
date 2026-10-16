@@ -186,19 +186,6 @@ struct RuntimeBoundaryTests {
         #expect(result == .cancelled(.actionFailed))
     }
 
-    @Test func deferredVoiceStopsRemainBoundToTheirOwnDevice() {
-        var stops = DeviceVoiceStopRequests<String>()
-        stops.request("first")
-        #expect(stops.take(pending: ["second"]).isEmpty)
-        #expect(stops.take(pending: ["first", "second"]) == ["first"])
-        stops.request("first")
-        stops.cancel("first") // pressed again before setup completed
-        #expect(stops.take(pending: ["first"]).isEmpty)
-        stops.request("second")
-        stops.removeAll()
-        #expect(stops.take(pending: ["second"]).isEmpty)
-    }
-
     @Test func unifiedMappingCorruptionIsPreservedAfterSavingNewMappings() {
         let (defaults, name) = values()
         defer { defaults.removePersistentDomain(forName: name) }

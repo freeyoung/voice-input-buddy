@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     var selectedBluetoothBridge: XiaomiBluetoothBridge? {
@@ -115,7 +114,6 @@ extension BridgeAppModel {
 
     func selectRemoteProfile(_ profileID: UUID) {
         settings.selectRemoteProfile(profileID)
-        refreshAppleRemoteHIDStatus()
         refreshBluetoothPresentation()
     }
 
@@ -189,26 +187,6 @@ extension BridgeAppModel {
             }
             if settings.updateRemoteProfileSystemName(profileID, name: name) { changed += 1 }
         }
-        let appleProfiles = settings.remoteDeviceProfiles.filter {
-            connectedAppleRemoteProfileIDs.contains($0.id)
-        }
-        if !appleProfiles.isEmpty {
-            let names = RemoteDeviceNameReader.readHIDNames()
-            for profile in appleProfiles {
-                requested += 1
-                let observation = profile.hidFingerprint.flatMap { names[$0] }
-                let name = observation?.name
-                if let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    resolved += 1
-                }
-                if let name = RemoteDeviceNamePolicy.observedSystemName(from: name) {
-                    remoteSystemDeviceNames[profile.id] = name
-                }
-                if settings.updateRemoteProfileSystemName(
-                    profile.id, name: name, serialNumber: observation?.serialNumber
-                ) { changed += 1 }
-            }
-        }
         AppLogger.shared.write(
             "REMOTE NAME REFRESH operation_id=\(remoteDeviceNameRefreshOperation) " +
                 "phase=completed reason=\(reason.rawValue) requested=\(requested) " +
@@ -229,19 +207,14 @@ extension BridgeAppModel {
             settings.remoteDeviceProfiles.first { $0.id == id }?.model.isChromecastRemote == true
         })
         connectedRemoteProfileIDs = connectedBluetoothProfileIDs
-            .union(connectedAppleRemoteProfileIDs)
             .union(connectedChromecastProfileIDs)
         let bluetoothIsReady = allStates.contains { state in
             if case .ready = state { return true }
             return false
         }
         isConnected = bluetoothIsReady
-            || !connectedAppleRemoteProfileIDs.isEmpty
             || !connectedChromecastProfileIDs.isEmpty
         if let selectedRemoteProfileID = settings.selectedRemoteProfileID,
-           connectedAppleRemoteProfileIDs.contains(selectedRemoteProfileID) {
-            connectionStatus = LocalizedMessage("connection.status.apple_remote_connected")
-        } else if let selectedRemoteProfileID = settings.selectedRemoteProfileID,
                   connectedChromecastProfileIDs.contains(selectedRemoteProfileID) {
             connectionStatus = LocalizedMessage("connection.status.chromecast_connected")
         } else if let selectedBluetoothBridge,
@@ -252,8 +225,6 @@ extension BridgeAppModel {
             return false
         }) {
             connectionStatus = ready.message
-        } else if !connectedAppleRemoteProfileIDs.isEmpty {
-            connectionStatus = LocalizedMessage("connection.status.apple_remote_connected")
         } else if !connectedChromecastProfileIDs.isEmpty {
             connectionStatus = LocalizedMessage("connection.status.chromecast_connected")
         } else if let state = allStates.first {

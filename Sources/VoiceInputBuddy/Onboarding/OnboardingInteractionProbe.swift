@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 /// 进程内 Onboarding 回归使用的控件 action 注册表。

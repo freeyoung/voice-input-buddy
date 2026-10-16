@@ -12,10 +12,7 @@ enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let value = try container.decode(String.self)
-        // The early Chromecast preview stored this spelling before the rename.
-        if value == "chromecase_voice_remote" {
-            self = .chromecastVoiceRemote
-        } else if let model = Self(rawValue: value) {
+        if let model = Self(rawValue: value) {
             self = model
         } else {
             throw DecodingError.dataCorruptedError(

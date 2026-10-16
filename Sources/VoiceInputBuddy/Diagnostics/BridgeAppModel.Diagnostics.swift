@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     @MainActor func openLogFolder() {
@@ -38,5 +37,19 @@ extension BridgeAppModel {
             string: "x-apple.systempreferences:com.apple.preference.security?\(pane)"
         ) else { return }
         NSWorkspace.shared.open(url)
+    }
+}
+
+extension BridgeAppModel {
+    func optionalDiagnosticBool(_ value: Bool?) -> String {
+        value.map(String.init) ?? "unknown"
+    }
+
+    private func optionalDiagnosticInt(_ value: Int?) -> String {
+        value.map(String.init) ?? "unknown"
+    }
+
+    func elapsedMilliseconds(since uptime: TimeInterval) -> Int {
+        max(0, Int((ProcessInfo.processInfo.systemUptime - uptime) * 1_000))
     }
 }

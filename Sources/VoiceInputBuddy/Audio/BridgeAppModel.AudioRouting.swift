@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     func refreshAudioDevices() {
@@ -129,7 +128,7 @@ extension BridgeAppModel {
                 "configured_bridges=\(bluetoothBridges.count) " +
                 "discovery_bridge=\(discoveryBluetoothBridge != nil) " +
                 "bluetooth_voice=\(bluetoothVoiceActive) " +
-                "mobile_voice=\(activeMobileVoiceSource != nil) " +
+                "" +
                 "test_tone=\(isPlayingTestTone) audio_ready=\(isAudioOutputReady)"
         )
         guard started, changed else { return }
@@ -162,7 +161,7 @@ extension BridgeAppModel {
                 AppLogger.shared.write(
                     "SYSTEM AUDIO suspend_deferred event=\(event.rawValue) " +
                         "bluetooth_voice=\(bluetoothVoiceActive) " +
-                        "mobile_voice=\(activeMobileVoiceSource != nil) " +
+                        "" +
                         "test_tone=\(isPlayingTestTone)"
                 )
                 return
@@ -215,28 +214,12 @@ extension BridgeAppModel {
         bluetoothVoiceActive = false
         activeBluetoothVoiceDeviceIdentifier = nil
         pendingCommandVoiceAudio.cancel()
-        pendingMobileVoiceStartSource = nil
-        pendingMobileVoiceAudio.cancel()
-        pendingMobileVoiceStopRequested = false
-        _ = mobileVoiceLifecycle.reset()
-        cancelMobileVoiceNoAudioRecoveryTimer()
-        activeMobileVoiceOperationID = nil
-        activeMobileVoiceStartedAt = nil
-        let restartCompletion = pendingMobileVoiceRestartCompletion
-        pendingMobileVoiceRestartCompletion = nil
-        resetAllAppleRemoteState(reason: "system_sleep")
-        pendingAppleRemoteVoiceStarts.removeAll()
-        pendingAppleRemoteVoiceStops.removeAll()
-        appleRemoteVoiceDevices.removeAll()
-        appleRemoteVoiceStopping = false
-        appleRemoteVoiceStopOperation &+= 1
         voiceFnTapSession.suspend()
         releaseVoiceKeyIfNeeded()
         endVoiceSessionIfNeeded()
         audioOutput.stop()
         isAudioOutputReady = false
         testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
-        restartCompletion?(.unavailable)
         AppLogger.shared.write("SYSTEM AUDIO suspended event=\(reason) active_sessions_ended=true")
     }
 

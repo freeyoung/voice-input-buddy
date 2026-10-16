@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -135,8 +133,6 @@ extension OnboardingView {
         case .xiaomiRemote: return "appletvremote.gen4.fill"
         case .siriRemote: return "appletvremote.gen4.fill"
         case .chromecastRemote: return "tv.and.hifispeaker.fill"
-        case .appleCompanion: return "iphone.and.arrow.forward"
-        case .webRemote: return "safari.fill"
         case .unselected: return "circle"
         }
     }
@@ -144,8 +140,6 @@ extension OnboardingView {
     private func controlMethodIcon(_ method: OnboardingControlMethod) -> String {
         switch method {
         case .physicalRemote: return "appletvremote.gen4.fill"
-        case .iPhoneApp: return "iphone"
-        case .webRemote: return "safari.fill"
         case .unselected: return "circle"
         }
     }

@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     func toggleLongRecording() -> Bool {
@@ -13,12 +12,11 @@ extension BridgeAppModel {
             return true
         }
         guard isConnected,
-              !bluetoothVoiceActive,
-              activeMobileVoiceSource == nil
+              !bluetoothVoiceActive
         else {
             AppLogger.shared.write(
                 "LONG RECORDING rejected connected=\(isConnected) audio_ready=\(isAudioOutputReady) " +
-                    "bluetooth_voice=\(bluetoothVoiceActive) mobile_voice=\(activeMobileVoiceSource != nil)"
+                    "bluetooth_voice=\(bluetoothVoiceActive)"
             )
             return false
         }
@@ -30,7 +28,7 @@ extension BridgeAppModel {
                 } else {
                     AppLogger.shared.write(
                         "LONG RECORDING rejected connected=true audio_ready=false " +
-                            "bluetooth_voice=false mobile_voice=false"
+                            "bluetooth_voice=false"
                     )
                 }
             }

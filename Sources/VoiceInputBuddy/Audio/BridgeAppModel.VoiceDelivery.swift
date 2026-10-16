@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     /// Includes pending activation and draining tails, before their async callbacks
@@ -16,12 +15,6 @@ extension BridgeAppModel {
         if owner != .bluetooth,
            bluetoothVoiceActive || pendingBluetoothVoiceStart.identifier != nil ||
             voiceFnTapSession.requiresCleanupBeforeMapping { return false }
-        if owner != .appleRemote,
-           !appleRemoteVoiceDevices.isEmpty || !pendingAppleRemoteVoiceStarts.isEmpty ||
-            appleRemoteVoiceStopping { return false }
-        if owner != .mobile,
-           activeMobileVoiceSource != nil || stoppingMobileVoiceSource != nil ||
-            pendingMobileVoiceStartSource != nil || pendingMobileVoiceActivationSource != nil { return false }
         return true
     }
 
@@ -117,9 +110,6 @@ extension BridgeAppModel {
     func endVoiceSessionIfNeeded(flushAudio: Bool = true, applyPendingMappings: (() -> Void)? = nil) {
         defer { flushPendingVoiceToolMappingRefresh(applyMappings: applyPendingMappings) }
         guard !bluetoothVoiceActive,
-              appleRemoteVoiceDevices.isEmpty,
-              !appleRemoteVoiceStopping,
-              activeMobileVoiceSource == nil,
               isStreaming
         else { return }
         voiceSessionID = nil
@@ -135,16 +125,7 @@ extension BridgeAppModel {
 
     }
 
-    private var currentVoiceSource: RemoteInputSource {
-        if bluetoothVoiceActive || !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping {
-            return .bluetoothRemote
-        }
-        switch activeMobileVoiceSource {
-        case .nearbyPhone, .nearbyWatch: return .nearbyPhone
-        case .web: return .webRemote
-        case nil: return .unknown
-        }
-    }
+    private var currentVoiceSource: RemoteInputSource { bluetoothVoiceActive ? .bluetoothRemote : .unknown }
 
     @discardableResult
     func applyVoiceFunctionMapping(neutralizeVoiceKey: Bool) -> Bool {
@@ -379,14 +360,4 @@ extension BridgeAppModel {
     }
 
     /// 苹果遥控器自报能力的日志标记（真机核对用）。
-    private static func describeSiri(_ declared: SiriRemoteDeclaredCapabilities) -> String {
-        var names: [String] = []
-        if declared.contains(.controlEdges) { names.append("control_edges") }
-        if declared.contains(.touchSurface) { names.append("touch_surface") }
-        if declared.contains(.continuousScroll) { names.append("continuous_scroll") }
-        if declared.contains(.voiceStream) { names.append("voice_stream") }
-        if declared.contains(.batteryLevel) { names.append("battery_level") }
-        if declared.contains(.powerState) { names.append("power_state") }
-        return names.isEmpty ? "none" : names.joined(separator: "+")
-    }
 }

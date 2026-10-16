@@ -117,8 +117,6 @@ enum OnboardingRemoteAvailability: String, CaseIterable, Codable, Identifiable {
 enum OnboardingControlMethod: String, CaseIterable, Codable, Identifiable {
     case unselected
     case physicalRemote = "physical_remote"
-    case iPhoneApp = "iphone_app"
-    case webRemote = "web_remote"
 
     var id: String { rawValue }
 
@@ -138,9 +136,6 @@ enum OnboardingControlMethod: String, CaseIterable, Codable, Identifiable {
         self != .unselected
     }
 
-    var usesOnDemandAudioOutput: Bool {
-        self == .iPhoneApp || self == .webRemote
-    }
 }
 
 enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
@@ -374,8 +369,6 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
     case xiaomiRemote = "xiaomi_remote"
     case siriRemote = "siri_remote"
     case chromecastRemote = "chromecast_remote"
-    case appleCompanion = "apple_companion"
-    case webRemote = "web_remote"
 
     var id: String { rawValue }
 
@@ -388,8 +381,6 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
             return []
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return [.hold]
-        case .appleCompanion, .webRemote:
-            return [.hold, .toggle]
         }
     }
 
@@ -397,10 +388,6 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return .physicalRemote
-        case .appleCompanion:
-            return .iPhoneApp
-        case .webRemote:
-            return .webRemote
         case .unselected:
             return .unselected
         }
@@ -409,8 +396,6 @@ enum OnboardingControlSource: String, CaseIterable, Codable, Identifiable {
     static func defaultSource(for method: OnboardingControlMethod) -> Self {
         switch method {
         case .physicalRemote: return .xiaomiRemote
-        case .iPhoneApp: return .appleCompanion
-        case .webRemote: return .webRemote
         case .unselected: return .unselected
         }
     }
@@ -425,7 +410,7 @@ enum OnboardingControlValidationPolicy {
     ) -> Bool {
         guard step == .remote || step == .controls else { return false }
         switch source {
-        case .xiaomiRemote, .siriRemote, .chromecastRemote, .appleCompanion, .webRemote:
+        case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return true
         case .unselected:
             return false
@@ -444,7 +429,7 @@ enum OnboardingSecureInputPolicy {
         switch source {
         case .xiaomiRemote, .siriRemote, .chromecastRemote:
             return true
-        case .appleCompanion, .webRemote, .unselected:
+        case .unselected:
             return false
         }
     }
@@ -650,7 +635,7 @@ enum OnboardingRemotePhotoKind: Equatable {
                 return .bundled(resourceName: selectedDevice.illustrationResource)
             }
             return .bundled(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource)
-        case .appleCompanion, .webRemote, .unselected:
+        case .unselected:
             return .placeholder
         }
     }
@@ -823,7 +808,7 @@ enum OnboardingFlowPolicy {
                 capabilities.accessibilityGranted &&
                 capabilities.remoteConnected &&
                 capabilities.audioOutputSelected &&
-                (controlMethod.usesOnDemandAudioOutput || capabilities.audioReady)
+                capabilities.audioReady
         }
     }
 
@@ -882,7 +867,7 @@ enum OnboardingFlowPolicy {
         case .hasRemote:
             return controlMethod == .physicalRemote
         case .noRemote:
-            return controlMethod == .iPhoneApp || controlMethod == .webRemote
+            return false
         case .unselected:
             return false
         }

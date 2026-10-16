@@ -7,8 +7,6 @@
 | 模块 | 作用 |
 | --- | --- |
 | VoiceInputBuddy | 主 App、设备会话、设置、权限、音频路由与按键映射 |
-| BuddyRemoteCore | 公开设备兼容接口 |
-| BuddyRemoteUI | 公开兼容 UI |
 | AudioExceptionGuard | 音频异常保护的 Objective-C 边界 |
 | VoiceInputBuddyTests | 协议、生命周期与产品边界测试 |
 | Sparkle | 第三方 macOS 更新框架 |
@@ -25,15 +23,11 @@ VoiceInputBuddyMic.driver 基于固定版本 BlackHole 源码构建，使用独�
 
 历史记录存储、录音归档、MCP 授权与客户端配置代码已移除；应用不会读写 AI 工具的 MCP 配置。上游私有扩展的条件编译分支已移除，公开兼容接口与未支持设备的 UI 类型仍保留。
 
-## 未开放的手机 / Web Remote 兼容层
+## 产品运行边界
 
-`BuddyRemoteCore`、`BuddyRemoteUI` 及应用编排中仍有手机 / Web Remote 兼容类型。当前设置页不提供管理面板，向导的可用来源仅为小米和 G9N9N；这些类型不是已开放的产品功能，也不代表有可用的远程授权服务。
+手机、Watch、Web Remote 和 Siri Remote 的退休传输、会话编排、空实现、管理 UI 及持久化开关均已移除，不保留旧 API 或格式迁移。Siri Remote 和 GY3LE 仅保留设备目录中的计划支持展示，不启动服务。原兼容模块中的音频信号度量已移入主应用的音频诊断，HID 边沿类型使用主应用的定义。
 
-`MembershipFeatureIntegration`、会员入口、宏动作及私有功能占位实现已删除。若以后实现手机或 Web Remote，需要独立设计公开服务、隐私边界与端到端测试。
-
-整理兼容层时，应同步清理客户端、UI、状态和停用设置，不为未发布的旧格式增加迁移，并保留当前遥控器连接、按键映射与语音输入的回归验证。`references/` 是忽略的本地研究笔记目录，正式参考链接列在 README；`dist/` 是忽略的本地构建输出，不属于版本库源码。
-
-诊断只写本地日志；上传器、私有上传协议和待上传事件队列已删除。
+诊断只写本地日志，没有上传器或待上传队列。`references/` 是忽略的本地研究目录，`dist/` 是忽略的构建输出。
 
 ## G9N9N public adapter
 

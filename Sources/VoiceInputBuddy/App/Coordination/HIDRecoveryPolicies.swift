@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 struct HIDPermissionSnapshot: Equatable {
     let inputMonitoringGranted: Bool

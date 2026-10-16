@@ -12,15 +12,12 @@ let package = Package(
     ],
     dependencies: [.package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4")],
     targets: [
-        .target(name: "BuddyRemoteCore", path: "Sources/PublicRemoteCompatibility/Core"),
-        .target(name: "BuddyRemoteUI", dependencies: ["BuddyRemoteCore"], path: "Sources/PublicRemoteCompatibility/UI"),
         .executableTarget(
             name: "VoiceInputBuddy",
-            dependencies: ["AudioExceptionGuard", "BuddyRemoteCore", "BuddyRemoteUI", .product(name: "Sparkle", package: "Sparkle")],
+            dependencies: ["AudioExceptionGuard", .product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/VoiceInputBuddy",
 
             linkerSettings: [
-                .linkedFramework("Network"),
             ]
         ),
         .target(

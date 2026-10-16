@@ -12,7 +12,7 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 当前发行使用固定自签名证书为 App 和驱动签名，PKG 未签名，不具备 Apple Developer ID，也未公证。证书只生成一次，私钥由 GitHub Secrets 保存；构建时导入 runner 的临时 Keychain，不添加证书信任设置。普通本地开发和 PR 构建仍默认 ad-hoc 签名。更新包另由本项目的 Sparkle Ed25519 密钥签名；push main 自动发布。配置和验收要求见 [releases.md](releases.md)。若以后取得 Developer ID，应加入 Application / Installer 签名和公证。驱动安装卸载仍需真机回归。不会沿用原作者更新密钥、会员后端或发布服务。
 
-当前保留未开放的 Siri Remote 能力边界与公开兼容类型；Apple 音频捕获、PacketLogger、HCI 辅助进程、上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。构建成功不代表未支持设备可用。
+手机、Watch、Web Remote 和 Siri Remote 的退休运行逻辑、占位模块与开关已移除，仅保留计划设备的目录展示；Apple 音频捕获、PacketLogger、HCI 辅助进程、上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。构建成功不代表未支持设备可用。
 
 ## 运行时权限变化
 
@@ -183,7 +183,7 @@ confirmation of GY3LE compatibility.
 The public macOS connection flow admits Xiaomi RC001/RC003 and G9N9N. Phone, watch,
 Web Remote and Siri Remote have no supported setup entry. G9N9N uses the public ATVV and HID pipeline;
 GY3LE is not admitted as a G9N9N device.
-Their management panels are deliberately absent from the shipped connection page.
+Their runtime adapters, session orchestration, management panels, compatibility modules and persisted switches have been removed. Planned physical devices remain catalog-only.
 Historical PacketLogger and HCI helpers have been removed from the source tree and CI.
 Persisted unsupported device profiles never receive a Xiaomi mapping illustration.
 Screenshot fixture entry points are debug-only.

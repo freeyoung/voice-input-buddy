@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -54,7 +52,6 @@ extension OnboardingView {
     func selectAppleRemote(_ generation: OnboardingAppleRemoteGeneration) {
         settings.setOnboardingAppleRemoteGeneration(generation)
         selectControlSource(.siriRemote)
-        model.setSiriRemoteEnabled(true)
     }
 
     func handleLearnedShortcut(_ shortcut: CustomKeyboardShortcut) {
@@ -104,11 +101,6 @@ extension OnboardingView {
 
     private func selectControlMethod(_ method: OnboardingControlMethod) {
         guard settings.onboardingControlMethod != method else { return }
-        if settings.onboardingControlMethod == .iPhoneApp {
-            model.disablePhoneRemoteConnection()
-        } else if settings.onboardingControlMethod == .webRemote {
-            model.disableWebRemoteConnection()
-        }
         settings.setOnboardingControlMethod(method)
         observedRemoteButtons.removeAll()
         remoteInputDiagnostic = FirstUseRemoteInputDiagnostic()

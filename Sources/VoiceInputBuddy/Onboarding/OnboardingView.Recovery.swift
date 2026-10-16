@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import CoreBluetooth
-import BuddyRemoteUI
-import BuddyRemoteCore
 import SwiftUI
 
 extension OnboardingView {
@@ -92,14 +90,6 @@ extension OnboardingView {
             step: settings.onboardingStep,
             failureReason: failure
         )
-        if settings.onboardingControlSource == .siriRemote {
-            switch failure {
-            case .voiceSessionNotStarted, .voiceNoSamples, .voiceAudioDeliveryFailed:
-                model.setSiriRemoteEnabled(true)
-            default:
-                break
-            }
-        }
         switch failure {
         case .bluetoothPermissionDenied:
             requestBluetoothPermission()
@@ -145,14 +135,7 @@ extension OnboardingView {
 
     private func restartSelectedControlConnection() {
         switch settings.onboardingControlSource {
-        case .appleCompanion:
-            model.disablePhoneRemoteConnection()
-            model.enablePhoneRemoteConnection()
-        case .webRemote:
-            model.disableWebRemoteConnection()
-            model.enableWebRemoteConnection()
         case .siriRemote:
-            model.setSiriRemoteEnabled(true)
             prepareSelectedControlConnection()
         case .xiaomiRemote, .chromecastRemote, .unselected:
             prepareSelectedControlConnection()

@@ -309,54 +309,6 @@ extension AppSettings {
         return profile.id
     }
 
-    @discardableResult
-    func registerAppleSiriRemote(
-        fingerprint: String,
-        model: XiaomiRemoteModel = .appleSiriRemoteA2854
-    ) -> UUID {
-        if let existing = remoteDeviceProfiles.first(where: { $0.hidFingerprint == fingerprint }) {
-            return existing.id
-        }
-        if let index = remoteDeviceProfiles.firstIndex(where: {
-            $0.bluetoothIdentifier == nil && $0.hidFingerprint == nil && $0.model == .unknown
-        }) {
-            remoteDeviceProfiles[index].hidFingerprint = fingerprint
-            remoteDeviceProfiles[index].model = model
-            return remoteDeviceProfiles[index].id
-        }
-        let profile = RemoteDeviceProfile(
-            model: model,
-            hidFingerprint: fingerprint,
-            mappings: mappingsForNewRemote()
-        )
-        remoteDeviceProfiles.append(profile)
-        return profile.id
-    }
-
-    /// 注册 Chromecast 遥控器的设备档案。
-    ///
-    /// 按**型号**识别，不存任何设备标识：私有包给的 `instanceKey` 是进程内的，写进偏好会每次
-    /// 启动都生成新档案，用户的映射就丢了。苹果遥控器用 HID fingerprint，本型号没有稳定的
-    /// 宿主侧 HID 指纹，因此以型号为准（同时最多只有一台该型号遥控器）。
-    @discardableResult
-    func registerChromecastRemote() -> UUID {
-        if let existing = remoteDeviceProfiles.first(where: { $0.model == .chromecastVoiceRemote }) {
-            return existing.id
-        }
-        if let index = remoteDeviceProfiles.firstIndex(where: {
-            $0.bluetoothIdentifier == nil && $0.hidFingerprint == nil && $0.model == .unknown
-        }) {
-            remoteDeviceProfiles[index].model = .chromecastVoiceRemote
-            return remoteDeviceProfiles[index].id
-        }
-        let profile = RemoteDeviceProfile(
-            model: .chromecastVoiceRemote,
-            mappings: mappingsForNewRemote()
-        )
-        remoteDeviceProfiles.append(profile)
-        return profile.id
-    }
-
     func profileID(forBluetoothIdentifier identifier: UUID) -> UUID? {
         remoteDeviceProfiles.first(where: { $0.bluetoothIdentifier == identifier })?.id
     }

@@ -95,7 +95,7 @@ enum SettingsScreenshotRenderer {
                     frameSize: 120, selectedCodec: 2, sampleRate: 16_000)
             )
             settings.bindHIDFingerprint("settings-screenshot-xiaomi", to: xiaomiID)
-            let chromecastID = settings.registerChromecastRemote()
+            let chromecastID = settings.registerBluetoothRemote(identifier: UUID(), model: .chromecastVoiceRemote)
             settings.selectRemoteProfile(xiaomiID)
             remoteCardSystemNames = [
                 xiaomiID: language == .simplifiedChinese ? "书房遥控器" : "Study Remote",

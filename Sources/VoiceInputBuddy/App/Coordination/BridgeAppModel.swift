@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     static let longRecordingOpenTimeout: TimeInterval = 5
@@ -26,7 +25,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var isConnected = false
     @Published var isVoiceTriggerEnabled = false
     @Published var activeRemoteButtons = Set<RemoteButton>()
-    @Published var activeAppleRemoteControlIDs = Set<String>()
     /// Chromecast 画布的活动按键（控制 ID）。与苹果遥控器链路完全隔离，互不清除。
     @Published private(set) var activeChromecastControlIDs = Set<String>()
     @Published var lastRemoteButtonPress: RemoteButton?
@@ -44,12 +42,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var isAudioOutputReady = false
     @Published var hasReceivedCurrentVoiceSamples = false
     @Published var activeVoiceSource: RemoteInputSource?
-    @Published var lastMobileRemoteButtonObservation: MobileRemoteButtonObservation?
-    @Published var isPhoneRemoteConnectionEnabled = false
-    @Published var isPhoneRemoteConnected = false
-    @Published var isWatchRemoteConnected = false
-    @Published private(set) var phoneRemoteInvitation: PhoneRemoteInvitation?
-    @Published var webRemoteState: WebRemoteSessionState = .disabled
     @Published var voiceShortcutStatus = LocalizedMessage("voice_button.status.preparing")
     @Published var voiceKeyCompatibilityWarning: VoiceKeyCompatibilityWarning?
     let audioOutput = VirtualAudioOutput()
@@ -64,16 +56,11 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 return !model.usesPrivateAdapter && !model.isChromecastRemote
             }
         case .siriRemote:
-            return !connectedAppleRemoteProfileIDs.isEmpty
+            return false
         case .chromecastRemote:
             return connectedRemoteProfileIDs.contains { id in
                 settings.remoteDeviceProfiles.first(where: { $0.id == id })?.model.isChromecastRemote == true
             }
-        case .appleCompanion:
-            return isPhoneRemoteConnected || isWatchRemoteConnected
-        case .webRemote:
-            if case .connected = webRemoteState { return true }
-            return false
         case .unselected:
             return false
         }
@@ -85,7 +72,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 .flatMap { id in settings.remoteDeviceProfiles.first { $0.id == id } }
             return profile?.model.isChromecastRemote == true ? .chromecastRemote : .xiaomiRemote
         }
-        if !appleRemoteVoiceDevices.isEmpty || appleRemoteVoiceStopping { return .siriRemote }
         return nil
     }
 
@@ -146,7 +132,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var voiceKeyActivationGeneration: UInt64 = 0
     var pendingVoiceKeyActivationOwner: VoiceFunctionKeyLatch.Owner?
     var pendingVoiceKeyActivationCompletion: ((Bool) -> Void)?
-    var pendingMobileVoiceActivationSource: MobileVoiceSource?
     var pendingVoiceToolMappingRefresh = false
     var pendingCommandVoiceAudio = CommandVoiceActivationAudioBuffer()
     var voiceSessionID: UUID?
@@ -154,28 +139,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var voiceAudioDeliveryDiagnostic = VoiceAudioDeliveryDiagnostic()
     var bluetoothVoiceActive = false
     var loggedBluetoothVoiceAudioDeviceIdentifier: UUID?
-    var mobileVoiceLifecycle = MobileVoiceLifecycleState()
-    var pendingMobileVoiceStartSource: MobileVoiceSource?
-    var pendingMobileVoiceAudio = CommandVoiceActivationAudioBuffer(
-        maximumSampleCount: 32_000
-    )
-    var pendingMobileVoiceStopRequested = false
-    var pendingMobileVoiceRestartCompletion: ((RemoteVoiceStartResult) -> Void)?
-    var mobileVoiceNoAudioRecoveryTimer: DispatchSourceTimer?
-    var activeMobileVoiceSource: MobileVoiceSource? {
-        mobileVoiceLifecycle.activeSource
-    }
-    var stoppingMobileVoiceSource: MobileVoiceSource? {
-        mobileVoiceLifecycle.stoppingSource
-    }
-    var mobileVoiceAudioBatchCount = 0
-    var mobileVoiceAudioReceivedBatchCount = 0
-    var mobileVoiceAudioEnqueueFailureCount = 0
-    var mobileVoiceAudioSourceMismatchCount = 0
-    var mobileVoiceAudioSignalMetrics = WatchBluetoothAudioSignalMetrics()
-    var mobileVoiceOperationCounter: UInt64 = 0
-    var activeMobileVoiceOperationID: String?
-    var activeMobileVoiceStartedAt: Date?
     var longRecordingRequested = false
     var longRecordingGeneration: UInt64 = 0
     var longRecordingOpenTimer: DispatchSourceTimer?
@@ -189,12 +152,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var rc003VoiceExtensionTimer: DispatchSourceTimer?
     var rc003VoiceExtensionOpenTimer: DispatchSourceTimer?
     var rc003VoiceExtensionDeadlineTimer: DispatchSourceTimer?
-    var phoneApprovalAlert: NSAlert?
-    var webApprovalAlert: NSAlert?
-    var remoteButtonTitles: [String: String] = [:]
-    var mobileButtonGestureRecognizers: [RemoteInputSource: RemoteButtonGestureRecognizer] = [:]
-    var mobileDoubleClickTimers: [MobileButtonGestureKey: DispatchSourceTimer] = [:]
-    var mobileLongPressTimers: [MobileButtonGestureKey: DispatchSourceTimer] = [:]
     var bluetoothBridges: [UUID: XiaomiBluetoothBridge] = [:]
     var bluetoothBridgeStates: [ObjectIdentifier: BluetoothBridgeState] = [:]
     var discoveryBluetoothBridge: XiaomiBluetoothBridge?
@@ -214,83 +171,10 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var hidMonitoringInterrupted = false
     var hidMonitors: [String: HIDRemoteMonitor] = [:]
     var discoveryHIDMonitor: HIDRemoteMonitor?
-    lazy var siriRemoteFeature = SiriRemoteFeatureIntegration(
-        logger: { AppLogger.shared.write($0) }
-    )
-    @Published private(set) var siriRemoteAudioStatus = "disabled"
-    let siriRemoteCursorFeedback = SiriRemoteCursorFeedbackController(
-        logger: { AppLogger.shared.write($0) }
-    )
-    var appleRemoteProfileIDs: [SiriRemoteDeviceIdentity: UUID] = [:]
-    var connectedAppleRemoteProfileIDs = Set<UUID>()
-    var appleRemoteActiveButtons: [SiriRemoteDeviceIdentity: Set<RemoteButton>] = [:]
-    var appleRemoteActiveControlIDs: [SiriRemoteDeviceIdentity: Set<String>] = [:]
-    var appleRemoteHoverClickDevices = Set<SiriRemoteDeviceIdentity>()
-    var appleRemoteGestureRecognizers:
-        [SiriRemoteDeviceIdentity: RemoteButtonGestureRecognizer] = [:]
-    var appleRemoteDoubleClickTimers:
-        [AppleRemoteButtonGestureKey: DispatchSourceTimer] = [:]
-    var appleRemoteLongPressTimers:
-        [AppleRemoteButtonGestureKey: DispatchSourceTimer] = [:]
-    var appleRemoteRepeatTimers:
-        [AppleRemoteButtonGestureKey: DispatchSourceTimer] = [:]
-    var appleRemoteRepeatCounts: [AppleRemoteButtonGestureKey: Int] = [:]
-    var appleRemoteRepeatOperationIDs: [AppleRemoteButtonGestureKey: UInt64] = [:]
-    var appleRemoteRepeatOperationCounter: UInt64 = 0
-    let appleRemoteAppSwitcherSession = KeyboardInjector.AppSwitcherSession()
-    var appleRemoteAppSwitcherTimeout: DispatchSourceTimer?
-    var appleRemoteAppSwitcherFrontmostMonitor: DispatchSourceTimer?
-    var appleRemoteAppSwitcherOriginBundleIdentifier: String?
-    var appleRemoteAppSwitcherOperationCounter: UInt64 = 0
-    var appleRemoteAppSwitcherOperationID: UInt64?
-    var appleRemoteAppSwitcherProfileID: UUID?
-    var appleRemoteAppSwitcherStartedUptime: TimeInterval?
-    var appleRemoteAppSwitcherTabCount = 0
-    var appleRemoteAppSwitcherTouchNavigationSteps = 0
-    var appleRemoteAppSwitcherButtonLeftCount = 0
-    var appleRemoteAppSwitcherButtonRightCount = 0
-    var appleRemoteAppSwitcherTouchConfirmationCount = 0
-    var appleRemoteAppSwitcherButtonConfirmationCount = 0
-    var appleRemoteCircularNavigation = AppleRemoteCircularNavigationAccumulator()
-    var appleRemoteVoiceDevices = Set<SiriRemoteDeviceIdentity>()
-    var appleRemoteVoiceStopping = false
-    var pendingAppleRemoteVoiceStarts = Set<SiriRemoteDeviceIdentity>()
-    var pendingAppleRemoteVoiceAudio = CommandVoiceActivationAudioBuffer(
-        maximumSampleCount: 32_000
-    )
-    var pendingAppleRemoteVoiceStops = DeviceVoiceStopRequests<SiriRemoteDeviceIdentity>()
-    var appleRemoteVoiceStopOperation: UInt64 = 0
-    var appleRemoteVoiceCaptureRetryAttempt = 0
-    var appleRemoteVoiceCaptureRetryWorkItem: DispatchWorkItem?
-    var appleRemoteAudioBatchCount = 0
-    var appleRemoteAudioSampleCount = 0
-    var appleRemoteAudioEnqueueFailureCount = 0
-    var appleRemoteAudioStopPendingBuffers = 0
-    var appleRemoteAudioStopPendingSamples = 0
-    var appleRemoteAudioStopInterruptedBuffers = 0
-    var appleRemoteAudioStopInterruptedSamples = 0
-    var loggedAppleRemoteAudioDevice = false
-    var appleRemoteVoiceOperationCounter: UInt64 = 0
-    var activeAppleRemoteVoiceOperationID: String?
-    var activeAppleRemoteVoiceStartedAt: Date?
-
-    /// 苹果遥控器**自报**的能力位；链路不可用时为空集合（同上）。
-    @Published private(set) var siriDeclaredCapabilities: SiriRemoteDeclaredCapabilities = []
-
-    /// 当前选中遥控器档案的语音能力：**该遥控器所在链路的自报**优先，自报缺失才回退型号默认表。
-    ///
-    /// 两条链路各自上报（Chromecast 走 ATVV、苹果遥控器走 HID），必须按型号取对应的那一份，
-    /// 不能混用——串用会让不具备该能力的遥控器凭空多出功能入口。
     var selectedRemoteVoiceCapabilities: RemoteVoiceCapabilities {
-        let model = settings.selectedRemoteProfile?.model
-        var declared: ChromecastDeclaredCapabilities = []
-        if let model {
-            if model.isAppleSiriRemote {
-                declared = siriDeclaredCapabilities.asDeclaredVoiceCapabilities
-            }
-        }
-        return .resolve(model: model, declared: declared)
+        .resolve(model: settings.selectedRemoteProfile?.model, declared: [])
     }
+
     /// Google readiness derives from the shared public Bluetooth bridges.
     var connectedChromecastProfileIDs = Set<UUID>()
     var hidPowerKeySuppressed = false
@@ -345,9 +229,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
         self.loginItemService = loginItemService
         self.rc003VoiceExtensionTestEnabled = rc003VoiceExtensionTestEnabled
-        if settings.siriRemoteEnabled, settings.siriRemoteNeedsUserAction {
-            siriRemoteAudioStatus = "unavailable:authorization_user_action_required"
-        }
         commonPhrases.onWillOpen = { [weak self] in self?.cancelPendingCommonPhraseButtonActions() }
         audioDevices = initialAudioDevices
         hidEventSuppressor.onSystemDisabled = { [weak self] in
@@ -361,13 +242,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 !permissions.inputMonitoringGranted ? "button_mapping.permission.input_monitoring_required" :
                     (!permissions.accessibilityGranted ? "button_mapping.permission.accessibility_required" :
                         "button_mapping.status.interrupted")
-            )
-        }
-        appleRemoteAppSwitcherSession.setDiagnosticLogger { [weak self] message in
-            AppLogger.shared.write(
-                "APPLE REMOTE APP SWITCHER EVENT " +
-                    "operation_id=\(self?.appleRemoteAppSwitcherOperationLabel ?? "none") " +
-                    message
             )
         }
         voiceToolCancellable = settings.$onboardingVoiceTool
@@ -413,13 +287,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     func stop() {
         commonPhrases.close(reason: "app_stop")
-        resetAllAppleRemoteState(reason: "app_stop")
-        pendingAppleRemoteVoiceStarts.removeAll()
-        pendingAppleRemoteVoiceStops.removeAll()
-        appleRemoteVoiceDevices.removeAll()
-        appleRemoteVoiceStopping = false
-        appleRemoteVoiceStopOperation &+= 1
-
         preferredInputSourceMonitor.stop()
         guard started else { return }
         started = false
@@ -450,24 +317,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         pendingBluetoothVoiceStart.cancel()
         pendingBluetoothVoiceStopRequested = false
         activeBluetoothVoiceDeviceIdentifier = nil
-        isPhoneRemoteConnectionEnabled = false
-        isPhoneRemoteConnected = false
-        isWatchRemoteConnected = false
-        webRemoteState = .disabled
         bluetoothVoiceActive = false
-        let cancelledPendingRestart = mobileVoiceLifecycle.reset()
-        cancelMobileVoiceNoAudioRecoveryTimer()
-        mobileVoiceAudioReceivedBatchCount = 0
-        activeMobileVoiceOperationID = nil
-        activeMobileVoiceStartedAt = nil
-        let completion = pendingMobileVoiceRestartCompletion
-        pendingMobileVoiceRestartCompletion = nil
-        pendingMobileVoiceStartSource = nil
-        pendingMobileVoiceAudio.cancel()
-        pendingMobileVoiceStopRequested = false
-        if cancelledPendingRestart {
-            completion?(.unavailable)
-        }
         releaseVoiceKeyIfNeeded()
         stopHIDMonitors()
         isAudioOutputReady = false

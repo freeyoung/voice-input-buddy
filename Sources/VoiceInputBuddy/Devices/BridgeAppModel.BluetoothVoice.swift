@@ -4,7 +4,6 @@ import Combine
 import CoreAudio
 import CoreBluetooth
 import Foundation
-import BuddyRemoteCore
 
 extension BridgeAppModel {
     func bluetoothBridgeDeviceNameDidChange(_ bridge: XiaomiBluetoothBridge) {

@@ -329,13 +329,13 @@ struct VoiceInputActivationTests {
             waitForInputSourceActivation: { _, _, continuing, done in done(continuing()) }, installMonitor: { _ in nil }, logger: { _ in })
         let setter: (VoiceKeyMode, Bool) -> Bool = { _, down in posts.append(down); return true }
         let first = model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .bluetooth, keySetter: setter)
-        let second = model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .mobile, keySetter: setter)
+        let second = model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .chromecast, keySetter: setter)
         #expect(first && second)
         let firstStop = model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .bluetooth, keySetter: setter)
         #expect(firstStop)
         #expect(source == OnboardingVoiceTool.weixin.preferredInputSourceID)
         #expect(posts == [true])
-        let secondStop = model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .mobile, keySetter: setter)
+        let secondStop = model.updateVoiceKeyState(streaming: false, forceSoftware: true, owner: .chromecast, keySetter: setter)
         #expect(secondStop)
         #expect(source == OnboardingVoiceTool.weixin.preferredInputSourceID)
         #expect(posts == [true, false])
@@ -399,52 +399,6 @@ struct VoiceInputActivationTests {
             #expect(results == [false])
             #expect(time < (cancelled ? 0.12 : 0.51))
         }
-    }
-
-    @Test func mobileStopCancelsPendingSourceActivationAndCompletesStartOnce() throws {
-        let model = try model()
-        var source = "previous"
-        var confirm: ((Bool) -> Void)?
-        var results: [Bool] = []
-        var posts = 0
-        model.preferredInputSourceMonitor = PreferredInputSourceMonitor(
-            voiceTool: { .weixin }, prepareInputSource: { tool in source = tool.preferredInputSourceID!; return .selected },
-            currentInputSourceID: { source }, restoreInputSource: { source = $0; return .selected },
-            waitForInputSourceActivation: { _, _, _, done in confirm = done },
-            installMonitor: { _ in nil }, logger: { _ in })
-        model.pendingMobileVoiceActivationSource = .web
-        #expect(model.updateVoiceKeyState(streaming: true, forceSoftware: true, owner: .mobile,
-            keySetter: { _, _ in posts += 1; return true }, completion: {
-                results.append($0)
-                model.pendingMobileVoiceActivationSource = nil
-            }))
-        #expect(results.isEmpty)
-        model.stopPhoneVoice(source: .web)
-        #expect(results == [false])
-        #expect(!model.voiceKeyLatch.isHeld)
-        #expect(source == "previous")
-        confirm?(true)
-        #expect(results == [false])
-        #expect(posts == 0)
-    }
-
-    @Test func secondMobileStartCannotReplacePendingActivationOrAudio() throws {
-        let model = try model()
-        model.pendingMobileVoiceActivationSource = .web
-        model.pendingMobileVoiceStartSource = .web
-        model.pendingMobileVoiceAudio.begin()
-        let buffered = model.pendingMobileVoiceAudio.appendIfWaiting([1, 2, 3])
-        #expect(buffered)
-        var calls = 0
-        model.requestPhoneVoiceStart(source: .web) {
-            calls += 1
-            #expect($0 == .busy)
-        }
-        #expect(calls == 1)
-        #expect(model.pendingMobileVoiceActivationSource == .web)
-        #expect(model.pendingMobileVoiceStartSource == .web)
-        let samples = model.pendingMobileVoiceAudio.drain()
-        #expect(samples == [1, 2, 3])
     }
 
     @Test func cancelledDeferredActivationCannotPostOrMutateNewSession() throws {
