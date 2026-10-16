@@ -91,13 +91,24 @@ struct RuntimeBoundaryTests {
         }
     }
 
-    @Test func disablingMappingRestoresPreviousActionAndSensibleDefaults() {
-        let previous = ConfiguredButtonAction(action: .commandCopy, shortcut: nil)
-        #expect(MappingDisablePolicy.configuration(disabling: true, current: previous, backup: nil, button: .right, trigger: .singleClick) == .disabled)
-        #expect(MappingDisablePolicy.configuration(disabling: false, current: .disabled, backup: previous, button: .right, trigger: .singleClick) == previous)
-        #expect(MappingDisablePolicy.configuration(disabling: false, current: .disabled, backup: nil, button: .right, trigger: .singleClick).action == .arrowRight)
-        let empty = MappingDisablePolicy.configuration(disabling: false, current: .disabled, backup: nil, button: .right, trigger: .doubleClick)
-        #expect(empty.action == .customShortcut && empty.shortcut == nil)
+    @Test(arguments: [ButtonTrigger.singleClick, .doubleClick, .longPress])
+    func clearingGesturePersistsWithoutChangingOtherGestures(trigger: ButtonTrigger) {
+        let (defaults, name) = values()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        for gesture in ButtonTrigger.allCases {
+            settings.setBaseBinding(.init(action: .commandCopy, shortcut: nil),
+                for: .right, trigger: gesture, profileID: nil)
+        }
+        settings.setBaseBinding(.disabled, for: .right, trigger: trigger, profileID: nil)
+        let reloaded = AppSettings(defaults: defaults)
+        for gesture in ButtonTrigger.allCases {
+            #expect(reloaded.configuredBaseAction(for: .right, trigger: gesture, profileID: nil).action
+                == (gesture == trigger ? .disabled : .commandCopy))
+        }
+        settings.setBaseBinding(.init(action: .commandPaste, shortcut: nil),
+            for: .right, trigger: trigger, profileID: nil)
+        #expect(settings.configuredBaseAction(for: .right, trigger: trigger, profileID: nil).action == .commandPaste)
     }
 
     @Test func corruptedMappingsAreReportedAndPreservedWhileDefaultsRecover() {
@@ -186,67 +197,6 @@ struct RuntimeBoundaryTests {
         stops.request("second")
         stops.removeAll()
         #expect(stops.take(pending: ["second"]).isEmpty)
-    }
-
-    @Test func mappingToggleRestoresOnlyItsOwnDeviceButtonAndGesture() {
-        let device = UUID()
-        let scopes = [
-            MappingDisableScope(deviceID: device, button: .right, trigger: .singleClick),
-            MappingDisableScope(deviceID: UUID(), button: .right, trigger: .singleClick),
-            MappingDisableScope(deviceID: device, button: .left, trigger: .singleClick),
-            MappingDisableScope(deviceID: device, button: .right, trigger: .doubleClick),
-        ]
-        let actions: [ButtonAction] = [.commandCopy, .commandPaste, .commandFind, .commandQuit]
-        var editor = MappingDisableEditor()
-        for (scope, action) in zip(scopes, actions) {
-            #expect(editor.configuration(disabling: true, current: .init(action: action, shortcut: nil), scope: scope) == .disabled)
-            // Repeated disable notifications must not overwrite the stored action.
-            _ = editor.configuration(disabling: true, current: .disabled, scope: scope)
-        }
-        for (scope, action) in zip(scopes, actions) {
-            #expect(editor.configuration(disabling: false, current: .disabled, scope: scope).action == action)
-        }
-    }
-
-    @Test func mappingToggleSavesDisabledAndRestoredBindingsAndRebuiltEditorUsesDefault() {
-        let (defaults, name) = values()
-        defer { defaults.removePersistentDomain(forName: name) }
-        let settings = AppSettings(defaults: defaults)
-        let scope = MappingDisableScope(deviceID: nil, button: .right, trigger: .singleClick)
-        settings.setBaseBinding(.init(action: .commandCopy, shortcut: nil), for: .right, trigger: .singleClick, profileID: nil)
-        var editor = MappingDisableEditor()
-        func toggle(_ disabled: Bool) {
-            let replacement = editor.configuration(disabling: disabled,
-                current: settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil), scope: scope)
-            settings.setBaseBinding(replacement, for: .right, trigger: .singleClick, profileID: nil)
-        }
-        toggle(true)
-        #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil) == .disabled)
-        toggle(false)
-        #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .commandCopy)
-        toggle(true)
-        editor = MappingDisableEditor()
-        toggle(false)
-        #expect(settings.configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .arrowRight)
-        #expect(AppSettings(defaults: defaults).configuredBaseAction(for: .right, trigger: .singleClick, profileID: nil).action == .arrowRight)
-    }
-
-    @Test(arguments: [ButtonTrigger.singleClick, .doubleClick, .longPress])
-    func redundantEnablePreservesTheEntireCurrentBinding(trigger: ButtonTrigger) {
-        let current = ConfiguredButtonAction(action: .openCustomApplication, shortcut: nil,
-            applicationProfileID: UUID())
-        for backup: ConfiguredButtonAction? in [nil, .disabled, .init(action: .escape, shortcut: nil)] {
-            #expect(MappingDisablePolicy.configuration(disabling: false, current: current,
-                backup: backup, button: .right, trigger: trigger) == current)
-        }
-    }
-
-    @Test func editorEnableDoesNotReplaceNewActionWithItsStaleBackup() {
-        let scope = MappingDisableScope(deviceID: UUID(), button: .right, trigger: .singleClick)
-        var editor = MappingDisableEditor()
-        _ = editor.configuration(disabling: true, current: .init(action: .commandCopy, shortcut: nil), scope: scope)
-        let updated = ConfiguredButtonAction(action: .commandPaste, shortcut: nil)
-        #expect(editor.configuration(disabling: false, current: updated, scope: scope) == updated)
     }
 
     @Test func unifiedMappingCorruptionIsPreservedAfterSavingNewMappings() {

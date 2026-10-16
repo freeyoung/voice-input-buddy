@@ -211,7 +211,6 @@
 "button_mapping.action_group.system_and_media" = "System & Media";
 "button_mapping.action_group.custom" = "Custom Actions";
 "button_mapping.action_group.applications" = "Open an App";
-"button_mapping.action.disable_switch" = "Disable Button";
 "custom_application.target" = "Target app";
 "custom_application.not_configured" = "No app selected";
 "custom_application.add" = "Add App";
@@ -1204,7 +1203,6 @@
 
 "button_mapping.unsupported_device" = "This remote is not supported yet. Choose a Xiaomi or G9N9N remote to configure buttons.";
 
-"button_mapping.action.disable_restore_scope" = "Re-enabling restores the previous action while this settings window stays open. After closing it, a click uses the button default; double-click and long-press actions must be selected again.";
 
 "voice_button.status.cleanup_failed" = "Could not release Fn. Restore Accessibility permission and try again.";
 
@@ -1282,3 +1280,5 @@
 "common_phrases.inserted" = "Phrase inserted.";
 
 "button_mapping.editor.confirm" = "OK";
+
+"button_mapping.action.not_set_help" = "This gesture performs no action. Other gestures for this button are unchanged. Select an action below to assign it again. Changes are saved automatically.";

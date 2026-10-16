@@ -250,39 +250,17 @@ extension SettingsView {
                         .padding(.vertical, 4)
                         .background(Color.accentColor.opacity(0.12), in: Capsule())
                     Spacer()
-                    Toggle(
-                        "button_mapping.action.disable_switch",
-                        isOn: Binding(
-                            get: {
-                                mappingConfiguration(
-                                    for: target.button,
-                                    trigger: target.trigger
-                                ).action == .disabled
-                            },
-                            set: { disabled in
-                                let scope = MappingDisableScope(
-                                    deviceID: settings.selectedRemoteProfileID,
-                                    button: target.button, trigger: target.trigger
-                                )
-                                let replacement = mappingDisableEditor.configuration(
-                                    disabling: disabled,
-                                    current: mappingConfiguration(for: target.button, trigger: target.trigger),
-                                    scope: scope
-                                )
-                                saveMappingBinding(replacement, button: target.button, trigger: target.trigger)
-                                shortcutCaptureTarget = nil
-                                applicationShortcutCaptureProfileID = nil
-                            }
-                        )
-                    )
-                    .font(.system(size: 15, weight: .semibold))
-                    .toggleStyle(.switch)
-                    .controlSize(.large)
-                    .tint(.red)
-                    .help(localization.text("button_mapping.action.disable_restore_scope"))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.red.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
+                    Button {
+                        saveMappingBinding(.disabled, button: target.button, trigger: target.trigger)
+                        shortcutCaptureTarget = nil
+                        applicationShortcutCaptureProfileID = nil
+                    } label: {
+                        Label("button_mapping.action.not_set", systemImage:
+                            mappingConfiguration(for: target.button, trigger: target.trigger).action == .disabled
+                                ? "checkmark.circle.fill" : "circle")
+                    }
+                    .compatibilityButtonStyle(.standard)
+                    .help(localization.text("button_mapping.action.not_set_help"))
                     .disabled(
                         target.button == .power &&
                             target.trigger == .singleClick &&
@@ -297,7 +275,7 @@ extension SettingsView {
                 }
 
                 if mappingConfiguration(for: target.button, trigger: target.trigger).action == .disabled {
-                    Text(localization.text("button_mapping.action.disable_restore_scope"))
+                    Text(localization.text("button_mapping.action.not_set_help"))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
