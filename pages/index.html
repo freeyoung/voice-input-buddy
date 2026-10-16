@@ -10,17 +10,17 @@
   <link rel="alternate" hreflang="en" href="https://voice.zfdang.com/index.en.html">
   <link rel="alternate" hreflang="x-default" href="https://voice.zfdang.com/">
   <link rel="icon" href="assets/app-icon.png">
-  <link rel="stylesheet" href="style.css?v=1c80ac96628c">
+  <link rel="stylesheet" href="style.css?v=261016">
   <title>Voice Input Buddy · 语音搭子</title>
 </head>
 <body>
 <header class="nav wrap">
   <a class="brand" href="#"><img src="assets/app-icon.png" alt="" width="38" height="38"><span>Voice Input Buddy<small>语音搭子</small></span></a>
-  <nav aria-label="主导航"><a href="#how">原理</a><a href="#demo">演示</a><a href="#start">使用</a><a href="#compatibility">兼容</a><a href="#troubleshooting">排障</a><a href="https://github.com/zfdang/voice-input-buddy">GitHub ↗</a><span class="language-switch" aria-label="语言"><b aria-current="page">中文</b><a href="index.en.html" lang="en">English</a></span></nav>
+  <nav aria-label="主导航"><a href="#how">原理</a><a href="#interface">界面</a><a href="#demo">演示</a><a href="#start">使用</a><a href="#compatibility">兼容</a><a href="#troubleshooting">排障</a><a href="https://github.com/zfdang/voice-input-buddy">GitHub ↗</a><span class="language-switch" aria-label="语言"><b aria-current="page">中文</b><a href="index.en.html" lang="en">English</a></span></nav>
 </header>
 <main>
 <section class="hero wrap">
-  <div class="hero-copy"><p class="eyebrow">硬件 × 语音输入</p><h1>把语音输入，<br>放到手边。</h1><p class="lead">拿起遥控器，按下说话，松开结束。<br>让你喜欢的输入法，听见遥控器里的声音。</p><div class="actions"><a class="button primary" href="https://github.com/zfdang/voice-input-buddy/releases/latest">下载 macOS 安装包 <span>↓</span></a><a class="text-link" href="#start">开始使用 →</a><a class="text-link" href="#demo">观看两分钟演示 →</a></div><p class="small">macOS 14+ · arm64 / Intel 独立安装包 · 通用卸载器 · 开源</p></div>
+  <div class="hero-copy"><p class="eyebrow">硬件 × 语音输入</p><h1>把语音输入，<br>放到手边。</h1><p class="lead">拿起遥控器，按下说话，松开结束。<br>让你喜欢的输入法，听见遥控器里的声音。</p><div class="actions"><a class="button primary" href="https://github.com/zfdang/voice-input-buddy/releases/latest">下载 macOS 安装包 <span>↓</span></a><a class="text-link" href="#interface">查看界面 →</a><a class="text-link" href="#demo">观看两分钟演示 →</a></div><p class="small">macOS 14+ · arm64 / Intel 独立安装包 · 通用卸载器 · 开源</p></div>
   <div class="hero-art" aria-label="遥控器将声音传递给电脑的示意图">
     <span class="art-label">从按键，到文字</span>
     <div class="remote"><i class="power"></i><button id="talk" aria-label="按住体验语音触发示意" aria-describedby="demo-note">🎙</button><div class="dpad"><span>＋</span></div><div class="remote-small"><i></i><i></i><i></i></div></div>
@@ -31,6 +31,63 @@
 </section>
 <section class="features wrap" aria-label="主要功能"><div><span>01</span><h2>一键说话</h2><p>按住或点按语音键，匹配输入工具的开始与结束方式。</p></div><div><span>02</span><h2>按键由你定义</h2><p>快捷键、应用操作、常用语，让遥控器成为顺手的工具。</p></div><div><span>03</span><h2>声音交给喜欢的工具</h2><p>连接语音输入法与听写工具，沿用熟悉的识别体验。</p></div></section>
 <section class="how section" id="how"><div class="wrap"><p class="eyebrow">工作原理</p><h2 class="section-title">搭一座桥，<br>让硬件和输入工具合作。</h2><div class="flow"><div><span>①</span><h3>遥控器</h3><p>麦克风音频 + 按键</p></div><b aria-hidden="true">→</b><div class="flow-buddy"><span>②</span><h3>Voice Input Buddy</h3><p>解码音频 · 触发快捷键</p></div><b aria-hidden="true">→</b><div><span>③</span><h3>输入法 / 听写工具</h3><p>识别声音 · 写入文本</p></div></div><p class="explanation">遥控器通过蓝牙传来声音，语音搭子解码后送入虚拟麦克风，同时发送对应的语音快捷键。识别、实时文字与文本修正由输入工具完成；语音搭子本身不运行识别模型。</p></div></section>
+<section class="section wrap interface-section" id="interface" aria-labelledby="interface-title">
+  <div class="interface-heading">
+    <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">原生 SwiftUI 精心打造，从按键动作映射、多设备管理，到主流输入法集成与常用语速选，一目了然。</p></div>
+  </div>
+  <div class="interface-showcase">
+    <div class="interface-tabs" role="tablist" aria-label="程序界面各功能区域">
+      <button class="interface-tab is-active" role="tab" id="tab-mapping" aria-selected="true" aria-controls="panel-mapping" data-panel="panel-mapping">
+        <span class="tab-title">按键映射</span>
+        <span class="tab-desc">可视化设置单击、双击与长按</span>
+      </button>
+      <button class="interface-tab" role="tab" id="tab-connection" aria-selected="false" aria-controls="panel-connection" data-panel="panel-connection">
+        <span class="tab-title">设备连接</span>
+        <span class="tab-desc">连接状态、电量与独立增益</span>
+      </button>
+      <button class="interface-tab" role="tab" id="tab-integration" aria-selected="false" aria-controls="panel-integration" data-panel="panel-integration">
+        <span class="tab-title">输入法集成</span>
+        <span class="tab-desc">微信、豆包、Typeless 等工具</span>
+      </button>
+      <button class="interface-tab" role="tab" id="tab-phrases" aria-selected="false" aria-controls="panel-phrases" data-panel="panel-phrases">
+        <span class="tab-title">常用语面板</span>
+        <span class="tab-desc">方向键快速输入与词库管理</span>
+      </button>
+      <button class="interface-tab" role="tab" id="tab-permissions" aria-selected="false" aria-controls="panel-permissions" data-panel="panel-permissions">
+        <span class="tab-title">权限与环境</span>
+        <span class="tab-desc">系统权限与虚拟麦克风驱动</span>
+      </button>
+    </div>
+    <div class="interface-window" role="region" aria-label="界面预览窗口">
+      <div class="window-top" aria-hidden="true">
+        <div class="window-dots"><i></i><i></i><i></i></div>
+        <span class="window-title" id="interface-window-title">按键映射 · Voice Input Buddy</span>
+      </div>
+      <div class="window-body">
+        <div class="interface-panel is-active" id="panel-mapping" role="tabpanel" aria-labelledby="tab-mapping">
+          <img src="assets/screenshots/mapping-zh.png" alt="Voice Input Buddy 按键映射设置界面：可视化遥控器按键映射，支持单击、双击、长按与自定义快捷键" width="1020" height="772" loading="eager">
+          <p class="panel-caption">按键映射：中央显示遥控器按键示意图，支持为电源键、确定键、方向键、返回键、主页键、菜单键与 TV 键分别指定单击、双击和长按动作或快捷键。</p>
+        </div>
+        <div class="interface-panel" id="panel-connection" role="tabpanel" aria-labelledby="tab-connection" hidden>
+          <img src="assets/screenshots/connection-zh.png" alt="Voice Input Buddy 设备连接界面：多台遥控器卡片、连接状态、电量显示与麦克风独立增益滑块" width="1020" height="772" loading="lazy">
+          <p class="panel-caption">设备连接：显示已配对的蓝牙遥控器卡片与电量状态，支持添加新设备，并可单独调节每台遥控器的麦克风输入增益（0 dB 至 20 dB）。</p>
+        </div>
+        <div class="interface-panel" id="panel-integration" role="tabpanel" aria-labelledby="tab-integration" hidden>
+          <img src="assets/screenshots/integration-zh.png" alt="Voice Input Buddy 输入法与语音工具集成界面：微信输入法、豆包、Typeless、Vokie、VoiceCursor 等配置入口" width="1020" height="772" loading="lazy">
+          <p class="panel-caption">输入法集成：提供豆包输入法、微信输入法、Typeless、Vokie、VoiceCursor 及其他自定义工具的专用配置向导入口，并可自由选择语音触发按键（Fn、Command、Option 等）。</p>
+        </div>
+        <div class="interface-panel" id="panel-phrases" role="tabpanel" aria-labelledby="tab-phrases" hidden>
+          <img src="assets/screenshots/phrases-zh.png" alt="Voice Input Buddy 常用语调整界面：遥控器五键分配、常用语库与短语编辑管理" width="1020" height="772" loading="lazy">
+          <p class="panel-caption">常用语管理：通过圆盘方向键与 OK 键快速选择并输入常用语句，支持中英文短语自定义、词库导入导出与五键分配。</p>
+        </div>
+        <div class="interface-panel" id="panel-permissions" role="tabpanel" aria-labelledby="tab-permissions" hidden>
+          <img src="assets/screenshots/permissions-zh.png" alt="Voice Input Buddy 权限与环境界面：蓝牙、输入监控、辅助功能权限与虚拟麦克风驱动状态" width="1020" height="772" loading="lazy">
+          <p class="panel-caption">权限与环境：集中管理蓝牙、输入监控与辅助功能三项系统授权，监控 Voice Input Buddy Mic 虚拟麦克风驱动的加载状态，并提供安装指引。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 <section class="section wrap demo-section" id="demo" aria-labelledby="demo-title">
   <div class="demo-heading"><div><p class="eyebrow">两分钟上手</p><h2 class="section-title" id="demo-title">从设置，到说出第一句话。</h2><p>两分钟卡通演示：权限准备、遥控器连接、按键映射，以及用微信输入法完成语音输入。</p></div><p class="demo-language">2 分钟 · 中文旁白 · 中文字幕</p></div>
   <video class="demo-video" controls playsinline preload="metadata" poster="assets/video/demo-poster.jpg" width="1920" height="1080" aria-label="语音搭子两分钟使用演示，中文旁白与字幕">
