@@ -823,9 +823,9 @@
 "onboarding.remote.siri_pairing.first" = "Open System Settings → Bluetooth and keep the Apple Remote near your Mac.";
 "onboarding.remote.siri_pairing.second" = "Hold Back and Volume Up together for about 5 seconds, then connect when the remote appears.";
 "onboarding.remote.siri_pairing.third" = "Its Bluetooth name may not say “Apple Remote.” After resetting it, look for the newly appearing device instead of relying on the name.";
-"onboarding.remote.chromecast_pairing.title" = "Connect Chromecast Voice Remote for the first time";
-"onboarding.remote.chromecast_pairing.first" = "Open System Settings → Bluetooth, keep the remote near your Mac, and make sure it is awake.";
-"onboarding.remote.chromecast_pairing.second" = "If it does not appear, follow the remote’s instructions to enter pairing mode again; after connecting, press a button other than the voice button to wake it.";
+"onboarding.remote.chromecast_pairing.title" = "Pair a Google remote (G9N9N / GY3LE)";
+"onboarding.remote.chromecast_pairing.first" = "Open System Settings → Bluetooth and keep the remote near your Mac.";
+"onboarding.remote.chromecast_pairing.second" = "Hold Back + Home together for about 3 seconds until the indicator starts flashing.";
 "onboarding.remote.connected" = "Selected remote connected";
 "onboarding.remote.connected_detail" = "Voice Input Buddy has a working connection to the remote.";
 "onboarding.remote.hid_connected" = "Physical remote recognized";
@@ -1292,3 +1292,4 @@
 "connection.device.audio" = "Audio format";
 "connection.device.frame" = "Audio frame";
 "connection.device.frame_bytes" = "%@ bytes";
+"onboarding.remote.chromecast_pairing.third" = "Select the remote in your Mac’s Bluetooth list and connect. Then press a button other than Voice to check input. When pairing again, forget the device in Bluetooth settings first if needed.";

@@ -487,7 +487,9 @@ enum OnboardingAppleRemoteGeneration: String, Codable, CaseIterable, Identifiabl
 enum OnboardingBuildCapabilities {
     static var availableControlSources: [OnboardingControlSource] {
         let sources = PlannedRemoteDevice.allCases.compactMap(\.onboardingSource)
-        return sources
+        return sources.reduce(into: []) { unique, source in
+            if !unique.contains(source) { unique.append(source) }
+        }
     }
 }
 
@@ -625,7 +627,8 @@ enum OnboardingRemotePhotoKind: Equatable {
 
     static func resolve(
         source: OnboardingControlSource,
-        selectedModel: XiaomiRemoteModel?
+        selectedModel: XiaomiRemoteModel?,
+        selectedDevice: PlannedRemoteDevice? = nil
     ) -> Self {
         switch source {
         case .xiaomiRemote:
@@ -643,6 +646,9 @@ enum OnboardingRemotePhotoKind: Equatable {
         case .siriRemote:
             return .siriRemote
         case .chromecastRemote:
+            if let selectedDevice, selectedDevice.onboardingSource == .chromecastRemote {
+                return .bundled(resourceName: selectedDevice.illustrationResource)
+            }
             return .bundled(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource)
         case .appleCompanion, .webRemote, .unselected:
             return .placeholder

@@ -156,13 +156,13 @@ struct ProductBoundaryTests {
         }
     }
 
-    @Test func deviceScopeKeepsGoogleModelsDistinctAndPlannedAdaptersUnavailable() {
+    @Test func deviceScopeKeepsGoogleModelsDistinctAndSelectable() {
         #expect(PlannedRemoteDevice.allCases == [
             .xiaomi, .chromecastG9N9N, .googleStreamerGY3LE, .siriRemote,
         ])
         #expect(PlannedRemoteDevice.chromecastG9N9N.googleHardwareModelNumber == "G9N9N")
         #expect(PlannedRemoteDevice.googleStreamerGY3LE.googleHardwareModelNumber == "GY3LE")
-        #expect(PlannedRemoteDevice.allCases.filter(\.isAvailable) == [.xiaomi, .chromecastG9N9N])
+        #expect(PlannedRemoteDevice.allCases.filter(\.canStartSetup) == [.xiaomi, .chromecastG9N9N, .googleStreamerGY3LE])
         // Listing a planned device must not admit it through the Xiaomi hardware bridge.
         #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "G9N9N") == nil)
         #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
@@ -182,7 +182,7 @@ struct ProductBoundaryTests {
         #expect(!model.isOnboardingControlSourceConnected(.chromecastRemote))
         #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote, selectedModel: .rc003)
             == .bundled(resourceName: "ChromecastG9N9NIllustration"))
-        #expect(PlannedRemoteDevice.chromecastG9N9N.isAvailable)
+        #expect(PlannedRemoteDevice.chromecastG9N9N.canStartSetup)
     }
 
     @Test @MainActor func deviceChoicePersistsAndContinueBlocksOnlyUpcomingAdapters() throws {
@@ -199,8 +199,9 @@ struct ProductBoundaryTests {
             #expect(view.canContinue)
             #expect(AppSettings(defaults: defaults).onboardingDevice == device)
             view.continueFlow()
-            if device == .xiaomi || device == .chromecastG9N9N {
+            if device.canStartSetup {
                 #expect(settings.onboardingStep == .remote)
+                #expect(!model.isOnboardingControlSourceConnected(settings.onboardingControlSource))
             } else {
                 #expect(settings.onboardingStep == .remoteAvailability)
                 #expect(settings.onboardingControlSource == .unselected)
@@ -211,6 +212,34 @@ struct ProductBoundaryTests {
             settings.setOnboardingStep(.remoteAvailability)
             #expect(!view.canContinue)
         }
+    }
+
+    @Test @MainActor func googleSelectionKeepsItsOwnIllustrationAndConnectionValidation() throws {
+        for device in [PlannedRemoteDevice.chromecastG9N9N, .googleStreamerGY3LE] {
+            let suite = "google-selection-" + UUID().uuidString
+            let defaults = try #require(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let settings = AppSettings(defaults: defaults)
+            let view = OnboardingView(model: BridgeAppModel(settings: settings, initialAudioDevices: []))
+            settings.setOnboardingStep(.remoteAvailability)
+            view.selectDevice(device)
+            view.continueFlow()
+            #expect(settings.onboardingStep == .remote)
+            #expect(settings.onboardingControlSource == .chromecastRemote)
+            let restored = AppSettings(defaults: defaults)
+            #expect(restored.onboardingDevice == device)
+            #expect(OnboardingRemotePhotoKind.resolve(source: restored.onboardingControlSource,
+                selectedModel: .rc003, selectedDevice: restored.onboardingDevice)
+                == .bundled(resourceName: device.illustrationResource))
+            #expect(!OnboardingFlowPolicy.canContinue(from: .remote, voiceTool: .doubao,
+                selectedDevice: device, capabilities: .init(bluetoothGranted: true,
+                    inputMonitoringGranted: true, accessibilityGranted: true)))
+            #expect(view.physicalRemotePairingKeys.thirdStep == "onboarding.remote.chromecast_pairing.third")
+        }
+        #expect(PlannedRemoteDevice.googleStreamerGY3LE.canStartSetup)
+        #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote,
+            selectedModel: .rc003, selectedDevice: .xiaomi)
+            == .bundled(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource))
     }
 
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {

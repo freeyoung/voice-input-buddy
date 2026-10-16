@@ -9,18 +9,16 @@ enum PlannedRemoteDevice: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var titleKey: String { "remote.catalog.\(rawValue).title" }
 
-    var isAvailable: Bool { self == .xiaomi || self == .chromecastG9N9N }
-
     /// Selection can precede adapter readiness; connection validation remains mandatory.
     var onboardingSource: OnboardingControlSource? {
         switch self {
         case .xiaomi: return .xiaomiRemote
-        case .chromecastG9N9N: return .chromecastRemote
-        case .googleStreamerGY3LE, .siriRemote: return nil
+        case .chromecastG9N9N, .googleStreamerGY3LE: return .chromecastRemote
+        case .siriRemote: return nil
         }
     }
 
-    var canStartSetup: Bool { self == .xiaomi || self == .chromecastG9N9N }
+    var canStartSetup: Bool { onboardingSource != nil }
 
     static func device(for source: OnboardingControlSource) -> Self? {
         allCases.first { $0.onboardingSource == source }

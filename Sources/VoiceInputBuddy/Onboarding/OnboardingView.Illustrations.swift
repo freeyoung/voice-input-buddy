@@ -96,7 +96,8 @@ extension OnboardingView {
     private var onboardingRemotePhoto: some View {
         switch OnboardingRemotePhotoKind.resolve(
             source: settings.onboardingControlSource,
-            selectedModel: settings.selectedRemoteProfile?.model
+            selectedModel: settings.selectedRemoteProfile?.model,
+            selectedDevice: settings.onboardingDevice
         ) {
         case let .bundled(resourceName):
             if let image = bundledRemoteImage(resourceName: resourceName) {
