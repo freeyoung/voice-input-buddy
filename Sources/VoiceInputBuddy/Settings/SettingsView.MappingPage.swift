@@ -255,7 +255,7 @@ extension SettingsView {
                         shortcutCaptureTarget = nil
                         applicationShortcutCaptureProfileID = nil
                     } label: {
-                        Label("button_mapping.action.not_set", systemImage:
+                        Label(localization.text("button_mapping.action.not_set"), systemImage:
                             mappingConfiguration(for: target.button, trigger: target.trigger).action == .disabled
                                 ? "checkmark.circle.fill" : "circle")
                     }
@@ -266,7 +266,7 @@ extension SettingsView {
                             target.trigger == .singleClick &&
                             settings.experimentalContinuousRecordingEnabled
                     )
-                    Button("button_mapping.editor.confirm") {
+                    Button(localization.text("button_mapping.editor.confirm")) {
                         mappingEditingTarget = nil
                         shortcutCaptureTarget = nil
                         applicationShortcutCaptureProfileID = nil
