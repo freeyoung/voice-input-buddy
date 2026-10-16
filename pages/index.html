@@ -10,17 +10,17 @@
   <link rel="alternate" hreflang="en" href="https://voice.zfdang.com/index.en.html">
   <link rel="alternate" hreflang="x-default" href="https://voice.zfdang.com/">
   <link rel="icon" href="assets/app-icon.png">
-  <link rel="stylesheet" href="style.css?v=1c80ac96628c">
+  <link rel="stylesheet" href="style.css?v=261016">
   <title>Voice Input Buddy · 语音搭子</title>
 </head>
 <body>
 <header class="nav wrap">
   <a class="brand" href="#"><img src="assets/app-icon.png" alt="" width="38" height="38"><span>Voice Input Buddy<small>语音搭子</small></span></a>
-  <nav aria-label="主导航"><a href="#how">原理</a><a href="#demo">演示</a><a href="#start">使用</a><a href="#compatibility">兼容</a><a href="#troubleshooting">排障</a><a href="https://github.com/zfdang/voice-input-buddy">GitHub ↗</a><span class="language-switch" aria-label="语言"><b aria-current="page">中文</b><a href="index.en.html" lang="en">English</a></span></nav>
+  <nav aria-label="主导航"><a href="#how">原理</a><a href="#interface">界面</a><a href="#demo">演示</a><a href="#start">使用</a><a href="#compatibility">兼容</a><a href="#troubleshooting">排障</a><a href="https://github.com/zfdang/voice-input-buddy">GitHub ↗</a><span class="language-switch" aria-label="语言"><b aria-current="page">中文</b><a href="index.en.html" lang="en">English</a></span></nav>
 </header>
 <main>
 <section class="hero wrap">
-  <div class="hero-copy"><p class="eyebrow">硬件 × 语音输入</p><h1>把语音输入，<br>放到手边。</h1><p class="lead">拿起遥控器，按下说话，松开结束。<br>让你喜欢的输入法，听见遥控器里的声音。</p><div class="actions"><a class="button primary" href="https://github.com/zfdang/voice-input-buddy/releases/latest">下载 macOS 安装包 <span>↓</span></a><a class="text-link" href="#start">开始使用 →</a><a class="text-link" href="#demo">观看两分钟演示 →</a></div><p class="small">macOS 14+ · arm64 / Intel 独立安装包 · 通用卸载器 · 开源</p></div>
+  <div class="hero-copy"><p class="eyebrow">硬件 × 语音输入</p><h1>把语音输入，<br>放到手边。</h1><p class="lead">拿起遥控器，按下说话，松开结束。<br>让你喜欢的输入法，听见遥控器里的声音。</p><div class="actions"><a class="button primary" href="https://github.com/zfdang/voice-input-buddy/releases/latest">下载 macOS 安装包 <span>↓</span></a><a class="text-link" href="#interface">查看界面 →</a><a class="text-link" href="#demo">观看两分钟演示 →</a></div><p class="small">macOS 14+ · arm64 / Intel 独立安装包 · 通用卸载器 · 开源</p></div>
   <div class="hero-art" aria-label="遥控器将声音传递给电脑的示意图">
     <span class="art-label">从按键，到文字</span>
     <div class="remote"><i class="power"></i><button id="talk" aria-label="按住体验语音触发示意" aria-describedby="demo-note">🎙</button><div class="dpad"><span>＋</span></div><div class="remote-small"><i></i><i></i><i></i></div></div>
@@ -31,6 +31,50 @@
 </section>
 <section class="features wrap" aria-label="主要功能"><div><span>01</span><h2>一键说话</h2><p>按住或点按语音键，匹配输入工具的开始与结束方式。</p></div><div><span>02</span><h2>按键由你定义</h2><p>快捷键、应用操作、常用语，让遥控器成为顺手的工具。</p></div><div><span>03</span><h2>声音交给喜欢的工具</h2><p>连接语音输入法与听写工具，沿用熟悉的识别体验。</p></div></section>
 <section class="how section" id="how"><div class="wrap"><p class="eyebrow">工作原理</p><h2 class="section-title">搭一座桥，<br>让硬件和输入工具合作。</h2><div class="flow"><div><span>①</span><h3>遥控器</h3><p>麦克风音频 + 按键</p></div><b aria-hidden="true">→</b><div class="flow-buddy"><span>②</span><h3>Voice Input Buddy</h3><p>解码音频 · 触发快捷键</p></div><b aria-hidden="true">→</b><div><span>③</span><h3>输入法 / 听写工具</h3><p>识别声音 · 写入文本</p></div></div><p class="explanation">遥控器通过蓝牙传来声音，语音搭子解码后送入虚拟麦克风，同时发送对应的语音快捷键。识别、实时文字与文本修正由输入工具完成；语音搭子本身不运行识别模型。</p></div></section>
+<section class="section wrap interface-section" id="interface" aria-labelledby="interface-title">
+  <div class="interface-heading">
+    <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">原生 SwiftUI 精心打造，从设备连接、按键动作映射、常用语编辑，到主流输入法集成与关于更新，一目了然。</p></div>
+    <div class="gallery-category-switch" role="tablist" aria-label="界面展示分类">
+      <button class="category-btn is-active" type="button" role="tab" aria-selected="true" data-track="settings">主程序界面 (6)</button>
+      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">新手设置向导 (7)</button>
+    </div>
+  </div>
+  <div class="cathedral-gallery">
+    <div class="gallery-stage-container" role="region" aria-label="3D 界面画廊">
+      <button class="stage-nav stage-prev" type="button" aria-label="上一张界面截图">‹</button>
+      <div class="gallery-stage" id="gallery-stage" tabindex="0" role="region" aria-label="界面展示舞台">
+        <div class="stage-slide slide-active" role="group" aria-label="设备连接 (1/6)">
+          <div class="window-top" aria-hidden="true">
+            <div class="window-dots"><i></i><i></i><i></i></div>
+            <span class="window-title">设备连接 · Voice Input Buddy</span>
+          </div>
+          <img src="assets/screenshots/connection-zh.png" alt="Voice Input Buddy 设备连接界面：小米与 Google G9N9N 遥控器卡片、连接状态、电量显示与麦克风独立增益滑块" width="1020" height="772" loading="eager">
+        </div>
+      </div>
+      <button class="stage-nav stage-next" type="button" aria-label="下一张界面截图">›</button>
+    </div>
+    <div class="gallery-indicators" id="gallery-indicators" role="tablist" aria-label="截图快速选择"></div>
+    <div class="gallery-caption-card" aria-live="polite">
+      <div class="caption-header">
+        <span class="caption-badge" id="caption-badge">多设备管理</span>
+        <h3 class="caption-title" id="caption-title">设备连接</h3>
+      </div>
+      <p class="caption-desc" id="caption-desc">管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。</p>
+      <div class="caption-hint">
+        <span>💡 点击中央界面可全屏放大；可使用键盘方向键 ← / → 或左右拖拽滑动切换。</span>
+      </div>
+    </div>
+  </div>
+  <dialog id="gallery-lightbox" class="gallery-lightbox" aria-label="高清截图查看">
+    <div class="lightbox-content">
+      <div class="lightbox-top">
+        <span class="lightbox-title" id="lightbox-title">界面预览</span>
+        <button class="lightbox-close" type="button" aria-label="关闭">✕</button>
+      </div>
+      <img id="lightbox-img" src="assets/screenshots/connection-zh.png" alt="界面大图预览" width="1020" height="772">
+    </div>
+  </dialog>
+</section>
 <section class="section wrap demo-section" id="demo" aria-labelledby="demo-title">
   <div class="demo-heading"><div><p class="eyebrow">两分钟上手</p><h2 class="section-title" id="demo-title">从设置，到说出第一句话。</h2><p>两分钟卡通演示：权限准备、遥控器连接、按键映射，以及用微信输入法完成语音输入。</p></div><p class="demo-language">2 分钟 · 中文旁白 · 中文字幕</p></div>
   <video class="demo-video" controls playsinline preload="metadata" poster="assets/video/demo-poster.jpg" width="1920" height="1080" aria-label="语音搭子两分钟使用演示，中文旁白与字幕">
