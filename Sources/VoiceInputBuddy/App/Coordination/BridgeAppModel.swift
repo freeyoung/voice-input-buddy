@@ -115,7 +115,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             }
             self.audioOutput.endSessionAfterDraining(
                 source: "voice_fn_tap",
-                operationID: operationID
+                operationID: operationID,
+                maximumDelay: self.audioOutput.pendingPlaybackDuration + 0.75
             ) { outcome in
                 AppLogger.shared.write(
                     "VOICE FN TAP playback_stop operation_id=\(operationID) " +
@@ -127,6 +128,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         onFailure: { [weak self] failure in
             self?.handleVoiceFnTapFailure(failure)
         },
+        enqueuePreRollAudio: { [weak self] in self?.enqueueVoiceFnTapAudio($0, isPreRoll: true) },
+        pendingPlaybackDuration: { [weak self] in self?.audioOutput.pendingPlaybackDuration ?? 0 },
         logger: { AppLogger.shared.write($0) },
         onIdle: { [weak self] in self?.flushPendingVoiceToolMappingRefresh() }
     )

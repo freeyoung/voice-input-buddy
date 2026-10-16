@@ -107,13 +107,23 @@ extension VirtualAudioOutputDiagnosticSnapshot {
 }
 
 enum VoicePlaybackQueueCapacity {
-    // Mono 16 kHz PCM: at most half a second may await playback, including
-    // buffers still waiting for the serial engine queue to schedule them.
     static let maximumSamples = 8_000
+    static let maximumPreRollSamples = 80_000
 
-    static func admits(pending: Int, incoming: Int) -> Bool {
-        incoming > 0 && incoming <= maximumSamples && pending >= 0 &&
-            pending <= maximumSamples - incoming
+    static func admits(pending: Int, incoming: Int, pendingPreRoll: Int = 0, isPreRoll: Bool = false) -> Bool {
+        guard pending >= 0, pendingPreRoll >= 0, pendingPreRoll <= pending,
+              pendingPreRoll <= maximumPreRollSamples, incoming > 0 else { return false }
+        let live = pending - pendingPreRoll
+        guard live <= maximumSamples else { return false }
+        return isPreRoll
+            ? incoming <= maximumPreRollSamples - pendingPreRoll
+            : incoming <= maximumSamples - live
+    }
+
+    static func chunks(_ samples: [Int16]) -> [[Int16]] {
+        stride(from: 0, to: samples.count, by: maximumSamples).map {
+            Array(samples[$0..<min(samples.count, $0 + maximumSamples)])
+        }
     }
 }
 
@@ -631,6 +641,7 @@ final class VirtualAudioOutput {
     private let playbackLock = NSLock()
     private var pendingVoiceBufferCount = 0
     private var pendingVoiceSampleCount = 0
+    private var pendingPreRollSampleCount = 0
     private var playbackGeneration: UInt64 = 0
     private var playbackCounters = VirtualAudioPlaybackCounters()
     private var playbackCountersByDeliveryGeneration: [Int: VirtualAudioPlaybackCounters] = [:]
@@ -965,7 +976,7 @@ final class VirtualAudioOutput {
     }
 
     @discardableResult
-    func enqueue(samples: [Int16], deliveryGeneration: Int = 0) -> Bool {
+    func enqueue(samples: [Int16], deliveryGeneration: Int = 0, isPreRoll: Bool = false) -> Bool {
         guard !samples.isEmpty else {
             logRejectedWrite(reason: "empty_samples")
             return false
@@ -974,8 +985,13 @@ final class VirtualAudioOutput {
             logRejectedWrite(reason: "playback_not_ready")
             return false
         }
-        guard samples.count <= VoicePlaybackQueueCapacity.maximumSamples,
-              let buffer = makeBuffer(samples: samples) else {
+        guard samples.count <= (isPreRoll ? VoicePlaybackQueueCapacity.maximumPreRollSamples : VoicePlaybackQueueCapacity.maximumSamples) else {
+            logRejectedWrite(reason: "oversized_batch")
+            return false
+        }
+        let chunks = VoicePlaybackQueueCapacity.chunks(samples)
+        let buffers = chunks.compactMap { makeBuffer(samples: $0) }
+        guard buffers.count == chunks.count else {
             logRejectedWrite(reason: "buffer_creation_failed_or_oversized")
             return false
         }
@@ -989,18 +1005,20 @@ final class VirtualAudioOutput {
         playbackLock.lock()
         let generation = playbackGeneration
         let sampleCount = samples.count
-        guard VoicePlaybackQueueCapacity.admits(pending: pendingVoiceSampleCount, incoming: sampleCount) else {
+        guard VoicePlaybackQueueCapacity.admits(pending: pendingVoiceSampleCount, incoming: sampleCount,
+            pendingPreRoll: pendingPreRollSampleCount, isPreRoll: isPreRoll) else {
             playbackLock.unlock()
             logRejectedWrite(reason: "queue_capacity")
             return false
         }
-        pendingVoiceBufferCount += 1
+        pendingVoiceBufferCount += buffers.count
         pendingVoiceSampleCount += sampleCount
-        playbackCounters.scheduledBuffers += 1
+        if isPreRoll { pendingPreRollSampleCount += sampleCount }
+        playbackCounters.scheduledBuffers += buffers.count
         playbackCounters.scheduledSamples += sampleCount
-        playbackCountersByDeliveryGeneration[deliveryGeneration, default: .init()].scheduledBuffers += 1
+        playbackCountersByDeliveryGeneration[deliveryGeneration, default: .init()].scheduledBuffers += buffers.count
         playbackCountersByDeliveryGeneration[deliveryGeneration, default: .init()].scheduledSamples += sampleCount
-        pendingByDeliveryGeneration[deliveryGeneration, default: .init()].buffers += 1
+        pendingByDeliveryGeneration[deliveryGeneration, default: .init()].buffers += buffers.count
         pendingByDeliveryGeneration[deliveryGeneration, default: .init()].samples += sampleCount
         playbackLock.unlock()
         engineQueue.async { [weak self] in
@@ -1014,20 +1032,26 @@ final class VirtualAudioOutput {
                 self.stopOnEngineQueue()
                 return
             }
-            let scheduled = AudioPlayerNodeSafety.schedule(player, buffer: buffer) { [weak self] _ in
-                self?.scheduledVoiceBufferDidFinish(
-                    sampleCount: sampleCount,
-                    generation: generation,
-                    deliveryGeneration: deliveryGeneration
-                )
-            }
-            if !scheduled {
-                AppLogger.shared.write("AUDIO ERROR schedule_exception")
-                self.stopOnEngineQueue()
-                self.onConfigurationChange?()
+            for (chunk, buffer) in zip(chunks, buffers) {
+                let scheduled = AudioPlayerNodeSafety.schedule(player, buffer: buffer) { [weak self] _ in
+                    self?.scheduledVoiceBufferDidFinish(sampleCount: chunk.count, generation: generation,
+                        deliveryGeneration: deliveryGeneration, isPreRoll: isPreRoll)
+                }
+                if !scheduled {
+                    AppLogger.shared.write("AUDIO ERROR schedule_exception")
+                    self.stopOnEngineQueue()
+                    self.onConfigurationChange?()
+                    return
+                }
             }
         }
         return true
+    }
+
+    var pendingPlaybackDuration: TimeInterval {
+        playbackLock.lock()
+        defer { playbackLock.unlock() }
+        return Double(pendingVoiceSampleCount) / 16_000
     }
 
     func endSession() {
@@ -1156,6 +1180,7 @@ final class VirtualAudioOutput {
         recordPendingDeliveriesAsInterrupted()
         pendingVoiceBufferCount = 0
         pendingVoiceSampleCount = 0
+        pendingPreRollSampleCount = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
         // Taken before the teardown below so a nested `stop()` cannot pick it up a second
@@ -1234,6 +1259,7 @@ final class VirtualAudioOutput {
         recordPendingDeliveriesAsInterrupted()
         pendingVoiceBufferCount = 0
         pendingVoiceSampleCount = 0
+        pendingPreRollSampleCount = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
         // Same contract as flushPlayer: stopping answers the drain waiter exactly
@@ -1277,7 +1303,8 @@ final class VirtualAudioOutput {
     private func scheduledVoiceBufferDidFinish(
         sampleCount: Int,
         generation: UInt64,
-        deliveryGeneration: Int
+        deliveryGeneration: Int,
+        isPreRoll: Bool = false
     ) {
         var completionGeneration: UInt64?
         var drainedContexts: [String] = []
@@ -1288,6 +1315,7 @@ final class VirtualAudioOutput {
         }
         pendingVoiceBufferCount = max(0, pendingVoiceBufferCount - 1)
         pendingVoiceSampleCount = max(0, pendingVoiceSampleCount - sampleCount)
+        if isPreRoll { pendingPreRollSampleCount = max(0, pendingPreRollSampleCount - sampleCount) }
         playbackCounters.playedBuffers += 1
         playbackCounters.playedSamples += sampleCount
         playbackCountersByDeliveryGeneration[deliveryGeneration, default: .init()].playedBuffers += 1

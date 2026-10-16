@@ -197,7 +197,7 @@ extension BridgeAppModel {
                         self.routeBluetoothVoiceSamples(
                             bufferedAudio,
                             from: bridge,
-                            identifier: identifier
+                            identifier: identifier, isPreRoll: true
                         )
                     }
                     self.flushPendingCommandVoiceAudio(for: bridge)
@@ -213,7 +213,7 @@ extension BridgeAppModel {
                 routeBluetoothVoiceSamples(
                     pendingStartAudio,
                     from: bridge,
-                    identifier: identifier
+                    identifier: identifier, isPreRoll: true
                 )
             }
             if outputReadyAtStart {
@@ -355,24 +355,26 @@ extension BridgeAppModel {
         let samples = pendingCommandVoiceAudio.drain()
         guard !samples.isEmpty, let identifier = bridge.deviceIdentifier else { return }
         AppLogger.shared.write("ATVV AUDIO flush_before_command samples=\(samples.count)")
-        routeBluetoothVoiceSamples(samples, from: bridge, identifier: identifier)
+        routeBluetoothVoiceSamples(samples, from: bridge, identifier: identifier, isPreRoll: true)
     }
 
     private func routeBluetoothVoiceSamples(
         _ samples: [Int16],
         from bridge: XiaomiBluetoothBridge,
-        identifier: UUID
+        identifier: UUID,
+        isPreRoll: Bool = false
     ) {
         guard identifier == activeBluetoothVoiceDeviceIdentifier else { return }
         let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
-        let handledByFnTapMode = voiceFnTapSession.receive(samples)
+        let handledByFnTapMode = voiceFnTapSession.receive(samples, isPreRoll: isPreRoll)
         let enqueued: Bool
         if handledByFnTapMode {
             enqueued = true
         } else {
             enqueued = audioOutput.enqueue(
                 samples: samples,
-                deliveryGeneration: deliveryGeneration
+                deliveryGeneration: deliveryGeneration,
+                isPreRoll: isPreRoll
             )
             recordVoiceAudioEnqueueOutcome(
                 accepted: enqueued,

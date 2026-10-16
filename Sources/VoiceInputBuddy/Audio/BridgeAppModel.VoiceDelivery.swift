@@ -73,11 +73,12 @@ extension BridgeAppModel {
         )
     }
 
-    func enqueueVoiceFnTapAudio(_ samples: [Int16]) {
+    func enqueueVoiceFnTapAudio(_ samples: [Int16], isPreRoll: Bool = false) {
         let deliveryGeneration = voiceAudioDeliveryDiagnostic.generation
         let accepted = audioOutput.enqueue(
             samples: samples,
-            deliveryGeneration: deliveryGeneration
+            deliveryGeneration: deliveryGeneration,
+            isPreRoll: isPreRoll
         )
         recordVoiceAudioEnqueueOutcome(
             accepted: accepted,
