@@ -4,6 +4,19 @@ import Testing
 
 @Suite("Review input boundaries")
 struct ReviewInputBoundaryTests {
+    @Test @MainActor func directGainAssignmentNormalizesBeforePublishingOrPersisting() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        for (value, expected) in [(Double.nan, 10.0), (.infinity, 10), (-1, 0), (99, 24)] {
+            settings.gainDB = value
+            #expect(settings.gainDB == expected)
+            #expect(defaults.double(forKey: "gainDB") == expected)
+            #expect(Int(settings.gainDB) == Int(expected))
+        }
+    }
+
     @Test func inheritedOutputPipeCannotOutliveDeadline() {
         let start = ProcessInfo.processInfo.systemUptime
         let result = BoundedCommandRunner.run(executableURL: URL(fileURLWithPath: "/bin/sh"),
