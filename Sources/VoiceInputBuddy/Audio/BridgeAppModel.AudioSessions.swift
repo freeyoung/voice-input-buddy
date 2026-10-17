@@ -59,6 +59,12 @@ extension BridgeAppModel {
         }
     }
 
+    /// The configured destination survives idle teardown and asynchronous engine startup.
+    var integrationAudioDeviceStatus: LocalizedMessage {
+        if audio.startupPending { return LocalizedMessage("audio.compatibility.checking") }
+        return DoubaoAudioDevicePolicy.status(in: audioDevices)
+    }
+
     var selectedAudioDeviceIsAvailable: Bool {
         let selectedUID = settings.selectedAudioDeviceUID
         return !selectedUID.isEmpty && audioDevices.contains { $0.uid == selectedUID }

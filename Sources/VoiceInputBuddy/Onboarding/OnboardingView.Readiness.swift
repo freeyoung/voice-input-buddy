@@ -51,6 +51,7 @@ extension OnboardingView {
         )
         if settings.onboardingStep == .voiceTest {
             return policyAllowsContinue &&
+                voiceAttempt.result == .passed &&
                 verifiedTranscriptionAppeared &&
                 selectedVoiceToolRuntimeReady
         }

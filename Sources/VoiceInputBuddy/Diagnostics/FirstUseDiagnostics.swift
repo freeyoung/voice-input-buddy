@@ -48,10 +48,9 @@ enum VoiceAudioDeliveryResult: String, Equatable {
 
     var isConfirmedFailure: Bool {
         switch self {
-        case .outputNotReady, .routeMismatch, .enqueueFailed,
-             .playbackInterrupted:
+        case .enqueueFailed, .playbackInterrupted:
             return true
-        case .unavailable, .receiving, .noSamples, .playbackPending,
+        case .unavailable, .receiving, .noSamples, .outputNotReady, .routeMismatch, .playbackPending,
              .playbackIncomplete, .deliveredToSelectedDevice:
             return false
         }
@@ -105,13 +104,15 @@ enum VoiceAudioDeliveryPolicy {
         guard diagnostic.receivedSamples > 0 else {
             return diagnostic.sessionEnded ? .noSamples : .receiving
         }
-        guard diagnostic.outputAtStart.selectedDeviceKind != .unavailable,
-              diagnostic.outputAtStart.engineRunning,
-              diagnostic.outputAtStart.playerPlaying
-        else { return .outputNotReady }
-        guard diagnostic.outputAtStart.boundToSelectedDevice == true else { return .routeMismatch }
         guard diagnostic.enqueueFailures == 0 else { return .enqueueFailed }
         guard diagnostic.interruptedSamples == 0 else { return .playbackInterrupted }
+        // Voice activation can precede asynchronous output configuration. The start
+        // snapshot is historical evidence, not a permanent failure verdict.
+        guard diagnostic.outputAtObservation.selectedDeviceKind != .unavailable,
+              diagnostic.outputAtObservation.engineRunning,
+              diagnostic.outputAtObservation.playerPlaying
+        else { return .outputNotReady }
+        guard diagnostic.outputAtObservation.boundToSelectedDevice == true else { return .routeMismatch }
         guard diagnostic.sessionEnded else { return .receiving }
         guard diagnostic.scheduledSamples >= diagnostic.receivedSamples else {
             return .playbackIncomplete

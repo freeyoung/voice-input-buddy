@@ -52,7 +52,8 @@ extension BridgeAppModel {
             return
         }
         let configure = configureOutput ?? { self.audio.output.configureAsync(deviceUID: $0, completion: $1) }
-        configure(settings.selectedAudioDeviceUID) { [weak self] configured in
+        configureAudioOutputWithRetry(deviceUID: settings.selectedAudioDeviceUID,
+            generation: configurationGeneration, configure: configure) { [weak self] configured in
             DispatchQueue.main.async { [weak self] in
                 self?.finishAudioStartup(generation: generation,
                     configurationGeneration: configurationGeneration, configured: configured,
@@ -237,7 +238,7 @@ extension BridgeAppModel {
             statusMessage: LocalizedMessage("audio.test_tone.cancelled_device_changed"),
             logReason: "device_reconfigure"
         )
-        audio.output.configureAsync(deviceUID: deviceUID) { [weak self] configured in
+        configureAudioOutputWithRetry(deviceUID: deviceUID, generation: generation) { [weak self] configured in
             DispatchQueue.main.async {
                 guard let self,
                       self.started,
@@ -259,6 +260,46 @@ extension BridgeAppModel {
                 completion(configured)
             }
         }
+    }
+
+    /// A HAL route can still be settling immediately after launch or reconnect.
+    /// Retry once, without requiring the user to repeat integration. A newer
+    /// configuration, shutdown or idle release always takes precedence.
+    func configureAudioOutputWithRetry(
+        deviceUID: String,
+        generation: UInt64,
+        configure: ((String, @escaping (Bool) -> Void) -> Void)? = nil,
+        scheduleRetry: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, action in
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: DispatchWorkItem(block: action))
+        },
+        completion: @escaping (Bool) -> Void
+    ) {
+        let configure = configure ?? { self.audio.output.configureAsync(deviceUID: $0, completion: $1) }
+        func attempt(retriesRemaining: Int) {
+            guard self.started, self.audio.configurationGeneration == generation,
+                  !self.isTerminating else { completion(false); return }
+            configure(deviceUID) { [weak self] configured in
+                DispatchQueue.main.async {
+                    guard let self, self.started,
+                          self.audio.configurationGeneration == generation,
+                          !self.isTerminating else { completion(false); return }
+                    guard !configured, retriesRemaining > 0, !deviceUID.isEmpty,
+                          !self.audio.suspensionState.isSuspended,
+                          self.audio.startupPending || self.shouldKeepVirtualAudioActive
+                    else { completion(configured); return }
+                    AppLogger.shared.write("AUDIO CONFIGURE retry_scheduled generation=\(generation) delay_ms=250 remaining=\(retriesRemaining)")
+                    scheduleRetry(0.25) { [weak self] in
+                        guard let self, self.started,
+                              self.audio.configurationGeneration == generation,
+                              !self.isTerminating, !self.audio.suspensionState.isSuspended,
+                              self.audio.startupPending || self.shouldKeepVirtualAudioActive
+                        else { completion(false); return }
+                        attempt(retriesRemaining: retriesRemaining - 1)
+                    }
+                }
+            }
+        }
+        attempt(retriesRemaining: 1)
     }
 
     @discardableResult
