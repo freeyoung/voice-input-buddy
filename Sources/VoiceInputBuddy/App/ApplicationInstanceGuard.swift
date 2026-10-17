@@ -54,7 +54,7 @@ final class ApplicationInstanceLock {
 }
 
 enum ApplicationInstanceGuard {
-    static let fallbackBundleIdentifier = "com.zfdang.VoiceInputBuddy"
+    static let fallbackBundleIdentifier = "com.zfdang.voice-input-buddy"
 
     static func existingApplication(
         bundleIdentifier: String,
