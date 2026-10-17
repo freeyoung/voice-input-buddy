@@ -59,8 +59,8 @@ Bluetooth pairing alone does not establish compatibility: the remote must use a 
 | --- | --- |
 | WeType / WeChat Input Method | Dedicated setup entry with virtual microphone and voice shortcut |
 | Doubao Input Method | Dedicated setup entry with hold and tap behavior |
+| NetEase Bageshuo | Dedicated setup entry with voice shortcut and microphone configuration |
 | Typeless | Configure its voice shortcut and start/stop behavior |
-| Vokie | Dedicated setup entry |
 | VoiceCursor | Separate entry using the virtual microphone and a custom voice shortcut |
 | Other voice-input tools | Configure a custom shortcut under Other Tools |
 

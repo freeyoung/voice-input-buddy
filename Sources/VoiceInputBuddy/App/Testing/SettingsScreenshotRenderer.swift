@@ -83,7 +83,29 @@ enum SettingsScreenshotRenderer {
         var remoteCardSystemNames: [UUID: String] = [:]
         var remoteCardBatteryLevels: [UUID: Int] = [:]
         var remoteCardPowerStates: [UUID: RemotePowerState] = [:]
-        let model = BridgeAppModel(settings: settings)
+        let screenshotAudioDevices: [AudioDeviceInfo] = switch ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_AUDIO_DRIVER"
+        ] {
+        case "missing":
+            []
+        default:
+            [
+                AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
+                AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
+            ]
+        }
+        let permissionsOverride: SystemPermissionOverrides? = switch ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_PERMISSIONS"
+        ] {
+        case "missing", "denied":
+            SystemPermissionOverrides(bluetooth: .denied, inputMonitoring: false, accessibility: false)
+        default:
+            .allGranted
+        }
+        let model = BridgeAppModel(
+            settings: settings,
+            initialAudioDevices: screenshotAudioDevices
+        )
         if showsRemoteCards {
             let xiaomiID = settings.registerBluetoothRemote(
                 identifier: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!
@@ -160,7 +182,8 @@ enum SettingsScreenshotRenderer {
                 updateInformation: updateInformation,
                 initialSection: section,
                 initialMappingEditingButton: section == .mapping && opensMappingEditor ? .ok : nil,
-                initialShortcutPickerShowsKeyboard: showsStandardKeyboard
+                initialShortcutPickerShowsKeyboard: showsStandardKeyboard,
+                permissionOverrides: permissionsOverride
             ).environmentObject(localization))
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -193,7 +216,8 @@ enum SettingsScreenshotRenderer {
                     ? .ok
                     : nil,
                 initialShortcutPickerShowsKeyboard: showsStandardKeyboard,
-                minimumContentSize: SettingsWindowLayout.minimumCanvasSize
+                minimumContentSize: SettingsWindowLayout.minimumCanvasSize,
+                permissionOverrides: permissionsOverride
             )
             .modifier(UpdateCompletionToast(version: ProcessInfo.processInfo.environment[
                 "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_COMPLETED_UPDATE_VERSION"

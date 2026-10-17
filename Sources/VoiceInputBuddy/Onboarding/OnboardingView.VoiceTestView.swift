@@ -22,6 +22,21 @@ extension OnboardingView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
 
+            if proposedPairingPlan?.fnTapModeEnabled == true {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.accentColor)
+                    Text(verbatim: localization.text("onboarding.voice_test.fn_tap_explanation"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.accentColor.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            }
+
             ZStack(alignment: .topLeading) {
                 OnboardingTranscriptEditor(
                     text: $transcript,
@@ -174,6 +189,10 @@ extension OnboardingView {
             } else if settings.onboardingVoiceTool == .doubao {
                 onboardingGuideScreenshot(
                     resourceName: "doubao-input-microphone"
+                )
+            } else if settings.onboardingVoiceTool == .bageshuo {
+                onboardingGuideScreenshot(
+                    resourceName: "bageshuo-input-microphone"
                 )
             } else if settings.onboardingVoiceTool == .voicecursor {
                 onboardingGuideScreenshot(resourceName: "voicecursor-setting-mic")

@@ -15,6 +15,7 @@ extension OnboardingView {
         }
         return OnboardingVoiceGesturePrompt.text(
             for: plan.binding.gestureMode,
+            fnTapModeEnabled: plan.fnTapModeEnabled,
             locale: localization.locale
         )
     }
@@ -118,10 +119,10 @@ extension OnboardingView {
 
     func voiceToolIcon(_ tool: OnboardingVoiceTool) -> String {
         switch tool {
-        case .doubao: return "quote.bubble.fill"
         case .weixin: return "message.fill"
+        case .doubao: return "quote.bubble.fill"
+        case .bageshuo: return "waveform.and.mic"
         case .typeless: return "waveform.badge.mic"
-        case .vokie: return "sparkles.rectangle.stack.fill"
         case .voicecursor: return "mic.badge.plus"
         case .other: return "ellipsis.circle.fill"
         case .unselected: return "circle"

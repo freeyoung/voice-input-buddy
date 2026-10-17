@@ -140,10 +140,10 @@ enum OnboardingControlMethod: String, CaseIterable, Codable, Identifiable {
 
 enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
     case unselected
-    case doubao
     case weixin
+    case doubao
+    case bageshuo
     case typeless
-    case vokie
     case voicecursor
     case other
 
@@ -163,25 +163,18 @@ enum OnboardingVoiceTool: String, CaseIterable, Codable, Identifiable {
             return "com.bytedance.inputmethod.doubaoime.pinyin"
         case .weixin:
             return "com.tencent.inputmethod.wetype.pinyin"
-        case .unselected, .typeless, .vokie, .voicecursor, .other:
-            return nil
-        }
-    }
-
-    var publicLaunchURL: URL? {
-        switch self {
-        case .vokie:
-            return URL(string: "vokie://launch")
-        case .unselected, .doubao, .weixin, .typeless, .voicecursor, .other:
+        case .unselected, .bageshuo, .typeless, .voicecursor, .other:
             return nil
         }
     }
 
     var applicationBundleIdentifier: String? {
         switch self {
+        case .bageshuo:
+            return "com.bageshuo"
         case .typeless:
             return "now.typeless.desktop"
-        case .unselected, .doubao, .weixin, .vokie, .voicecursor, .other:
+        case .unselected, .doubao, .weixin, .voicecursor, .other:
             return nil
         }
     }
@@ -226,8 +219,17 @@ enum OnboardingAIAssistantPrompt {
 }
 
 enum OnboardingVoiceGesturePrompt {
-    static func text(for mode: VoiceGestureMode, locale: Locale) -> String {
+    static func text(
+        for mode: VoiceGestureMode,
+        fnTapModeEnabled: Bool = false,
+        locale: Locale
+    ) -> String {
         let isChinese = locale.identifier.lowercased().hasPrefix("zh")
+        if fnTapModeEnabled {
+            return isChinese
+                ? "按住语音键说话，说完松开（已自动开启点按转换）。"
+                : "Hold the voice button while speaking, then release it (Fn tap conversion enabled)."
+        }
         switch (isChinese, mode) {
         case (true, .hold): return "按住语音键说话，说完松开。"
         case (true, .toggle): return "按一下语音键开始说话，再按一下结束。"
@@ -247,7 +249,6 @@ enum VoiceGestureMode: String, CaseIterable, Codable, Identifiable {
 enum VoiceToolBindingSource: String, Codable {
     case documentedDefault = "documented_default"
     case userLearned = "user_learned"
-    case deepLinkConfigured = "deeplink_configured"
     case manuallyConfirmed = "manually_confirmed"
 }
 
@@ -267,7 +268,6 @@ enum VoiceToolEvidenceState: String, Codable {
 enum VoiceToolInstallationProbe: String, Codable {
     case inputSource
     case applicationBundle
-    case publicURLScheme
     case none
 }
 
@@ -281,15 +281,6 @@ struct VoiceToolAdapterProfile: Equatable {
 
     static func profile(for tool: OnboardingVoiceTool) -> Self {
         switch tool {
-        case .doubao:
-            return Self(
-                tool: tool,
-                supportedModes: [.hold, .toggle],
-                defaultShortcutByMode: [.hold: .function, .toggle: .rightCommand],
-                recommendedMode: .hold,
-                installationProbe: .inputSource,
-                evidenceState: .verified
-            )
         case .weixin:
             return Self(
                 tool: tool,
@@ -299,7 +290,16 @@ struct VoiceToolAdapterProfile: Equatable {
                 installationProbe: .inputSource,
                 evidenceState: .pending
             )
-        case .typeless:
+        case .doubao:
+            return Self(
+                tool: tool,
+                supportedModes: [.hold, .toggle],
+                defaultShortcutByMode: [.hold: .function, .toggle: .rightCommand],
+                recommendedMode: .hold,
+                installationProbe: .inputSource,
+                evidenceState: .verified
+            )
+        case .bageshuo:
             return Self(
                 tool: tool,
                 supportedModes: [.toggle],
@@ -308,14 +308,14 @@ struct VoiceToolAdapterProfile: Equatable {
                 installationProbe: .applicationBundle,
                 evidenceState: .verified
             )
-        case .vokie:
+        case .typeless:
             return Self(
                 tool: tool,
-                supportedModes: [.hold, .toggle],
+                supportedModes: [.toggle],
                 defaultShortcutByMode: [.toggle: .function],
                 recommendedMode: .toggle,
-                installationProbe: .publicURLScheme,
-                evidenceState: .pending
+                installationProbe: .applicationBundle,
+                evidenceState: .verified
             )
         case .voicecursor, .other:
             return Self(
@@ -663,7 +663,7 @@ enum OnboardingVoiceToolRuntimeState: String, Equatable, Hashable {
 enum OnboardingVoiceToolRuntimePolicy {
     static func requiresRunningApplication(for tool: OnboardingVoiceTool) -> Bool {
         switch VoiceToolAdapterProfile.profile(for: tool).installationProbe {
-        case .applicationBundle, .publicURLScheme:
+        case .applicationBundle:
             return true
         case .inputSource, .none:
             return false

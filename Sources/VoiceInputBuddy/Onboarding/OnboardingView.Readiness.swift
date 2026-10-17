@@ -70,7 +70,7 @@ extension OnboardingView {
     }
 
     var allRecognizedVoiceToolsUnavailable: Bool {
-        [OnboardingVoiceTool.doubao, .weixin, .typeless, .vokie].allSatisfy {
+        [OnboardingVoiceTool.weixin, .doubao, .bageshuo, .typeless].allSatisfy {
             voiceToolAvailability[$0] == .notInstalled
         }
     }
@@ -81,9 +81,7 @@ extension OnboardingView {
             return false
         case .voicecursor, .other:
             return true
-        case .vokie:
-            return true
-        case .doubao, .weixin, .typeless:
+        case .weixin, .doubao, .bageshuo, .typeless:
             return voiceToolAvailability[settings.onboardingVoiceTool] == .available
         }
     }

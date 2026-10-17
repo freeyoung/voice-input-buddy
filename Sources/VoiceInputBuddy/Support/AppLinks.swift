@@ -12,7 +12,7 @@ enum AppLinks {
     static let doubaoInputMethod = URL(
         string: "https://shurufa.doubao.com/"
     )!
-    static let vokieWebsite = URL(string: "https://vokie.com/")!
+    static let bageshuoWebsite = URL(string: "https://bug.youdao.com/")!
 
     static func website(for locale: Locale) -> URL {
         locale.identifier.lowercased().hasPrefix("zh")

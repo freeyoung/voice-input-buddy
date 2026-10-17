@@ -9,7 +9,11 @@ struct ProductBoundaryTests {
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
         let bundle = try #require(Bundle(path: resources.path))
-        let paired = ["doubao-menu", "doubao-settings", "weixin-input-menu", "weixin-input-settings"]
+        let paired = [
+            "doubao-menu", "doubao-settings",
+            "weixin-input-menu", "weixin-input-settings",
+            "bageshuo-menu", "bageshuo-settings", "bageshuo-input-microphone",
+        ]
         let microphone = ["doubao-input-microphone", "weixin-input-microphone", "voicecursor-setting-fn", "voicecursor-setting-mic"]
         for name in paired + microphone {
             let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(named: name, isDark: false, in: bundle))
@@ -18,6 +22,47 @@ struct ProductBoundaryTests {
             #expect(image.size.width > 0 && image.size.height > 0)
             let dark = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(named: name, isDark: true, in: bundle))
             #expect(dark.lastPathComponent == "\(name)-\(paired.contains(name) ? "dark.png" : "light.jpg")")
+        }
+    }
+
+    @Test func referencedLocalizationKeysExistInAllSupportedLanguages() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let resources = root.appendingPathComponent("Resources")
+        let appSources = root.appendingPathComponent("Sources/VoiceInputBuddy")
+        let fileManager = FileManager.default
+        let enumerator = fileManager.enumerator(at: appSources, includingPropertiesForKeys: nil)!
+        var allSource = ""
+        for case let fileURL as URL in enumerator where fileURL.pathExtension == "swift" {
+            allSource += try String(contentsOf: fileURL, encoding: .utf8) + "\n"
+        }
+        var referencedKeys = Set<String>()
+        let patterns = [
+            #"titleKey:\s*"([\w\.-]+)""#,
+            #"detailKey:\s*"([\w\.-]+)""#,
+            #"localization\.text\("([\w\.-]+)"\)"#,
+            #"LocalizedMessage\(\s*"([\w\.-]+)""#,
+        ]
+        for pattern in patterns {
+            let regex = try NSRegularExpression(pattern: pattern)
+            let nsSource = allSource as NSString
+            let matches = regex.matches(in: allSource, range: NSRange(location: 0, length: nsSource.length))
+            for match in matches {
+                referencedKeys.insert(nsSource.substring(with: match.range(at: 1)))
+            }
+        }
+        for lang in ["zh-Hans.lproj", "en.lproj"] {
+            let stringsURL = resources.appendingPathComponent(lang).appendingPathComponent("Localizable.strings")
+            let content = try String(contentsOf: stringsURL, encoding: .utf8)
+            let keyRegex = try NSRegularExpression(pattern: #"^\s*"([^"\n]+)"\s*="#, options: .anchorsMatchLines)
+            let nsContent = content as NSString
+            let keyMatches = keyRegex.matches(in: content, range: NSRange(location: 0, length: nsContent.length))
+            var definedKeys = Set<String>()
+            for match in keyMatches {
+                definedKeys.insert(nsContent.substring(with: match.range(at: 1)))
+            }
+            let missing = referencedKeys.subtracting(definedKeys)
+            #expect(missing.isEmpty, "Missing keys in \(lang): \(missing)")
         }
     }
 
@@ -63,9 +108,10 @@ struct ProductBoundaryTests {
 
     @Test @MainActor func everySetupScreenshotAndRemoteIllustrationDecodes() throws {
         let bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment
-        for name in ["doubao-menu", "doubao-settings", "system-fn", "vokie-step-1",
-                     "vokie-step-2", "weixin-app-shortcuts", "weixin-input-menu",
-                     "weixin-input-settings"] {
+        for name in ["doubao-menu", "doubao-settings", "system-fn",
+                     "weixin-app-shortcuts", "weixin-input-menu",
+                     "weixin-input-settings", "bageshuo-menu",
+                     "bageshuo-settings", "bageshuo-input-microphone"] {
             for theme in ["light", "dark"] {
                 let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(
                     named: name, isDark: theme == "dark", in: bundle))
@@ -125,7 +171,7 @@ struct ProductBoundaryTests {
 
     @Test func integrationCatalogIncludesUninstalledToolsInConsistentOrder() {
         #expect(OnboardingVoiceToolVisibilityPolicy.tools == [
-            .doubao, .weixin, .typeless, .vokie, .voicecursor, .other,
+            .weixin, .doubao, .bageshuo, .typeless, .voicecursor, .other,
         ])
     }
 
@@ -293,7 +339,7 @@ struct ProductBoundaryTests {
         #expect(!OnboardingFlowPolicy.canContinue(
             from: .voiceTool, voiceTool: .unselected, capabilities: passed
         ))
-        for tool in [OnboardingVoiceTool.doubao, .weixin, .vokie, .voicecursor, .typeless, .other] {
+        for tool in [OnboardingVoiceTool.weixin, .doubao, .bageshuo, .voicecursor, .typeless, .other] {
             #expect(!OnboardingFlowPolicy.canContinue(
                 from: .voiceTool, voiceTool: tool, capabilities: OnboardingCapabilities()
             ))

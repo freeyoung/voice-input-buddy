@@ -8,7 +8,7 @@ extension OnboardingView {
     func voiceToolCard(for tool: OnboardingVoiceTool) -> some View {
         let isSelected = settings.onboardingVoiceTool == tool
 
-        VStack(alignment: .leading, spacing: tool == .vokie ? 2 : 0) {
+        VStack(alignment: .leading, spacing: 0) {
             onboardingActionButton(id: "voice-tool.\(tool.rawValue)") {
                 selectVoiceTool(tool)
             } label: {
@@ -43,19 +43,10 @@ extension OnboardingView {
                 }
             }
             .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, minHeight: tool == .vokie ? 76 : 80, alignment: .top)
-
-            if tool == .vokie {
-                onboardingLink(id: "voice-tool.vokie.website", destination: AppLinks.vokieWebsite) {
-                    Text(verbatim: localization.text("onboarding.voice_tool.vokie.website"))
-                }
-                .font(.system(size: 12, weight: .semibold))
-                .padding(.leading, 44)
-                .frame(height: 14, alignment: .leading)
-            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .top)
         }
         .padding(10)
-        .frame(maxWidth: .infinity, minHeight: tool == .vokie ? 108 : 100, alignment: .top)
+        .frame(maxWidth: .infinity, minHeight: 100, alignment: .top)
         .background(
             isSelected
                 ? Color.accentColor.opacity(0.09)
@@ -365,17 +356,17 @@ extension OnboardingView {
                     content: .screenshot("weixin-input-settings")
                 ),
             ]
-        case .vokie:
+        case .bageshuo:
             toolSteps = [
                 OnboardingInputMethodGuideStep(
                     id: 1,
-                    titleKey: "onboarding.voice_tool.guide.open_vokie",
-                    content: .screenshot("vokie-step-1")
+                    titleKey: "onboarding.voice_tool.guide.open_bageshuo",
+                    content: .screenshot("bageshuo-menu")
                 ),
                 OnboardingInputMethodGuideStep(
                     id: 2,
-                    titleKey: "onboarding.voice_tool.guide.configure_vokie",
-                    content: .screenshot("vokie-step-2")
+                    titleKey: "onboarding.voice_tool.guide.configure_bageshuo",
+                    content: .screenshot("bageshuo-settings")
                 ),
             ]
         case .typeless:
@@ -488,6 +479,7 @@ extension OnboardingView {
         completedInputMethodGuideSteps.removeAll()
         refreshSelectedInputMethodStatus()
         refreshSystemFunctionKeyUsage()
+        stageCurrentDocumentedPairingPlanIfPossible()
     }
 
     func selectVoiceBindingPreference(_ preference: OnboardingVoiceBindingPreference) {

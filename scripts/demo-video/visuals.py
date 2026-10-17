@@ -180,12 +180,12 @@ def frame(i,u,total):
   rr(d,(x,y+56,1735,y+167),'#EDF3FC',18)
   text(d,(x+16,y+70),'当前集成：微信输入法',28,BLUE)
   text(d,(x+16,y+119),'语音输出：Voice Input Buddy Mic',24)
-  for j,label in enumerate(['豆包输入法','微信输入法','Typeless','Vokie','VoiceCursor','其他语音工具']):
+  for j,label in enumerate(['微信输入法','豆包输入法','网易叭哥说','Typeless','VoiceCursor','其他语音工具']):
    xx=x+(j%2)*294;yy=y+184+(j//2)*82
-   rr(d,(xx,yy,xx+280,yy+73),'#DCE9FF' if j==1 else '#F2F6FD',12)
-   text(d,(xx+12,yy+5),label,24,BLUE if j==1 else INK)
+   rr(d,(xx,yy,xx+280,yy+73),'#DCE9FF' if j==0 else '#F2F6FD',12)
+   text(d,(xx+12,yy+5),label,24,BLUE if j==0 else INK)
    text(d,(xx+12,yy+39),'通过向导配置并测试',24)
-   if j==1:d.ellipse((xx+249,yy+12,xx+263,yy+26),fill=BLUE)
+   if j==0:d.ellipse((xx+249,yy+12,xx+263,yy+26),fill=BLUE)
   text(d,(x,y+439),'语音触发键：Fn/地球键',24,BLUE)
  elif i==8:
   rr(d,(955,306,1790,817),'white',30,LINE)

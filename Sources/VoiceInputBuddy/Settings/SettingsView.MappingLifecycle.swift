@@ -10,9 +10,9 @@ extension SettingsView {
     }
 
     func refreshPermissionStates() {
-        bluetoothAuthorization = CBManager.authorization
-        inputMonitoringGranted = HIDRemoteMonitor.isInputMonitoringGranted
-        accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
+        bluetoothAuthorization = permissionOverrides?.bluetooth ?? CBManager.authorization
+        inputMonitoringGranted = permissionOverrides?.inputMonitoring ?? HIDRemoteMonitor.isInputMonitoringGranted
+        accessibilityGranted = permissionOverrides?.accessibility ?? KeyboardInjector.isAccessibilityTrusted
     }
 
     func setCustomMappingEnabled(_ enabled: Bool) {

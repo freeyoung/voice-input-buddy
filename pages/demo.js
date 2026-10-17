@@ -63,8 +63,8 @@ button.addEventListener('blur', stop);
         badge: '语音工具',
         windowTitle: '输入法与语音工具集成 · Voice Input Buddy',
         src: 'assets/screenshots/integration-zh.png',
-        alt: 'Voice Input Buddy 输入法与语音工具集成界面：微信输入法、豆包、Typeless、Vokie、VoiceCursor 等配置入口',
-        desc: '提供豆包输入法、微信输入法、Typeless、Vokie、VoiceCursor 及其他自定义工具的专用配置向导入口，并可自由选择语音触发按键（Fn、Command、Option 等）与长按/点按模式。'
+        alt: 'Voice Input Buddy 输入法与语音工具集成界面：微信输入法、豆包输入法、网易叭哥说、Typeless、VoiceCursor 等配置入口',
+        desc: '提供微信输入法、豆包输入法、网易叭哥说、Typeless、VoiceCursor 及其他自定义工具的专用配置向导入口，并可自由选择语音触发按键（Fn、Command、Option 等）与长按/点按模式。'
       },
       {
         title: '权限与驱动',
@@ -174,8 +174,8 @@ button.addEventListener('blur', stop);
         badge: 'Integrations',
         windowTitle: 'Voice Tools Integration · Voice Input Buddy',
         src: 'assets/screenshots/integration-en.png',
-        alt: 'Voice Input Buddy Voice Tools interface: setup guides for WeType, Doubao, Typeless, Vokie, VoiceCursor, and custom shortcuts',
-        desc: 'Guided setup for Doubao, WeType, Typeless, Vokie, VoiceCursor, and custom tools, with flexible trigger key options (Fn/Globe, Command, Option).'
+        alt: 'Voice Input Buddy Voice Tools interface: setup guides for WeType, Doubao, NetEase Bageshuo, Typeless, VoiceCursor, and custom shortcuts',
+        desc: 'Guided setup for WeType, Doubao, NetEase Bageshuo, Typeless, VoiceCursor, and custom tools, with flexible trigger key options (Fn/Globe, Command, Option).'
       },
       {
         title: 'Permissions & Driver',

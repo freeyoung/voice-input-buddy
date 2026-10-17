@@ -96,27 +96,12 @@ extension OnboardingView {
                 .font(.system(size: 13, weight: .semibold))
             Text(OnboardingVoiceGesturePrompt.text(
                 for: plan.binding.gestureMode,
+                fnTapModeEnabled: plan.fnTapModeEnabled,
                 locale: localization.locale
             ))
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            if plan.binding.tool == .vokie {
-                HStack(spacing: 8) {
-                    onboardingActionButton(id: "vokie.open") {
-                        guard let url = VokieDeepLink.launchURL(for: plan) else { return }
-                        openOnboardingURL(url)
-                    } label: {
-                        Text(verbatim: localization.text("onboarding.vokie.open"))
-                    }
-                    .buttonStyle(.bordered)
-                    if let vokieDeepLinkStatus {
-                        Text(localization.text("onboarding.vokie.status.\(vokieDeepLinkStatus.rawValue)"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(vokieDeepLinkStatus == .failed ? Color.red : Color.secondary)
-                    }
-                }
-            }
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)

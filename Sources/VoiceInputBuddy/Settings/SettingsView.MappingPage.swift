@@ -362,7 +362,7 @@ extension SettingsView {
             Text("connection.voice_fn_tap.hint_short")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .help(localization.text("connection.voice_fn_tap.hint"))
         .opacity(settings.voiceKeyMode == .function ? 1 : 0.55)

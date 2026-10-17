@@ -17,8 +17,19 @@ for strings in sorted(resources.glob('*.lproj/Localizable.strings')):
 app_sources = root / 'Sources/VoiceInputBuddy'
 assert list((app_sources / 'Onboarding').rglob('*.swift')), 'No onboarding sources found; resource checks cannot be skipped'
 setup_sources = sorted(app_sources.rglob('*.swift'))
-assert setup_sources, 'No application sources found; resource checks cannot be skipped'
 source = '\n'.join(path.read_text() for path in setup_sources)
+
+# Verify that all statically referenced localization keys exist in every strings file.
+referenced_keys = set()
+referenced_keys.update(re.findall(r'titleKey:\s*"([\w\.-]+)"', source))
+referenced_keys.update(re.findall(r'detailKey:\s*"([\w\.-]+)"', source))
+referenced_keys.update(re.findall(r'localization\.text\("([\w\.-]+)"\)', source))
+referenced_keys.update(re.findall(r'LocalizedMessage\(\s*"([\w\.-]+)"', source))
+for strings in sorted(resources.glob('*.lproj/Localizable.strings')):
+    keys = set(re.findall(r'^\s*"([^"\n]+)"\s*=', strings.read_text(), re.MULTILINE))
+    missing = [k for k in sorted(referenced_keys) if k not in keys]
+    assert not missing, f'Missing referenced localization keys in {strings}: {missing}'
+
 names = set(re.findall(r'\.screenshot\("([\w-]+)"\)', source))
 names.update(re.findall(r'onboardingGuideScreenshot\(\s*resourceName: "([\w-]+)"', source))
 files = []

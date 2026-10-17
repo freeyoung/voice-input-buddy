@@ -43,6 +43,18 @@ enum SettingsPermissionKind {
     case accessibility
 }
 
+struct SystemPermissionOverrides: Equatable, Sendable {
+    var bluetooth: CBManagerAuthorization?
+    var inputMonitoring: Bool?
+    var accessibility: Bool?
+
+    static let allGranted = SystemPermissionOverrides(
+        bluetooth: .allowedAlways,
+        inputMonitoring: true,
+        accessibility: true
+    )
+}
+
 enum SettingsPermissionAction: Equatable {
     case request
     case openSystemSettings(String)
@@ -136,6 +148,9 @@ enum SettingsPageBehavior {
         settings.onboardingPurpose = settings.canDismissOnboarding ? .integration : .initialSetup
         settings.onboardingCompletedVersion = 0
         settings.setOnboardingVoiceTool(tool)
+        if !tool.supportsHoldVoiceRecording {
+            settings.voiceFnTapModeEnabled = true
+        }
         settings.setOnboardingStep(settings.onboardingPurpose.steps[0])
     }
 

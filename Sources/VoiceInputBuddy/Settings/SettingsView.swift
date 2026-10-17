@@ -20,6 +20,7 @@ struct SettingsView: View {
     let appIconCatalog: AppIconCatalog
     private let minimumContentSize: CGSize
     let initialShortcutPickerShowsKeyboard: Bool
+    let permissionOverrides: SystemPermissionOverrides?
 
     @State var remoteRebindingProfile: RemoteDeviceProfile?
     @State var selectedSection: SettingsSection
@@ -33,9 +34,9 @@ struct SettingsView: View {
     @State var applicationShortcutCaptureProfileID: UUID?
     @State var shortcutCaptureFeedback: ShortcutCaptureFeedback?
     @State var customApplicationLearningStates: [UUID: CustomApplicationLearningState] = [:]
-    @State var bluetoothAuthorization = CBManager.authorization
-    @State var inputMonitoringGranted = HIDRemoteMonitor.isInputMonitoringGranted
-    @State var accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
+    @State var bluetoothAuthorization: CBManagerAuthorization
+    @State var inputMonitoringGranted: Bool
+    @State var accessibilityGranted: Bool
     @State var configurationStatus: ConfigurationStatus?
     @State var isRepositoryLinkCopied = false
     @State var isMappingPermissionAlertPresented = false
@@ -54,7 +55,8 @@ struct SettingsView: View {
         initialMappingEditingButton: RemoteButton? = nil,
         initialMappingEditingTrigger: ButtonTrigger = .singleClick,
         initialShortcutPickerShowsKeyboard: Bool = false,
-        minimumContentSize: CGSize = SettingsWindowLayout.minimumCanvasSize
+        minimumContentSize: CGSize = SettingsWindowLayout.minimumCanvasSize,
+        permissionOverrides: SystemPermissionOverrides? = nil
     ) {
         self.model = model
         settings = model.settings
@@ -69,6 +71,7 @@ struct SettingsView: View {
         self.appIconCatalog = appIconCatalog ?? .live()
         self.minimumContentSize = minimumContentSize
         self.initialShortcutPickerShowsKeyboard = initialShortcutPickerShowsKeyboard
+        self.permissionOverrides = permissionOverrides
         _selectedSection = State(initialValue: SettingsPageBehavior.initialSection(
             requestedSection: initialSection
         ))
@@ -78,6 +81,9 @@ struct SettingsView: View {
                 ShortcutEditingTarget(button: $0, trigger: initialMappingEditingTrigger)
             }
         )
+        _bluetoothAuthorization = State(initialValue: permissionOverrides?.bluetooth ?? CBManager.authorization)
+        _inputMonitoringGranted = State(initialValue: permissionOverrides?.inputMonitoring ?? HIDRemoteMonitor.isInputMonitoringGranted)
+        _accessibilityGranted = State(initialValue: permissionOverrides?.accessibility ?? KeyboardInjector.isAccessibilityTrusted)
     }
 
     var body: some View {

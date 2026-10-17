@@ -22,11 +22,11 @@ extension XiaomiRemoteModel {
 
 extension OnboardingVoiceTool {
     /// 是否支持「长按收音」（按住说话、松手结束）。
-    /// 已知工具里只有 Typeless 不支持；豆包、微信输入法和 Vokie 支持。
+    /// 已知工具里 Typeless 与网易叭哥说不支持；微信输入法和豆包输入法支持。
     var supportsHoldVoiceRecording: Bool {
         switch self {
-        case .typeless: return false
-        case .doubao, .weixin, .vokie, .voicecursor, .unselected, .other: return true
+        case .typeless, .bageshuo: return false
+        case .weixin, .doubao, .voicecursor, .unselected, .other: return true
         }
     }
 }

@@ -15,10 +15,11 @@ struct OnboardingView: View {
     let voiceToolAvailabilityOverride: [OnboardingVoiceTool: OnboardingVoiceToolAvailability]?
     let remoteInputDiagnosticOverride: FirstUseRemoteInputDiagnostic?
     let interactionProbe: OnboardingInteractionProbe?
+    let permissionOverrides: SystemPermissionOverrides?
 
-    @State var bluetoothAuthorization = CBManager.authorization
-    @State var inputMonitoringGranted = HIDRemoteMonitor.isInputMonitoringGranted
-    @State var accessibilityGranted = KeyboardInjector.isAccessibilityTrusted
+    @State var bluetoothAuthorization: CBManagerAuthorization
+    @State var inputMonitoringGranted: Bool
+    @State var accessibilityGranted: Bool
     @State var observedRemoteButtons = Set<RemoteButton>()
     @State var remoteInputDiagnostic = FirstUseRemoteInputDiagnostic()
     @State var requestedRemoteConnectionRecovery = false
@@ -51,7 +52,6 @@ struct OnboardingView: View {
     @State var suppressConnectedPhysicalRemoteAutoRouteOnce = false
     @State var isCapturingVoiceShortcut = false
     @State var shortcutCaptureErrorKey: String?
-    @State var vokieDeepLinkStatus: VoiceInputBuddyDeepLinkStatus?
     @State var secureInputActive: Bool?
     @State var secureInputWaitStartedAtUptime: TimeInterval?
     @State var lastLoggedSecureInputState: Bool?
@@ -66,7 +66,8 @@ struct OnboardingView: View {
         voiceToolAvailabilityOverride: [OnboardingVoiceTool: OnboardingVoiceToolAvailability]? = nil,
         initialInputMethodGuideStep: Int? = nil,
         remoteInputDiagnosticOverride: FirstUseRemoteInputDiagnostic? = nil,
-        interactionProbe: OnboardingInteractionProbe? = nil
+        interactionProbe: OnboardingInteractionProbe? = nil,
+        permissionOverrides: SystemPermissionOverrides? = nil
     ) {
         self.model = model
 
@@ -77,10 +78,14 @@ struct OnboardingView: View {
         self.voiceToolAvailabilityOverride = voiceToolAvailabilityOverride
         self.remoteInputDiagnosticOverride = remoteInputDiagnosticOverride
         self.interactionProbe = interactionProbe
+        self.permissionOverrides = permissionOverrides
         _voiceToolAvailability = State(
             initialValue: voiceToolAvailabilityOverride ?? Self.detectVoiceToolAvailability()
         )
         _selectedInputMethodGuideStep = State(initialValue: initialInputMethodGuideStep)
+        _bluetoothAuthorization = State(initialValue: permissionOverrides?.bluetooth ?? CBManager.authorization)
+        _inputMonitoringGranted = State(initialValue: permissionOverrides?.inputMonitoring ?? HIDRemoteMonitor.isInputMonitoringGranted)
+        _accessibilityGranted = State(initialValue: permissionOverrides?.accessibility ?? KeyboardInjector.isAccessibilityTrusted)
     }
 
     private var lifecycleContent: some View {
@@ -149,12 +154,6 @@ struct OnboardingView: View {
             default:
                 break
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .voiceInputBuddyDeepLinkReceived)) { notification in
-            guard let request = notification.object as? VoiceInputBuddyDeepLinkRequest,
-                  request.source == "vokie" else { return }
-            vokieDeepLinkStatus = request.status
-            refreshVoiceToolAvailability()
         }
         .onReceive(model.$isConnected.removeDuplicates()) { isConnected in
             guard isConnected else { return }
