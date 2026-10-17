@@ -161,7 +161,7 @@ struct CommonPhraseSettingsView: View {
                 HStack(spacing: 4) {
                     ForEach(CommonPhraseStore.buttons.filter { store.phrase(for: $0)?.id == phrase.id }) { button in
                         if button == .ok {
-                            Text(localization.text("common.action.ok")).font(.system(size: 12, weight: .medium))
+                            Text(RemoteButton.ok.shortLabel(using: localization)).font(.system(size: 12, weight: .medium))
                         } else {
                             Image(systemName: symbol(for: button)).font(.system(size: 12, weight: .medium))
                         }
