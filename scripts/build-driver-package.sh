@@ -12,5 +12,6 @@ cp "$root/scripts/driver-package/"{preinstall,postinstall} "$root/scripts/instal
 chmod 755 "$work/scripts/"*
 cp -R "$root/dist/VoiceInputBuddyMic.driver" "$work/payload/Library/Audio/Plug-Ins/HAL/"
 pkgbuild --root "$work/payload" --identifier com.zfdang.voice-input-buddy.mic.installer \
-    --version 0.1.2 --scripts "$work/scripts" --install-location / "$root/dist/VoiceInputBuddy-Microphone.pkg"
-echo 'Unsigned local installer. Public releases require Developer ID Installer signing and notarization.'
+    --version 0.1.2 --scripts "$work/scripts" --install-location / "$work/component.pkg"
+"$root/scripts/build-installer-product.sh" "$work/component.pkg" "$root/dist/VoiceInputBuddy-Microphone.pkg"
+echo 'Built unsigned, unnotarized installer with a pre-install audio interruption notice.'

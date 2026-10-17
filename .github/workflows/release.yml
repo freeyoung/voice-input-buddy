@@ -79,6 +79,7 @@ jobs:
           python3 scripts/test-update-signature.py
           python3 scripts/test-release-signing.py
           python3 scripts/test-sign-bundle.py
+          python3 scripts/test-installer-product.py
           swift test --disable-keychain
       - name: Import fixed release signing identity
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
