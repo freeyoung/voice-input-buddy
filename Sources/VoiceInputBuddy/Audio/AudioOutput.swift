@@ -291,7 +291,7 @@ enum CoreAudioDeviceCatalog {
         _ device: AudioDeviceInfo
     ) -> VirtualAudioDeviceAudibilityRepairResult {
         let kind = VirtualAudioDeviceDiagnosticKind.classify(device)
-        guard kind == .buddyMic || kind == .blackHole2ch else {
+        guard kind == .buddyMic else {
             return .init()
         }
 
