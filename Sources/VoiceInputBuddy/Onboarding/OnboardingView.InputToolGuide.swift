@@ -479,6 +479,7 @@ extension OnboardingView {
         completedInputMethodGuideSteps.removeAll()
         refreshSelectedInputMethodStatus()
         refreshSystemFunctionKeyUsage()
+        stageCurrentDocumentedPairingPlanIfPossible()
     }
 
     func selectVoiceBindingPreference(_ preference: OnboardingVoiceBindingPreference) {

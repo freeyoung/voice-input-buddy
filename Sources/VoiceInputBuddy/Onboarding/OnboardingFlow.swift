@@ -219,8 +219,17 @@ enum OnboardingAIAssistantPrompt {
 }
 
 enum OnboardingVoiceGesturePrompt {
-    static func text(for mode: VoiceGestureMode, locale: Locale) -> String {
+    static func text(
+        for mode: VoiceGestureMode,
+        fnTapModeEnabled: Bool = false,
+        locale: Locale
+    ) -> String {
         let isChinese = locale.identifier.lowercased().hasPrefix("zh")
+        if fnTapModeEnabled {
+            return isChinese
+                ? "按住语音键说话，说完松开（已自动开启点按转换）。"
+                : "Hold the voice button while speaking, then release it (Fn tap conversion enabled)."
+        }
         switch (isChinese, mode) {
         case (true, .hold): return "按住语音键说话，说完松开。"
         case (true, .toggle): return "按一下语音键开始说话，再按一下结束。"

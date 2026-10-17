@@ -15,6 +15,7 @@ extension OnboardingView {
         }
         return OnboardingVoiceGesturePrompt.text(
             for: plan.binding.gestureMode,
+            fnTapModeEnabled: plan.fnTapModeEnabled,
             locale: localization.locale
         )
     }

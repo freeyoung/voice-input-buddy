@@ -25,6 +25,47 @@ struct ProductBoundaryTests {
         }
     }
 
+    @Test func referencedLocalizationKeysExistInAllSupportedLanguages() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let resources = root.appendingPathComponent("Resources")
+        let appSources = root.appendingPathComponent("Sources/VoiceInputBuddy")
+        let fileManager = FileManager.default
+        let enumerator = fileManager.enumerator(at: appSources, includingPropertiesForKeys: nil)!
+        var allSource = ""
+        for case let fileURL as URL in enumerator where fileURL.pathExtension == "swift" {
+            allSource += try String(contentsOf: fileURL, encoding: .utf8) + "\n"
+        }
+        var referencedKeys = Set<String>()
+        let patterns = [
+            #"titleKey:\s*"([\w\.-]+)""#,
+            #"detailKey:\s*"([\w\.-]+)""#,
+            #"localization\.text\("([\w\.-]+)"\)"#,
+            #"LocalizedMessage\(\s*"([\w\.-]+)""#,
+        ]
+        for pattern in patterns {
+            let regex = try NSRegularExpression(pattern: pattern)
+            let nsSource = allSource as NSString
+            let matches = regex.matches(in: allSource, range: NSRange(location: 0, length: nsSource.length))
+            for match in matches {
+                referencedKeys.insert(nsSource.substring(with: match.range(at: 1)))
+            }
+        }
+        for lang in ["zh-Hans.lproj", "en.lproj"] {
+            let stringsURL = resources.appendingPathComponent(lang).appendingPathComponent("Localizable.strings")
+            let content = try String(contentsOf: stringsURL, encoding: .utf8)
+            let keyRegex = try NSRegularExpression(pattern: #"^\s*"([^"\n]+)"\s*="#, options: .anchorsMatchLines)
+            let nsContent = content as NSString
+            let keyMatches = keyRegex.matches(in: content, range: NSRange(location: 0, length: nsContent.length))
+            var definedKeys = Set<String>()
+            for match in keyMatches {
+                definedKeys.insert(nsContent.substring(with: match.range(at: 1)))
+            }
+            let missing = referencedKeys.subtracting(definedKeys)
+            #expect(missing.isEmpty, "Missing keys in \(lang): \(missing)")
+        }
+    }
+
     @Test func releaseTagsCanBeComparedAndPreviewFallsBack() async {
         #expect(UpdateVersion.normalized("v26-10-11.021") == "26.10.11.021")
         #expect(UpdateVersion.isNewer("v26-10-11.022", than: "v26-10-11.021"))

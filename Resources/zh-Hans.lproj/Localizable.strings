@@ -692,10 +692,11 @@
 "onboarding.voice_tool.guide.select_doubao" = "选择豆包输入法";
 "onboarding.voice_tool.guide.configure_doubao" = "设置豆包的 Fn 语音";
 "onboarding.voice_tool.guide.select_weixin" = "选择微信输入法";
+"onboarding.voice_tool.guide.configure_weixin" = "设置微信输入法的 Fn 语音";
 "onboarding.voice_tool.guide.open_bageshuo" = "打开网易叭哥说设置";
 "onboarding.voice_tool.guide.open_bageshuo.detail" = "在菜单栏点击网易叭哥说图标，选择“设置”。";
 "onboarding.voice_tool.guide.configure_bageshuo" = "设置语音快捷键为 Fn";
-"onboarding.voice_tool.guide.configure_bageshuo.detail" = "在设置 → 快捷键中，将“语音润色快捷键”设为 Fn。工作模式为按一下开始说话，再按一下结束。";
+"onboarding.voice_tool.guide.configure_bageshuo.detail" = "在设置 → 快捷键中，将“语音润色快捷键”设为 Fn。工作模式为按一下开始、再按一下结束；语音搭子已自动开启点按转换，使用时依然按住遥控器说话、松手结束。";
 "onboarding.voice_tool.guide.open_typeless" = "打开 Typeless";
 "onboarding.voice_tool.guide.open_typeless.detail" = "启动 Typeless，并保持它在后台运行。";
 "onboarding.voice_tool.guide.configure_typeless" = "使用按一次说话";
@@ -718,6 +719,7 @@
 "onboarding.voice_tool.system_fn.ready" = "系统已释放 Fn";
 "onboarding.voice_tool.system_fn.conflict" = "系统仍在使用 Fn";
 "onboarding.voice_tool.system_fn.detail" = "打开系统设置 → 键盘，把“按下 Fn/地球键时”改为“不执行任何操作”。";
+"onboarding.voice_tool.system_fn.open_settings" = "打开键盘设置";
 "onboarding.voice_tool.bageshuo.title" = "网易叭哥说";
 "onboarding.voice_tool.bageshuo.detail" = "网易AI语音输入，端到端极速上屏与智能润色。";
 "onboarding.voice_tool.bageshuo.install" = "前往网易叭哥说官网";
@@ -882,6 +884,7 @@
 "onboarding.voice_test.microphone_confirmation.checkbox" = "我已确认%@的麦克风是“%@”";
 "onboarding.voice_test.placeholder" = "试着说：语音搭子已经连接成功";
 "onboarding.voice_test.waiting_voice" = "等待你按照上方提示使用语音键…";
+"onboarding.voice_test.fn_tap_explanation" = "提示：所选工具为点按模式，但遥控器麦克风需按住才能持续收音。语音搭子已自动开启「语音键模拟 Fn 点按」，你只需按住遥控器说话、松手结束，软件会自动处理两次点按与音频同步。";
 "onboarding.voice_test.receiving" = "正在接收声音…";
 "onboarding.voice_test.waiting_text" = "已收到声音，正在等待文字出现…";
 "onboarding.voice_test.tool_not_running" = "请先打开所选语音工具，再开始测试…";

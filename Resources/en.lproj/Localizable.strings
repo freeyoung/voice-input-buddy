@@ -693,10 +693,11 @@
 "onboarding.voice_tool.guide.select_doubao" = "Select Doubao";
 "onboarding.voice_tool.guide.configure_doubao" = "Set Fn as Doubao’s voice shortcut";
 "onboarding.voice_tool.guide.select_weixin" = "Select WeType";
+"onboarding.voice_tool.guide.configure_weixin" = "Set Fn as WeType’s voice shortcut";
 "onboarding.voice_tool.guide.open_bageshuo" = "Open NetEase Bageshuo Settings";
 "onboarding.voice_tool.guide.open_bageshuo.detail" = "Click the NetEase Bageshuo menu bar icon, then select Settings.";
 "onboarding.voice_tool.guide.configure_bageshuo" = "Set Voice Shortcut to Fn";
-"onboarding.voice_tool.guide.configure_bageshuo.detail" = "In Settings → Shortcuts, set Dictation shortcut to Fn (press once to start, press again to stop).";
+"onboarding.voice_tool.guide.configure_bageshuo.detail" = "In Settings → Shortcuts, set Dictation shortcut to Fn (press once to start, press again to stop). Voice Input Buddy has enabled tap conversion: simply hold the remote voice button while speaking and release when done.";
 "onboarding.voice_tool.guide.open_typeless" = "Open Typeless";
 "onboarding.voice_tool.guide.open_typeless.detail" = "Start Typeless and leave it running in the background.";
 "onboarding.voice_tool.guide.configure_typeless" = "Press to start and stop";
@@ -719,6 +720,7 @@
 "onboarding.voice_tool.system_fn.ready" = "The macOS Fn action is set to Do Nothing";
 "onboarding.voice_tool.system_fn.conflict" = "The macOS Fn action needs to be changed";
 "onboarding.voice_tool.system_fn.detail" = "Open System Settings → Keyboard and set “Press Fn/Globe key to” to “Do Nothing.”";
+"onboarding.voice_tool.system_fn.open_settings" = "Open Keyboard Settings";
 "onboarding.voice_tool.bageshuo.title" = "NetEase Bageshuo";
 "onboarding.voice_tool.bageshuo.detail" = "NetEase AI voice dictation with real-time transcription and smart text polish.";
 "onboarding.voice_tool.bageshuo.install" = "Visit NetEase Bageshuo website";
@@ -885,6 +887,7 @@
 "onboarding.voice_test.microphone_confirmation.checkbox" = "I confirmed %@ uses “%@” as its microphone";
 "onboarding.voice_test.placeholder" = "Try saying: Voice Input Buddy is connected";
 "onboarding.voice_test.waiting_voice" = "Waiting for you to use the voice button as described above…";
+"onboarding.voice_test.fn_tap_explanation" = "Note: The selected tool uses tap mode, but the remote mic only records while held. Voice Input Buddy has enabled Fn Tap mode: hold the remote button while speaking and release when done; the app handles tap conversion and audio sync automatically.";
 "onboarding.voice_test.receiving" = "Receiving voice audio…";
 "onboarding.voice_test.waiting_text" = "Audio received. Waiting for text to appear…";
 "onboarding.voice_test.tool_not_running" = "Open the selected voice app before starting the test…";

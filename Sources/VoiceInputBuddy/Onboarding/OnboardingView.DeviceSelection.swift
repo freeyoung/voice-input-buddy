@@ -96,6 +96,7 @@ extension OnboardingView {
                 .font(.system(size: 13, weight: .semibold))
             Text(OnboardingVoiceGesturePrompt.text(
                 for: plan.binding.gestureMode,
+                fnTapModeEnabled: plan.fnTapModeEnabled,
                 locale: localization.locale
             ))
             .font(.system(size: 12))

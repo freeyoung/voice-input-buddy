@@ -136,6 +136,9 @@ enum SettingsPageBehavior {
         settings.onboardingPurpose = settings.canDismissOnboarding ? .integration : .initialSetup
         settings.onboardingCompletedVersion = 0
         settings.setOnboardingVoiceTool(tool)
+        if !tool.supportsHoldVoiceRecording {
+            settings.voiceFnTapModeEnabled = true
+        }
         settings.setOnboardingStep(settings.onboardingPurpose.steps[0])
     }
 
