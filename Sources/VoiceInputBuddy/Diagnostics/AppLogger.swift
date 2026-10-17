@@ -56,11 +56,18 @@ final class AppLogger: PublicDiagnosticEventSink {
     private var fileLoggingStopped = false
     private var nextSequence: UInt64 = 0
 
+    static func defaultLogDirectory(libraries: [URL], home: URL) -> URL {
+        let library = libraries.first ?? home.appendingPathComponent("Library", isDirectory: true)
+        return library.appendingPathComponent("Logs", isDirectory: true)
+            .appendingPathComponent("VoiceInputBuddy", isDirectory: true)
+    }
+
     private convenience init() {
         let fileManager = FileManager.default
-        let base = fileManager.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs", isDirectory: true)
-            .appendingPathComponent("VoiceInputBuddy", isDirectory: true)
+        let base = Self.defaultLogDirectory(
+            libraries: fileManager.urls(for: .libraryDirectory, in: .userDomainMask),
+            home: fileManager.homeDirectoryForCurrentUser
+        )
         let sessionName = UUID().uuidString.replacingOccurrences(of: "-", with: "")
             .prefix(8)
         let day = Self.dayIdentifier(Date())
