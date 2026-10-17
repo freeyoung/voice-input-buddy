@@ -98,6 +98,7 @@ enum AppEntryPointVisibilityPolicy {
 enum VoiceInputBuddyApp {
     @MainActor
     static func main() {
+        if CommonPhraseClipboardPaste.runSnapshotHelperIfRequested() { return }
 #if DEBUG
         if LocalizedUpdateUserDriver.runPreviewIfRequested() { return }
 #endif

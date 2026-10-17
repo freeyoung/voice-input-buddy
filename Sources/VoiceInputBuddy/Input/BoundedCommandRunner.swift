@@ -1,12 +1,13 @@
 import Darwin
 import Foundation
 
-/// Runs only on the focus worker queue. The deadline covers both process exit and stdout EOF.
+/// Runs only on worker queues. The deadline covers both process exit and stdout EOF.
 /// Nonblocking reads avoid waiting forever for a descendant that inherited the output pipe.
 enum BoundedCommandRunner {
     static let maximumOutputBytes = 1_024 * 1_024
 
-    static func run(executableURL: URL, arguments: [String], timeout: TimeInterval)
+    static func run(executableURL: URL, arguments: [String], timeout: TimeInterval,
+        outputLimit: Int = maximumOutputBytes)
         -> KeyboardInjector.CmuxCommandResult {
         let process = Process()
         let output = Pipe()
@@ -40,7 +41,7 @@ enum BoundedCommandRunner {
             if !eof {
                 let count = Darwin.read(fd, &buffer, buffer.count)
                 if count > 0 {
-                    guard data.count + count <= maximumOutputBytes else { failed = true; break }
+                    guard data.count + count <= outputLimit else { failed = true; break }
                     data.append(contentsOf: buffer.prefix(count))
                     continue
                 }
