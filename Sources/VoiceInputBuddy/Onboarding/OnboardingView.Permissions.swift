@@ -110,9 +110,9 @@ extension OnboardingView {
     }
 
     func refreshPermissionStates() {
-        let bluetooth = CBManager.authorization
-        let input = HIDRemoteMonitor.isInputMonitoringGranted
-        let accessibility = KeyboardInjector.isAccessibilityTrusted
+        let bluetooth = permissionOverrides?.bluetooth ?? CBManager.authorization
+        let input = permissionOverrides?.inputMonitoring ?? HIDRemoteMonitor.isInputMonitoringGranted
+        let accessibility = permissionOverrides?.accessibility ?? KeyboardInjector.isAccessibilityTrusted
         if bluetoothAuthorization != bluetooth { bluetoothAuthorization = bluetooth }
         if inputMonitoringGranted != input { inputMonitoringGranted = input }
         if accessibilityGranted != accessibility { accessibilityGranted = accessibility }

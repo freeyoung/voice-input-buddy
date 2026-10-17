@@ -129,6 +129,16 @@ enum OnboardingScreenshotRenderer {
         let allVoiceToolsUnavailable = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_ALL_VOICE_TOOLS_UNAVAILABLE"
         ] == "1"
+        let onboardingPermissionsOverride: SystemPermissionOverrides? = switch ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_PERMISSIONS"
+        ] {
+        case "all_granted", "granted":
+            .allGranted
+        case "missing", "denied":
+            SystemPermissionOverrides(bluetooth: .denied, inputMonitoring: false, accessibility: false)
+        default:
+            nil
+        }
         let remoteInputDiagnostic = switch ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_REMOTE_INPUT"
         ] {
@@ -215,7 +225,8 @@ enum OnboardingScreenshotRenderer {
                 ],
                 initialInputMethodGuideStep: requestedGuideStep,
                 remoteInputDiagnosticOverride: remoteInputDiagnostic,
-                interactionProbe: actionProbe
+                interactionProbe: actionProbe,
+                permissionOverrides: onboardingPermissionsOverride
             )
                 .environmentObject(localization)
                 .frame(width: size.width, height: size.height)
