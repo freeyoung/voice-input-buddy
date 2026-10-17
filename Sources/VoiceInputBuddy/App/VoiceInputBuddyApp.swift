@@ -321,7 +321,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 if shouldOpenPermissionRepair {
-                    self.showSettingsWindow(initialSection: .about)
+                    self.showSettingsWindow(initialSection: .permissions)
                 } else {
                     self.showSettings()
                 }
