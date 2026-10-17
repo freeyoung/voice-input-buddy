@@ -6,6 +6,7 @@ import SwiftUI
 enum SettingsWindowLayout {
     static let preferredContentSize = CGSize(width: 1020, height: 772)
     static let minimumCanvasSize = CGSize(width: 980, height: 732)
+    static let onboardingMinimumCanvasSize = CGSize(width: 980, height: 0)
 
     static func minimumWindowSize(in visibleFrame: CGRect) -> CGSize {
         CGSize(width: min(720, visibleFrame.width), height: min(500, visibleFrame.height))
@@ -30,12 +31,13 @@ enum SettingsWindowLayout {
 /// the settings and first-run wizard, including their bottom navigation.
 struct AdaptiveSettingsViewport<Content: View>: View {
     var minimumSize = SettingsWindowLayout.minimumCanvasSize
+    var axes: Axis.Set = [.horizontal, .vertical]
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         GeometryReader { proxy in
             let canvas = SettingsWindowLayout.canvasSize(viewport: proxy.size, minimum: minimumSize)
-            ScrollView([.horizontal, .vertical]) {
+            ScrollView(axes) {
                 content()
                     .frame(width: canvas.width, height: canvas.height)
             }

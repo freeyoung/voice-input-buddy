@@ -88,7 +88,7 @@ struct OnboardingView: View {
     }
 
     private var lifecycleContent: some View {
-        AdaptiveSettingsViewport {
+        AdaptiveSettingsViewport(minimumSize: SettingsWindowLayout.onboardingMinimumCanvasSize, axes: .horizontal) {
             onboardingCanvas
         }
     }
