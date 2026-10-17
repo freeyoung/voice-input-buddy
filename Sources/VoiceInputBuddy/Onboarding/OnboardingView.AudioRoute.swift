@@ -16,7 +16,7 @@ extension OnboardingView {
                 Text(localization.text("settings.driver.reload_help")).font(.callout).foregroundStyle(.secondary)
                 HStack {
                     Button(localization.text("audio.action.refresh_devices")) { prepareAutomaticDriverCheck() }
-                    Button(localization.text("audio.compatibility.open_install_guide")) { model.openDoubaoDriverInstructions(using: localization) }
+                    Button(localization.text("audio.compatibility.open_install_guide")) { model.openVirtualMicrophoneSetupInstructions(using: localization) }
                 }.buttonStyle(.bordered)
             }
         }
