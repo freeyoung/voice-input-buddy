@@ -5,6 +5,12 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func externalKeyboardFnWithoutNavigationDecorationIsNeverRemoved() {
+        let flags = KeyboardHardwareModifierPolicy.normalized(.maskSecondaryFn, fnKeyDown: false)
+        #expect(flags.contains(.maskSecondaryFn))
+        #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
+    }
+
     @Test func navigationReleaseRaceWaitsBeforeReadingOrReplacingClipboard() {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
@@ -98,17 +104,17 @@ struct CommonPhraseClipboardTests {
     }
 
     @Test func navigationFnFlagDoesNotBlockOrModifyPaste() {
-        let flags = CommonPhraseClipboardPaste.normalizedPasteFlags([.maskSecondaryFn, .maskNumericPad], fnKeyDown: false)
+        let flags = KeyboardHardwareModifierPolicy.normalized([.maskSecondaryFn, .maskNumericPad], fnKeyDown: false)
         #expect(!flags.contains(.maskSecondaryFn))
         #expect(flags.contains(.maskNumericPad))
         #expect(CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
     }
 
     @Test func physicallyHeldModifiersStillBlockPaste() {
-        let fn = CommonPhraseClipboardPaste.normalizedPasteFlags([], fnKeyDown: true)
+        let fn = KeyboardHardwareModifierPolicy.normalized([], fnKeyDown: true)
         #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: fn))
         for modifier: CGEventFlags in [.maskControl, .maskAlternate, .maskShift] {
-            let flags = CommonPhraseClipboardPaste.normalizedPasteFlags([modifier, .maskSecondaryFn], fnKeyDown: false)
+            let flags = KeyboardHardwareModifierPolicy.normalized([modifier, .maskSecondaryFn], fnKeyDown: false)
             #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
         }
         #expect(CommonPhraseClipboardPaste.permitsPasteShortcut(flags: .maskCommand))

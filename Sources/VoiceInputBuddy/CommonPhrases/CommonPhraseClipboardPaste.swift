@@ -51,15 +51,8 @@ final class CommonPhraseClipboardPaste {
         self.postPaste = postPaste
     }
 
-    // Navigation keys can carry the Fn event flag without an actual Fn key
-    // press. Do not let that decoration block or alter Command-V.
-    static func normalizedPasteFlags(_ flags: CGEventFlags, fnKeyDown: Bool) -> CGEventFlags {
-        fnKeyDown ? flags.union(.maskSecondaryFn) : flags.subtracting(.maskSecondaryFn)
-    }
-
     private static func pasteHardwareFlags() -> CGEventFlags {
-        normalizedPasteFlags(CGEventSource.flagsState(.hidSystemState),
-            fnKeyDown: CGEventSource.keyState(.hidSystemState, key: 63))
+        KeyboardHardwareModifierPolicy.current()
     }
 
     static func permitsPasteShortcut(flags: CGEventFlags) -> Bool {
