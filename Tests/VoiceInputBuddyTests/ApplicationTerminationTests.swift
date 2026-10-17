@@ -1,9 +1,23 @@
+import Foundation
 import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Application termination")
 @MainActor
 struct ApplicationTerminationTests {
+    @Test func acceptedQuitClosesVoiceAdmissionBeforeRuntimeTeardown() throws {
+        let name = UUID().uuidString
+        let values = try #require(UserDefaults(suiteName: name))
+        defer { values.removePersistentDomain(forName: name) }
+        let model = BridgeAppModel(settings: AppSettings(defaults: values))
+        model.started = true
+        defer { model.started = false }
+        model.prepareForTermination()
+        #expect(!model.canAcceptNewVoiceSession(from: .bluetooth))
+        model.beginVoiceSessionIfNeeded()
+        #expect(!model.isStreaming)
+    }
+
     @Test func repeatedQuitAndReleaseCallbacksReplyExactlyOnce() {
         let coordinator = ApplicationTerminationCoordinator()
         var releases: [() -> Void] = []

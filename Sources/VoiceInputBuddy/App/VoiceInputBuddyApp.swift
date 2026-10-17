@@ -333,6 +333,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         termination.request(begin: { complete in
+            model.prepareForTermination()
             statusItem?.button?.title = localization.text("common.action.quitting")
             statusItem?.button?.toolTip = localization.text("common.action.quitting")
             model.voiceFnTapSession.setEnabled(false) { _ in
