@@ -4,6 +4,14 @@ import Testing
 
 @Suite("ATVV stream start ordering")
 struct AudioStreamStartTests {
+    @Test func onlyDistinctExplicitIdentifiersReplaceAnActiveStream() {
+        #expect(!ATVVStreamStartPolicy.shouldReplaceStream(isStreaming: true, activeSessionID: nil, incomingSessionID: 7))
+        #expect(!ATVVStreamStartPolicy.shouldReplaceStream(isStreaming: true, activeSessionID: 7, incomingSessionID: 7))
+        #expect(!ATVVStreamStartPolicy.shouldReplaceStream(isStreaming: true, activeSessionID: 7, incomingSessionID: nil))
+        #expect(!ATVVStreamStartPolicy.shouldReplaceStream(isStreaming: false, activeSessionID: 7, incomingSessionID: 8))
+        #expect(ATVVStreamStartPolicy.shouldReplaceStream(isStreaming: true, activeSessionID: 7, incomingSessionID: 8))
+    }
+
     @Test func lateControlStartPreservesPartialFramesPredictorAndFilterHistory() {
         let decoder = ATVVAudioDecoder()
         let reference = ATVVAudioDecoder()

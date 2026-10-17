@@ -221,6 +221,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var microphoneOpened = false
     private var cancelledMicrophoneOpenAt: Date?
     private var sessionID: UInt8 = 0
+    private var activeStreamSessionID: UInt8?
     private var lastStopAt: Date?
 
     private let serviceUUID = CBUUID(string: ATVVProtocol.serviceUUID)
@@ -865,6 +866,7 @@ final class XiaomiBluetoothBridge: NSObject {
         microphoneOpened = false
         cancelledMicrophoneOpenAt = nil
         sessionID = 0
+        activeStreamSessionID = nil
     }
 
     private func publishReconnectingState() {
@@ -1157,7 +1159,8 @@ final class XiaomiBluetoothBridge: NSObject {
                 return
             }
             deviceInformation.capabilities = capabilities
-            let receivedSessionID = bytes.count >= 4 ? bytes[3] : 0
+            let explicitSessionID: UInt8? = bytes.count >= 4 ? bytes[3] : nil
+            let receivedSessionID = explicitSessionID ?? sessionID
             if ATVVSessionGate.shouldIgnoreStreamAfterCancelledOpen(
                 cancelledAt: cancelledMicrophoneOpenAt
             ) {
@@ -1171,7 +1174,15 @@ final class XiaomiBluetoothBridge: NSObject {
                 return
             }
             cancelledMicrophoneOpenAt = nil
+            if ATVVStreamStartPolicy.shouldReplaceStream(
+                isStreaming: streaming,
+                activeSessionID: activeStreamSessionID,
+                incomingSessionID: explicitSessionID
+            ) {
+                stopStreaming()
+            }
             sessionID = receivedSessionID
+            if let explicitSessionID { activeStreamSessionID = explicitSessionID }
             startStreaming()
         case 0x00:
             guard lifecycle.acceptsProtocolData(generation: generation) else { return }
@@ -1241,6 +1252,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 
     private func stopStreaming() {
+        activeStreamSessionID = nil
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
         guard streaming else { return }

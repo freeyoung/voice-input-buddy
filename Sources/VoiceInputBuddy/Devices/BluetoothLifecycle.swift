@@ -428,3 +428,16 @@ enum ATVVSessionGate {
         return now < cancelledAt.addingTimeInterval(cancelledOpenSuppressionInterval)
     }
 }
+
+/// Audio may implicitly start before its control notification. Only two distinct,
+/// explicit session identifiers prove a new stream when the stop was lost.
+enum ATVVStreamStartPolicy {
+    static func shouldReplaceStream(
+        isStreaming: Bool,
+        activeSessionID: UInt8?,
+        incomingSessionID: UInt8?
+    ) -> Bool {
+        guard isStreaming, let activeSessionID, let incomingSessionID else { return false }
+        return activeSessionID != incomingSessionID
+    }
+}
