@@ -38,8 +38,8 @@ extension OnboardingView {
                 }
                 .frame(maxWidth: .infinity, alignment: .top)
                 .frame(minHeight: 0)
-                .padding(.top, 28)
-                .padding(.bottom, 28)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -79,7 +79,7 @@ extension OnboardingView {
                 remoteAvailabilityIllustration
             }
         }
-        .padding(28)
+        .padding(.horizontal, 28)
     }
 
     private var remoteIllustration: some View {
@@ -89,7 +89,7 @@ extension OnboardingView {
             }
             sideStatusPanel
         }
-        .padding(28)
+        .padding(.horizontal, 28)
     }
 
     @ViewBuilder
