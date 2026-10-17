@@ -209,6 +209,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private lazy var appIconController = AppIconController()
     private let updateInformation = UpdateInformationStore()
     private lazy var localization = LocalizationStore(settings: model.settings)
+    private let termination = ApplicationTerminationCoordinator()
     private var statusItem: NSStatusItem?
     private var statusItemPresentation: StatusItemPresentation = .disconnected
     private var appliedStatusItemPresentation: StatusItemPresentation?
@@ -329,9 +330,13 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        model.voiceFnTapSession.setEnabled(false) { _ in
-            DispatchQueue.main.async { sender.reply(toApplicationShouldTerminate: true) }
-        }
+        termination.request(begin: { complete in
+            statusItem?.button?.title = localization.text("common.action.quitting")
+            statusItem?.button?.toolTip = localization.text("common.action.quitting")
+            model.voiceFnTapSession.setEnabled(false) { _ in
+                DispatchQueue.main.async { complete() }
+            }
+        }, reply: { sender.reply(toApplicationShouldTerminate: true) })
         return .terminateLater
     }
 
