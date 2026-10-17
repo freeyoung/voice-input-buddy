@@ -5,13 +5,82 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func navigationReleaseRaceWaitsBeforeReadingOrReplacingClipboard() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        let clock = ControlledTestScheduler()
+        // Exact effective flag value observed during the failed remote-left selections.
+        var flags = CGEventFlags(rawValue: 0xA00100)
+        var reads = 0, posts = 0, completions = 0
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { flags },
+            uptime: { Double(clock.now) / 1_000 }, readClipboard: { reads += 1; $0() },
+            schedule: clock.voiceSchedule, postPaste: { posts += 1; return true })
+        writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) {
+            #expect($0 == nil); completions += 1
+        }
+        clock.advance(to: 150)
+        #expect(reads == 0 && posts == 0 && completions == 0)
+        #expect(board.string(forType: .string) == "original")
+        flags = [] // Native navigation key-up clears the transient HID state.
+        clock.advance(to: 175)
+        #expect(reads == 1 && posts == 1)
+        #expect(board.string(forType: .string) == "phrase")
+        clock.runAll()
+        #expect(completions == 1)
+        #expect(board.string(forType: .string) == "original")
+    }
+
+    @Test(arguments: [CGEventFlags.maskSecondaryFn, .maskControl, .maskAlternate, .maskShift])
+    func trulyHeldModifierTimesOutWithoutTouchingClipboardAndAllowsRetry(held: CGEventFlags) {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        let clock = ControlledTestScheduler()
+        var flags = held
+        var reads = 0, posts = 0
+        var results: [String?] = []
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { flags },
+            uptime: { Double(clock.now) / 1_000 }, readClipboard: { reads += 1; $0() },
+            schedule: clock.voiceSchedule, postPaste: { posts += 1; return true })
+        writer.paste("blocked", validate: { $0(nil) }, canSubmit: { true }) { results.append($0) }
+        clock.advance(to: 500)
+        #expect(results == ["paste_failed"])
+        #expect(reads == 0 && posts == 0)
+        #expect(board.string(forType: .string) == "original")
+        flags = []
+        writer.paste("retry", validate: { $0(nil) }, canSubmit: { true }) { results.append($0) }
+        clock.runAll()
+        #expect(reads == 1 && posts == 1)
+        #expect(results.count == 2 && results[1] == nil)
+        #expect(board.string(forType: .string) == "original")
+    }
+
+    @Test func changedTargetDuringModifierWaitCancelsBeforeClipboardAccess() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        let clock = ControlledTestScheduler()
+        var current = true
+        var result: String?
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { .maskSecondaryFn },
+            uptime: { Double(clock.now) / 1_000 },
+            readClipboard: { _ in Issue.record("Changed target must not trigger clipboard IPC") },
+            schedule: clock.voiceSchedule, postPaste: { Issue.record("Changed target must not receive paste"); return true })
+        writer.paste("phrase", validate: { $0(nil) }, canSubmit: { current }) { result = $0 }
+        current = false
+        clock.runAll()
+        #expect(result == "target_changed")
+        #expect(board.string(forType: .string) == "original")
+    }
+
     @Test func consecutivePhrasesDoNotLeaveTabsBeforeTheNextInsertion() {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.setString("original clipboard", forType: .string)
         let clock = ControlledTestScheduler()
         var editor = "已有文本："
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() },
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() },
             schedule: clock.voiceSchedule, postPaste: {
                 editor += board.string(forType: .string) ?? ""
                 return true
@@ -57,7 +126,7 @@ struct CommonPhraseClipboardTests {
         let originalTypes = board.pasteboardItems?.first?.types
         let clock = ControlledTestScheduler()
         var posts = 0
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: {
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: {
             posts += 1
             #expect(board.string(forType: .string) == "phrase")
             return true
@@ -82,7 +151,7 @@ struct CommonPhraseClipboardTests {
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
         let clock = ControlledTestScheduler()
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { true })
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { true })
         writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
         board.clearContents()
         board.setString("new user copy", forType: .string)
@@ -97,7 +166,7 @@ struct CommonPhraseClipboardTests {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() }, postPaste: {
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() }, postPaste: {
             Issue.record("Invalid target must not receive paste"); return true
         })
         var calls = 0
@@ -115,7 +184,7 @@ struct CommonPhraseClipboardTests {
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
         var validations: [(String?) -> Void] = []
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() }, postPaste: {
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() }, postPaste: {
             Issue.record("Must not paste someone else's new clipboard"); return true
         })
         var result: String?
@@ -136,7 +205,7 @@ struct CommonPhraseClipboardTests {
         defer { board.releaseGlobally() }
         board.clearContents()
         let clock = ControlledTestScheduler()
-        var writer: CommonPhraseClipboardPaste? = .init(board: board, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { submitted })
+        var writer: CommonPhraseClipboardPaste? = .init(board: board, modifierFlags: { [] }, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { submitted })
         var completed = false
         writer?.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) {
             #expect($0 == (submitted ? nil : "paste_failed")); completed = true
@@ -153,7 +222,7 @@ struct CommonPhraseClipboardTests {
         board.setString("original", forType: .string)
         let clock = ControlledTestScheduler()
         var posts = 0
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { posts += 1; return true })
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { posts += 1; return true })
         writer.paste("blocked", validate: { $0(nil) }, canSubmit: { false }) { #expect($0 == "target_changed") }
         #expect(posts == 0)
         #expect(board.string(forType: .string) == "original")
@@ -171,7 +240,7 @@ struct CommonPhraseClipboardTests {
         let original = Data(repeating: 7, count: 32 * 1_024 * 1_024 + 1)
         board.setData(original, forType: type)
         let count = board.changeCount
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { $0() }, postPaste: {
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { $0() }, postPaste: {
             Issue.record("Must not paste without a complete snapshot"); return true
         })
         writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == "clipboard_write_failed") }
@@ -186,7 +255,7 @@ struct CommonPhraseClipboardTests {
         let clock = ControlledTestScheduler()
         var reads: [() -> Void] = []
         var completions = 0
-        let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { reads.append($0) },
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, readClipboard: { reads.append($0) },
             schedule: clock.voiceSchedule, postPaste: { true })
         writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) {
             #expect($0 == "clipboard_write_failed"); completions += 1
@@ -210,7 +279,7 @@ struct CommonPhraseClipboardTests {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
-        let writer = CommonPhraseClipboardPaste(board: board,
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] },
             readClipboard: { work in DispatchQueue.global().async { work() } }, schedule: { delay, action in
             if delay < 1 { DispatchQueue.main.async(execute: action) }
             return ScheduledOperation(cancellation: {})
@@ -235,7 +304,7 @@ struct CommonPhraseClipboardTests {
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent(".build/debug/VoiceInputBuddy")
         #expect(FileManager.default.isExecutableFile(atPath: executable.path))
-        let writer = CommonPhraseClipboardPaste(board: board, snapshotExecutableURL: executable,
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] }, snapshotExecutableURL: executable,
             schedule: { delay, action in
                 if delay < 1 { DispatchQueue.main.async { action() } }
                 return ScheduledOperation(cancellation: {})

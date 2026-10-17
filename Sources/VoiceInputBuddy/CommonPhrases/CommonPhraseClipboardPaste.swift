@@ -6,6 +6,8 @@ final class CommonPhraseClipboardPaste {
     static let shared = CommonPhraseClipboardPaste()
     typealias Validation = (@escaping (String?) -> Void) -> Void
     private static let snapshotQueue = DispatchQueue(label: "voice-input-buddy.clipboard.snapshot", qos: .userInitiated)
+    private let modifierFlags: () -> CGEventFlags
+    private let uptime: () -> TimeInterval
     private let board: NSPasteboard
     private let readClipboard: (@escaping () -> Void) -> Void
     private let snapshotExecutableURL: URL?
@@ -17,6 +19,8 @@ final class CommonPhraseClipboardPaste {
     private var generation: UInt64 = 0
 
     init(board: NSPasteboard = .general,
+         modifierFlags: @escaping () -> CGEventFlags = { pasteHardwareFlags() },
+         uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
          snapshotExecutableURL: URL? = Bundle.main.executableURL,
          readClipboard: ((@escaping () -> Void) -> Void)? = nil,
          schedule: @escaping OperationScheduler = ScheduledOperation.mainQueue,
@@ -37,6 +41,8 @@ final class CommonPhraseClipboardPaste {
              return ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
                  hardwareFlags: { pasteHardwareFlags() }, eventPoster: ShortcutEventSequence.post)
          }) {
+        self.modifierFlags = modifierFlags
+        self.uptime = uptime
         self.board = board
         self.snapshotExecutableURL = snapshotExecutableURL
         self.readClipboard = readClipboard ?? { work in Self.snapshotQueue.async { work() } }
@@ -67,38 +73,70 @@ final class CommonPhraseClipboardPaste {
         busy = true
         generation &+= 1
         let token = generation
+        // Selecting a phrase starts on the remote's key-down. HID-system key state
+        // can still report Fn until the paired native navigation key-up arrives.
+        // Wait before reading or leasing the clipboard; never clear a real held modifier.
         validate { failure in
             guard self.busy, self.generation == token else { return }
             if let failure { self.finish(failure, completion); return }
-            let originalCount = self.board.changeCount
-            let name = self.board.name
-            self.snapshotInFlight = true
-            var waiting = true
-            let deadline = self.schedule(2) {
-                guard waiting, self.busy, self.generation == token else { return }
-                waiting = false
-                self.snapshotInFlight = false
-                self.finish("clipboard_write_failed", completion)
-            }
-            self.readClipboard {
-                // Promised clipboard data may require IPC to an unresponsive app.
-                // Read through a separate instance off-main, before any mutation.
-                let saved = self.usesSnapshotHelper
-                    ? Self.readSnapshotInHelper(name: name, executableURL: self.snapshotExecutableURL)
-                    : Self.snapshot(NSPasteboard(name: name))
-                let deliver = {
+            self.waitForReleasedModifiers(token: token, deadline: self.uptime() + 0.5, canSubmit: canSubmit) { failure in
+                guard self.busy, self.generation == token else { return }
+                if let failure { self.finish(failure, completion); return }
+                let originalCount = self.board.changeCount
+                let name = self.board.name
+                self.snapshotInFlight = true
+                var waiting = true
+                let deadline = self.schedule(2) {
                     guard waiting, self.busy, self.generation == token else { return }
-                    self.snapshotInFlight = false
                     waiting = false
-                    deadline.cancel()
-                    guard let saved, self.board.changeCount == originalCount else {
-                        self.finish("clipboard_write_failed", completion); return
-                    }
-                    self.submit(text, saved: saved, originalCount: originalCount, validate: validate, canSubmit: canSubmit, completion: completion)
+                    self.snapshotInFlight = false
+                    self.finish("clipboard_write_failed", completion)
                 }
-                if Thread.isMainThread { deliver() }
-                else { DispatchQueue.main.async(execute: deliver) }
+                self.readClipboard {
+                    // Promised clipboard data may require IPC to an unresponsive app.
+                    // Read through a separate instance off-main, before any mutation.
+                    let saved = self.usesSnapshotHelper
+                        ? Self.readSnapshotInHelper(name: name, executableURL: self.snapshotExecutableURL)
+                        : Self.snapshot(NSPasteboard(name: name))
+                    let deliver = {
+                        guard waiting, self.busy, self.generation == token else { return }
+                        self.snapshotInFlight = false
+                        waiting = false
+                        deadline.cancel()
+                        guard let saved, self.board.changeCount == originalCount else {
+                            self.finish("clipboard_write_failed", completion); return
+                        }
+                        self.submit(text, saved: saved, originalCount: originalCount, validate: validate, canSubmit: canSubmit, completion: completion)
+                    }
+                    if Thread.isMainThread { deliver() }
+                    else { DispatchQueue.main.async(execute: deliver) }
+                }
             }
+        }
+    }
+
+    private func waitForReleasedModifiers(token: UInt64, deadline: TimeInterval,
+        canSubmit: @escaping () -> Bool, hasWaited: Bool = false,
+        completion: @escaping (String?) -> Void
+    ) {
+        guard busy, generation == token else { return }
+        guard canSubmit() else { completion("target_changed"); return }
+        let flags = modifierFlags()
+        if Self.permitsPasteShortcut(flags: flags) {
+            if hasWaited { AppLogger.shared.write("COMMON_PHRASES PASTE modifiers_released") }
+            completion(nil)
+            return
+        }
+        let remaining = deadline - uptime()
+        guard remaining > 0 else {
+            AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held_after_wait flags=\(flags.rawValue)")
+            completion("paste_failed")
+            return
+        }
+        if !hasWaited { AppLogger.shared.write("COMMON_PHRASES PASTE waiting reason=modifiers_held flags=\(flags.rawValue)") }
+        _ = schedule(min(0.025, max(0.001, remaining))) {
+            self.waitForReleasedModifiers(token: token, deadline: deadline, canSubmit: canSubmit,
+                hasWaited: true, completion: completion)
         }
     }
 
