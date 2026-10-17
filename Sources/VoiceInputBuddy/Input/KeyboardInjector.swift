@@ -338,7 +338,8 @@ enum KeyboardInjector {
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
         secureInputEnabled: () -> Bool = SecureInputMonitor.isEnabled,
         keyPoster: KeyPoster = { postKey(code: $0, flags: $1) },
-        keyStatePoster: KeyStatePoster = postKeyState,
+        keyStatePoster: @escaping KeyStatePoster = postKeyState,
+        modifierReleaseRecovery: StandaloneModifierReleaseRecovery = .shared,
         appSwitcherSession: AppSwitcherSession? = nil,
         scrollPoster: ScrollPoster = { postScrollWheel(lines: $0) },
         systemKeyPoster: SystemKeyPoster = postSystemKey,
@@ -462,6 +463,7 @@ enum KeyboardInjector {
             if let shortcut {
                 let eventFlags = shortcut.cgEventFlags
                 if shortcut.standaloneModifier != nil {
+                    guard modifierReleaseRecovery.permitsPress(CGKeyCode(shortcut.keyCode)) else { return false }
                     let pressed = keyStatePoster(
                         CGKeyCode(shortcut.keyCode),
                         true,
@@ -470,7 +472,10 @@ enum KeyboardInjector {
                     var released = keyStatePoster(CGKeyCode(shortcut.keyCode), false, [])
                     if !released {
                         released = keyStatePoster(CGKeyCode(shortcut.keyCode), false, [])
-                        if !released { AppLogger.shared.write("SHORTCUT ACTION cleanup_failed standalone=true") }
+                        if !released {
+                            AppLogger.shared.write("SHORTCUT ACTION cleanup_failed standalone=true recovery=scheduled")
+                            modifierReleaseRecovery.recover(CGKeyCode(shortcut.keyCode), post: keyStatePoster)
+                        }
                     }
                     let submitted = pressed && released
                     AppLogger.shared.write(
