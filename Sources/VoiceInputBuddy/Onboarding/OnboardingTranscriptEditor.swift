@@ -14,6 +14,7 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
     let focusRequest: Int
     let isActive: Bool
     let commitRequest: Int
+    let onManualInput: () -> Void
     let onTextStateChanged: (String) -> Void
     let onFocusStateChanged: (OnboardingTranscriptFocusSnapshot) -> Void
 
@@ -28,7 +29,10 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
 
-        let textView = NSTextView(frame: .zero)
+        let textView = OnboardingTranscriptTextView(frame: .zero)
+        textView.onPhysicalEdit = { [weak coordinator = context.coordinator] in
+            coordinator?.recordPhysicalEdit()
+        }
         textView.delegate = context.coordinator
         textView.drawsBackground = false
         textView.isRichText = false
@@ -63,6 +67,7 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
         private var parent: OnboardingTranscriptEditor
         private weak var scrollView: OnboardingTranscriptScrollView?
         private weak var textView: NSTextView?
+        private var isDetached = false
         private var appliedFocusRequest: Int?
         private var appliedCommitRequest: Int?
         private var lastPublishedSnapshot: OnboardingTranscriptFocusSnapshot?
@@ -89,6 +94,7 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
         }
 
         fileprivate func attach(scrollView: OnboardingTranscriptScrollView, textView: NSTextView) {
+            isDetached = false
             self.scrollView = scrollView
             self.textView = textView
             scrollView.didMoveToWindowHandler = { [weak self] in
@@ -115,10 +121,17 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
         }
 
         func detach() {
+            isDetached = true
+            (textView as? OnboardingTranscriptTextView)?.onPhysicalEdit = nil
             textView?.delegate = nil
             scrollView?.didMoveToWindowHandler = nil
             scrollView = nil
             textView = nil
+        }
+
+        func recordPhysicalEdit() {
+            guard !isDetached, parent.isActive else { return }
+            parent.onManualInput()
         }
 
         func textDidChange(_ notification: Notification) {
@@ -199,5 +212,23 @@ private final class OnboardingTranscriptScrollView: NSScrollView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         didMoveToWindowHandler?()
+    }
+}
+
+/// Observe the originating event before AppKit/IME processing or SwiftUI scheduling.
+/// Keeping this at keyDown also covers IME marked text committed on a later event.
+private final class OnboardingTranscriptTextView: NSTextView {
+    var onPhysicalEdit: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if OnboardingTranscriptInputPolicy.isConfirmedPhysicalKeyboardInput(
+            eventTypeRawValue: event.type.rawValue,
+            sourceStateID: event.cgEvent?.getIntegerValueField(.eventSourceStateID),
+            sourceUnixProcessID: event.cgEvent?.getIntegerValueField(.eventSourceUnixProcessID)
+        ), OnboardingTranscriptInputPolicy.canEditText(keyCode: event.keyCode,
+            characters: event.characters, commandHeld: event.modifierFlags.contains(.command)) {
+            onPhysicalEdit?()
+        }
+        super.keyDown(with: event)
     }
 }

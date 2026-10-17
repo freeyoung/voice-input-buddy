@@ -706,6 +706,14 @@ enum OnboardingAudioSelectionPolicy {
 }
 
 enum OnboardingTranscriptInputPolicy {
+    static func canEditText(keyCode: UInt16, characters: String?, commandHeld: Bool) -> Bool {
+        // Navigation, shortcuts and function keys are not evidence of manual text.
+        guard !commandHeld else { return false }
+        if [36, 48, 51, 76, 117].contains(keyCode) { return true }
+        return characters?.unicodeScalars.contains { !CharacterSet.controlCharacters.contains($0) &&
+            !(0xF700...0xF8FF).contains($0.value) } == true
+    }
+
     private static let keyDownEventTypeRawValue: UInt = 10
     private static let hidSystemStateRawValue: Int64 = 1
 

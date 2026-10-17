@@ -242,22 +242,6 @@ struct OnboardingView: View {
         toolObservedContent
         .onChange(of: transcript) { _, updatedText in
             captureVoiceTranscriptCandidate(updatedText)
-            guard settings.onboardingStep == .voiceTest,
-                  !updatedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                return
-            }
-            let currentEvent = NSApp.currentEvent
-            let currentCGEvent = currentEvent?.cgEvent
-            guard OnboardingTranscriptInputPolicy.isConfirmedPhysicalKeyboardInput(
-                eventTypeRawValue: currentEvent?.type.rawValue,
-                sourceStateID: currentCGEvent?.getIntegerValueField(.eventSourceStateID),
-                sourceUnixProcessID: currentCGEvent?.getIntegerValueField(
-                    .eventSourceUnixProcessID
-                )
-            ) else { return }
-            manualTranscriptInputObserved = true
-            AppLogger.shared.write("ONBOARDING TRANSCRIPT manual_keyboard_input=true")
-            finishVoiceAttempt(result: .manualInput)
         }
         .onChange(of: transcriptionAppeared) { _, appeared in
             guard appeared,
