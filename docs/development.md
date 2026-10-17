@@ -273,8 +273,10 @@ injection and audio hardware scheduling; real remote reconnect, HAL routing and
 external dictation still require hardware acceptance.
 
 Compact window checks: the settings window fits the current screen's visible
-frame on opening and screen changes. Both settings and onboarding keep a readable
-980×732 canvas inside a two-axis scroll view when space is smaller. Debug preview
+frame on opening and screen changes. Settings keep a readable
+980×732 scrollable canvas. Onboarding uses the actual viewport height with
+independently scrolling content, so its navigation remains visible; only width
+may scroll when space is smaller. Debug preview
 rendering accepts `VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIZE=720x500` and
 `VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_SIZE=720x500`; set
 `VOICE_INPUT_BUDDY_SCREENSHOT_SCROLL_TO_END=1` to verify bottom/right navigation
