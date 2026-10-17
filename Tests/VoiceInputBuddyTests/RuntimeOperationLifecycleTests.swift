@@ -6,6 +6,22 @@ import Testing
 @Suite("Runtime operation lifecycle")
 @MainActor
 struct RuntimeOperationLifecycleTests {
+    @Test func disabledCaptureNotifiesPromptAndCancelsQueuedKeys() throws {
+        var pending: [() -> Void] = []
+        var captures = 0
+        var failures: [ShortcutCaptureStartFailure] = []
+        let monitor = ShortcutCaptureMonitor(onCapture: { _ in captures += 1 },
+            onUnavailable: { failures.append($0) }, accessibilityTrusted: { false },
+            modifierIsPressed: { _ in false }, dispatchCallback: { pending.append($0) })
+        monitor.resetCaptureState()
+        let key = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 7, keyDown: true))
+        #expect(monitor.handle(type: .keyDown, event: key))
+        #expect(!monitor.handle(type: .tapDisabledByTimeout, event: key))
+        pending.forEach { $0() }
+        #expect(captures == 0)
+        #expect(failures == [.accessibilityPermissionRequired])
+    }
+
     @Test(arguments: [false, true])
     func cancelledRecorderDiscardsQueuedCapture(reset: Bool) throws {
         var pending: [() -> Void] = []

@@ -43,7 +43,10 @@ struct ShortcutCaptureView: NSViewRepresentable {
 
         func startMonitoring() {
             guard monitor == nil else { return }
-            let monitor = ShortcutCaptureMonitor(onCapture: captureHandler())
+            let monitor = ShortcutCaptureMonitor(onCapture: captureHandler(), onUnavailable: { [weak self] failure in
+                self?.stopMonitoring()
+                self?.onFailure(failure)
+            })
             self.monitor = monitor
             if case let .failure(failure) = monitor.start() {
                 self.monitor = nil
