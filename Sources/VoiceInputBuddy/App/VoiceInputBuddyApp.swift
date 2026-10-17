@@ -166,9 +166,11 @@ enum VoiceInputBuddyApp {
                 return
             case let .failed(reason):
                 fputs("Single-instance lock unavailable: \(reason)\n", stderr)
+                return
             }
         } else {
             fputs("Single-instance lock unavailable: application_support_missing\n", stderr)
+            return
         }
 
         if let existingApplication = ApplicationInstanceGuard.existingApplication(
