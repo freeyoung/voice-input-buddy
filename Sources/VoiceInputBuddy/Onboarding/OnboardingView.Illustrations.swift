@@ -84,7 +84,9 @@ extension OnboardingView {
 
     private var remoteIllustration: some View {
         VStack(spacing: 16) {
-            onboardingRemotePhoto
+            if settings.onboardingStep != .voiceTest {
+                onboardingRemotePhoto
+            }
             sideStatusPanel
         }
         .padding(28)
