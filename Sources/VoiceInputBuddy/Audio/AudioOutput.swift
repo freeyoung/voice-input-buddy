@@ -110,14 +110,19 @@ enum VoicePlaybackQueueCapacity {
     static let maximumSamples = 8_000
     static let maximumPreRollSamples = 80_000
 
-    static func admits(pending: Int, incoming: Int, pendingPreRoll: Int = 0, isPreRoll: Bool = false) -> Bool {
+    static func admits(pending: Int, incoming: Int, pendingPreRoll: Int = 0, isPreRoll: Bool = false,
+        preRollBudget: Int = 0) -> Bool {
         guard pending >= 0, pendingPreRoll >= 0, pendingPreRoll <= pending,
               pendingPreRoll <= maximumPreRollSamples, incoming > 0 else { return false }
-        let live = pending - pendingPreRoll
-        guard live <= maximumSamples else { return false }
-        return isPreRoll
-            ? incoming <= maximumPreRollSamples - pendingPreRoll
-            : incoming <= maximumSamples - live
+        guard (0...maximumPreRollSamples).contains(preRollBudget) else { return false }
+        let budget = max(preRollBudget, pendingPreRoll)
+        if isPreRoll {
+            guard incoming <= maximumPreRollSamples - pendingPreRoll else { return false }
+            return pending <= maximumSamples + max(budget, pendingPreRoll + incoming) - incoming
+        }
+        // A pre-roll backlog creates an equivalent live backlog while FIFO playback
+        // consumes it. Keep that reservation until the entire queue drains.
+        return pending <= maximumSamples + budget && incoming <= maximumSamples + budget - pending
     }
 
     static func chunks(_ samples: [Int16]) -> [[Int16]] {
@@ -642,6 +647,7 @@ final class VirtualAudioOutput {
     private var pendingVoiceSampleCount = 0
     private var pendingPreRollSampleCount = 0
     private var playbackGeneration: UInt64 = 0
+    private var preRollSampleBudget = 0
     private var playbackCounters = VirtualAudioPlaybackCounters()
     private var playbackCountersByDeliveryGeneration: [Int: VirtualAudioPlaybackCounters] = [:]
     private var pendingByDeliveryGeneration: [Int: PendingDeliveryCounters] = [:]
@@ -1005,14 +1011,17 @@ final class VirtualAudioOutput {
         let generation = playbackGeneration
         let sampleCount = samples.count
         guard VoicePlaybackQueueCapacity.admits(pending: pendingVoiceSampleCount, incoming: sampleCount,
-            pendingPreRoll: pendingPreRollSampleCount, isPreRoll: isPreRoll) else {
+            pendingPreRoll: pendingPreRollSampleCount, isPreRoll: isPreRoll, preRollBudget: preRollSampleBudget) else {
             playbackLock.unlock()
             logRejectedWrite(reason: "queue_capacity")
             return false
         }
         pendingVoiceBufferCount += buffers.count
         pendingVoiceSampleCount += sampleCount
-        if isPreRoll { pendingPreRollSampleCount += sampleCount }
+        if isPreRoll {
+            pendingPreRollSampleCount += sampleCount
+            preRollSampleBudget = max(preRollSampleBudget, pendingPreRollSampleCount)
+        }
         playbackCounters.scheduledBuffers += buffers.count
         playbackCounters.scheduledSamples += sampleCount
         playbackCountersByDeliveryGeneration[deliveryGeneration, default: .init()].scheduledBuffers += buffers.count
@@ -1182,6 +1191,7 @@ final class VirtualAudioOutput {
         pendingPreRollSampleCount = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
+        preRollSampleBudget = 0
         // Taken before the teardown below so a nested `stop()` cannot pick it up a second
         // time, and invoked afterwards so it never runs against a half-restarted player.
         // An interruption is an outcome and must answer the waiter exactly once: dropping
@@ -1261,6 +1271,7 @@ final class VirtualAudioOutput {
         pendingPreRollSampleCount = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
+        preRollSampleBudget = 0
         // Same contract as flushPlayer: stopping answers the drain waiter exactly
         // once, after the teardown below, instead of dropping it with the
         // generation bump.
@@ -1331,6 +1342,7 @@ final class VirtualAudioOutput {
         if pendingVoiceBufferCount == 0 {
             drainedContexts = pendingDrainLogContexts
             pendingDrainLogContexts.removeAll()
+            preRollSampleBudget = 0
             if !drainRequests.isEmpty {
                 completionGeneration = drainGeneration
             }
