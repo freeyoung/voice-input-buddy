@@ -797,6 +797,7 @@ final class XiaomiBluetoothBridge: NSObject {
         capabilities = Self.defaultCapabilities
         currentAttemptUsesCachedTarget = false
         resetSession()
+        audioDecoder.resetPeripheral()
     }
 
     private func isCurrent(_ candidate: CBPeripheral) -> Bool {
@@ -1838,10 +1839,10 @@ extension XiaomiBluetoothBridge {
                 return
             }
 
+            audioDecoder.configureFormat(lowNibbleFirst: normalizedModelNumber.contains("ARN9"))
             if normalizedModelNumber.contains("ARN9") {
                 // ARN9 firmware encodes ADPCM low-nibble-first; flipping the
                 // default high-first order is required for intelligible audio.
-                audioDecoder.decoder.lowNibbleFirst = true
                 AppLogger.shared.write("BLE MODEL ARN9 adpcm=low-nibble-first")
             }
             guard let model = XiaomiRemoteModel.identified(by: modelNumber) else {
