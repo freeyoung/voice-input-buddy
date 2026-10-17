@@ -183,7 +183,8 @@ extension AppSettings {
 
         let importedRecordingBackup: ConfiguredButtonAction?
         if let backup = configuration.continuousRecordingPowerBindingBackup {
-            importedRecordingBackup = Self.validatedConfiguredAction(backup)
+            importedRecordingBackup = backup.applicationProfileID.map(availableApplicationIDs.contains) ?? true
+                ? Self.validatedConfiguredAction(backup) : nil
             if importedRecordingBackup == nil {
                 rejected.insert(Keys.continuousRecordingPowerBindingBackup)
             }

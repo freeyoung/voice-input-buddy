@@ -4,6 +4,18 @@ import Testing
 
 @Suite("Review input boundaries")
 struct ReviewInputBoundaryTests {
+    @Test @MainActor func backupBindingsCannotReintroduceDanglingApplications() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
+        object["continuousRecordingPowerBindingBackup"] = ["action": "openCustomApplication", "applicationProfileID": UUID().uuidString]
+        try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
+        #expect(settings.configurationImportNotice?.rejectedEntryStorageKeys.contains("continuousRecordingPowerBindingBackup") == true)
+        #expect(settings.applicationProfileID(for: .power) == nil)
+    }
+
     @Test @MainActor func directGainAssignmentNormalizesBeforePublishingOrPersisting() throws {
         let name = UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
