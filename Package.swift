@@ -23,7 +23,9 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [.unsafeFlags(["-fobjc-arc", "-fobjc-arc-exceptions"])]
         ),
-        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy"], path: "Tests/VoiceInputBuddyTests"),
+        .target(name: "AudioExceptionFixtures", dependencies: ["AudioExceptionGuard"],
+            path: "Tests/AudioExceptionFixtures", publicHeadersPath: "include"),
+        .testTarget(name: "VoiceInputBuddyTests", dependencies: ["VoiceInputBuddy", "AudioExceptionFixtures"], path: "Tests/VoiceInputBuddyTests"),
     ],
     swiftLanguageModes: [.v5]
 )
