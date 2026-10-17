@@ -94,6 +94,16 @@ struct ReviewInputBoundaryTests {
         #expect(settings.customApplicationProfile(id: settings.applicationProfileID(for: .left))?.bundleIdentifier == "review.first")
     }
 
+    @Test @MainActor func corruptGainCannotReachIntegerFormatting() throws {
+        let name = "review-gain-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        for (value, expected) in [(Double.nan, 10.0), (.infinity, 10), (-20, 0), (30, 24), (12, 12)] {
+            defaults.set(value, forKey: "gainDB")
+            #expect(AppSettings(defaults: defaults).gainDB == expected)
+        }
+    }
+
     #if DEBUG
     @Test func developmentFeedRequiresExplicitTestModeAndPreviewOptIn() {
         let environment = ["VOICE_INPUT_BUDDY_UI_TEST_MODE": "1",

@@ -335,6 +335,10 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    static func normalizedGain(_ value: Double) -> Double {
+        value.isFinite ? min(24, max(0, value)) : 10
+    }
+
     init(defaults: UserDefaults = .standard) {
         var corruptedKeys: [String] = []
         self.defaults = defaults
@@ -343,7 +347,7 @@ final class AppSettings: ObservableObject {
         selectedRemoteProfileID = nil
         gainDB = defaults.object(forKey: Keys.gainDB) == nil
             ? 10.0
-            : defaults.double(forKey: Keys.gainDB)
+            : Self.normalizedGain(defaults.double(forKey: Keys.gainDB))
         customMappingEnabled = defaults.bool(forKey: Keys.customMappingEnabled)
 
         if let decoded = Self.decodeSetting(
