@@ -11,6 +11,23 @@ struct DiagnosticLogRetentionTests {
         return url
     }
 
+    @Test func mappedNativeRepeatSurvivesThirtySecondsAndEndsOnRelease() throws {
+        var now: TimeInterval = 0
+        let filter = KeyboardEventSuppressor(uptime: { now })
+        filter.arm(nativeEvents: [.keyboard(keyCode: 38)], edge: .down)
+        let event = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 38, keyDown: true))
+        #expect(filter.handle(type: .keyDown, event: event))
+        event.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        for time: TimeInterval in [10, 20, 31, 45, 65] {
+            now = time
+            #expect(filter.handle(type: .keyDown, event: event))
+        }
+        filter.arm(nativeEvents: [.keyboard(keyCode: 38)], edge: .up)
+        #expect(filter.handle(type: .keyUp, event: event))
+        event.setIntegerValueField(.keyboardEventAutorepeat, value: 0)
+        #expect(!filter.handle(type: .keyDown, event: event))
+    }
+
     @Test func oversizedRecordsReportOnceAndDoNotDisableLaterLogging() throws {
         let root = try directory()
         defer { try? FileManager.default.removeItem(at: root) }

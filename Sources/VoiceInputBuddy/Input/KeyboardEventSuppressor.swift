@@ -206,7 +206,16 @@ final class KeyboardEventSuppressor {
         guard let descriptor = descriptor(type: type, event: event) else { return false }
 
         let now = uptime()
+        let isRepeat = descriptor.edge == .down && (type == .keyDown
+            ? event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+            : (NSEvent(cgEvent: event)?.data1 ?? 0) & 1 != 0)
         lock.lock()
+        // A continuing native repeat is evidence that the same mapped hold is alive.
+        // Keep expiry for lost releases, but do not expire an actively repeating hold.
+        if isRepeat, (heldEventCounts[descriptor.event] ?? 0) > 0,
+           suppressedDowns.contains(descriptor.event), (heldUntil[descriptor.event] ?? 0) > now {
+            heldUntil[descriptor.event] = now + 30
+        }
         expireHeldEvents(at: now)
         pendingEvents.removeAll { $0.expiresAt <= now }
         recentArmed.removeAll { $0.until <= now }
@@ -232,9 +241,6 @@ final class KeyboardEventSuppressor {
             return true
         }
         if descriptor.edge == .down {
-            let isRepeat = type == .keyDown
-                ? event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-                : (NSEvent(cgEvent: event)?.data1 ?? 0) & 1 != 0
             if !isRepeat {
                 let hadArmedState = heldEventCounts[descriptor.event] != nil ||
                     suppressedDowns.contains(descriptor.event) ||
