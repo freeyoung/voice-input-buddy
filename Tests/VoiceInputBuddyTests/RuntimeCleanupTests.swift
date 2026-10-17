@@ -172,9 +172,9 @@ struct ProductDeepLinkTests {
         let types = try #require(plist["CFBundleURLTypes"] as? [[String: Any]])
         let schemes = try #require(types.first?["CFBundleURLSchemes"] as? [String])
         let scheme = try #require(schemes.first)
-        let url = try #require(URL(string: "\(scheme)://launch?source=vokie&status=ready"))
+        let url = try #require(URL(string: "\(scheme)://launch?source=external&status=ready"))
         let request = try #require(VoiceInputBuddyDeepLinkRequest.parse(url))
-        #expect(request.source == "vokie")
+        #expect(request.source == "external")
         #expect(request.status == .ready)
     }
 

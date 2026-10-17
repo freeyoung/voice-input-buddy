@@ -207,10 +207,10 @@ enum OnboardingScreenshotRenderer {
                 allowsInputSourceSwitching: false,
                 systemFunctionKeyAvailableOverride: systemFunctionKeyAvailable,
                 voiceToolAvailabilityOverride: [
-                    .doubao: allVoiceToolsUnavailable ? .notInstalled : .available,
                     .weixin: allVoiceToolsUnavailable ? .notInstalled : .available,
+                    .doubao: allVoiceToolsUnavailable ? .notInstalled : .available,
+                    .bageshuo: allVoiceToolsUnavailable ? .notInstalled : .available,
                     .typeless: allVoiceToolsUnavailable ? .notInstalled : .available,
-                    .vokie: allVoiceToolsUnavailable ? .notInstalled : .available,
                     .other: .unknown,
                 ],
                 initialInputMethodGuideStep: requestedGuideStep,

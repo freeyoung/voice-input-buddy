@@ -13,7 +13,7 @@ struct VoiceInputBuddyDeepLinkRequest: Equatable {
     let status: VoiceInputBuddyDeepLinkStatus?
     let reason: String?
 
-    var mayActivateSettings: Bool { source == "vokie" }
+    var mayActivateSettings: Bool { source != nil }
 
     static func parse(_ url: URL) -> Self? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -32,12 +32,18 @@ struct VoiceInputBuddyDeepLinkRequest: Equatable {
         )
         guard items.values.allSatisfy({ $0.count == 1 }) else { return nil }
 
-        let sourceValue = items["source"]?.first?.value?.lowercased()
-        let source = sourceValue == "vokie" ? sourceValue : nil
+        let source = items["source"]?.first?.value.flatMap(normalizedSource)
         let status = items["status"]?.first?.value
             .flatMap(VoiceInputBuddyDeepLinkStatus.init(rawValue:))
         let reason = items["reason"]?.first?.value.flatMap(normalizedReason)
         return Self(source: source, status: status, reason: reason)
+    }
+
+    private static func normalizedSource(_ value: String) -> String? {
+        guard !value.isEmpty, value.utf8.count <= 64 else { return nil }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789_-.")
+        guard value.lowercased().unicodeScalars.allSatisfy(allowed.contains) else { return nil }
+        return value.lowercased()
     }
 
     private static func normalizedReason(_ value: String) -> String? {
@@ -45,23 +51,6 @@ struct VoiceInputBuddyDeepLinkRequest: Equatable {
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789_-.")
         guard value.lowercased().unicodeScalars.allSatisfy(allowed.contains) else { return nil }
         return value.lowercased()
-    }
-}
-
-enum VokieDeepLink {
-    static func launchURL(for plan: OnboardingVoicePairingPlan) -> URL? {
-        guard plan.binding.tool == .vokie else { return nil }
-        var components = URLComponents()
-        components.scheme = "vokie"
-        components.host = "launch"
-        components.queryItems = [
-            URLQueryItem(name: "source", value: "xiaomi-mic"),
-            URLQueryItem(
-                name: "action",
-                value: plan.binding.gestureMode == .toggle ? "handsfree-ptt" : "ptt"
-            ),
-        ]
-        return components.url
     }
 }
 

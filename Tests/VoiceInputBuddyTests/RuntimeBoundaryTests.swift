@@ -214,9 +214,9 @@ struct RuntimeBoundaryTests {
         #expect(!BluetoothVoiceDeviceOwnershipPolicy.matches(nil, active: device))
         #expect(!BluetoothVoiceDeviceOwnershipPolicy.matches(UUID(), active: device))
         #expect(BluetoothVoiceDeviceOwnershipPolicy.matches(device, active: device))
-        for source in ["", "?source=unknown", "?source=vokie"] {
+        for source in ["", "?source=invalid!name", "?source=external"] {
             let request = try #require(VoiceInputBuddyDeepLinkRequest.parse(URL(string: "voice-input-buddy://launch" + source)!))
-            #expect(request.mayActivateSettings == (source == "?source=vokie"))
+            #expect(request.mayActivateSettings == (source == "?source=external"))
         }
     }
 

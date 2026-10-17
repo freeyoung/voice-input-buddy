@@ -51,7 +51,6 @@ struct OnboardingView: View {
     @State var suppressConnectedPhysicalRemoteAutoRouteOnce = false
     @State var isCapturingVoiceShortcut = false
     @State var shortcutCaptureErrorKey: String?
-    @State var vokieDeepLinkStatus: VoiceInputBuddyDeepLinkStatus?
     @State var secureInputActive: Bool?
     @State var secureInputWaitStartedAtUptime: TimeInterval?
     @State var lastLoggedSecureInputState: Bool?
@@ -149,12 +148,6 @@ struct OnboardingView: View {
             default:
                 break
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .voiceInputBuddyDeepLinkReceived)) { notification in
-            guard let request = notification.object as? VoiceInputBuddyDeepLinkRequest,
-                  request.source == "vokie" else { return }
-            vokieDeepLinkStatus = request.status
-            refreshVoiceToolAvailability()
         }
         .onReceive(model.$isConnected.removeDuplicates()) { isConnected in
             guard isConnected else { return }

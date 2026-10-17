@@ -17,9 +17,7 @@ extension OnboardingView {
     static func detectVoiceToolAvailability()
         -> [OnboardingVoiceTool: OnboardingVoiceToolAvailability] {
         var availability: [OnboardingVoiceTool: OnboardingVoiceToolAvailability] = [:]
-        for tool in [
-            OnboardingVoiceTool.doubao, .weixin, .typeless, .vokie, .voicecursor, .other,
-        ] {
+        for tool in OnboardingVoiceToolVisibilityPolicy.tools {
             availability[tool] = OnboardingInputSourceSwitcher.availability(for: tool)
         }
         return availability

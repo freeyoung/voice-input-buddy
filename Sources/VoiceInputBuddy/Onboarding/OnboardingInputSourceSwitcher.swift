@@ -27,17 +27,12 @@ enum OnboardingSystemFunctionKeyUsage: Equatable {
 
 enum OnboardingInputSourceSwitcher {
     static func applicationURL(for voiceTool: OnboardingVoiceTool) -> URL? {
-        if let bundleIdentifier = voiceTool.applicationBundleIdentifier {
-            return NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: bundleIdentifier
-            )
+        guard let bundleIdentifier = voiceTool.applicationBundleIdentifier else {
+            return nil
         }
-
-        if let launchURL = voiceTool.publicLaunchURL {
-            return NSWorkspace.shared.urlForApplication(toOpen: launchURL)
-        }
-
-        return nil
+        return NSWorkspace.shared.urlForApplication(
+            withBundleIdentifier: bundleIdentifier
+        )
     }
 
     static func runtimeState(
@@ -105,13 +100,6 @@ enum OnboardingInputSourceSwitcher {
             return NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: bundleIdentifier
             ) == nil ? .notInstalled : .available
-        }
-
-        if profile.installationProbe == .publicURLScheme {
-            guard let launchURL = voiceTool.publicLaunchURL else { return .unknown }
-            return NSWorkspace.shared.urlForApplication(toOpen: launchURL) == nil
-                ? .notInstalled
-                : .available
         }
 
         return profile.installationProbe == .none ? .unknown : .available

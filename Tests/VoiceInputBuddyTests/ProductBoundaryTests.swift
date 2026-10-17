@@ -63,8 +63,8 @@ struct ProductBoundaryTests {
 
     @Test @MainActor func everySetupScreenshotAndRemoteIllustrationDecodes() throws {
         let bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment
-        for name in ["doubao-menu", "doubao-settings", "system-fn", "vokie-step-1",
-                     "vokie-step-2", "weixin-app-shortcuts", "weixin-input-menu",
+        for name in ["doubao-menu", "doubao-settings", "system-fn",
+                     "weixin-app-shortcuts", "weixin-input-menu",
                      "weixin-input-settings"] {
             for theme in ["light", "dark"] {
                 let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(
@@ -125,7 +125,7 @@ struct ProductBoundaryTests {
 
     @Test func integrationCatalogIncludesUninstalledToolsInConsistentOrder() {
         #expect(OnboardingVoiceToolVisibilityPolicy.tools == [
-            .doubao, .weixin, .typeless, .vokie, .voicecursor, .other,
+            .weixin, .doubao, .bageshuo, .typeless, .voicecursor, .other,
         ])
     }
 
@@ -293,7 +293,7 @@ struct ProductBoundaryTests {
         #expect(!OnboardingFlowPolicy.canContinue(
             from: .voiceTool, voiceTool: .unselected, capabilities: passed
         ))
-        for tool in [OnboardingVoiceTool.doubao, .weixin, .vokie, .voicecursor, .typeless, .other] {
+        for tool in [OnboardingVoiceTool.weixin, .doubao, .bageshuo, .voicecursor, .typeless, .other] {
             #expect(!OnboardingFlowPolicy.canContinue(
                 from: .voiceTool, voiceTool: tool, capabilities: OnboardingCapabilities()
             ))

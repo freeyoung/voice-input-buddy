@@ -56,6 +56,19 @@ extension OnboardingView {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
+            if settings.onboardingVoiceTool == .bageshuo && voiceToolAvailability[.bageshuo] == .notInstalled {
+                HStack(spacing: 8) {
+                    Text(verbatim: localization.text("onboarding.voice_tool.bageshuo.install_detail"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    onboardingLink(id: "voice-tool.bageshuo.install", destination: AppLinks.bageshuoWebsite) {
+                        Text(verbatim: localization.text("onboarding.voice_tool.bageshuo.install"))
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
             if settings.onboardingVoiceTool == .other || settings.onboardingVoiceTool == .voicecursor {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "mic.badge.xmark")
