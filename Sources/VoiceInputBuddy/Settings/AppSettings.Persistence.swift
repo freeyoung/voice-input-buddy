@@ -99,7 +99,7 @@ extension AppSettings {
         experimentalContinuousRecordingEnabled = false
         if backup != nil || action(for: .power) == .toggleLongRecording {
             let restored = Self.safeContinuousRecordingBackup(
-                backup ?? ConfiguredButtonAction(action: .escape, shortcut: nil)
+                backup ?? ConfiguredButtonAction(action: Self.defaultBindings[.power] ?? .disabled, shortcut: nil)
             )
             setAction(restored.action, for: .power, trigger: .singleClick)
             setShortcut(restored.shortcut, for: .power, trigger: .singleClick)
@@ -116,6 +116,6 @@ extension AppSettings {
         _ binding: ConfiguredButtonAction
     ) -> ConfiguredButtonAction {
         guard binding.action == .toggleLongRecording else { return binding }
-        return ConfiguredButtonAction(action: .escape, shortcut: nil)
+        return ConfiguredButtonAction(action: Self.defaultBindings[.power] ?? .disabled, shortcut: nil)
     }
 }
