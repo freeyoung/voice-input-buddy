@@ -632,6 +632,7 @@ final class VirtualAudioOutput {
         let operationID: UInt64
         let startedAtUptime: TimeInterval
         let requestedOnMainThread: Bool
+        let deadline: TimeInterval?
         let completion: (VirtualAudioDrainOutcome) -> Void
     }
 
@@ -1095,6 +1096,7 @@ final class VirtualAudioOutput {
             operationID: resolvedOperationID,
             startedAtUptime: uptime(),
             requestedOnMainThread: Thread.isMainThread,
+            deadline: maximumDelay.map { uptime() + max(0, $0) },
             completion: completion
         )
         let shouldCompleteImmediately = pendingVoiceBufferCount == 0
@@ -1108,12 +1110,12 @@ final class VirtualAudioOutput {
             drainRequests.append(request)
             generation = nil
         } else {
-            if !wasWaiting {
-                drainGeneration &+= 1
-            }
+            drainGeneration &+= 1
             drainRequests.append(request)
             generation = drainGeneration
         }
+        let deadlines = drainRequests.compactMap(\.deadline)
+        let sharedDeadline = deadlines.count == drainRequests.count ? deadlines.max() : nil
         playbackLock.unlock()
 
         logger(
@@ -1140,8 +1142,8 @@ final class VirtualAudioOutput {
             )
             return
         }
-        if let maximumDelay, let generation {
-            _ = scheduleDrainDeadline(maximumDelay) { [weak self] in
+        if let sharedDeadline, let generation {
+            _ = scheduleDrainDeadline(max(0, sharedDeadline - uptime())) { [weak self] in
                 self?.finishDrainIfNeeded(generation: generation)
             }
         }
