@@ -37,9 +37,9 @@ struct InstanceLockTests {
             if case let .acquired(lock) = ApplicationInstanceLock.acquire(at: path) { held = lock }
             var pauses = 0
             let result = ApplicationInstanceLock.acquireForLaunch(at: path,
-                existingInstanceIsRunning: { false }, pause: { pauses += 1; held = nil })
+                existingInstanceIsRunning: { false }, pause: { pauses += 1; if pauses == 4 { held = nil } })
             guard case .acquired = result else { Issue.record("Relaunch must acquire the released lock"); return }
-            #expect(pauses == 1)
+            #expect(pauses == 4)
             withExtendedLifetime(held) {}
         }
     }
@@ -54,7 +54,7 @@ struct InstanceLockTests {
                     existingInstanceIsRunning: { running }, pause: { pauses += 1 })
                 guard case .alreadyLocked = result else { Issue.record("Must not bypass a held lock"); return }
             }
-            #expect(pauses == 2)
+            #expect(pauses == 8)
             withExtendedLifetime(lock) {}
         }
     }
