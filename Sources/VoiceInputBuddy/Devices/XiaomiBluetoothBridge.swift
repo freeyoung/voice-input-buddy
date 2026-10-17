@@ -183,7 +183,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var systemSuspension = BluetoothSystemSuspensionState()
     private var capabilities = XiaomiBluetoothBridge.defaultCapabilities
     private let audioDecoder = ATVVAudioDecoder()
-    private var streaming = false
+    private var streaming: Bool { audioDecoder.isStreaming }
     private lazy var acknowledgedWrites = AcknowledgedBluetoothWriteQueue(
         send: { [weak self] data in
             guard let self, let peripheral = self.peripheral,
@@ -856,14 +856,12 @@ final class XiaomiBluetoothBridge: NSObject {
     private func resetSession() {
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
-        if streaming {
-            streaming = false
-            delegate?.bluetoothBridgeDidStopVoice(self)
-        }
+        let wasStreaming = streaming
+        audioDecoder.reset()
+        if wasStreaming { delegate?.bluetoothBridgeDidStopVoice(self) }
         microphoneOpened = false
         cancelledMicrophoneOpenAt = nil
         sessionID = 0
-        audioDecoder.reset()
     }
 
     private func publishReconnectingState() {
@@ -1220,6 +1218,7 @@ final class XiaomiBluetoothBridge: NSObject {
             _ = requestMicrophoneClose()
             return
         }
+        guard !streaming else { return }
         let partialFrameBytes = audioDecoder.pendingByteCount
         if partialFrameBytes > 0 {
             AppLogger.shared.write(
@@ -1227,11 +1226,9 @@ final class XiaomiBluetoothBridge: NSObject {
                     "streaming_before=\(streaming) partial_frame_bytes=\(partialFrameBytes)"
             )
         }
-        audioDecoder.reset()
+        guard audioDecoder.beginStream() else { return }
         lastStopAt = nil
         microphoneOpened = true
-        guard !streaming else { return }
-        streaming = true
         scheduleMicrophoneKeepalive()
         delegate?.bluetoothBridgeDidStartVoice(self)
         AppLogger.shared.write("ATVV STREAM START session=\(sessionID)")
@@ -1241,7 +1238,6 @@ final class XiaomiBluetoothBridge: NSObject {
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
         guard streaming else { return }
-        streaming = false
         microphoneOpened = false
         let partialFrameBytes = audioDecoder.pendingByteCount
         audioDecoder.reset()
