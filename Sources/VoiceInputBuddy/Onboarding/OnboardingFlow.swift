@@ -293,9 +293,9 @@ struct VoiceToolAdapterProfile: Equatable {
         case .bageshuo:
             return Self(
                 tool: tool,
-                supportedModes: [.hold, .toggle],
-                defaultShortcutByMode: [.hold: .function, .toggle: .function],
-                recommendedMode: .hold,
+                supportedModes: [.toggle],
+                defaultShortcutByMode: [.toggle: .function],
+                recommendedMode: .toggle,
                 installationProbe: .applicationBundle,
                 evidenceState: .verified
             )

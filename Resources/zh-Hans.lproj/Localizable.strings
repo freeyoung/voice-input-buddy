@@ -692,10 +692,10 @@
 "onboarding.voice_tool.guide.select_doubao" = "选择豆包输入法";
 "onboarding.voice_tool.guide.configure_doubao" = "设置豆包的 Fn 语音";
 "onboarding.voice_tool.guide.select_weixin" = "选择微信输入法";
-"onboarding.voice_tool.guide.open_bageshuo" = "打开网易叭哥说";
-"onboarding.voice_tool.guide.open_bageshuo.detail" = "启动网易叭哥说应用，确保其在后台或菜单栏正常运行。";
-"onboarding.voice_tool.guide.configure_bageshuo" = "配置语音快捷键与麦克风";
-"onboarding.voice_tool.guide.configure_bageshuo.detail" = "在网易叭哥说设置中，将语音快捷键设为 Fn，麦克风选择「Voice Input Buddy Mic」。";
+"onboarding.voice_tool.guide.open_bageshuo" = "打开网易叭哥说设置";
+"onboarding.voice_tool.guide.open_bageshuo.detail" = "在菜单栏点击网易叭哥说图标，选择“设置”。";
+"onboarding.voice_tool.guide.configure_bageshuo" = "设置语音快捷键为 Fn";
+"onboarding.voice_tool.guide.configure_bageshuo.detail" = "在设置 → 快捷键中，将“语音润色快捷键”设为 Fn。工作模式为按一下开始说话，再按一下结束。";
 "onboarding.voice_tool.guide.open_typeless" = "打开 Typeless";
 "onboarding.voice_tool.guide.open_typeless.detail" = "启动 Typeless，并保持它在后台运行。";
 "onboarding.voice_tool.guide.configure_typeless" = "使用按一次说话";
@@ -1107,6 +1107,8 @@
 "onboarding.voice_tool.guide.screenshot.weixin_input_menu" = "在输入法菜单中选择微信输入法，再打开设置。";
 "onboarding.voice_tool.guide.screenshot.weixin_input_settings" = "在语音输入中开启按住说话，并将快捷键设为 Fn。";
 "onboarding.voice_tool.guide.screenshot.weixin_app_shortcuts" = "在微信设置的快捷键中，清除语音输入文字下按住和按下开始模式占用的 Fn 快捷键。";
+"onboarding.voice_tool.guide.screenshot.bageshuo_menu" = "在菜单栏点击网易叭哥说图标，选择设置。";
+"onboarding.voice_tool.guide.screenshot.bageshuo_settings" = "在设置 → 快捷键中，将“语音润色快捷键”设为 Fn。工作模式为按一下开始说话，再按一下结束。";
 "onboarding.voice_tool.guide.screenshot.system_fn" = "在系统设置的键盘中，将按下🌐键时设为不执行任何操作。";
 "siri_remote.activation.enable" = "启用";
 "siri_remote.activation.disable" = "停用";
@@ -1195,6 +1197,7 @@
 
 "onboarding.voice_tool.guide.screenshot.doubao_input_microphone" = "豆包输入法：选择语音搭子的麦克风";
 "onboarding.voice_tool.guide.screenshot.weixin_input_microphone" = "微信输入法：选择语音搭子的麦克风";
+"onboarding.voice_tool.guide.screenshot.bageshuo_input_microphone" = "网易叭哥说：在设置 → 常规 → 麦克风中选择 Voice Input Buddy Mic。";
 
 "voice_button.status.cleanup_failed" = "Fn 键释放失败，请恢复辅助功能权限后重试。";
 

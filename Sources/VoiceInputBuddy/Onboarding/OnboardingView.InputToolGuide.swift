@@ -361,18 +361,12 @@ extension OnboardingView {
                 OnboardingInputMethodGuideStep(
                     id: 1,
                     titleKey: "onboarding.voice_tool.guide.open_bageshuo",
-                    content: .instruction(
-                        systemImage: "waveform.and.mic",
-                        detailKey: "onboarding.voice_tool.guide.open_bageshuo.detail"
-                    )
+                    content: .screenshot("bageshuo-menu")
                 ),
                 OnboardingInputMethodGuideStep(
                     id: 2,
                     titleKey: "onboarding.voice_tool.guide.configure_bageshuo",
-                    content: .instruction(
-                        systemImage: "globe",
-                        detailKey: "onboarding.voice_tool.guide.configure_bageshuo.detail"
-                    )
+                    content: .screenshot("bageshuo-settings")
                 ),
             ]
         case .typeless:

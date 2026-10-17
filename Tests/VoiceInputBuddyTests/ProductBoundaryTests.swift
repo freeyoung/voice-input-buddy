@@ -9,7 +9,11 @@ struct ProductBoundaryTests {
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
         let bundle = try #require(Bundle(path: resources.path))
-        let paired = ["doubao-menu", "doubao-settings", "weixin-input-menu", "weixin-input-settings"]
+        let paired = [
+            "doubao-menu", "doubao-settings",
+            "weixin-input-menu", "weixin-input-settings",
+            "bageshuo-menu", "bageshuo-settings", "bageshuo-input-microphone",
+        ]
         let microphone = ["doubao-input-microphone", "weixin-input-microphone", "voicecursor-setting-fn", "voicecursor-setting-mic"]
         for name in paired + microphone {
             let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(named: name, isDark: false, in: bundle))
@@ -65,7 +69,8 @@ struct ProductBoundaryTests {
         let bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment
         for name in ["doubao-menu", "doubao-settings", "system-fn",
                      "weixin-app-shortcuts", "weixin-input-menu",
-                     "weixin-input-settings"] {
+                     "weixin-input-settings", "bageshuo-menu",
+                     "bageshuo-settings", "bageshuo-input-microphone"] {
             for theme in ["light", "dark"] {
                 let url = try #require(VoiceInputBuddyResourceBundle.onboardingImageURL(
                     named: name, isDark: theme == "dark", in: bundle))

@@ -175,6 +175,10 @@ extension OnboardingView {
                 onboardingGuideScreenshot(
                     resourceName: "doubao-input-microphone"
                 )
+            } else if settings.onboardingVoiceTool == .bageshuo {
+                onboardingGuideScreenshot(
+                    resourceName: "bageshuo-input-microphone"
+                )
             } else if settings.onboardingVoiceTool == .voicecursor {
                 onboardingGuideScreenshot(resourceName: "voicecursor-setting-mic")
             }
