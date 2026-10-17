@@ -321,11 +321,7 @@ final class XiaomiBluetoothBridge: NSObject {
         reconnectWakeMonitor.cancel()
         disconnectWatchdog.cancel()
         if let token = scanSubscription {
-            if Thread.isMainThread {
-                MainActor.assumeIsolated { SharedBluetoothScanner.shared.unsubscribe(token) }
-            } else {
-                DispatchQueue.main.async { SharedBluetoothScanner.shared.unsubscribe(token) }
-            }
+            SharedBluetoothScanner.shared.unsubscribe(token)
         }
         peripheral?.delegate = nil
         central?.delegate = nil
