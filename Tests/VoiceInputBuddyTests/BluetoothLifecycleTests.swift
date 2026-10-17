@@ -457,21 +457,27 @@ struct BluetoothLifecycleTests {
         ))
     }
 
-    @Test func directRemoteStreamIsAllowedUnlessAHostOpenWasJustCancelled() {
-        let now = Date(timeIntervalSince1970: 1_000)
+    @Test func stoppedStreamSuppressionUsesElapsedUptime() {
+        #expect(ATVVSessionGate.shouldIgnoreAudioAfterStop(stoppedAt: 1_000, now: 1_000.29))
+        #expect(!ATVVSessionGate.shouldIgnoreAudioAfterStop(stoppedAt: 1_000, now: 1_000.31))
+        #expect(!ATVVSessionGate.shouldIgnoreAudioAfterStop(stoppedAt: nil, now: 1_000))
+    }
 
-        #expect(ATVVSessionGate.cancelledOpenDate(
+    @Test func directRemoteStreamIsAllowedUnlessAHostOpenWasJustCancelled() {
+        let now = TimeInterval(1_000)
+
+        #expect(ATVVSessionGate.cancelledOpenUptime(
             microphoneOpened: false,
             streaming: false,
             now: now
         ) == nil)
-        #expect(ATVVSessionGate.cancelledOpenDate(
+        #expect(ATVVSessionGate.cancelledOpenUptime(
             microphoneOpened: true,
             streaming: true,
             now: now
         ) == nil)
 
-        let cancelledAt = ATVVSessionGate.cancelledOpenDate(
+        let cancelledAt = ATVVSessionGate.cancelledOpenUptime(
             microphoneOpened: true,
             streaming: false,
             now: now
@@ -479,7 +485,7 @@ struct BluetoothLifecycleTests {
         #expect(cancelledAt == now)
         #expect(ATVVSessionGate.shouldIgnoreStreamAfterCancelledOpen(
             cancelledAt: cancelledAt,
-            now: now.addingTimeInterval(1)
+            now: now + 1
         ))
         #expect(!ATVVSessionGate.shouldIgnoreStreamAfterCancelledOpen(
             cancelledAt: nil,
@@ -487,7 +493,7 @@ struct BluetoothLifecycleTests {
         ))
         #expect(!ATVVSessionGate.shouldIgnoreStreamAfterCancelledOpen(
             cancelledAt: cancelledAt,
-            now: now.addingTimeInterval(2)
+            now: now + 2
         ))
     }
 

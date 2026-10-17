@@ -220,10 +220,10 @@ final class XiaomiBluetoothBridge: NSObject {
     )
     // This is a requested-open flag; ATVV stream notifications establish actual streaming.
     private var microphoneOpened = false
-    private var cancelledMicrophoneOpenAt: Date?
+    private var cancelledMicrophoneOpenAt: TimeInterval?
     private var sessionID: UInt8 = 0
     private var activeStreamSessionID: UInt8?
-    private var lastStopAt: Date?
+    private var lastStopAt: TimeInterval?
 
     private let serviceUUID = CBUUID(string: ATVVProtocol.serviceUUID)
     private let transmitUUID = CBUUID(string: ATVVProtocol.transmitUUID)
@@ -595,7 +595,7 @@ final class XiaomiBluetoothBridge: NSObject {
     @discardableResult
     func requestMicrophoneClose() -> Bool {
         guard microphoneOpened || streaming else { return true }
-        let cancelledOpenAt = ATVVSessionGate.cancelledOpenDate(
+        let cancelledOpenAt = ATVVSessionGate.cancelledOpenUptime(
             microphoneOpened: microphoneOpened,
             streaming: streaming
         )
@@ -1267,7 +1267,7 @@ final class XiaomiBluetoothBridge: NSObject {
             self.voiceStartNotified = false
             self.delegate?.bluetoothBridgeDidStopVoice(self)
         }
-        lastStopAt = Date()
+        lastStopAt = ProcessInfo.processInfo.systemUptime
         AppLogger.shared.write(
             "ATVV STREAM STOP session=\(sessionID) partial_frame_bytes=\(partialFrameBytes)"
         )
@@ -1293,11 +1293,11 @@ final class XiaomiBluetoothBridge: NSObject {
         }
         cancelledMicrophoneOpenAt = nil
         if !streaming {
-            let receivedAt = Date()
-            if let lastStopAt, receivedAt.timeIntervalSince(lastStopAt) < 0.3 {
+            let receivedAt = ProcessInfo.processInfo.systemUptime
+            if let lastStopAt, ATVVSessionGate.shouldIgnoreAudioAfterStop(stoppedAt: lastStopAt, now: receivedAt) {
                 let delayMilliseconds = max(
                     0,
-                    Int((receivedAt.timeIntervalSince(lastStopAt) * 1_000).rounded())
+                    Int(((receivedAt - lastStopAt) * 1_000).rounded())
                 )
                 AppLogger.shared.write(
                     "ATVV AUDIO ignored_after_stop session=\(sessionID) " +
