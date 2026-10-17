@@ -132,6 +132,8 @@ extension OnboardingView {
 
     func onboardingTitle(_ key: String) -> some View {
         Text(localization.text(key))
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityFocused($focusedStepTitle, equals: settings.onboardingStep)
             .font(.system(size: 30, weight: .bold))
             .tracking(-0.5)
             .fixedSize(horizontal: false, vertical: true)

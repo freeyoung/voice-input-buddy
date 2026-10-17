@@ -18,6 +18,8 @@ struct OnboardingView: View {
     let permissionOverrides: SystemPermissionOverrides?
     let onPauseSetup: () -> Void
 
+    @AccessibilityFocusState var focusedStepTitle: OnboardingStep?
+
     @State var bluetoothAuthorization: CBManagerAuthorization
     @State var inputMonitoringGranted: Bool
     @State var accessibilityGranted: Bool
@@ -219,6 +221,14 @@ struct OnboardingView: View {
     private var toolObservedContent: some View {
         remoteObservedContent
         .onDisappear { cancelVoiceTestTasks() }
+        .task(id: settings.onboardingStep) { @MainActor in
+            let step = settings.onboardingStep
+            // Voice testing owns the transcript editor focus instead.
+            guard step != .voiceTest else { focusedStepTitle = nil; return }
+            await Task.yield()
+            guard !Task.isCancelled, settings.onboardingStep == step else { return }
+            focusedStepTitle = step
+        }
         .onChange(of: settings.onboardingStep) { _, step in
             cancelVoiceTestTasks()
             prepareForStep(step)
