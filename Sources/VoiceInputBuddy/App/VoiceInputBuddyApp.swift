@@ -1099,37 +1099,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
-        let sparkleError = error as NSError
-        guard let latestItem = sparkleError.userInfo[SPULatestAppcastItemFoundKey] as? SUAppcastItem,
-              let currentVersion = Bundle.main.object(
-                  forInfoDictionaryKey: "CFBundleShortVersionString"
-              ) as? String,
-              let currentBuild = Bundle.main.object(
-                  forInfoDictionaryKey: "CFBundleVersion"
-              ) as? String,
-              let candidateBuild = Int(latestItem.versionString),
-              let installedBuild = Int(currentBuild),
-              candidateBuild < installedBuild,
-              UpdateVersion.isNewer(
-                  latestItem.displayVersionString,
-                  than: currentVersion
-              )
-        else {
-            updateInformation.setUpToDate()
-            return
-        }
-
-        updateInformation.setAvailable(
-            displayVersion: latestItem.displayVersionString,
-            buildVersion: latestItem.versionString,
-            fallbackDescription: latestItem.itemDescription
-        )
-        AppLogger.shared.write(
-            "UPDATE CHECK semantic_newer_but_sparkle_rejected " +
-                "display_version=\(latestItem.displayVersionString) " +
-                "candidate_build=\(latestItem.versionString) " +
-                "installed_build=\(currentBuild)"
-        )
+        updateInformation.setUpToDate()
     }
 
     func updater(
