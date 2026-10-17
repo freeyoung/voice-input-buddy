@@ -5,6 +5,22 @@ import Testing
 @Suite("Audio recovery review regressions")
 @MainActor
 struct AudioRecoveryReviewTests {
+    @Test func stoppedActiveOutputRequestsRecoveryWithoutTheDebounceGap() async throws {
+        let name = UUID().uuidString
+        let values = try #require(UserDefaults(suiteName: name))
+        defer { values.removePersistentDomain(forName: name) }
+        let model = BridgeAppModel(settings: AppSettings(defaults: values))
+        model.started = true
+        model.voiceSession.isActive = true
+        defer { model.started = false }
+        var delays: [TimeInterval] = []
+        model.scheduleAudioRecovery(reason: "engine_configuration_change", schedule: { delay, _ in delays.append(delay) })
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        #expect(delays == [0])
+    }
+
     @Test(arguments: ["hardware_change", "engine_configuration_change"])
     func healthySelectedOutputKeepsActiveAndQueuedSpeech(reason: String) throws {
         let name = UUID().uuidString
