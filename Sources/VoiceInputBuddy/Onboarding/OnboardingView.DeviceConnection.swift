@@ -26,10 +26,7 @@ extension OnboardingView {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            let profiles = settings.remoteDeviceProfiles.filter { profile in
-                model.connectedRemoteProfileIDs.contains(profile.id) &&
-                    BridgeAppModel.canLearnHIDIdentity(model: profile.model, source: settings.onboardingControlSource)
-            }
+            let profiles = model.onboardingRemoteProfiles
             if !profiles.isEmpty {
                 Picker(localization.text("onboarding.remote.choose_device"), selection: Binding(
                     get: { profiles.contains(where: { $0.id == settings.selectedRemoteProfileID }) ? settings.selectedRemoteProfileID : nil },
@@ -137,6 +134,10 @@ extension OnboardingView {
             if !selectedControlConnected {
                 openBluetoothSettingsButton
             }
+        }
+        .onAppear { model.selectOnboardingRemoteIfNeeded() }
+        .onChange(of: model.onboardingRemoteProfiles.map(\.id)) { _, _ in
+            model.selectOnboardingRemoteIfNeeded()
         }
     }
 

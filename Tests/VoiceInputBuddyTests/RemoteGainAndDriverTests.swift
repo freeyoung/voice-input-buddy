@@ -101,15 +101,30 @@ struct RemoteGainAndDriverTests {
             controlMethod: .physicalRemote, capabilities: capabilities))
     }
 
-    @Test func driverCheckAdvancesOnlyWhenBothChecksPassAndKeepsButtonsBeforeDriver() {
-        for installed in [false, true] {
-            for ready in [false, true] {
-                #expect(OnboardingFlowPolicy.shouldAdvanceDriverCheck(step: .audio,
-                    driverInstalled: installed, outputReady: ready) == (installed && ready))
-                #expect(!OnboardingFlowPolicy.shouldAdvanceDriverCheck(step: .controls,
-                    driverInstalled: installed, outputReady: ready))
-            }
-        }
+    @Test func driverCheckKeepsManualNavigationInBothDirections() throws {
+        let name = "driver-navigation-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.setOnboardingControlSource(.xiaomiRemote)
+        settings.setOnboardingStep(.audio)
+        let device = AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID,
+            name: DoubaoAudioDevicePolicy.deviceName)
+        let model = BridgeAppModel(settings: settings, initialAudioDevices: [device])
+        let view = OnboardingView(model: model, permissionOverrides: .allGranted)
+        #expect(!view.canContinue)
+        view.continueFlow()
+        #expect(settings.onboardingStep == .audio)
+        model.isAudioOutputReady = true
+        #expect(view.canContinue)
+        #expect(settings.onboardingStep == .audio)
+        view.continueFlow()
+        #expect(settings.onboardingStep == .voiceTool)
+        settings.setOnboardingStep(try #require(settings.onboardingPurpose.previousStep(before: .voiceTool)))
+        #expect(settings.onboardingStep == .audio)
+        #expect(view.canContinue)
+        settings.setOnboardingStep(try #require(settings.onboardingPurpose.previousStep(before: .audio)))
+        #expect(settings.onboardingStep == .controls)
         #expect(OnboardingStep.visibleCases[2] == .remote)
         #expect(OnboardingStep.visibleCases[3] == .controls)
         #expect(OnboardingStep.visibleCases[4] == .audio)

@@ -443,9 +443,7 @@ final class AppSettings: ObservableObject {
                 ?? AppIconIdentifier.standard.rawValue
         )
         appIconIdentifier = storedAppIcon
-        showDockIcon = defaults.object(forKey: Keys.showDockIcon) == nil
-            ? true
-            : defaults.bool(forKey: Keys.showDockIcon)
+        showDockIcon = defaults.bool(forKey: Keys.showDockIcon)
         showStatusBarIcon = defaults.object(forKey: Keys.showStatusBarIcon) == nil
             ? true
             : defaults.bool(forKey: Keys.showStatusBarIcon)

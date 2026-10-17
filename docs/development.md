@@ -253,8 +253,9 @@ Output selection and remembered/alternate-device fallback have been removed.
 Startup and recovery retain their generation guards and use that UID even when
 hardware enumeration returns another microphone or speaker. The driver panel
 shows the shared output name. Onboarding follows connection, button validation,
-then automatic driver/output validation; it advances only when both driver and
-output are ready, and retains installation/restart recovery on failure.
+then automatic driver/output validation. The driver step stays visible in both
+navigation directions; Continue is enabled only when both driver and output are
+ready. Installation/restart recovery remains available on failure.
 
 ### 运行稳定性与常用语插入
 
