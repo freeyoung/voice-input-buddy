@@ -465,7 +465,7 @@ extension AppSettings {
         buttonRapidPressEnabled = [:]
         if experimentalContinuousRecordingEnabled {
             continuousRecordingPowerBindingBackup = ConfiguredButtonAction(
-                action: .escape,
+                action: Self.defaultBindings[.power] ?? .disabled,
                 shortcut: nil
             )
             setAction(.toggleLongRecording, for: .power, trigger: .singleClick)
@@ -475,13 +475,13 @@ extension AppSettings {
 
 extension AppSettings {
     static let defaultBindings: [RemoteButton: ButtonAction] = [
-        .power: .escape,
+        .power: .deleteBackward,
         .up: .arrowUp,
         .left: .arrowLeft,
         .ok: .returnKey,
         .right: .arrowRight,
         .down: .arrowDown,
-        .back: .deleteBackward,
+        .back: .escape,
         .volumeUp: .volumeUp,
         .home: .showDesktop,
         .volumeDown: .volumeDown,
