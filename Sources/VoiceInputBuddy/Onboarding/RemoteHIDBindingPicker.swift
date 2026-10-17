@@ -24,6 +24,7 @@ struct RemoteHIDBindingPicker: View {
             if failed { Text(verbatim: localization.text("remote.hid_binding.failed")).foregroundStyle(.red) }
             HStack {
                 Button(localization.text("common.action.cancel")) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
                 Button(localization.text("remote.hid_binding.refresh")) { refresh() }
                 Spacer()
                 Button(localization.text("remote.hid_binding.save")) {
@@ -31,6 +32,7 @@ struct RemoteHIDBindingPicker: View {
                     if model.bindCompatibleRemote(candidate, profileID: profile.id) { dismiss() }
                     else { failed = true }
                 }.buttonStyle(.borderedProminent).disabled(selected == nil || model.isStreaming)
+                    .keyboardShortcut(.defaultAction)
             }
         }.padding(24).frame(width: 560)
         .onAppear { refresh() }
