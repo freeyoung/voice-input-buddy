@@ -95,7 +95,10 @@ extension OnboardingView {
         if manualTranscriptInputObserved {
             return localization.text("onboarding.voice_test.manual_input")
         }
-        if verifiedTranscriptionAppeared, voiceSessionEnded {
+        if voiceAttempt.result == .audioDeliveryFailed {
+            return localization.text("onboarding.recovery.voice.audio_delivery_failed.title")
+        }
+        if voiceAttempt.result == .passed {
             return localization.text("onboarding.voice_test.success")
         }
         if voiceSamplesReceived {

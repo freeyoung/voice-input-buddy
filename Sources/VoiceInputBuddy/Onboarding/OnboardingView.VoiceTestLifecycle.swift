@@ -149,7 +149,10 @@ extension OnboardingView {
         if result == .manualInput || result == .noSamples || result == .audioDeliveryFailed {
             finishVoiceAttempt(result: result)
         } else {
-            scheduleVoiceTranscriptDeadline(attemptID: voiceAttempt.attemptID)
+            // Text may already exist when the key is released. Recheck playback
+            // after the tail drains even if no further text-change event arrives.
+            scheduleVoiceCompletionEvaluation(attemptID: attemptID)
+            scheduleVoiceTranscriptDeadline(attemptID: attemptID)
         }
     }
 
