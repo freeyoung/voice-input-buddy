@@ -173,6 +173,8 @@ enum KeyboardInjector {
     }
 
     struct AccessibilityTextCandidate: Equatable {
+        let subrole: String
+        let protectedContent: Bool
         let role: String
         let identifier: String
         let title: String
@@ -187,6 +189,8 @@ enum KeyboardInjector {
 
         init(
             role: String,
+            subrole: String = "",
+            protectedContent: Bool = false,
             identifier: String,
             title: String,
             description: String,
@@ -198,6 +202,8 @@ enum KeyboardInjector {
             focused: Bool = false,
             selectedContext: Bool = false
         ) {
+            self.subrole = subrole
+            self.protectedContent = protectedContent
             self.role = role
             self.identifier = identifier
             self.title = title

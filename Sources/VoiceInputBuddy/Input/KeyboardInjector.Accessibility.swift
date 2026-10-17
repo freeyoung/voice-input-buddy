@@ -328,7 +328,8 @@ extension KeyboardInjector {
         windowTitle: String,
         windowFrame: CGRect?
     ) -> Int? {
-        guard candidate.enabled, candidate.role == target.role else { return nil }
+        guard candidate.enabled, !candidate.protectedContent, candidate.subrole != kAXSecureTextFieldSubrole,
+              candidate.role == target.role else { return nil }
         let semanticText = [
             candidate.identifier,
             candidate.title,
@@ -488,6 +489,8 @@ extension KeyboardInjector {
                     current.element,
                     AccessibilityTextCandidate(
                         role: role,
+                        subrole: axString(current.element, attribute: kAXSubroleAttribute),
+                        protectedContent: axBool(current.element, attribute: "AXProtectedContent") ?? false,
                         identifier: axString(current.element, attribute: kAXIdentifierAttribute),
                         title: axString(current.element, attribute: kAXTitleAttribute),
                         description: axString(current.element, attribute: kAXDescriptionAttribute),
@@ -632,7 +635,9 @@ extension KeyboardInjector {
         _ candidate: AccessibilityTextCandidate,
         windowFrame: CGRect?
     ) -> Int? {
-        guard candidate.enabled, candidate.role == "AXTextArea" || candidate.role == "AXTextField" else {
+        guard candidate.enabled, !candidate.protectedContent,
+              candidate.subrole != kAXSecureTextFieldSubrole,
+              candidate.role == "AXTextArea" || candidate.role == "AXTextField" else {
             return nil
         }
 
@@ -794,7 +799,8 @@ extension KeyboardInjector {
         _ candidate: AccessibilityTextCandidate,
         windowFrame: CGRect?
     ) -> Int? {
-        guard candidate.enabled, candidate.role == "AXTextArea" else { return nil }
+        guard candidate.enabled, !candidate.protectedContent, candidate.subrole != kAXSecureTextFieldSubrole,
+              candidate.role == "AXTextArea" else { return nil }
         let semanticText = [
             candidate.identifier,
             candidate.title,
