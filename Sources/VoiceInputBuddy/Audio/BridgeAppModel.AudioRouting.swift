@@ -367,6 +367,9 @@ extension BridgeAppModel {
             }
             self.audio.recoveryCoalescingState.recordEvent(reason: reason)
             let urgent = self.hasActiveVirtualAudioSource && !configurationHealthy
+            // Keep the first bounded recovery instead of extending its deadline for
+            // every HAL notification. A stopped active stream bypasses the delay.
+            if self.audio.recoveryWorkItem != nil && !urgent { return }
             self.audio.recoveryGeneration &+= 1
             let generation = self.audio.recoveryGeneration
             self.audio.recoveryWorkItem?.cancel()
