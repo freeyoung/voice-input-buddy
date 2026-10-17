@@ -331,7 +331,8 @@ extension BridgeAppModel {
         audio.stopObservingHardware()
     }
 
-    func scheduleAudioRecovery(reason: String, details: String = "") {
+    func scheduleAudioRecovery(reason: String, details: String = "",
+        schedule: ((TimeInterval, DispatchWorkItem) -> Void)? = nil) {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.started else { return }
             guard !self.settings.selectedAudioDeviceUID.isEmpty else {
@@ -365,6 +366,10 @@ extension BridgeAppModel {
                 return
             }
             self.audio.recoveryCoalescingState.recordEvent(reason: reason)
+            let urgent = self.hasActiveVirtualAudioSource && !configurationHealthy
+            // Keep the first bounded recovery instead of extending its deadline for
+            // every HAL notification. A stopped active stream bypasses the delay.
+            if self.audio.recoveryWorkItem != nil && !urgent { return }
             self.audio.recoveryGeneration &+= 1
             let generation = self.audio.recoveryGeneration
             self.audio.recoveryWorkItem?.cancel()
@@ -382,7 +387,8 @@ extension BridgeAppModel {
                 }
             }
             self.audio.recoveryWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
+            if let schedule { schedule(urgent ? 0 : 1, work) }
+            else { DispatchQueue.main.asyncAfter(deadline: .now() + (urgent ? 0 : 1), execute: work) }
         }
     }
 

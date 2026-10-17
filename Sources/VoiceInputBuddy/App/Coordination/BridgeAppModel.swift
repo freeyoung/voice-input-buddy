@@ -253,6 +253,13 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         voiceKeyReleaseRetry?.cancel()
     }
 
+    private(set) var isTerminating = false
+
+    func prepareForTermination() {
+        isTerminating = true
+        commonPhrases.close(reason: "app_terminating")
+    }
+
     func stop() {
         commonPhrases.close(reason: "app_stop")
         preferredInputSourceMonitor.stop()

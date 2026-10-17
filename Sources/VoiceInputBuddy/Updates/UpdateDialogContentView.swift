@@ -9,8 +9,18 @@ struct UpdateDialogVersionRow: Equatable {
 @MainActor
 final class UpdateDialogContentView: NSView {
     let actionButtons: [NSButton]
+    private(set) var progressIndicator: NSProgressIndicator?
+    private var progressStatusLabel: NSTextField?
     private let content = NSStackView()
     private let preferredWidth: CGFloat
+
+    func updateProgress(_ value: Double, text: String?) {
+        guard let indicator = progressIndicator else { return }
+        indicator.isIndeterminate = value < 0
+        indicator.doubleValue = max(0, min(1, value))
+        if indicator.isIndeterminate { indicator.startAnimation(nil) } else { indicator.stopAnimation(nil) }
+        if let text { progressStatusLabel?.stringValue = text }
+    }
 
     init(title: String, message: String, symbol: String, tint: NSColor,
          versions: [UpdateDialogVersionRow], progress: Double?, progressText: String?,
@@ -98,6 +108,7 @@ final class UpdateDialogContentView: NSView {
 
         if let progress {
             let indicator = NSProgressIndicator()
+            progressIndicator = indicator
             indicator.style = .bar
             indicator.isIndeterminate = progress < 0
             indicator.minValue = 0
@@ -109,8 +120,10 @@ final class UpdateDialogContentView: NSView {
             status.alignment = .trailing
             status.spacing = 8
             if let progressText {
-                status.addArrangedSubview(Self.label(progressText,
-                    font: .monospacedDigitSystemFont(ofSize: 11, weight: .regular), color: .secondaryLabelColor))
+                let label = Self.label(progressText,
+                    font: .monospacedDigitSystemFont(ofSize: 11, weight: .regular), color: .secondaryLabelColor)
+                progressStatusLabel = label
+                status.addArrangedSubview(label)
             }
             content.addArrangedSubview(status)
             if indicator.isIndeterminate { indicator.startAnimation(nil) }

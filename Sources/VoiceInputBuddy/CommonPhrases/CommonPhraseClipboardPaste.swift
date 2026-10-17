@@ -1,8 +1,9 @@
 import AppKit
+import Combine
 
-/// A short pasteboard lease. All entry points and completions run on the main queue.
-/// The queue keeps the lease alive until restoration, even if the panel is closed.
-final class CommonPhraseClipboardPaste {
+/// Clipboard insertion with explicit restoration. All entry points and completions run on main.
+/// Successful submissions keep the phrase available for arbitrarily slow receiving apps.
+final class CommonPhraseClipboardPaste: ObservableObject {
     static let shared = CommonPhraseClipboardPaste()
     typealias Validation = (@escaping (String?) -> Void) -> Void
     private static let snapshotQueue = DispatchQueue(label: "voice-input-buddy.clipboard.snapshot", qos: .userInitiated)
@@ -14,6 +15,8 @@ final class CommonPhraseClipboardPaste {
     private let usesSnapshotHelper: Bool
     private let schedule: OperationScheduler
     private let postPaste: () -> Bool
+    @Published private(set) var hasRestorableClipboard = false
+    private var restoration: (snapshot: Snapshot, lease: Int)?
     private var busy = false
     private var snapshotInFlight = false
     private var generation: UInt64 = 0
@@ -38,8 +41,8 @@ final class CommonPhraseClipboardPaste {
                  AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held flags=\(hardware.rawValue)")
                  return false
              }
-             return ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
-                 hardwareFlags: { pasteHardwareFlags() }, eventPoster: ShortcutEventSequence.post)
+             return submitPasteShortcut(hardwareFlags: { pasteHardwareFlags() },
+                 eventPoster: ShortcutEventSequence.post)
          }) {
         self.modifierFlags = modifierFlags
         self.uptime = uptime
@@ -51,19 +54,28 @@ final class CommonPhraseClipboardPaste {
         self.postPaste = postPaste
     }
 
-    // Navigation keys can carry the Fn event flag without an actual Fn key
-    // press. Do not let that decoration block or alter Command-V.
-    static func normalizedPasteFlags(_ flags: CGEventFlags, fnKeyDown: Bool) -> CGEventFlags {
-        fnKeyDown ? flags.union(.maskSecondaryFn) : flags.subtracting(.maskSecondaryFn)
-    }
-
     private static func pasteHardwareFlags() -> CGEventFlags {
-        normalizedPasteFlags(CGEventSource.flagsState(.hidSystemState),
-            fnKeyDown: CGEventSource.keyState(.hidSystemState, key: 63))
+        KeyboardHardwareModifierPolicy.current()
     }
 
     static func permitsPasteShortcut(flags: CGEventFlags) -> Bool {
         flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskSecondaryFn]).isEmpty
+    }
+
+    static func submitPasteShortcut(hardwareFlags: () -> CGEventFlags,
+        eventPoster: (CGEvent) -> Bool) -> Bool {
+        var pasteKeyDownSubmitted = false
+        _ = ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
+            hardwareFlags: hardwareFlags, eventPoster: { event in
+                let submitted = eventPoster(event)
+                if submitted, event.type == .keyDown,
+                   event.getIntegerValueField(.keyboardEventKeycode) == 9 {
+                    pasteKeyDownSubmitted = true
+                }
+                return submitted
+            })
+        // A failed key-up must not roll the clipboard back under a queued Cmd-V.
+        return pasteKeyDownSubmitted
     }
 
     func paste(_ text: String, validate: @escaping Validation, canSubmit: @escaping () -> Bool,
@@ -148,26 +160,66 @@ final class CommonPhraseClipboardPaste {
             guard self.board.changeCount == originalCount else { self.finish("paste_failed", completion); return }
             guard failure == nil, canSubmit() else { self.finish(failure ?? "target_changed", completion); return }
             guard self.board.changeCount == originalCount else { self.finish("paste_failed", completion); return }
+            let priorRestoration = self.restoration.flatMap { $0.lease == originalCount ? $0 : nil }
+            let baseline = priorRestoration?.snapshot ?? saved
             self.board.clearContents()
             let lease = self.board.changeCount
+            let rollback = {
+                let owned = self.board.changeCount == lease
+                let restored = self.restore(saved, lease: lease)
+                if owned, restored, let priorRestoration {
+                    self.restoration = (priorRestoration.snapshot, self.board.changeCount)
+                    self.hasRestorableClipboard = true
+                } else if !owned || !restored { self.clearRestoration() }
+                return restored
+            }
             guard self.board.setString(text, forType: .string) else {
-                self.finish(self.restore(saved, lease: lease) ? "clipboard_write_failed" : "clipboard_restore_failed", completion)
+                self.finish(rollback() ? "clipboard_write_failed" : "clipboard_restore_failed", completion)
                 return
             }
             guard canSubmit() else {
-                let restored = self.restore(saved, lease: lease)
+                let restored = rollback()
                 self.finish(restored ? "target_changed" : "clipboard_restore_failed", completion)
                 return
             }
             guard self.board.changeCount == lease else { self.finish("paste_failed", completion); return }
             let submitted = self.postPaste()
-            // CGEventPost has no receiving-app acknowledgement. Allow a bounded
-            // read interval without claiming the target committed the text.
-            _ = self.schedule(0.75) {
-                let restored = self.restore(saved, lease: lease)
-                self.finish(restored ? (submitted ? nil : "paste_failed") : "clipboard_restore_failed", completion)
+            if !submitted {
+                // No key sequence was submitted: restore immediately rather than
+                // leaving the phrase exposed while waiting for an arbitrary timer.
+                let restored = rollback()
+                self.finish(restored ? "paste_failed" : "clipboard_restore_failed", completion)
+                return
             }
+            // CGEventPost provides no receiving-app acknowledgement. Never restore
+            // old potentially sensitive content on a timer before a delayed Cmd-V.
+            if self.board.changeCount == lease {
+                self.restoration = (baseline, lease)
+                self.hasRestorableClipboard = true
+            } else {
+                self.clearRestoration()
+                AppLogger.shared.write("COMMON_PHRASES PASTE restore_unavailable reason=clipboard_changed")
+            }
+            self.finish(nil, completion)
         }
+    }
+
+    var canRestoreClipboard: Bool {
+        !busy && restoration.map { board.changeCount == $0.lease } == true
+    }
+
+    @discardableResult
+    func restorePreviousClipboard() -> Bool {
+        guard !busy, let restoration else { return false }
+        let restored = restore(restoration.snapshot, lease: restoration.lease, requireLease: true)
+        clearRestoration()
+        AppLogger.shared.write("COMMON_PHRASES PASTE manual_restore result=\(restored ? "restored" : "clipboard_changed_or_failed")")
+        return restored
+    }
+
+    private func clearRestoration() {
+        restoration = nil
+        hasRestorableClipboard = false
     }
 
     private func finish(_ failure: String?, _ completion: (String?) -> Void) {
@@ -222,8 +274,11 @@ final class CommonPhraseClipboardPaste {
         return result
     }
 
-    private func restore(_ saved: Snapshot, lease: Int) -> Bool {
-        guard board.changeCount == lease else { return true }
+    private func restore(_ saved: Snapshot, lease: Int, requireLease: Bool = false) -> Bool {
+        guard board.changeCount == lease else {
+            AppLogger.shared.write("COMMON_PHRASES PASTE restore_skipped reason=clipboard_changed")
+            return !requireLease
+        }
         var items: [NSPasteboardItem] = []
         for values in saved {
             let item = NSPasteboardItem()
@@ -232,7 +287,7 @@ final class CommonPhraseClipboardPaste {
             }
             items.append(item)
         }
-        guard board.changeCount == lease else { return true }
+        guard board.changeCount == lease else { return !requireLease }
         board.clearContents()
         return items.isEmpty || board.writeObjects(items)
     }

@@ -34,6 +34,34 @@ struct SessionRecoveryTests {
         #expect(completions == 1)
     }
 
+    @Test func aShorterJoiningDrainCannotCutOffTheOriginalTail() {
+        let clock = ControlledTestScheduler()
+        let output = VirtualAudioOutput(logger: { _ in }, uptime: { Double(clock.now) / 1_000 },
+            scheduleDrainDeadline: clock.voiceSchedule)
+        output.registerPendingVoiceBuffer()
+        var outcomes: [VirtualAudioDrainOutcome] = []
+        output.endSessionAfterDraining(maximumDelay: 2) { outcomes.append($0) }
+        output.endSessionAfterDraining(maximumDelay: 0.75) { outcomes.append($0) }
+        clock.advance(to: 750)
+        #expect(outcomes.isEmpty)
+        clock.advance(to: 2_000)
+        #expect(outcomes == [.forced, .forced])
+    }
+
+    @Test func joiningAnUnlimitedDrainDoesNotArmAShorterDeadline() {
+        let clock = ControlledTestScheduler()
+        let output = VirtualAudioOutput(logger: { _ in }, uptime: { Double(clock.now) / 1_000 },
+            scheduleDrainDeadline: clock.voiceSchedule)
+        output.registerPendingVoiceBuffer()
+        var outcomes: [VirtualAudioDrainOutcome] = []
+        output.endSessionAfterDraining(maximumDelay: nil) { outcomes.append($0) }
+        output.endSessionAfterDraining(maximumDelay: 0.75) { outcomes.append($0) }
+        clock.advance(to: 10_000)
+        #expect(outcomes.isEmpty)
+        output.cancelPendingDrain()
+        #expect(outcomes == [.forced, .forced])
+    }
+
     @Test func cancelledDrainAnswersExactlyOnceEvenAfterDeadline() {
         let clock = ControlledTestScheduler()
         let output = VirtualAudioOutput(logger: { _ in }, scheduleDrainDeadline: clock.voiceSchedule)

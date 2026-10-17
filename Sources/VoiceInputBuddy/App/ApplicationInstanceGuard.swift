@@ -27,7 +27,7 @@ final class ApplicationInstanceLock {
         let first = acquire(at: lockURL)
         guard case .alreadyLocked = first, !existingInstanceIsRunning() else { return first }
         // A terminating process may have disappeared from AppKit just before releasing flock.
-        for _ in 0..<2 {
+        for _ in 0..<8 {
             pause()
             let next = acquire(at: lockURL)
             guard case .alreadyLocked = next else { return next }

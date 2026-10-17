@@ -16,6 +16,20 @@ struct AccessibilityFrameScoringTests {
             help: "", placeholder: "", context: "", windowTitle: "", normalizedFrame: frame)
     }
 
+    @Test func secureFieldsAreRejectedWithoutRelyingOnTheirNames() {
+        for (subrole, protectedContent) in [("AXSecureTextField", false), ("", true)] {
+            let field = KeyboardInjector.AccessibilityTextCandidate(role: "AXTextField",
+                subrole: subrole, protectedContent: protectedContent,
+                identifier: "composer", title: "Message", description: "", help: "", placeholder: "",
+                context: "chat", frame: window, enabled: true)
+            #expect(KeyboardInjector.composerCandidateScore(field, windowFrame: window) == nil)
+            #expect(KeyboardInjector.recordedAccessibilityCandidateScore(field,
+                target: .init(role: "AXTextField", identifier: "composer", title: "Message", description: "",
+                    help: "", placeholder: "", context: "chat", windowTitle: "", normalizedFrame: nil),
+                windowTitle: "", windowFrame: window) == nil)
+        }
+    }
+
     @Test(arguments: [1e300, -1e300, Double.greatestFiniteMagnitude])
     func importedExtremeFramesCannotCrashSemanticMatching(coordinate: Double) throws {
         let name = "frame-scoring-" + UUID().uuidString

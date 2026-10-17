@@ -6,15 +6,15 @@ import Foundation
 
 extension KeyboardInjector {
     static func postKey(code: CGKeyCode, flags: CGEventFlags = []) {
-        guard let source = CGEventSource(stateID: .hidSystemState),
+        guard let source = CGEventSource(stateID: .privateState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
         else { return }
-        down.flags = flags.union(CGEventSource.flagsState(.hidSystemState))
+        down.flags = flags.union(KeyboardHardwareModifierPolicy.current())
         down.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
         up.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
         down.post(tap: .cghidEventTap)
-        up.flags = flags.union(CGEventSource.flagsState(.hidSystemState))
+        up.flags = flags.union(KeyboardHardwareModifierPolicy.current())
         up.post(tap: .cghidEventTap)
     }
 

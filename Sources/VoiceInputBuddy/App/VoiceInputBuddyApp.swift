@@ -166,9 +166,11 @@ enum VoiceInputBuddyApp {
                 return
             case let .failed(reason):
                 fputs("Single-instance lock unavailable: \(reason)\n", stderr)
+                return
             }
         } else {
             fputs("Single-instance lock unavailable: application_support_missing\n", stderr)
+            return
         }
 
         if let existingApplication = ApplicationInstanceGuard.existingApplication(
@@ -193,7 +195,7 @@ enum VoiceInputBuddyApp {
 
 @MainActor
 private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
-    NSWindowDelegate, SPUUpdaterDelegate
+    NSWindowDelegate, SPUUpdaterDelegate, NSMenuItemValidation
 {
     private enum UpdateCheckPurpose {
         case information
@@ -215,6 +217,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private var appliedStatusItemPresentation: StatusItemPresentation?
     private var statusItemOperationID: UInt = 0
     private var entryPointOperationID: UInt = 0
+    private var restoreClipboardItem: NSMenuItem?
     private var statusMenu: NSMenu?
     private var settingsWindowController: NSWindowController?
     private var isSettingsWindowOpen = false
@@ -331,6 +334,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         termination.request(begin: { complete in
+            model.prepareForTermination()
             statusItem?.button?.title = localization.text("common.action.quitting")
             statusItem?.button?.toolTip = localization.text("common.action.quitting")
             model.voiceFnTapSession.setEnabled(false) { _ in
@@ -521,6 +525,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         menu.addItem(menuItem("about.support.github", action: #selector(openGitHub)))
         menu.addItem(menuItem("about.support.website", action: #selector(openWebsite)))
         menu.addItem(.separator())
+        let restoreItem = menuItem("common_phrases.restore_clipboard", action: #selector(restorePhraseClipboard))
+        menu.addItem(restoreItem)
+        restoreClipboardItem = restoreItem
         menu.addItem(menuItem("common.action.quit", action: #selector(quit)))
         statusMenu = menu
         refreshMenuStatus()
@@ -849,11 +856,23 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     private func showStatusMenu() {
+        restoreClipboardItem?.isEnabled = CommonPhraseClipboardPaste.shared.canRestoreClipboard
         guard let statusItem, let statusMenu else { return }
         refreshMenuStatus()
         statusItem.menu = statusMenu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(restorePhraseClipboard) {
+            return CommonPhraseClipboardPaste.shared.canRestoreClipboard
+        }
+        return true
+    }
+
+    @objc private func restorePhraseClipboard() {
+        CommonPhraseClipboardPaste.shared.restorePreviousClipboard()
     }
 
     @objc private func reconnect() {
@@ -1096,37 +1115,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
-        let sparkleError = error as NSError
-        guard let latestItem = sparkleError.userInfo[SPULatestAppcastItemFoundKey] as? SUAppcastItem,
-              let currentVersion = Bundle.main.object(
-                  forInfoDictionaryKey: "CFBundleShortVersionString"
-              ) as? String,
-              let currentBuild = Bundle.main.object(
-                  forInfoDictionaryKey: "CFBundleVersion"
-              ) as? String,
-              let candidateBuild = Int(latestItem.versionString),
-              let installedBuild = Int(currentBuild),
-              candidateBuild < installedBuild,
-              UpdateVersion.isNewer(
-                  latestItem.displayVersionString,
-                  than: currentVersion
-              )
-        else {
-            updateInformation.setUpToDate()
-            return
-        }
-
-        updateInformation.setAvailable(
-            displayVersion: latestItem.displayVersionString,
-            buildVersion: latestItem.versionString,
-            fallbackDescription: latestItem.itemDescription
-        )
-        AppLogger.shared.write(
-            "UPDATE CHECK semantic_newer_but_sparkle_rejected " +
-                "display_version=\(latestItem.displayVersionString) " +
-                "candidate_build=\(latestItem.versionString) " +
-                "installed_build=\(currentBuild)"
-        )
+        updateInformation.setUpToDate()
     }
 
     func updater(

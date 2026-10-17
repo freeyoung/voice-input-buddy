@@ -1304,3 +1304,7 @@
 "onboarding.action.pause" = "稍后设置";
 
 "common.action.quitting" = "正在退出…";
+
+"common_phrases.restore_clipboard" = "恢复原剪贴板";
+"common_phrases.clipboard_restored" = "已恢复原剪贴板。";
+"common_phrases.restore_clipboard_hint" = "粘贴提交后短语保留在剪贴板中。可在此恢复原剪贴板；不会覆盖后来复制的内容。";

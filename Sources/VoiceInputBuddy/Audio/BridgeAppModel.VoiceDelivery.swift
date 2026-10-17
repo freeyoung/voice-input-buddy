@@ -9,7 +9,7 @@ extension BridgeAppModel {
     /// Includes pending activation and draining tails, before their async callbacks
     /// publish isStreaming. Transport-specific identity checks remain at each entry.
     func canAcceptNewVoiceSession(from owner: VoiceFunctionKeyLatch.Owner) -> Bool {
-        guard !audio.suspensionState.isSuspended,
+        guard !isTerminating, !audio.suspensionState.isSuspended,
               voiceKeyReleaseRetry == nil else { return false }
         if let pending = pendingVoiceKeyActivationOwner, pending != owner { return false }
         if owner != .bluetooth,
@@ -83,7 +83,7 @@ extension BridgeAppModel {
     }
 
     func beginVoiceSessionIfNeeded() {
-        guard !isStreaming else { return }
+        guard !isTerminating, !isStreaming else { return }
 
         cancelTestToneIfNeeded(
             statusMessage: LocalizedMessage("audio.test_tone.blocked_voice_active"),
@@ -199,7 +199,7 @@ extension BridgeAppModel {
                 let finish = self.pendingVoiceKeyActivationCompletion
                 self.pendingVoiceKeyActivationCompletion = nil
                 defer { self.flushPendingVoiceToolMappingRefresh() }
-                guard activated, !self.audio.suspensionState.isSuspended, self.pendingVoiceKeyMode == mode else {
+                guard activated, !self.isTerminating, !self.audio.suspensionState.isSuspended, self.pendingVoiceKeyMode == mode else {
                     self.pendingVoiceKeyMode = nil
                     if owner == .bluetooth { self.voiceSession.commandAudio.cancel() }
                     self.voiceKeyLatch.rollback(transition, owner: owner)

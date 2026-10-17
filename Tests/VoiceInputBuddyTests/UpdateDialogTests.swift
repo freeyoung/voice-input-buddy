@@ -201,6 +201,22 @@ struct UpdateDialogTests {
         #expect(choices == [.dismiss])
     }
 
+    @Test func progressUpdatesReuseTheExistingIndicator() throws {
+        let suite = "update-progress-" + UUID().uuidString
+        let language = try localization(suite)
+        let driver = LocalizedUpdateUserDriver(localization: language, presentsWindows: false)
+        driver.showDownloadInitiated {}
+        let content = driver.makeContentView()
+        let indicator = try #require(content.progressIndicator)
+        content.updateProgress(0.5, text: "50%")
+        #expect(content.progressIndicator === indicator)
+        #expect(!indicator.isIndeterminate)
+        #expect(indicator.doubleValue == 0.5)
+        content.updateProgress(1, text: "100%")
+        #expect(content.progressIndicator === indicator)
+        #expect(indicator.doubleValue == 1)
+    }
+
     @Test func progressHandlesUnknownLengthsAndDismissalDoesNotCancelCompletedDownload() throws {
         let suite = "update-dialog-" + UUID().uuidString
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }

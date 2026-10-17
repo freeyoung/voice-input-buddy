@@ -49,12 +49,15 @@ final class AppSettings: ObservableObject {
 
     let defaults: UserDefaults
 
-    @Published var gainDB: Double {
-        didSet {
-            if gainDB != oldValue {
-                defaults.set(gainDB, forKey: Keys.gainDB)
-                saveSelectedRemoteGain()
-            }
+    @Published private var storedGainDB: Double
+    var gainDB: Double {
+        get { storedGainDB }
+        set {
+            let normalized = Self.normalizedGain(newValue)
+            let changed = storedGainDB != normalized
+            if changed { storedGainDB = normalized }
+            defaults.set(normalized, forKey: Keys.gainDB)
+            if changed { saveSelectedRemoteGain() }
         }
     }
 
@@ -345,7 +348,7 @@ final class AppSettings: ObservableObject {
         Self.restoreInterruptedOnboardingTrial(in: defaults)
         remoteDeviceProfiles = []
         selectedRemoteProfileID = nil
-        gainDB = defaults.object(forKey: Keys.gainDB) == nil
+        storedGainDB = defaults.object(forKey: Keys.gainDB) == nil
             ? 10.0
             : Self.normalizedGain(defaults.double(forKey: Keys.gainDB))
         customMappingEnabled = defaults.bool(forKey: Keys.customMappingEnabled)

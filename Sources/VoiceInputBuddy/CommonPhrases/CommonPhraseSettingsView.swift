@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct CommonPhraseSettingsView: View {
+    @ObservedObject private var clipboardPaste = CommonPhraseClipboardPaste.shared
     @ObservedObject var store: CommonPhraseStore
     var onReturn: () -> Void = {}
     @EnvironmentObject private var localization: LocalizationStore
@@ -41,6 +42,13 @@ struct CommonPhraseSettingsView: View {
                 .accessibilityIdentifier("common-phrases-return")
                 Text(localization.text("common_phrases.adjust"))
                     .font(.system(size: 25, weight: .semibold))
+                Spacer(minLength: 0)
+                Button(localization.text("common_phrases.restore_clipboard")) {
+                    messageKey = clipboardPaste.restorePreviousClipboard()
+                        ? "common_phrases.clipboard_restored" : "common_phrases.error.clipboard_restore_failed"
+                }
+                .disabled(!clipboardPaste.canRestoreClipboard)
+                .help(localization.text("common_phrases.restore_clipboard_hint"))
             }.padding(22)
             GeometryReader { geometry in
                 let available = geometry.size.width - 44 - 28
@@ -153,7 +161,7 @@ struct CommonPhraseSettingsView: View {
                 HStack(spacing: 4) {
                     ForEach(CommonPhraseStore.buttons.filter { store.phrase(for: $0)?.id == phrase.id }) { button in
                         if button == .ok {
-                            Text(localization.text("common.action.ok")).font(.system(size: 12, weight: .medium))
+                            Text(RemoteButton.ok.shortLabel(using: localization)).font(.system(size: 12, weight: .medium))
                         } else {
                             Image(systemName: symbol(for: button)).font(.system(size: 12, weight: .medium))
                         }

@@ -110,14 +110,19 @@ enum VoicePlaybackQueueCapacity {
     static let maximumSamples = 8_000
     static let maximumPreRollSamples = 80_000
 
-    static func admits(pending: Int, incoming: Int, pendingPreRoll: Int = 0, isPreRoll: Bool = false) -> Bool {
+    static func admits(pending: Int, incoming: Int, pendingPreRoll: Int = 0, isPreRoll: Bool = false,
+        preRollBudget: Int = 0) -> Bool {
         guard pending >= 0, pendingPreRoll >= 0, pendingPreRoll <= pending,
               pendingPreRoll <= maximumPreRollSamples, incoming > 0 else { return false }
-        let live = pending - pendingPreRoll
-        guard live <= maximumSamples else { return false }
-        return isPreRoll
-            ? incoming <= maximumPreRollSamples - pendingPreRoll
-            : incoming <= maximumSamples - live
+        guard (0...maximumPreRollSamples).contains(preRollBudget) else { return false }
+        let budget = max(preRollBudget, pendingPreRoll)
+        if isPreRoll {
+            guard incoming <= maximumPreRollSamples - pendingPreRoll else { return false }
+            return pending <= maximumSamples + max(budget, pendingPreRoll + incoming) - incoming
+        }
+        // A pre-roll backlog creates an equivalent live backlog while FIFO playback
+        // consumes it. Keep that reservation until the entire queue drains.
+        return pending <= maximumSamples + budget && incoming <= maximumSamples + budget - pending
     }
 
     static func chunks(_ samples: [Int16]) -> [[Int16]] {
@@ -286,7 +291,7 @@ enum CoreAudioDeviceCatalog {
         _ device: AudioDeviceInfo
     ) -> VirtualAudioDeviceAudibilityRepairResult {
         let kind = VirtualAudioDeviceDiagnosticKind.classify(device)
-        guard kind == .buddyMic || kind == .blackHole2ch else {
+        guard kind == .buddyMic else {
             return .init()
         }
 
@@ -627,6 +632,7 @@ final class VirtualAudioOutput {
         let operationID: UInt64
         let startedAtUptime: TimeInterval
         let requestedOnMainThread: Bool
+        let deadline: TimeInterval?
         let completion: (VirtualAudioDrainOutcome) -> Void
     }
 
@@ -636,11 +642,12 @@ final class VirtualAudioOutput {
     private var engineConfigurationGeneration: UInt64 = 0
     private let rejectedWriteLock = NSLock()
     private var rejectedWriteCount = 0
-    private var lastRejectedWriteLogDate = Date.distantPast
+    private var lastRejectedWriteLogUptime = -TimeInterval.infinity
     private let playbackLock = NSLock()
     private var pendingVoiceBufferCount = 0
     private var pendingVoiceSampleCount = 0
     private var pendingPreRollSampleCount = 0
+    private var preRollSampleBudget = 0
     private var playbackGeneration: UInt64 = 0
     private var playbackCounters = VirtualAudioPlaybackCounters()
     private var playbackCountersByDeliveryGeneration: [Int: VirtualAudioPlaybackCounters] = [:]
@@ -1005,14 +1012,17 @@ final class VirtualAudioOutput {
         let generation = playbackGeneration
         let sampleCount = samples.count
         guard VoicePlaybackQueueCapacity.admits(pending: pendingVoiceSampleCount, incoming: sampleCount,
-            pendingPreRoll: pendingPreRollSampleCount, isPreRoll: isPreRoll) else {
+            pendingPreRoll: pendingPreRollSampleCount, isPreRoll: isPreRoll, preRollBudget: preRollSampleBudget) else {
             playbackLock.unlock()
             logRejectedWrite(reason: "queue_capacity")
             return false
         }
         pendingVoiceBufferCount += buffers.count
         pendingVoiceSampleCount += sampleCount
-        if isPreRoll { pendingPreRollSampleCount += sampleCount }
+        if isPreRoll {
+            pendingPreRollSampleCount += sampleCount
+            preRollSampleBudget = max(preRollSampleBudget, pendingPreRollSampleCount)
+        }
         playbackCounters.scheduledBuffers += buffers.count
         playbackCounters.scheduledSamples += sampleCount
         playbackCountersByDeliveryGeneration[deliveryGeneration, default: .init()].scheduledBuffers += buffers.count
@@ -1086,6 +1096,7 @@ final class VirtualAudioOutput {
             operationID: resolvedOperationID,
             startedAtUptime: uptime(),
             requestedOnMainThread: Thread.isMainThread,
+            deadline: maximumDelay.map { uptime() + max(0, $0) },
             completion: completion
         )
         let shouldCompleteImmediately = pendingVoiceBufferCount == 0
@@ -1099,12 +1110,12 @@ final class VirtualAudioOutput {
             drainRequests.append(request)
             generation = nil
         } else {
-            if !wasWaiting {
-                drainGeneration &+= 1
-            }
+            drainGeneration &+= 1
             drainRequests.append(request)
             generation = drainGeneration
         }
+        let deadlines = drainRequests.compactMap(\.deadline)
+        let sharedDeadline = deadlines.count == drainRequests.count ? deadlines.max() : nil
         playbackLock.unlock()
 
         logger(
@@ -1131,8 +1142,8 @@ final class VirtualAudioOutput {
             )
             return
         }
-        if let maximumDelay, let generation {
-            _ = scheduleDrainDeadline(maximumDelay) { [weak self] in
+        if let sharedDeadline, let generation {
+            _ = scheduleDrainDeadline(max(0, sharedDeadline - uptime())) { [weak self] in
                 self?.finishDrainIfNeeded(generation: generation)
             }
         }
@@ -1180,6 +1191,7 @@ final class VirtualAudioOutput {
         pendingVoiceBufferCount = 0
         pendingVoiceSampleCount = 0
         pendingPreRollSampleCount = 0
+        preRollSampleBudget = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
         // Taken before the teardown below so a nested `stop()` cannot pick it up a second
@@ -1259,6 +1271,7 @@ final class VirtualAudioOutput {
         pendingVoiceBufferCount = 0
         pendingVoiceSampleCount = 0
         pendingPreRollSampleCount = 0
+        preRollSampleBudget = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
         // Same contract as flushPlayer: stopping answers the drain waiter exactly
@@ -1329,6 +1342,7 @@ final class VirtualAudioOutput {
             }
         }
         if pendingVoiceBufferCount == 0 {
+            preRollSampleBudget = 0
             drainedContexts = pendingDrainLogContexts
             pendingDrainLogContexts.removeAll()
             if !drainRequests.isEmpty {
@@ -1612,9 +1626,9 @@ final class VirtualAudioOutput {
         rejectedWriteLock.lock()
         rejectedWriteCount += 1
         let count = rejectedWriteCount
-        let now = Date()
-        let shouldLog = now.timeIntervalSince(lastRejectedWriteLogDate) >= 1
-        if shouldLog { lastRejectedWriteLogDate = now }
+        let now = uptime()
+        let shouldLog = now - lastRejectedWriteLogUptime >= 1
+        if shouldLog { lastRejectedWriteLogUptime = now }
         rejectedWriteLock.unlock()
         guard shouldLog else { return }
         AppLogger.shared.write(

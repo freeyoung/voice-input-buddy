@@ -88,6 +88,7 @@ extension AppSettings {
     /// punish a user whose configuration is 99% fine. Everything dropped is published in
     /// `configurationImportNotice` so the user is told rather than silently downgraded.
     func importConfiguration(from data: Data) throws {
+        configurationImportNotice = nil
         let configuration = try Self.validatedConfiguration(from: data)
         var rejected: Set<String> = []
         var missingApplications: [String] = []
@@ -183,7 +184,8 @@ extension AppSettings {
 
         let importedRecordingBackup: ConfiguredButtonAction?
         if let backup = configuration.continuousRecordingPowerBindingBackup {
-            importedRecordingBackup = Self.validatedConfiguredAction(backup)
+            importedRecordingBackup = backup.applicationProfileID.map(availableApplicationIDs.contains) ?? true
+                ? Self.validatedConfiguredAction(backup) : nil
             if importedRecordingBackup == nil {
                 rejected.insert(Keys.continuousRecordingPowerBindingBackup)
             }

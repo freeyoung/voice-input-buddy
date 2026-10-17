@@ -1,9 +1,14 @@
+import AudioExceptionFixtures
 import Foundation
 import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Audio engine exception boundary")
 struct AudioEngineExceptionTests {
+    @Test func catchesCppExceptionsAtTheAudioBoundary() {
+        #expect(AudioFixtureCatchesCppException())
+    }
+
     @Test func catchesObjectiveCExceptionsAndPreservesSwiftErrors() {
         #expect(throws: AudioEngineSafety.Failure.self) {
             try AudioEngineSafety.perform {

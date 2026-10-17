@@ -280,11 +280,18 @@ final class LocalizedUpdateUserDriver: NSObject, SPUUserDriver, NSWindowDelegate
 
     private func updateDownloadProgress() {
         progress = expectedLength > 0 ? min(1, Double(receivedLength) / Double(expectedLength)) : -1
-        render()
+        refreshProgressView()
+    }
+
+    private func refreshProgressView() {
+        guard isPresented, presentsWindows else { return }
+        if let content = window?.contentView as? UpdateDialogContentView, let progress {
+            content.updateProgress(progress, text: progressText)
+        } else { render() }
     }
 
     func showDownloadDidStartExtractingUpdate() { present("update.dialog.extracting", progress: -1, activate: false) }
-    func showExtractionReceivedProgress(_ progress: Double) { self.progress = min(1, max(0, progress)); render() }
+    func showExtractionReceivedProgress(_ progress: Double) { self.progress = min(1, max(0, progress)); refreshProgressView() }
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
         if installAndRelaunchWhenReady {
