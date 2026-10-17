@@ -53,7 +53,7 @@ extension SettingsView {
                         .foregroundStyle(installed ? Color.green : Color.orange)
                     Spacer()
                     Button(localization.text("audio.compatibility.open_install_guide")) {
-                        model.openDoubaoDriverInstructions(using: localization)
+                        model.openVirtualMicrophoneSetupInstructions(using: localization)
                     }
                     .compatibilityButtonStyle(.standard)
                 }
