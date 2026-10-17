@@ -859,7 +859,7 @@
 "onboarding.web_remote.retry" = "Generate a New QR Code";
 "onboarding.web_remote.button_detail" = "After connecting, tap any button except the voice button in Voice Input Buddy.";
 "onboarding.audio.title" = "Check the virtual microphone driver";
-"onboarding.audio.detail" = "The driver is checked and Voice Input Buddy Mic is configured automatically. Setup continues when ready; no device selection is needed.";
+"onboarding.audio.detail" = "The driver is checked and Voice Input Buddy Mic is configured automatically. When ready, click Continue; no audio device selection is needed.";
 "onboarding.audio.device_detail" = "Install the Voice Input Buddy Mic driver, then restart your Mac if the device is still missing.";
 "onboarding.audio.no_devices" = "No supported virtual audio device was detected";
 "onboarding.audio.selected" = "%1$@ selected";
@@ -1265,7 +1265,7 @@
 
 "settings.driver.fixed_output_help" = "All remotes share this virtual microphone. Audio output is configured automatically.";
 
-"onboarding.audio.automatic_ready" = "Driver and audio output are ready. Continuing setup.";
+"onboarding.audio.automatic_ready" = "Driver and audio output are ready. Click Continue to proceed.";
 
 "onboarding.audio.checking" = "Checking the driver and audio output.";
 

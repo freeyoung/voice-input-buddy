@@ -22,19 +22,11 @@ extension OnboardingView {
         }
         .onAppear { prepareAutomaticDriverCheck() }
         .onChange(of: model.audioDevices) { _, _ in prepareAutomaticDriverCheck() }
-        .onChange(of: model.isAudioOutputReady) { _, _ in advanceAutomaticDriverCheckIfReady() }
     }
 
     private func prepareAutomaticDriverCheck() {
         guard interactionProbe == nil else { return }
         model.refreshAudioDevices()
-        model.configureVirtualAudioOutput(reason: "onboarding_driver_check") { _ in advanceAutomaticDriverCheckIfReady() }
-    }
-
-    private func advanceAutomaticDriverCheckIfReady() {
-        guard interactionProbe == nil,
-              OnboardingFlowPolicy.shouldAdvanceDriverCheck(step: settings.onboardingStep,
-                  driverInstalled: microphoneDriverInstalled, outputReady: model.isAudioOutputReady) else { return }
-        continueFlow()
+        model.configureVirtualAudioOutput(reason: "onboarding_driver_check")
     }
 }

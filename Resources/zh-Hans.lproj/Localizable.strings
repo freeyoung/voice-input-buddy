@@ -858,7 +858,7 @@
 "onboarding.web_remote.retry" = "重新生成二维码";
 "onboarding.web_remote.button_detail" = "连接后，在 Voice Input Buddy 中按任意普通按键。";
 "onboarding.audio.title" = "检查虚拟麦克风驱动";
-"onboarding.audio.detail" = "自动检查驱动并配置 Voice Input Buddy Mic。检测成功后会自动进入下一步，无需选择设备。";
+"onboarding.audio.detail" = "自动检查驱动并配置 Voice Input Buddy Mic。检测成功后，点击“继续”进入下一步，无需选择音频设备。";
 "onboarding.audio.device_detail" = "请安装 Voice Input Buddy Mic 驱动，安装后仍未检测到设备时，请重启 Mac。";
 "onboarding.audio.no_devices" = "未检测到支持的虚拟音频设备";
 "onboarding.audio.selected" = "已选择 %1$@";
@@ -1266,7 +1266,7 @@
 
 "settings.driver.fixed_output_help" = "所有设备共用此虚拟麦克风，程序会自动配置语音输出。";
 
-"onboarding.audio.automatic_ready" = "驱动与语音输出已就绪，即将进入下一步。";
+"onboarding.audio.automatic_ready" = "驱动与语音输出已就绪，点击“继续”进入下一步。";
 
 "onboarding.audio.checking" = "正在检查驱动与语音输出。";
 

@@ -772,10 +772,6 @@ enum OnboardingFlowPolicy {
         !remoteConnected && remoteButtonObserved && !recoveryRequested
     }
 
-    static func shouldAdvanceDriverCheck(step: OnboardingStep, driverInstalled: Bool, outputReady: Bool) -> Bool {
-        step == .audio && driverInstalled && outputReady
-    }
-
     static func canContinue(
         from step: OnboardingStep,
         voiceTool: OnboardingVoiceTool,
