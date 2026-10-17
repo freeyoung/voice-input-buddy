@@ -11,16 +11,16 @@ extension SettingsView {
            let result = shortcutCaptureFeedback?.result {
             switch result {
             case .succeeded:
-                Label("shortcut.editor.success", systemImage: "checkmark.circle.fill")
+                Label(localization.text("shortcut.editor.success"), systemImage: "checkmark.circle.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.green)
             case .failed(.accessibilityPermissionRequired):
-                Label("shortcut.editor.permission_required", systemImage: "lock.trianglebadge.exclamationmark")
+                Label(localization.text("shortcut.editor.permission_required"), systemImage: "lock.trianglebadge.exclamationmark")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             case .failed(.eventTapUnavailable):
-                Label("shortcut.editor.capture_unavailable", systemImage: "exclamationmark.triangle.fill")
+                Label(localization.text("shortcut.editor.capture_unavailable"), systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
@@ -31,13 +31,13 @@ extension SettingsView {
     @ViewBuilder
     func accessibilityLearningEditor(_ profile: CustomApplicationProfile) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("custom_application.accessibility.learn_help")
+            Text(localization.text("custom_application.accessibility.learn_help"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 10) {
-                Button("custom_application.accessibility.learn") {
+                Button(localization.text("custom_application.accessibility.learn")) {
                     recordCustomApplicationInput(profileID: profile.id)
                 }
                 .compatibilityButtonStyle(.prominent)

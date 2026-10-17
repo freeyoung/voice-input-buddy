@@ -14,7 +14,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
+    var titleKey: String {
         switch self {
         case .connection: return "settings.section.connection"
         case .integration: return "settings.section.integration"

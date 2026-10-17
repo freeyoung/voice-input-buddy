@@ -47,7 +47,7 @@ extension SettingsView {
                 .fixedSize(horizontal: false, vertical: true)
 
             if !vertical {
-                Button("connection.action.reconnect") {
+                Button(localization.text("connection.action.reconnect")) {
                     model.reconnect()
                 }
                 .compatibilityButtonStyle(.standard)

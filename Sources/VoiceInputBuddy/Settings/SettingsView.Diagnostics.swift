@@ -20,7 +20,7 @@ extension SettingsView {
         )
 
         return VStack(alignment: .leading, spacing: 0) {
-            Text("settings.permissions.title")
+            Text(localization.text("settings.permissions.title"))
                 .font(.title3.weight(.semibold))
 
             permissionRow(
@@ -64,7 +64,7 @@ extension SettingsView {
             if settings.isOnboardingComplete,
                !inputMonitoringGranted || !accessibilityGranted {
                 Divider().padding(.leading, 48)
-                Label("permissions.upgrade_identity_help", systemImage: "arrow.triangle.2.circlepath")
+                Label(localization.text("permissions.upgrade_identity_help"), systemImage: "arrow.triangle.2.circlepath")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -77,9 +77,9 @@ extension SettingsView {
 
     var inlineDiagnosticsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("settings.diagnostics.title")
+            Text(localization.text("settings.diagnostics.title"))
                 .font(.title3.weight(.semibold))
-            Text("diagnostics.logs.privacy")
+            Text(localization.text("diagnostics.logs.privacy"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
@@ -89,17 +89,17 @@ extension SettingsView {
                     .foregroundStyle(Color.accentColor)
                     .frame(width: 34)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("diagnostics.logs.title")
+                    Text(localization.text("diagnostics.logs.title"))
                         .font(.subheadline.weight(.semibold))
-                    Text("diagnostics.logs.last_entry")
+                    Text(localization.text("diagnostics.logs.last_entry"))
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 8) {
-                    Button("diagnostics.logs.show_in_finder") { model.openLogFolder() }
+                    Button(localization.text("diagnostics.logs.show_in_finder")) { model.openLogFolder() }
                         .compatibilityButtonStyle(.standard)
-                    Button("diagnostics.logs.copy_summary") { copySettingsDiagnosticSummary() }
+                    Button(localization.text("diagnostics.logs.copy_summary")) { copySettingsDiagnosticSummary() }
                         .compatibilityButtonStyle(.standard)
                 }
             }
@@ -119,9 +119,9 @@ extension SettingsView {
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 34)
             VStack(alignment: .leading, spacing: 2) {
-                Text("about.preferences.app_icon")
+                Text(localization.text("about.preferences.app_icon"))
                     .font(.subheadline.weight(.semibold))
-                Text("about.preferences.app_icon_help")
+                Text(localization.text("about.preferences.app_icon_help"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

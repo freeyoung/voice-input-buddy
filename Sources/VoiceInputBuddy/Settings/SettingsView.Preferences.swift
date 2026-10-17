@@ -14,12 +14,12 @@ extension SettingsView {
                     Image(systemName: "wand.and.stars").font(.title2)
                         .foregroundStyle(Color.accentColor)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("about.preferences.restart_onboarding").font(.headline)
-                        Text("about.preferences.restart_onboarding_help")
+                        Text(localization.text("about.preferences.restart_onboarding")).font(.headline)
+                        Text(localization.text("about.preferences.restart_onboarding_help"))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("about.preferences.restart_onboarding_action") {
+                    Button(localization.text("about.preferences.restart_onboarding_action")) {
                         settings.restartOnboarding()
                     }
                     .compatibilityButtonStyle(.prominent)
@@ -38,9 +38,9 @@ extension SettingsView {
                                     .resizable()
                                     .frame(width: 72, height: 72)
                                     .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
-                                Text("app.name")
+                                Text(localization.text("app.name"))
                                     .font(.title3.weight(.semibold))
-                                Text("settings.application.tagline")
+                                Text(localization.text("settings.application.tagline"))
                                     .font(.system(size: 12))
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
@@ -51,7 +51,7 @@ extension SettingsView {
 
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(spacing: 8) {
-                                    Text("about.version.current")
+                                    Text(localization.text("about.version.current"))
                                         .font(.system(size: 12))
                                         .foregroundStyle(.secondary)
                                     Text(currentVersion)
@@ -113,7 +113,7 @@ extension SettingsView {
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("settings.general.title")
+                        Text(localization.text("settings.general.title"))
                             .font(.title3.weight(.semibold))
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -125,18 +125,18 @@ extension SettingsView {
                                     .foregroundStyle(Color.accentColor)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.configuration.title")
+                                    Text(localization.text("about.configuration.title"))
                                         .font(.subheadline.weight(.semibold))
-                                    Text("about.configuration.export_description")
+                                    Text(localization.text("about.configuration.export_description"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 16)
-                                Button("about.configuration.export", action: exportConfiguration)
+                                Button(localization.text("about.configuration.export"), action: exportConfiguration)
                                     .compatibilityButtonStyle(.standard)
                                     .fixedSize(horizontal: true, vertical: false)
                                     .frame(width: 150)
-                                Button("about.configuration.import", action: importConfiguration)
+                                Button(localization.text("about.configuration.import"), action: importConfiguration)
                                     .disabled(model.isVoiceConfigurationBusy)
                                     .compatibilityButtonStyle(.standard)
                                     .fixedSize(horizontal: true, vertical: false)
@@ -164,9 +164,9 @@ extension SettingsView {
                                     .foregroundStyle(Color.accentColor)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.preferences.show_dock_icon")
+                                    Text(localization.text("about.preferences.show_dock_icon"))
                                         .font(.subheadline.weight(.semibold))
-                                    Text("about.preferences.show_dock_icon_help")
+                                    Text(localization.text("about.preferences.show_dock_icon_help"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -193,9 +193,9 @@ extension SettingsView {
                                     .foregroundStyle(Color.accentColor)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.preferences.show_status_bar_icon")
+                                    Text(localization.text("about.preferences.show_status_bar_icon"))
                                         .font(.subheadline.weight(.semibold))
-                                    Text("about.preferences.show_status_bar_icon_help")
+                                    Text(localization.text("about.preferences.show_status_bar_icon_help"))
                                         .font(.system(size: 12))
                                         .foregroundStyle(.secondary)
                                         .fixedSize(horizontal: false, vertical: true)
@@ -218,9 +218,9 @@ extension SettingsView {
                                     .foregroundStyle(Color.accentColor)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text("settings.general.launch_behavior")
+                                    Text(localization.text("settings.general.launch_behavior"))
                                         .font(.subheadline.weight(.semibold))
-                                    Text("settings.general.launch_behavior_help")
+                                    Text(localization.text("settings.general.launch_behavior_help"))
                                         .font(.system(size: 12))
                                         .foregroundStyle(.secondary)
                                         .fixedSize(horizontal: false, vertical: true)
@@ -228,7 +228,7 @@ extension SettingsView {
                                 Spacer(minLength: 12)
                                 HStack(spacing: 10) {
                                     VStack(alignment: .trailing, spacing: 4) {
-                                        Text("about.preferences.launch_at_login")
+                                        Text(localization.text("about.preferences.launch_at_login"))
                                             .font(.system(size: 12, weight: .medium))
                                         Toggle("", isOn: Binding(
                                             get: { loginItemService.isEnabled },
@@ -242,7 +242,7 @@ extension SettingsView {
                                         .frame(height: 34)
 
                                     VStack(alignment: .trailing, spacing: 4) {
-                                        Text("about.preferences.open_main_window_at_launch")
+                                        Text(localization.text("about.preferences.open_main_window_at_launch"))
                                             .font(.system(size: 12, weight: .medium))
                                         Toggle("", isOn: $settings.openMainWindowAtLaunch)
                                             .labelsHidden()
@@ -253,7 +253,7 @@ extension SettingsView {
                             .padding(.vertical, 8)
 
                             if loginItemService.requiresApproval {
-                                Text("about.preferences.launch_at_login_requires_approval")
+                                Text(localization.text("about.preferences.launch_at_login_requires_approval"))
                                     .font(.system(size: 12))
                                     .foregroundStyle(.orange)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -266,7 +266,7 @@ extension SettingsView {
                                 .compatibilityButtonStyle(.standard)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             } else if loginItemService.didFailToUpdate {
-                                Text("about.preferences.launch_at_login_update_failed")
+                                Text(localization.text("about.preferences.launch_at_login_update_failed"))
                                     .font(.system(size: 12))
                                     .foregroundStyle(.red)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -282,14 +282,14 @@ extension SettingsView {
                                     .foregroundStyle(.green)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.preferences.language")
+                                    Text(localization.text("about.preferences.language"))
                                         .font(.subheadline.weight(.semibold))
-                                    Text("about.preferences.language_description")
+                                    Text(localization.text("about.preferences.language_description"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 20)
-                                Picker("about.preferences.language", selection: Binding(
+                                Picker(localization.text("about.preferences.language"), selection: Binding(
                                     get: { localization.language },
                                     set: { localization.select($0) }
                                 )) {
@@ -339,23 +339,23 @@ extension SettingsView {
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 34)
             VStack(alignment: .leading, spacing: 2) {
-                Text("about.support.feedback")
+                Text(localization.text("about.support.feedback"))
                     .font(.subheadline.weight(.semibold))
-                Text("about.support.feedback_description")
+                Text(localization.text("about.support.feedback_description"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 16)
             Link(destination: localization.localizedWebsiteURL) {
-                Label("about.support.website", systemImage: "globe")
+                Label(localization.text("about.support.website"), systemImage: "globe")
             }
             .compatibilityButtonStyle(.standard)
             Link(destination: AppLinks.githubRepository) {
-                Label("about.support.github", systemImage: "link")
+                Label(localization.text("about.support.github"), systemImage: "link")
             }
             .compatibilityButtonStyle(.standard)
             Link(destination: AppLinks.feedback) {
-                Label("about.support.feedback_action", systemImage: "arrow.up.right")
+                Label(localization.text("about.support.feedback_action"), systemImage: "arrow.up.right")
             }
             .compatibilityButtonStyle(.standard)
         }

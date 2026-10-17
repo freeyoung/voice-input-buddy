@@ -54,7 +54,7 @@ extension SettingsView {
                             .accessibilityHidden(true)
                     }
                 }
-                Text(section.title)
+                Text(localization.text(section.titleKey))
                     .font(.system(size: 13, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
@@ -70,7 +70,7 @@ extension SettingsView {
             SettingsPageBehavior.showsUpdateBadge(
                 for: section,
                 hasUnseenUpdate: updateInformation.hasUnseenUpdate
-            ) ? Text("settings.update_badge.accessibility_value") : Text("")
+            ) ? Text(localization.text("settings.update_badge.accessibility_value")) : Text("")
         )
     }
 

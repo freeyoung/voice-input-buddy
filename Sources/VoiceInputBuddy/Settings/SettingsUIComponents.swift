@@ -134,6 +134,7 @@ private struct DeviceStatusStep: View {
 
 /// 按型号目录给出的资源名加载真机图。资源名来自 `VoiceRemoteCatalog`，不在这里硬编码。
 struct RemoteCatalogPhoto: View {
+    @EnvironmentObject var localization: LocalizationStore
     let resourceName: String
 
     var body: some View {
@@ -152,7 +153,7 @@ struct RemoteCatalogPhoto: View {
                             .scaledToFit()
                             .foregroundStyle(.secondary)
                             .padding(20)
-                            .accessibilityLabel(Text("remote.device.illustration"))
+                            .accessibilityLabel(Text(localization.text("remote.device.illustration")))
                     }
             }
         }
@@ -164,6 +165,7 @@ struct RemoteCatalogPhoto: View {
 /// 关键：这里**不显示任何真机图**。App 内置每款遥控器的真机图与按键页，给未识别设备套上
 /// 别款的图，界面就等于声称一台从未验证过的设备「已连接、能用」。
 struct UnrecognizedRemotePhoto: View {
+    @EnvironmentObject var localization: LocalizationStore
     var body: some View {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
             .fill(.quaternary)
@@ -172,7 +174,7 @@ struct UnrecognizedRemotePhoto: View {
                     Image(systemName: "questionmark.circle")
                         .font(.title3)
                         .foregroundStyle(.secondary)
-                    Text("remote.device.model.unrecognized")
+                    Text(localization.text("remote.device.model.unrecognized"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

@@ -10,15 +10,15 @@ extension SettingsView {
             PageHeader(title: localization.text("settings.permissions.page_title"))
         } content: {
             VStack(alignment: .leading, spacing: 14) {
-                Text("settings.permissions.introduction")
+                Text(localization.text("settings.permissions.introduction"))
                     .foregroundStyle(.secondary)
                 GlassPanel { inlinePermissionsSection }
                 microphoneDriverPanel
                 GlassPanel {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("settings.permissions.privacy_title", systemImage: "lock.shield")
+                        Label(localization.text("settings.permissions.privacy_title"), systemImage: "lock.shield")
                             .font(.headline)
-                        Text("settings.permissions.privacy_detail")
+                        Text(localization.text("settings.permissions.privacy_detail"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -40,11 +40,11 @@ extension SettingsView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Label("settings.driver.title", systemImage: "mic.fill").font(.headline)
-                        Text("settings.driver.detail").font(.subheadline).foregroundStyle(.secondary)
+                        Label(localization.text("settings.driver.title"), systemImage: "mic.fill").font(.headline)
+                        Text(localization.text("settings.driver.detail")).font(.subheadline).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("audio.action.refresh_devices") { model.refreshAudioDevices() }
+                    Button(localization.text("audio.action.refresh_devices")) { model.refreshAudioDevices() }
                         .compatibilityButtonStyle(.standard)
                 }
                 HStack {
@@ -52,16 +52,16 @@ extension SettingsView {
                           systemImage: installed ? "checkmark.circle.fill" : "exclamationmark.triangle")
                         .foregroundStyle(installed ? Color.green : Color.orange)
                     Spacer()
-                    Button("audio.compatibility.open_install_guide") {
+                    Button(localization.text("audio.compatibility.open_install_guide")) {
                         model.openDoubaoDriverInstructions(using: localization)
                     }
                     .compatibilityButtonStyle(.standard)
                 }
                 Label(DoubaoAudioDevicePolicy.deviceName, systemImage: "waveform")
                     .font(.subheadline)
-                Text("settings.driver.fixed_output_help")
+                Text(localization.text("settings.driver.fixed_output_help"))
                     .font(.caption).foregroundStyle(.secondary)
-                Text("settings.driver.reload_help")
+                Text(localization.text("settings.driver.reload_help"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

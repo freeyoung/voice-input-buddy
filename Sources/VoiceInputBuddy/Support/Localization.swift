@@ -129,7 +129,7 @@ final class LocalizationStore: ObservableObject {
     private let resourceBundle: Bundle
     private var localeObserver: NSObjectProtocol?
 
-    init(settings: AppSettings, resourceBundle: Bundle = .main) {
+    init(settings: AppSettings, resourceBundle: Bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment) {
         self.settings = settings
         self.resourceBundle = resourceBundle
         language = settings.applicationLanguage
@@ -185,7 +185,7 @@ struct LocalizationSnapshot {
         self.resourceBundle = resourceBundle
     }
 
-    init(language: AppLanguage, resourceBundle: Bundle = .main) {
+    init(language: AppLanguage, resourceBundle: Bundle = VoiceInputBuddyResourceBundle.mainOrDevelopment) {
         self.init(locale: LocalizationSnapshot.resolvedLocale(for: language, resourceBundle: resourceBundle),
                   resourceBundle: resourceBundle)
     }

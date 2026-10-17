@@ -31,11 +31,11 @@ extension OnboardingView {
                     BridgeAppModel.canLearnHIDIdentity(model: profile.model, source: settings.onboardingControlSource)
             }
             if !profiles.isEmpty {
-                Picker("onboarding.remote.choose_device", selection: Binding(
+                Picker(localization.text("onboarding.remote.choose_device"), selection: Binding(
                     get: { profiles.contains(where: { $0.id == settings.selectedRemoteProfileID }) ? settings.selectedRemoteProfileID : nil },
                     set: { if let id = $0 { model.selectRemoteProfile(id) } }
                 )) {
-                    Text("onboarding.remote.choose_device").tag(Optional<UUID>.none)
+                    Text(localization.text("onboarding.remote.choose_device")).tag(Optional<UUID>.none)
                     ForEach(profiles) { profile in
                         Text(model.systemDeviceName(for: profile) ?? localization.text(profile.model.localizationKey))
                             .tag(Optional(profile.id))
@@ -124,7 +124,7 @@ extension OnboardingView {
             if let profile = settings.selectedRemoteProfile,
                selectedControlConnected,
                BridgeAppModel.canLearnHIDIdentity(model: profile.model, source: settings.onboardingControlSource) {
-                Button("remote.hid_binding.open") { hidBindingProfile = profile }
+                Button(localization.text("remote.hid_binding.open")) { hidBindingProfile = profile }
                     .buttonStyle(.bordered)
                     .onAppear { learnSelectedHIDIdentity() }
                     .onChange(of: settings.selectedRemoteProfileID) { _, _ in learnSelectedHIDIdentity() }
