@@ -14,13 +14,22 @@ class InstallerNoticeTests(unittest.TestCase):
     def test_notice_precedes_install_and_payload_identity_survives(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
+            # Reproduce a fresh CI checkout before Swift creates .build.
+            checkout = work / 'fresh checkout'
+            scripts = checkout / 'scripts'
+            scripts.mkdir(parents=True)
+            helper = scripts / 'build-installer-product.sh'
+            shutil.copy2(ROOT / 'scripts/build-installer-product.sh', helper)
+            shutil.copytree(ROOT / 'scripts/installer-resources', scripts / 'installer-resources')
+            self.assertFalse((checkout / '.build').exists())
             component, product = work / 'component.pkg', work / 'product.pkg'
             subprocess.run(['pkgbuild', '--nopayload', '--identifier', 'com.example.inert-test',
-                            '--version', '1.0', str(component)], check=True, capture_output=True)
-            subprocess.run([str(ROOT / 'scripts/build-installer-product.sh'), str(component), str(product)],
-                           check=True, capture_output=True)
+                            '--version', '1.0', str(component)], check=True)
+            subprocess.run([str(helper), str(component), str(product)],
+                           check=True)
             subprocess.run(['pkgutil', '--expand-full', str(product), str(work / 'expanded')],
-                           check=True, capture_output=True)
+                           check=True)
+            self.assertFalse((checkout / '.build').exists())
             expanded = work / 'expanded'
             distribution = ET.parse(expanded / 'Distribution').getroot()
             self.assertEqual(distribution.find('readme').get('file'), 'ReadMe.html')

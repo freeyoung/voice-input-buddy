@@ -4,7 +4,8 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 component="${1:?Component package is required}"
 output="${2:?Output package is required}"
-work="$(mktemp -d "$root/.build/installer-product.XXXXXX")"
+# This helper also runs before the first Swift build in a fresh checkout.
+work="$(mktemp -d "${TMPDIR:-/tmp}/voice-input-buddy-installer.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 cp "$component" "$work/VoiceInputBuddyPayload.pkg"
 productbuild --synthesize --package "$work/VoiceInputBuddyPayload.pkg" "$work/Distribution.xml"
