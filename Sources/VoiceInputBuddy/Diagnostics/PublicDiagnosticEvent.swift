@@ -1,8 +1,8 @@
 import CryptoKit
 import Foundation
 
-/// A deliberately small, typed event format used by the user-initiated Sentry
-/// diagnostic path. It is independent from the local text log file.
+/// A small, typed format for local structured diagnostics.
+/// Events contain status and error metadata, never transcript or audio content.
 struct PublicDiagnosticEvent: Equatable {
     static let schemaVersion = 1
 
