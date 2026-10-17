@@ -3,6 +3,15 @@ import Testing
 
 @Suite("Onboarding physical transcript input")
 struct OnboardingTranscriptInputTests {
+    @Test func manualPasteIsRejectedButSyntheticDictationPasteRemainsAllowed() {
+        #expect(OnboardingTranscriptInputPolicy.isManualPaste(eventTypeRawValue: nil,
+            sourceStateID: nil, sourceUnixProcessID: nil))
+        #expect(OnboardingTranscriptInputPolicy.isManualPaste(eventTypeRawValue: 10,
+            sourceStateID: 1, sourceUnixProcessID: 0))
+        #expect(!OnboardingTranscriptInputPolicy.isManualPaste(eventTypeRawValue: 10,
+            sourceStateID: 0, sourceUnixProcessID: 123))
+    }
+
     @Test func unknownAndSyntheticEventsCannotClaimPhysicalInput() {
         #expect(!OnboardingTranscriptInputPolicy.isConfirmedPhysicalKeyboardInput(
             eventTypeRawValue: nil, sourceStateID: nil, sourceUnixProcessID: nil))

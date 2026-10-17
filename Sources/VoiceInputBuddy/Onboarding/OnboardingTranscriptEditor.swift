@@ -221,6 +221,26 @@ private final class OnboardingTranscriptScrollView: NSScrollView {
 private final class OnboardingTranscriptTextView: NSTextView {
     var onPhysicalEdit: (() -> Void)?
 
+    override func paste(_ sender: Any?) {
+        recordPasteOrigin()
+        super.paste(sender)
+    }
+
+    override func pasteAsPlainText(_ sender: Any?) {
+        recordPasteOrigin()
+        super.pasteAsPlainText(sender)
+    }
+
+    private func recordPasteOrigin() {
+        let event = NSApp.currentEvent
+        if OnboardingTranscriptInputPolicy.isManualPaste(
+            eventTypeRawValue: event?.type.rawValue,
+            sourceStateID: event?.cgEvent?.getIntegerValueField(.eventSourceStateID),
+            sourceUnixProcessID: event?.cgEvent?.getIntegerValueField(.eventSourceUnixProcessID)) {
+            onPhysicalEdit?()
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
         if OnboardingTranscriptInputPolicy.isConfirmedPhysicalKeyboardInput(
             eventTypeRawValue: event.type.rawValue,

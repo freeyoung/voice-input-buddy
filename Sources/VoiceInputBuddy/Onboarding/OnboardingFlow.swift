@@ -714,6 +714,15 @@ enum OnboardingTranscriptInputPolicy {
             !(0xF700...0xF8FF).contains($0.value) } == true
     }
 
+    static func isManualPaste(eventTypeRawValue: UInt?, sourceStateID: Int64?,
+        sourceUnixProcessID: Int64?) -> Bool {
+        // Context-menu paste has no keyDown; a physical Cmd-V is manual. Synthetic
+        // key events from dictation tools must remain eligible for voice validation.
+        guard eventTypeRawValue == keyDownEventTypeRawValue else { return true }
+        return isConfirmedPhysicalKeyboardInput(eventTypeRawValue: eventTypeRawValue,
+            sourceStateID: sourceStateID, sourceUnixProcessID: sourceUnixProcessID)
+    }
+
     private static let keyDownEventTypeRawValue: UInt = 10
     private static let hidSystemStateRawValue: Int64 = 1
 
