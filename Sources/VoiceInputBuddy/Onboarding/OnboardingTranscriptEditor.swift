@@ -189,7 +189,8 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
             guard snapshot != lastPublishedSnapshot else { return }
             lastPublishedSnapshot = snapshot
             DispatchQueue.main.async { [weak self] in
-                self?.parent.onFocusStateChanged(snapshot)
+                guard let self, !self.isDetached else { return }
+                self.parent.onFocusStateChanged(snapshot)
             }
         }
     }
