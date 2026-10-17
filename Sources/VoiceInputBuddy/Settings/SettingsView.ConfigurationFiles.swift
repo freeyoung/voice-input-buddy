@@ -34,6 +34,7 @@ extension SettingsView {
             title: localization.text("configuration.import.panel_title"),
             prompt: localization.text("configuration.import.prompt")
         ) else { return }
+        settings.configurationImportNotice = nil
         do {
             try model.importConfiguration(from: ConfigurationFileReader.read(from: url))
             localization.select(settings.applicationLanguage)
