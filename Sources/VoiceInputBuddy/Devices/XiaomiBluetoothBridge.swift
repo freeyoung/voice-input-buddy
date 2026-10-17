@@ -471,36 +471,32 @@ final class XiaomiBluetoothBridge: NSObject {
 
     /// Called only for activity routed to this saved remote's HID profile.
     func recoverAfterRemoteActivity(reason: String) {
-        guard canRecoverRemoteWake, let central, central.state == .poweredOn,
-              let generation = lifecycle.generation else { return }
+        guard canRecoverRemoteWake, central?.state == .poweredOn else { return }
         AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(lifecycle) result=retry_now")
         remoteWakeStartedAt = ProcessInfo.processInfo.systemUptime
-        reconnectWorkItem?.cancel()
-        reconnectWorkItem = nil
         reconnectPolicy.reset()
-        lifecycle = .scanning(generation)
-        discoverOrScan(using: central, generation: generation)
+        startFreshConnectionCycle()
     }
 
-    /// HID matching can precede profile association; only the exact Bluetooth identity can wake this bridge.
+    /// Recreate the central and proxy generation even when the system already
+    /// owns the connection: the same CBPeripheral object can survive a retry.
     func recoverSystemConnectedRemote(reason: String) {
         guard canRecoverRemoteWake, let central, central.state == .poweredOn,
-              let generation = lifecycle.generation, let targetIdentifier,
+              let targetIdentifier,
               let candidate = central.retrieveConnectedPeripherals(withServices: [serviceUUID])
                 .first(where: { $0.identifier == targetIdentifier }),
               acceptsCandidateIdentifier(candidate.identifier) else { return }
-        let previousPhase = lifecycle
-        lifecycle = .scanning(generation)
-        guard adopt(candidate, using: central, generation: generation, source: "wake_system_connected",
-                    advertisesVoiceService: true, advertisedName: nil) else {
-            lifecycle = previousPhase
+        let decision = VoiceRemoteAdmission.decide(identifier: candidate.identifier,
+            targetIdentifier: targetIdentifier, advertisesVoiceService: true,
+            name: candidate.name, advertisedName: nil, allowsG9N9N: allowsG9N9N)
+        guard decision.isAdopted else {
+            reject(candidate, reason: decision.logReason, source: "wake_system_connected")
             return
         }
-        AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(previousPhase) result=system_connected")
+        AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(lifecycle) result=system_connected")
         remoteWakeStartedAt = ProcessInfo.processInfo.systemUptime
-        reconnectWorkItem?.cancel()
-        reconnectWorkItem = nil
         reconnectPolicy.reset()
+        startFreshConnectionCycle()
     }
 
     private func monitorRemoteWake() {
@@ -1419,6 +1415,8 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
     }
 
     private func startFreshConnectionCycle() {
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
             stopScan()
