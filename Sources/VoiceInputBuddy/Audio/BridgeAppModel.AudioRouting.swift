@@ -270,7 +270,7 @@ extension BridgeAppModel {
         generation: UInt64,
         configure: ((String, @escaping (Bool) -> Void) -> Void)? = nil,
         scheduleRetry: @escaping (TimeInterval, @escaping () -> Void) -> Void = { delay, action in
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: DispatchWorkItem(block: action))
         },
         completion: @escaping (Bool) -> Void
     ) {
