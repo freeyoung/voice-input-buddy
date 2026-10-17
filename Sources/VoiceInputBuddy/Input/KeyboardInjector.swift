@@ -330,6 +330,7 @@ enum KeyboardInjector {
         frontmostComposerFocuser: (@escaping (Bool) -> Void) -> Bool = focusFrontmostComposer,
         focusInputCompletion: @escaping (Bool) -> Void = { _ in },
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
+        secureInputEnabled: () -> Bool = SecureInputMonitor.isEnabled,
         keyPoster: KeyPoster = { postKey(code: $0, flags: $1) },
         keyStatePoster: KeyStatePoster = postKeyState,
         appSwitcherSession: AppSwitcherSession? = nil,
@@ -341,6 +342,10 @@ enum KeyboardInjector {
         guard action != .disabled else { return true }
         if action != .appSwitcher, transientAppSwitcher.isActive {
             guard transientAppSwitcher.confirm() else { return false }
+        }
+        guard !action.requiresNonSecureInput || !secureInputEnabled() else {
+            AppLogger.shared.write("BUTTON ACTION blocked reason=secure_input action=\(action.rawValue)")
+            return false
         }
         if action.isAppInternal {
             AppLogger.shared.write("INTERNAL ACTION ignored_by_keyboard action=\(action.rawValue)")
