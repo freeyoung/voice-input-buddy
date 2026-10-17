@@ -6,6 +6,12 @@ source "$root/scripts/architecture.sh"
 work="$(mktemp -d "$root/.build/verify-package.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 pkgutil --expand-full "$root/dist/release/Voice_Input_Buddy_${RELEASE_TAG}_macOS_${RELEASE_ARCH_LABEL}.pkg" "$work/expanded"
+python3 - "$work/expanded/Distribution" "$BUILD_ARCH" <<'PYTHON'
+import sys
+import xml.etree.ElementTree as ET
+options = ET.parse(sys.argv[1]).getroot().find('options')
+assert options is not None and options.get('hostArchitectures') == sys.argv[2], 'Installer architecture mismatch'
+PYTHON
 component="$work/expanded/VoiceInputBuddyPayload.pkg"
 test -s "$work/expanded/Resources/ReadMe.html"
 app="$component/Payload/Applications/Voice Input Buddy.app"
