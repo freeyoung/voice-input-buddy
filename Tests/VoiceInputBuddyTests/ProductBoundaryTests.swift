@@ -242,7 +242,7 @@ struct ProductBoundaryTests {
             let view = OnboardingView(model: model)
             view.selectDevice(device)
             #expect(settings.onboardingDevice == device)
-            #expect(view.canContinue)
+            #expect(view.canContinue == device.canStartSetup)
             #expect(AppSettings(defaults: defaults).onboardingDevice == device)
             view.continueFlow()
             if device.canStartSetup {

@@ -19,7 +19,7 @@ struct ReviewReliabilityTests {
             #expect(OnboardingFlowPolicy.canContinue(from: .remoteAvailability, voiceTool: .unselected,
                 remoteAvailability: settings.onboardingRemoteAvailability,
                 selectedDevice: device, capabilities: view.capabilities) == view.canContinue)
-            #expect(view.canContinue)
+            #expect(view.canContinue == device.canStartSetup)
             #expect(view.failureReason == nil)
         }
         #expect(!OnboardingFlowPolicy.canContinue(from: .remoteAvailability, voiceTool: .unselected,

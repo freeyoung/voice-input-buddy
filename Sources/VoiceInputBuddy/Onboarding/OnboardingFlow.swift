@@ -777,7 +777,7 @@ enum OnboardingFlowPolicy {
         case .voiceTool:
             return voiceTool != .unselected && voiceToolGuideStepsCompleted
         case .remoteAvailability:
-            return selectedDevice != nil
+            return selectedDevice?.canStartSetup == true
         case .permissions:
             // Environment setup must work before a control device is selected.
             return capabilities.bluetoothGranted &&
