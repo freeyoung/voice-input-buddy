@@ -15,10 +15,7 @@ let package = Package(
         .executableTarget(
             name: "VoiceInputBuddy",
             dependencies: ["AudioExceptionGuard", .product(name: "Sparkle", package: "Sparkle")],
-            path: "Sources/VoiceInputBuddy",
-
-            linkerSettings: [
-            ]
+            path: "Sources/VoiceInputBuddy"
         ),
         .target(
             name: "AudioExceptionGuard",

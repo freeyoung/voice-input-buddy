@@ -55,7 +55,7 @@ enum G9N9NProtocol {
 
     static func acceptsCapabilities(_ caps: ATVVCapabilities) -> Bool {
         caps.version == 0x0100 && caps.codecs & 0x02 != 0 &&
-            caps.selectedCodec == 0x02 && (1...512).contains(caps.frameSize)
+            caps.selectedCodec == 0x02 && ATVVProtocol.supportsFrameSize(caps.frameSize)
     }
 }
 

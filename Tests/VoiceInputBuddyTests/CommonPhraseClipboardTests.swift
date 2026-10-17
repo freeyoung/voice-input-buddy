@@ -179,7 +179,7 @@ struct CommonPhraseClipboardTests {
         #expect(board.data(forType: type) == original)
     }
 
-    @Test func aDelayedSnapshotCannotReplaceClipboardAfterTheDeadline() throws {
+    @Test func aStuckSnapshotAllowsRetryAndCannotCancelANewerSnapshot() throws {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
@@ -187,18 +187,22 @@ struct CommonPhraseClipboardTests {
         var reads: [() -> Void] = []
         var completions = 0
         let writer = CommonPhraseClipboardPaste(board: board, readClipboard: { reads.append($0) },
-            schedule: clock.voiceSchedule, postPaste: { Issue.record("Late snapshot must not paste"); return true })
+            schedule: clock.voiceSchedule, postPaste: { true })
         writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) {
             #expect($0 == "clipboard_write_failed"); completions += 1
         }
         #expect(board.string(forType: .string) == "original")
         clock.runAll()
         #expect(completions == 1)
-        writer.paste("retry", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == "clipboard_write_failed") }
-        #expect(reads.count == 1)
+        writer.paste("retry", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
+        #expect(reads.count == 2)
         let read = try #require(reads.first)
         read()
         #expect(completions == 1)
+        #expect(board.string(forType: .string) == "original")
+        reads[1]()
+        #expect(board.string(forType: .string) == "retry")
+        clock.runAll()
         #expect(board.string(forType: .string) == "original")
     }
 
@@ -206,7 +210,8 @@ struct CommonPhraseClipboardTests {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
-        let writer = CommonPhraseClipboardPaste(board: board, schedule: { delay, action in
+        let writer = CommonPhraseClipboardPaste(board: board,
+            readClipboard: { work in DispatchQueue.global().async { work() } }, schedule: { delay, action in
             if delay < 1 { DispatchQueue.main.async(execute: action) }
             return ScheduledOperation(cancellation: {})
         }, postPaste: { #expect(Thread.isMainThread); return true })
@@ -218,6 +223,31 @@ struct CommonPhraseClipboardTests {
         }
         #expect(result == nil)
         #expect(board.string(forType: .string) == "original")
+    }
+
+    @Test func productionHelperRoundTripsMultipleClipboardFormats() async throws {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let binaryType = NSPasteboard.PasteboardType("example.helper-test")
+        board.setString("original", forType: .string)
+        board.setData(Data([0, 1, 255]), forType: binaryType)
+        let executable = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent(".build/debug/VoiceInputBuddy")
+        #expect(FileManager.default.isExecutableFile(atPath: executable.path))
+        let writer = CommonPhraseClipboardPaste(board: board, snapshotExecutableURL: executable,
+            schedule: { delay, action in
+                if delay < 1 { DispatchQueue.main.async { action() } }
+                return ScheduledOperation(cancellation: {})
+            }, postPaste: { board.string(forType: .string) == "phrase" })
+        let result: String? = await withCheckedContinuation { continuation in
+            writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) {
+                continuation.resume(returning: $0)
+            }
+        }
+        #expect(result == nil)
+        #expect(board.string(forType: .string) == "original")
+        #expect(board.data(forType: binaryType) == Data([0, 1, 255]))
     }
 
     @Test func browserAndTerminalRoutesPreferNativePaste() {

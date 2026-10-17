@@ -8,6 +8,7 @@ private func shortcutCaptureEventTapCallback(
     event: CGEvent,
     userInfo: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
+    dispatchPrecondition(condition: .onQueue(.main))
     guard let userInfo else { return Unmanaged.passUnretained(event) }
     let monitor = Unmanaged<ShortcutCaptureMonitor>
         .fromOpaque(userInfo)
@@ -28,13 +29,12 @@ final class ShortcutCaptureMonitor {
         CGEventMask(1 << CGEventType.flagsChanged.rawValue)
 
     private let onCapture: (CustomKeyboardShortcut) -> Void
+    private let onUnavailable: (ShortcutCaptureStartFailure) -> Void
     private let accessibilityTrusted: () -> Bool
     private let dispatchCallback: CallbackDispatcher
     private let modifierIsPressed: (UInt16) -> Bool
     private let lock = NSLock()
     private var captureGeneration: UInt64 = 0
-    private let tapRecovery = EventTapRecovery()
-    private var tapRecoveryGeneration = 0
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var didCapture = false
@@ -44,6 +44,7 @@ final class ShortcutCaptureMonitor {
 
     init(
         onCapture: @escaping (CustomKeyboardShortcut) -> Void,
+        onUnavailable: @escaping (ShortcutCaptureStartFailure) -> Void = { _ in },
         accessibilityTrusted: @escaping () -> Bool = { KeyboardInjector.isAccessibilityTrusted },
         modifierIsPressed: @escaping (UInt16) -> Bool = {
             CGEventSource.keyState(.hidSystemState, key: $0)
@@ -53,13 +54,18 @@ final class ShortcutCaptureMonitor {
         }
     ) {
         self.onCapture = onCapture
+        self.onUnavailable = onUnavailable
         self.accessibilityTrusted = accessibilityTrusted
         self.dispatchCallback = dispatchCallback
         self.modifierIsPressed = modifierIsPressed
     }
 
     func start() -> Result<Void, ShortcutCaptureStartFailure> {
-        if eventTap != nil { return .success(()) }
+        if let eventTap {
+            if accessibilityTrusted(), CGEvent.tapIsEnabled(tap: eventTap) { return .success(()) }
+            stop()
+            return .failure(accessibilityTrusted() ? .eventTapUnavailable : .accessibilityPermissionRequired)
+        }
         guard accessibilityTrusted() else {
             return .failure(.accessibilityPermissionRequired)
         }
@@ -108,7 +114,6 @@ final class ShortcutCaptureMonitor {
         lock.lock()
         captureGeneration &+= 1
         lock.unlock()
-        tapRecoveryGeneration += 1
         EventTapPort.release(port: eventTap, source: runLoopSource)
         runLoopSource = nil
         eventTap = nil
@@ -116,19 +121,15 @@ final class ShortcutCaptureMonitor {
 
     func handle(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            tapRecoveryGeneration += 1
-            let generation = tapRecoveryGeneration
-            if let port = eventTap {
-                tapRecovery.recover(type: type,
-                    isCurrent: { [weak self] in
-                        self?.tapRecoveryGeneration == generation && self?.eventTap === port
-                    },
-                    permissionsGranted: { [weak self] in self?.accessibilityTrusted() == true },
-                    enable: { CGEvent.tapEnable(tap: port, enable: true) },
-                    stop: { [weak self] in
-                        self?.stop()
-                        AppLogger.shared.write("SHORTCUT CAPTURE stopped reason=system_disabled_or_permission_revoked")
-                    })
+            // Capture must never claim that it suppresses keys while its tap is disabled.
+            // End the prompt immediately; the user can explicitly begin a new capture.
+            stop()
+            let generation = captureGeneration
+            let failure: ShortcutCaptureStartFailure = accessibilityTrusted()
+                ? .eventTapUnavailable : .accessibilityPermissionRequired
+            dispatchCallback { [weak self] in
+                guard let self, self.captureGeneration == generation else { return }
+                self.onUnavailable(failure)
             }
             return false
         }

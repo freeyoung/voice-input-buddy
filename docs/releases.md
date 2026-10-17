@@ -25,7 +25,7 @@ Release 只附这三个 PKG，不额外上传 SHA 文件、TXT 更新摘要、ap
 
 旧开发版本若放在其他目录，应退出旧版并改用 `/Applications/Voice Input Buddy.app`，避免同时运行两个副本。首次安装和更新后请核对系统权限。
 
-main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经 Developer ID Installer 签名和 Apple 公证。安装与签名限制在本文说明，Release 变更摘要链接到本文，系统仍可能阻止安装。此流程没有关闭 Gatekeeper、添加受信任根证书、修改证书信任设置或复用上游发布密钥。Developer ID 签名与公证需要后续配置本项目自己的凭据。
+main 自动发布使用固定自签名证书为 App 和驱动签名，PKG 未经 Developer ID Installer 签名和 Apple 公证。安装与签名限制在本文说明；Release 保留变更摘要和完整变化链接，系统仍可能阻止安装。此流程没有关闭 Gatekeeper、添加受信任根证书、修改证书信任设置或复用上游发布密钥。Developer ID 签名与公证需要后续配置本项目自己的凭据。
 
 ## 固定发布签名身份
 

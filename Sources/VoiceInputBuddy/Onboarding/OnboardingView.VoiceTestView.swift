@@ -43,6 +43,12 @@ extension OnboardingView {
                     focusRequest: transcriptFocusRequest,
                     isActive: settings.onboardingStep == .voiceTest,
                     commitRequest: transcriptCommitRequest,
+                    onManualInput: {
+                        guard settings.onboardingStep == .voiceTest else { return }
+                        manualTranscriptInputObserved = true
+                        AppLogger.shared.write("ONBOARDING TRANSCRIPT manual_keyboard_input=true")
+                        finishVoiceAttempt(result: .manualInput)
+                    },
                     onTextStateChanged: captureVoiceTranscriptCandidate
                 ) { snapshot in
                     updateTranscriptFocus(snapshot)

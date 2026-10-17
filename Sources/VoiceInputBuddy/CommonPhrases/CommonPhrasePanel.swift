@@ -234,7 +234,7 @@ struct CommonPhrasePad: View {
             }
             Button { onSelect(.ok) } label: {
                 VStack(spacing: 5) {
-                    Text("OK").font(.system(size: diameter > 300 ? 22 : 17, weight: .semibold))
+                    Text(localization.text("common.action.ok")).font(.system(size: diameter > 300 ? 22 : 17, weight: .semibold))
                     phraseLabel(.ok)
                 }
                 .frame(width: diameter * 0.38, height: diameter * 0.38)
@@ -248,7 +248,7 @@ struct CommonPhrasePad: View {
                 .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("OK"))
+            .accessibilityLabel(Text(localization.text("common.action.ok")))
             .accessibilityValue(store.phrase(for: .ok)?.label ?? localization.text("common_phrases.unassigned"))
             .accessibilityIdentifier("common-phrases-position-ok")
             .accessibilityAddTraits(selectedButton == .ok ? .isSelected : [])

@@ -412,20 +412,26 @@ enum ATVVSessionGate {
             ATVVProtocol.supportsAudio(sampleRate: sampleRate)
     }
 
-    static func cancelledOpenDate(
+    static func shouldIgnoreAudioAfterStop(stoppedAt: TimeInterval?,
+        now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Bool {
+        guard let stoppedAt else { return false }
+        return now - stoppedAt < 0.3
+    }
+
+    static func cancelledOpenUptime(
         microphoneOpened: Bool,
         streaming: Bool,
-        now: Date = Date()
-    ) -> Date? {
+        now: TimeInterval = ProcessInfo.processInfo.systemUptime
+    ) -> TimeInterval? {
         microphoneOpened && !streaming ? now : nil
     }
 
     static func shouldIgnoreStreamAfterCancelledOpen(
-        cancelledAt: Date?,
-        now: Date = Date()
+        cancelledAt: TimeInterval?,
+        now: TimeInterval = ProcessInfo.processInfo.systemUptime
     ) -> Bool {
         guard let cancelledAt else { return false }
-        return now < cancelledAt.addingTimeInterval(cancelledOpenSuppressionInterval)
+        return now - cancelledAt < cancelledOpenSuppressionInterval
     }
 }
 

@@ -218,12 +218,14 @@ final class AppLogger: PublicDiagnosticEventSink {
 
     func flush() {
         guard isEnabled else { return }
+        dispatchPrecondition(condition: .notOnQueue(queue))
         queue.sync {}
     }
 
     /// Test-only style entry point that writes UTF-8 text.
     func writeSynchronously(_ message: String, at date: Date) {
         guard isEnabled else { return }
+        dispatchPrecondition(condition: .notOnQueue(queue))
         queue.sync {
             appendRecord(message: message, date: date)
         }

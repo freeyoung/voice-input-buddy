@@ -12,6 +12,8 @@ enum ATVVProtocol {
         sampleRate == 16_000
     }
 
+    static func supportsFrameSize(_ size: Int) -> Bool { (1...512).contains(size) }
+
     static func microphoneOpen(version: UInt16, codec: UInt8) -> Data {
         if version >= 0x0100 {
             return Data([0x0C, 0x00])
@@ -214,7 +216,7 @@ struct FrameAccumulator {
     private(set) var pending = Data()
 
     mutating func append(_ data: Data, frameSize: Int) -> [Data] {
-        guard frameSize > 0 else { return [] }
+        guard ATVVProtocol.supportsFrameSize(frameSize) else { return [] }
         pending.append(data)
         guard pending.count >= frameSize else { return [] }
         var frames: [Data] = []

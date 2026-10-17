@@ -8,6 +8,8 @@ final class CommonPhraseClipboardPaste {
     private static let snapshotQueue = DispatchQueue(label: "voice-input-buddy.clipboard.snapshot", qos: .userInitiated)
     private let board: NSPasteboard
     private let readClipboard: (@escaping () -> Void) -> Void
+    private let snapshotExecutableURL: URL?
+    private let usesSnapshotHelper: Bool
     private let schedule: OperationScheduler
     private let postPaste: () -> Bool
     private var busy = false
@@ -15,7 +17,8 @@ final class CommonPhraseClipboardPaste {
     private var generation: UInt64 = 0
 
     init(board: NSPasteboard = .general,
-         readClipboard: @escaping (@escaping () -> Void) -> Void = { work in snapshotQueue.async { work() } },
+         snapshotExecutableURL: URL? = Bundle.main.executableURL,
+         readClipboard: ((@escaping () -> Void) -> Void)? = nil,
          schedule: @escaping OperationScheduler = ScheduledOperation.mainQueue,
          postPaste: @escaping () -> Bool = {
              guard KeyboardInjector.isAccessibilityTrusted else {
@@ -35,7 +38,9 @@ final class CommonPhraseClipboardPaste {
                  hardwareFlags: { pasteHardwareFlags() }, eventPoster: ShortcutEventSequence.post)
          }) {
         self.board = board
-        self.readClipboard = readClipboard
+        self.snapshotExecutableURL = snapshotExecutableURL
+        self.readClipboard = readClipboard ?? { work in Self.snapshotQueue.async { work() } }
+        self.usesSnapshotHelper = readClipboard == nil
         self.schedule = schedule
         self.postPaste = postPaste
     }
@@ -72,15 +77,18 @@ final class CommonPhraseClipboardPaste {
             let deadline = self.schedule(2) {
                 guard waiting, self.busy, self.generation == token else { return }
                 waiting = false
+                self.snapshotInFlight = false
                 self.finish("clipboard_write_failed", completion)
             }
             self.readClipboard {
                 // Promised clipboard data may require IPC to an unresponsive app.
                 // Read through a separate instance off-main, before any mutation.
-                let saved = Self.snapshot(NSPasteboard(name: name))
+                let saved = self.usesSnapshotHelper
+                    ? Self.readSnapshotInHelper(name: name, executableURL: self.snapshotExecutableURL)
+                    : Self.snapshot(NSPasteboard(name: name))
                 let deliver = {
-                    self.snapshotInFlight = false
                     guard waiting, self.busy, self.generation == token else { return }
+                    self.snapshotInFlight = false
                     waiting = false
                     deadline.cancel()
                     guard let saved, self.board.changeCount == originalCount else {
@@ -129,7 +137,31 @@ final class CommonPhraseClipboardPaste {
         completion(failure)
     }
 
-    private typealias Snapshot = [[(type: NSPasteboard.PasteboardType, data: Data)]]
+    private struct SnapshotValue: Codable {
+        let type: String
+        let data: Data
+    }
+    private typealias Snapshot = [[SnapshotValue]]
+
+    // Isolate promised-data IPC in a killable process. A dispatch timeout alone cannot
+    // interrupt NSPasteboard reads, and replacing a serial queue would leak workers.
+    private static func readSnapshotInHelper(name: NSPasteboard.Name, executableURL: URL?) -> Snapshot? {
+        guard let executable = executableURL else { return nil }
+        let result = BoundedCommandRunner.run(executableURL: executable,
+            arguments: ["--snapshot-pasteboard", name.rawValue], timeout: 1.5,
+            outputLimit: 34 * 1_024 * 1_024)
+        guard !result.timedOut, result.terminationStatus == 0 else { return nil }
+        return try? PropertyListDecoder().decode(Snapshot.self, from: result.standardOutput)
+    }
+
+    static func runSnapshotHelperIfRequested(arguments: [String] = CommandLine.arguments) -> Bool {
+        guard arguments.count == 3, arguments[1] == "--snapshot-pasteboard" else { return false }
+        guard let saved = snapshot(NSPasteboard(name: .init(arguments[2]))) else { return true }
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        if let data = try? encoder.encode(saved) { try? FileHandle.standardOutput.write(contentsOf: data) }
+        return true
+    }
 
     private static func snapshot(_ board: NSPasteboard) -> Snapshot? {
         if #available(macOS 15.4, *), board.accessBehavior == .alwaysDeny { return nil }
@@ -138,14 +170,14 @@ final class CommonPhraseClipboardPaste {
         var result: Snapshot = []
         var size = 0
         for item in items {
-            var values: [(type: NSPasteboard.PasteboardType, data: Data)] = []
+            var values: [SnapshotValue] = []
             for type in item.types {
                 guard let data = item.data(forType: type) else { return nil }
                 // Refuse to replace a large/unreadable clipboard instead of saving
                 // only some formats and silently destroying the rest.
                 guard data.count <= 32 * 1_024 * 1_024 - size else { return nil }
                 size += data.count
-                values.append((type, data))
+                values.append(SnapshotValue(type: type.rawValue, data: data))
             }
             result.append(values)
         }
@@ -157,8 +189,8 @@ final class CommonPhraseClipboardPaste {
         var items: [NSPasteboardItem] = []
         for values in saved {
             let item = NSPasteboardItem()
-            for (type, data) in values {
-                guard item.setData(data, forType: type) else { return false }
+            for value in values {
+                guard item.setData(value.data, forType: .init(value.type)) else { return false }
             }
             items.append(item)
         }

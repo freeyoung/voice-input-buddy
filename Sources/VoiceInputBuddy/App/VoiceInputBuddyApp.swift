@@ -98,6 +98,7 @@ enum AppEntryPointVisibilityPolicy {
 enum VoiceInputBuddyApp {
     @MainActor
     static func main() {
+        if CommonPhraseClipboardPaste.runSnapshotHelperIfRequested() { return }
 #if DEBUG
         if LocalizedUpdateUserDriver.runPreviewIfRequested() { return }
 #endif
@@ -153,7 +154,9 @@ enum VoiceInputBuddyApp {
             ?? ApplicationInstanceGuard.fallbackBundleIdentifier
         var instanceLock: ApplicationInstanceLock?
         if let lockURL = ApplicationInstanceGuard.defaultLockURL() {
-            switch ApplicationInstanceLock.acquire(at: lockURL) {
+            switch ApplicationInstanceLock.acquireForLaunch(at: lockURL, existingInstanceIsRunning: {
+                ApplicationInstanceGuard.existingApplication(bundleIdentifier: bundleIdentifier) != nil
+            }) {
             case let .acquired(lock):
                 instanceLock = lock
             case .alreadyLocked:
@@ -206,6 +209,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private lazy var appIconController = AppIconController()
     private let updateInformation = UpdateInformationStore()
     private lazy var localization = LocalizationStore(settings: model.settings)
+    private let termination = ApplicationTerminationCoordinator()
     private var statusItem: NSStatusItem?
     private var statusItemPresentation: StatusItemPresentation = .disconnected
     private var appliedStatusItemPresentation: StatusItemPresentation?
@@ -317,7 +321,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 if shouldOpenPermissionRepair {
-                    self.showSettingsWindow(initialSection: .about)
+                    self.showSettingsWindow(initialSection: .permissions)
                 } else {
                     self.showSettings()
                 }
@@ -326,9 +330,13 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        model.voiceFnTapSession.setEnabled(false) { _ in
-            DispatchQueue.main.async { sender.reply(toApplicationShouldTerminate: true) }
-        }
+        termination.request(begin: { complete in
+            statusItem?.button?.title = localization.text("common.action.quitting")
+            statusItem?.button?.toolTip = localization.text("common.action.quitting")
+            model.voiceFnTapSession.setEnabled(false) { _ in
+                DispatchQueue.main.async { complete() }
+            }
+        }, reply: { sender.reply(toApplicationShouldTerminate: true) })
         return .terminateLater
     }
 

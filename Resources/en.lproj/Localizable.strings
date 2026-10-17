@@ -1301,3 +1301,5 @@
 "remote.rebind.confirm" = "Rebind and keep settings";
 
 "onboarding.action.pause" = "Set Up Later";
+
+"common.action.quitting" = "Quitting…";

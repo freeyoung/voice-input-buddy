@@ -17,6 +17,17 @@ struct ShortcutSequenceTests {
         }
     }
 
+    @Test func standaloneModifierRetriesFailedReleaseWithoutAnotherPress() {
+        var downs: [Bool] = []
+        let submitted = KeyboardInjector.send(.customShortcut, shortcut: StandaloneKeyboardModifier.leftCommand.shortcut,
+            accessibilityTrusted: { true }, secureInputEnabled: { false }, keyStatePoster: { _, down, _ in
+                downs.append(down)
+                return downs.count != 2
+            })
+        #expect(submitted)
+        #expect(downs == [true, false, false])
+    }
+
     @Test func plainKeyUsesMarkedDownAndUpWithoutModifiers() {
         var posted: [Posted] = []
         #expect(ShortcutEventSequence.send(keyCode: 0, modifiers: [], hardwareFlags: { [] },

@@ -96,7 +96,8 @@ extension BridgeAppModel {
         )
         audio.output.endSessionAfterDraining(
             source: "audio_release",
-            operationID: generation
+            operationID: generation,
+            maximumDelay: audio.output.pendingPlaybackDuration + 0.75
         ) { [weak self] outcome in
             guard let self else { return }
             guard self.audio.virtualAudioReleaseGeneration == generation else {

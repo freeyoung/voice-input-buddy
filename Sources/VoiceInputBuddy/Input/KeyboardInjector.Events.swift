@@ -10,11 +10,11 @@ extension KeyboardInjector {
               let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
         else { return }
-        down.flags = flags
-        up.flags = flags
+        down.flags = flags.union(CGEventSource.flagsState(.hidSystemState))
         down.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
         up.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
         down.post(tap: .cghidEventTap)
+        up.flags = flags.union(CGEventSource.flagsState(.hidSystemState))
         up.post(tap: .cghidEventTap)
     }
 

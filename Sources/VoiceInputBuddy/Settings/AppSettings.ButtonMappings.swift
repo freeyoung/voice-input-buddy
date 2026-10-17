@@ -149,7 +149,7 @@ extension AppSettings {
         saveSelectedRemoteGain()
         isLoadingRemoteProfile = true
         selectedRemoteProfileID = profileID
-        gainDB = nextGain
+        gainDB = Self.normalizedGain(nextGain)
         buttonBindings = Self.defaultBindings.merging(profile.mappings.parsedButtonBindings) {
             _, saved in saved
         }

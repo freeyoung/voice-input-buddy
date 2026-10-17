@@ -461,7 +461,11 @@ enum KeyboardInjector {
                         true,
                         eventFlags
                     )
-                    let released = keyStatePoster(CGKeyCode(shortcut.keyCode), false, [])
+                    var released = keyStatePoster(CGKeyCode(shortcut.keyCode), false, [])
+                    if !released {
+                        released = keyStatePoster(CGKeyCode(shortcut.keyCode), false, [])
+                        if !released { AppLogger.shared.write("SHORTCUT ACTION cleanup_failed standalone=true") }
+                    }
                     let submitted = pressed && released
                     AppLogger.shared.write(
                         "SHORTCUT ACTION submitted key_code=\(shortcut.keyCode) " +

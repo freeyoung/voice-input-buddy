@@ -1302,3 +1302,5 @@
 "remote.rebind.confirm" = "重新绑定并保留设置";
 
 "onboarding.action.pause" = "稍后设置";
+
+"common.action.quitting" = "正在退出…";
