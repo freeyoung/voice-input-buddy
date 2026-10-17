@@ -642,13 +642,13 @@ final class VirtualAudioOutput {
     private var engineConfigurationGeneration: UInt64 = 0
     private let rejectedWriteLock = NSLock()
     private var rejectedWriteCount = 0
-    private var lastRejectedWriteLogDate = Date.distantPast
+    private var lastRejectedWriteLogUptime = -TimeInterval.infinity
     private let playbackLock = NSLock()
     private var pendingVoiceBufferCount = 0
     private var pendingVoiceSampleCount = 0
     private var pendingPreRollSampleCount = 0
-    private var playbackGeneration: UInt64 = 0
     private var preRollSampleBudget = 0
+    private var playbackGeneration: UInt64 = 0
     private var playbackCounters = VirtualAudioPlaybackCounters()
     private var playbackCountersByDeliveryGeneration: [Int: VirtualAudioPlaybackCounters] = [:]
     private var pendingByDeliveryGeneration: [Int: PendingDeliveryCounters] = [:]
@@ -1191,9 +1191,9 @@ final class VirtualAudioOutput {
         pendingVoiceBufferCount = 0
         pendingVoiceSampleCount = 0
         pendingPreRollSampleCount = 0
+        preRollSampleBudget = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
-        preRollSampleBudget = 0
         // Taken before the teardown below so a nested `stop()` cannot pick it up a second
         // time, and invoked afterwards so it never runs against a half-restarted player.
         // An interruption is an outcome and must answer the waiter exactly once: dropping
@@ -1271,9 +1271,9 @@ final class VirtualAudioOutput {
         pendingVoiceBufferCount = 0
         pendingVoiceSampleCount = 0
         pendingPreRollSampleCount = 0
+        preRollSampleBudget = 0
         playbackGeneration &+= 1
         pendingDrainLogContexts.removeAll()
-        preRollSampleBudget = 0
         // Same contract as flushPlayer: stopping answers the drain waiter exactly
         // once, after the teardown below, instead of dropping it with the
         // generation bump.
@@ -1342,9 +1342,9 @@ final class VirtualAudioOutput {
             }
         }
         if pendingVoiceBufferCount == 0 {
+            preRollSampleBudget = 0
             drainedContexts = pendingDrainLogContexts
             pendingDrainLogContexts.removeAll()
-            preRollSampleBudget = 0
             if !drainRequests.isEmpty {
                 completionGeneration = drainGeneration
             }
@@ -1626,9 +1626,9 @@ final class VirtualAudioOutput {
         rejectedWriteLock.lock()
         rejectedWriteCount += 1
         let count = rejectedWriteCount
-        let now = Date()
-        let shouldLog = now.timeIntervalSince(lastRejectedWriteLogDate) >= 1
-        if shouldLog { lastRejectedWriteLogDate = now }
+        let now = uptime()
+        let shouldLog = now - lastRejectedWriteLogUptime >= 1
+        if shouldLog { lastRejectedWriteLogUptime = now }
         rejectedWriteLock.unlock()
         guard shouldLog else { return }
         AppLogger.shared.write(
