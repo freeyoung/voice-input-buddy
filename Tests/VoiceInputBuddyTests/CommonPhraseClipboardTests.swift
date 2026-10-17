@@ -5,6 +5,56 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func failedSecondPasteKeepsTheOriginalManualRestorePoint() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        var accepted = true
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] },
+            readClipboard: { $0() }, postPaste: { accepted })
+        writer.paste("first", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
+        accepted = false
+        writer.paste("second", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == "paste_failed") }
+        #expect(board.string(forType: .string) == "first")
+        #expect(writer.restorePreviousClipboard())
+        #expect(board.string(forType: .string) == "original")
+    }
+
+    @Test func delayedReceiverNeverSeesAnAutomaticallyRestoredOldClipboard() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("old private content", forType: .string)
+        let clock = ControlledTestScheduler()
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] },
+            readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { true })
+        writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
+        clock.advance(to: 5_000)
+        #expect(board.string(forType: .string) == "phrase")
+        #expect(writer.canRestoreClipboard)
+        #expect(writer.restorePreviousClipboard())
+        #expect(board.string(forType: .string) == "old private content")
+    }
+
+    @Test func failedSubmissionRollsBackImmediatelyWithoutADeadline() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        let clock = ControlledTestScheduler()
+        var failure: String?
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] },
+            readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { false })
+        writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) { failure = $0 }
+        #expect(failure == "paste_failed")
+        #expect(board.string(forType: .string) == "original")
+        #expect(clock.activeCount == 0)
+    }
+
+    @Test func postedPasteKeyDownStillCountsWhenKeyUpCreationFails() {
+        let submitted = CommonPhraseClipboardPaste.submitPasteShortcut(hardwareFlags: { [] },
+            eventPoster: { $0.type != .keyUp })
+        #expect(submitted)
+    }
+
     @Test func externalKeyboardFnWithoutNavigationDecorationIsNeverRemoved() {
         let flags = KeyboardHardwareModifierPolicy.normalized(.maskSecondaryFn, fnKeyDown: false)
         #expect(flags.contains(.maskSecondaryFn))
@@ -34,6 +84,8 @@ struct CommonPhraseClipboardTests {
         #expect(board.string(forType: .string) == "phrase")
         clock.runAll()
         #expect(completions == 1)
+        #expect(board.string(forType: .string) == "phrase")
+        #expect(writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "original")
     }
 
@@ -59,6 +111,7 @@ struct CommonPhraseClipboardTests {
         clock.runAll()
         #expect(reads == 1 && posts == 1)
         #expect(results.count == 2 && results[1] == nil)
+        #expect(writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "original")
     }
 
@@ -99,6 +152,7 @@ struct CommonPhraseClipboardTests {
             }
             clock.runAll()
         }
+        #expect(writer.restorePreviousClipboard())
         #expect(editor == "已有文本：第一条第二条")
         #expect(board.string(forType: .string) == "original clipboard")
     }
@@ -141,10 +195,11 @@ struct CommonPhraseClipboardTests {
         writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) {
             #expect($0 == nil); completed = true
         }
-        #expect(posts == 1 && !completed)
+        #expect(posts == 1 && completed)
         #expect(board.string(forType: .string) == "phrase")
         clock.runAll()
         #expect(completed)
+        #expect(writer.restorePreviousClipboard())
         #expect(board.pasteboardItems?.count == 2)
         #expect(board.pasteboardItems?.first?.types == originalTypes)
         #expect(board.pasteboardItems?.first?.string(forType: .string) == "original")
@@ -163,6 +218,7 @@ struct CommonPhraseClipboardTests {
         board.setString("new user copy", forType: .string)
         let count = board.changeCount
         clock.runAll()
+        #expect(!writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "new user copy")
         #expect(board.changeCount == count)
     }
@@ -206,7 +262,7 @@ struct CommonPhraseClipboardTests {
     }
 
     @Test(arguments: [false, true])
-    func cleanupSurvivesOwnerReleaseAndHandlesEmptyClipboard(submitted: Bool) {
+    func submissionDoesNotScheduleRestorationAfterOwnerRelease(submitted: Bool) {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.clearContents()
@@ -219,10 +275,10 @@ struct CommonPhraseClipboardTests {
         writer = nil
         clock.runAll()
         #expect(completed)
-        #expect(board.string(forType: .string) == nil)
+        #expect(board.string(forType: .string) == (submitted ? "phrase" : nil))
     }
 
-    @Test func lateFocusLossAndConcurrentTransactionsDoNotSendMoreKeys() {
+    @Test func successiveSubmissionsKeepOneOriginalClipboardForManualRestore() {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
         board.setString("original", forType: .string)
@@ -233,9 +289,11 @@ struct CommonPhraseClipboardTests {
         #expect(posts == 0)
         #expect(board.string(forType: .string) == "original")
         writer.paste("first", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
-        writer.paste("second", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == "paste_failed") }
-        #expect(posts == 1)
+        writer.paste("second", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
+        #expect(posts == 2)
         clock.runAll()
+        #expect(board.string(forType: .string) == "second")
+        #expect(writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "original")
     }
 
@@ -278,6 +336,7 @@ struct CommonPhraseClipboardTests {
         reads[1]()
         #expect(board.string(forType: .string) == "retry")
         clock.runAll()
+        #expect(writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "original")
     }
 
@@ -287,7 +346,7 @@ struct CommonPhraseClipboardTests {
         board.setString("original", forType: .string)
         let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] },
             readClipboard: { work in DispatchQueue.global().async { work() } }, schedule: { delay, action in
-            if delay < 1 { DispatchQueue.main.async(execute: action) }
+            if delay < 1 { DispatchQueue.main.async { action() } }
             return ScheduledOperation(cancellation: {})
         }, postPaste: { #expect(Thread.isMainThread); return true })
         let result: String? = await withCheckedContinuation { continuation in
@@ -297,6 +356,8 @@ struct CommonPhraseClipboardTests {
             }
         }
         #expect(result == nil)
+        #expect(board.string(forType: .string) == "phrase")
+        #expect(writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "original")
     }
 
@@ -321,6 +382,8 @@ struct CommonPhraseClipboardTests {
             }
         }
         #expect(result == nil)
+        #expect(board.string(forType: .string) == "phrase")
+        #expect(writer.restorePreviousClipboard())
         #expect(board.string(forType: .string) == "original")
         #expect(board.data(forType: binaryType) == Data([0, 1, 255]))
     }

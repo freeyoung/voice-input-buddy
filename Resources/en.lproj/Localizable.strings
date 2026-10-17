@@ -1303,3 +1303,7 @@
 "onboarding.action.pause" = "Set Up Later";
 
 "common.action.quitting" = "Quitting…";
+
+"common_phrases.restore_clipboard" = "Restore Previous Clipboard";
+"common_phrases.clipboard_restored" = "Previous clipboard restored.";
+"common_phrases.restore_clipboard_hint" = "Successful paste keeps the phrase on the clipboard. Restore the previous clipboard here; a newer copy is never overwritten.";

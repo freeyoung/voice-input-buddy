@@ -195,7 +195,7 @@ enum VoiceInputBuddyApp {
 
 @MainActor
 private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
-    NSWindowDelegate, SPUUpdaterDelegate
+    NSWindowDelegate, SPUUpdaterDelegate, NSMenuItemValidation
 {
     private enum UpdateCheckPurpose {
         case information
@@ -217,6 +217,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     private var appliedStatusItemPresentation: StatusItemPresentation?
     private var statusItemOperationID: UInt = 0
     private var entryPointOperationID: UInt = 0
+    private var restoreClipboardItem: NSMenuItem?
     private var statusMenu: NSMenu?
     private var settingsWindowController: NSWindowController?
     private var isSettingsWindowOpen = false
@@ -524,6 +525,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         menu.addItem(menuItem("about.support.github", action: #selector(openGitHub)))
         menu.addItem(menuItem("about.support.website", action: #selector(openWebsite)))
         menu.addItem(.separator())
+        let restoreItem = menuItem("common_phrases.restore_clipboard", action: #selector(restorePhraseClipboard))
+        menu.addItem(restoreItem)
+        restoreClipboardItem = restoreItem
         menu.addItem(menuItem("common.action.quit", action: #selector(quit)))
         statusMenu = menu
         refreshMenuStatus()
@@ -852,11 +856,23 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     private func showStatusMenu() {
+        restoreClipboardItem?.isEnabled = CommonPhraseClipboardPaste.shared.canRestoreClipboard
         guard let statusItem, let statusMenu else { return }
         refreshMenuStatus()
         statusItem.menu = statusMenu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(restorePhraseClipboard) {
+            return CommonPhraseClipboardPaste.shared.canRestoreClipboard
+        }
+        return true
+    }
+
+    @objc private func restorePhraseClipboard() {
+        CommonPhraseClipboardPaste.shared.restorePreviousClipboard()
     }
 
     @objc private func reconnect() {
