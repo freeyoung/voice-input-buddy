@@ -29,3 +29,12 @@ Its main-queue runtime state has three explicit owners:
 Engine operations and HAL callbacks retain their dedicated queues. Their callbacks
 return to the main queue before mutating application state. The UI model does not
 own HAL registrations or perform asynchronous teardown from its destructor.
+
+BLE control and model state remain on the main queue. `BluetoothAudioPipeline`
+owns ADPCM, frame accumulation, sync and filtering on a dedicated serial queue.
+Its 4,000-byte encoded backlog includes results awaiting main-queue delivery.
+Stream start, decoded frames and normal stop are delivered in order, preserving
+the final complete frames before a key release. Connection reset invalidates old
+results immediately; overload closes the stream rather than decoding across lost
+ADPCM bytes. Decoder work uses immutable packet/configuration values and never
+reads UI settings from its worker queue.

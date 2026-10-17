@@ -182,7 +182,8 @@ final class XiaomiBluetoothBridge: NSObject {
     private var shouldRun = false
     private var systemSuspension = BluetoothSystemSuspensionState()
     private var capabilities = XiaomiBluetoothBridge.defaultCapabilities
-    private let audioDecoder = ATVVAudioDecoder()
+    private let audioDecoder = BluetoothAudioPipeline()
+    private var voiceStartNotified = false
     private var streaming: Bool { audioDecoder.isStreaming }
     private lazy var acknowledgedWrites = AcknowledgedBluetoothWriteQueue(
         send: { [weak self] data in
@@ -797,7 +798,7 @@ final class XiaomiBluetoothBridge: NSObject {
         capabilities = Self.defaultCapabilities
         currentAttemptUsesCachedTarget = false
         resetSession()
-        audioDecoder.resetPeripheral()
+        audioDecoder.reset(peripheral: true)
     }
 
     private func isCurrent(_ candidate: CBPeripheral) -> Bool {
@@ -857,9 +858,11 @@ final class XiaomiBluetoothBridge: NSObject {
     private func resetSession() {
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
-        let wasStreaming = streaming
         audioDecoder.reset()
-        if wasStreaming { delegate?.bluetoothBridgeDidStopVoice(self) }
+        if voiceStartNotified {
+            voiceStartNotified = false
+            delegate?.bluetoothBridgeDidStopVoice(self)
+        }
         microphoneOpened = false
         cancelledMicrophoneOpenAt = nil
         sessionID = 0
@@ -1227,11 +1230,14 @@ final class XiaomiBluetoothBridge: NSObject {
                     "streaming_before=\(streaming) partial_frame_bytes=\(partialFrameBytes)"
             )
         }
-        guard audioDecoder.beginStream() else { return }
+        guard audioDecoder.beginStream(onStart: { [weak self] in
+            guard let self else { return }
+            self.voiceStartNotified = true
+            self.delegate?.bluetoothBridgeDidStartVoice(self)
+        }) else { return }
         lastStopAt = nil
         microphoneOpened = true
         scheduleMicrophoneKeepalive()
-        delegate?.bluetoothBridgeDidStartVoice(self)
         AppLogger.shared.write("ATVV STREAM START session=\(sessionID)")
     }
 
@@ -1241,12 +1247,15 @@ final class XiaomiBluetoothBridge: NSObject {
         guard streaming else { return }
         microphoneOpened = false
         let partialFrameBytes = audioDecoder.pendingByteCount
-        audioDecoder.reset()
+        audioDecoder.endStream { [weak self] in
+            guard let self else { return }
+            self.voiceStartNotified = false
+            self.delegate?.bluetoothBridgeDidStopVoice(self)
+        }
         lastStopAt = Date()
         AppLogger.shared.write(
             "ATVV STREAM STOP session=\(sessionID) partial_frame_bytes=\(partialFrameBytes)"
         )
-        delegate?.bluetoothBridgeDidStopVoice(self)
     }
 
     private func handleAudio(_ data: Data) {
@@ -1285,10 +1294,15 @@ final class XiaomiBluetoothBridge: NSObject {
             AppLogger.shared.write("ATVV STREAM implicit_audio_race")
         }
 
-        let batches = audioDecoder.append(data, frameSize: capabilities.frameSize,
-            gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier))
-        for samples in batches {
-            delegate?.bluetoothBridge(self, didDecode: samples)
+        let accepted = audioDecoder.append(data, frameSize: capabilities.frameSize,
+            gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier)) { [weak self] samples in
+            guard let self else { return }
+            self.delegate?.bluetoothBridge(self, didDecode: samples)
+        }
+        if !accepted {
+            AppLogger.shared.write("ATVV AUDIO rejected reason=decode_backlog")
+            _ = requestMicrophoneClose()
+            stopStreaming()
         }
     }
 
