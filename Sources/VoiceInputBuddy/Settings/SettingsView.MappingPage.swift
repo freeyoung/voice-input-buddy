@@ -227,7 +227,7 @@ extension SettingsView {
     private var mappingHeaderToggle: some View {
         Toggle(localization.text("button_mapping.toggle.enabled"), isOn: Binding(
             get: { settings.customMappingEnabled },
-            set: setCustomMappingEnabled
+            set: { setCustomMappingEnabled($0) }
         ))
         .font(.system(size: 14, weight: .medium))
         .toggleStyle(.switch)

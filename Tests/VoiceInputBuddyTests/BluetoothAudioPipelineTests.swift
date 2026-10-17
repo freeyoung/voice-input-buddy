@@ -17,7 +17,7 @@ struct BluetoothAudioPipelineTests {
     @Test func normalStopDrainsPriorFramesBeforeNextStart() {
         let queue = DispatchQueue(label: "test.audio.order")
         let deliveries = AudioDeliveries()
-        let pipeline = BluetoothAudioPipeline(queue: queue, deliver: deliveries.enqueue)
+        let pipeline = BluetoothAudioPipeline(queue: queue, deliver: { deliveries.enqueue($0) })
         var events: [String] = []
         var audio: [[Int16]] = []
         let bytes = Data(repeating: 0x37, count: 120)
@@ -40,7 +40,7 @@ struct BluetoothAudioPipelineTests {
     @Test func connectionResetRejectsAlreadyComputedOldResultsAndResetsFormat() {
         let queue = DispatchQueue(label: "test.audio.cancel")
         let deliveries = AudioDeliveries()
-        let pipeline = BluetoothAudioPipeline(queue: queue, deliver: deliveries.enqueue)
+        let pipeline = BluetoothAudioPipeline(queue: queue, deliver: { deliveries.enqueue($0) })
         let bytes = Data([0x12, 0x34, 0x56])
         pipeline.configureFormat(lowNibbleFirst: true)
         #expect(pipeline.beginStream { Issue.record("Old start delivered") })
@@ -58,7 +58,7 @@ struct BluetoothAudioPipelineTests {
     @Test func backlogIncludesResultsAwaitingMainDeliveryAndResetReclaimsBudget() {
         let queue = DispatchQueue(label: "test.audio.bound")
         let deliveries = AudioDeliveries()
-        let pipeline = BluetoothAudioPipeline(queue: queue, maximumPendingBytes: 120, deliver: deliveries.enqueue)
+        let pipeline = BluetoothAudioPipeline(queue: queue, maximumPendingBytes: 120, deliver: { deliveries.enqueue($0) })
         let bytes = Data(repeating: 0x11, count: 120)
         #expect(pipeline.beginStream {})
         #expect(pipeline.append(bytes, frameSize: 120, gainDB: 0) { _ in })

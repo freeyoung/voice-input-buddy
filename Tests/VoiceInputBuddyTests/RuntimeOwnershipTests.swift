@@ -4,6 +4,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Runtime ownership")
+@MainActor
 struct RuntimeOwnershipTests {
     @Test func endingVoiceDiscardsPendingStartsAndCommandAudio() {
         let session = VoiceSessionRuntime()

@@ -30,7 +30,7 @@ struct AppEnvironmentSnapshot: Equatable {
         )
     }
 
-    static func current(
+    @MainActor static func current(
         settings: AppSettings,
         bundle: Bundle = .main,
         processInfo: ProcessInfo = .processInfo,

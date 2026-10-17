@@ -3,6 +3,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Imported application verification")
+@MainActor
 struct ImportedApplicationVerificationTests {
     @Test func importedRecordedTargetsRequireLocalVerificationAcrossRestarts() throws {
         let name = "import-verification-" + UUID().uuidString

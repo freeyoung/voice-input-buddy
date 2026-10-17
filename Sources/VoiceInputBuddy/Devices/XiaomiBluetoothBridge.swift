@@ -25,6 +25,7 @@ enum BluetoothBridgeState: Equatable {
     }
 }
 
+@MainActor
 protocol XiaomiBluetoothBridgeDelegate: AnyObject {
     func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didChange state: BluetoothBridgeState)
     func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge)
@@ -36,7 +37,8 @@ protocol XiaomiBluetoothBridgeDelegate: AnyObject {
     func bluetoothBridgeDeviceNameDidChange(_ bridge: XiaomiBluetoothBridge)
 }
 
-private final class XiaomiPeripheralDelegateProxy: NSObject, CBPeripheralDelegate {
+@MainActor
+private final class XiaomiPeripheralDelegateProxy: NSObject, @preconcurrency CBPeripheralDelegate {
     let generation: UInt64
     weak var owner: XiaomiBluetoothBridge?
 
@@ -117,6 +119,7 @@ enum BluetoothBatteryPollingPolicy {
     }
 }
 
+@MainActor
 final class XiaomiBluetoothBridge: NSObject {
     private static let defaultCapabilities = ATVVCapabilities(
         version: 0x0100,
@@ -302,7 +305,7 @@ final class XiaomiBluetoothBridge: NSObject {
         super.init()
     }
 
-    deinit {
+    isolated deinit {
         // stop() publishes state and requires a live owner. Destruction releases
         // resources directly and never queues work capturing this dying bridge.
         reconnectWorkItem?.cancel()
@@ -1320,7 +1323,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 }
 
-extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
+extension XiaomiBluetoothBridge: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard self.central === central, let generation = centralGeneration else { return }
         AppLogger.shared.write(

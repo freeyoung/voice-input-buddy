@@ -5,7 +5,7 @@ import Foundation
 /// callback. Normal stop preserves preceding audio and event order; reset cancels
 /// all work from the old connection. No CoreBluetooth or settings objects cross.
 final class BluetoothAudioPipeline: @unchecked Sendable {
-    typealias Delivery = (@escaping @MainActor @Sendable () -> Void) -> Void
+    typealias Delivery = @Sendable (@escaping @MainActor @Sendable () -> Void) -> Void
     private let queue: DispatchQueue
     private let deliver: Delivery
     private let decoder = ATVVAudioDecoder()

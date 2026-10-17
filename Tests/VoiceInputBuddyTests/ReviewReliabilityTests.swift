@@ -5,6 +5,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Review reliability regressions")
+@MainActor
 struct ReviewReliabilityTests {
     @Test @MainActor func devicePagePolicyMatchesViewForEverySelection() throws {
         let name = "review-policy-" + UUID().uuidString

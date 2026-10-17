@@ -5,6 +5,7 @@ import CoreAudio
 import CoreBluetooth
 import Foundation
 
+@MainActor
 final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     static let longRecordingOpenTimeout: TimeInterval = 5
     static let longRecordingCloseTimeout: TimeInterval = 2
@@ -169,9 +170,15 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var hidMappingRecoveryWorkItem: DispatchWorkItem?
     var hidMappingRecoveryAttempt = 0
     var hidMappingRecoveryGeneration: UInt64 = 0
-    lazy var audioHardwareListener: AudioObjectPropertyListenerBlock = { [weak self] count, addresses in
-        let properties = Self.audioHardwarePropertyNames(count: count, addresses: addresses)
-        self?.scheduleAudioRecovery(reason: "hardware_change", details: "properties=\(properties)")
+    lazy var audioHardwareListener = Self.makeAudioHardwareListener(owner: self)
+
+    nonisolated private static func makeAudioHardwareListener(owner: BridgeAppModel) -> AudioObjectPropertyListenerBlock {
+        { [weak owner] count, addresses in
+            let properties = audioHardwarePropertyNames(count: count, addresses: addresses)
+            DispatchQueue.main.async { [weak owner] in
+                owner?.scheduleAudioRecovery(reason: "hardware_change", details: "properties=\(properties)")
+            }
+        }
     }
 
     var isRC003VoiceExtensionTestEnabled: Bool {
@@ -179,7 +186,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     init(
-        settings: AppSettings = AppSettings(),
+        settings: AppSettings? = nil,
         commonPhraseStore: CommonPhraseStore = CommonPhraseStore(),
         initialAudioDevices: [AudioDeviceInfo] = [],
         loginItemService: LoginItemService = LoginItemService(),
@@ -187,6 +194,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             ProcessInfo.processInfo.arguments.contains("--rc003-voice-extension-test") ||
             (Bundle.main.object(forInfoDictionaryKey: "RC003VoiceExtensionTestEnabled") as? Bool == true)
     ) {
+        let settings = settings ?? AppSettings()
         self.settings = settings
         self.commonPhraseStore = commonPhraseStore
 
@@ -214,8 +222,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             .sink { [weak self] _ in
                 self?.voiceToolDidChange()
             }
-        audio.output.onConfigurationChange = { [weak self] in
-            self?.scheduleAudioRecovery(reason: "engine_configuration_change")
+        audio.output.onConfigurationChange = { @Sendable [weak self] in
+            DispatchQueue.main.async { [weak self] in self?.scheduleAudioRecovery(reason: "engine_configuration_change") }
         }
 
     }
@@ -231,7 +239,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.stop()
+            MainActor.assumeIsolated { self?.stop() }
         }
         let version = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleShortVersionString"
@@ -241,7 +249,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         )
     }
 
-    deinit {
+    isolated deinit {
         voiceKeyReleaseRetry?.cancel()
     }
 

@@ -3,6 +3,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Xiaomi HID identity binding")
+@MainActor
 struct XiaomiHIDBindingTests {
     @Test(arguments: [false, true])
     func ambiguousBluetoothProfilesWaitForExplicitBinding(selectSecond: Bool) throws {

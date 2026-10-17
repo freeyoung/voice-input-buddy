@@ -3,6 +3,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Accessibility frame scoring")
+@MainActor
 struct AccessibilityFrameScoringTests {
     private let candidate = KeyboardInjector.AccessibilityTextCandidate(
         role: "AXTextArea", identifier: "composer", title: "", description: "",

@@ -13,7 +13,7 @@ extension BridgeAppModel {
         completedUpdate && customMappingEnabled
     }
 
-    static func shouldReapplyHIDSettings(
+    nonisolated static func shouldReapplyHIDSettings(
         previousState: BluetoothBridgeState?,
         currentState: BluetoothBridgeState
     ) -> Bool {
@@ -23,7 +23,7 @@ extension BridgeAppModel {
         return true
     }
 
-    static func canStartBluetoothVoice(
+    nonisolated static func canStartBluetoothVoice(
         mode: VoiceKeyMode,
         voiceFnTapModeEnabled: Bool = false,
         isVoiceKeyNeutralized: Bool,
@@ -36,14 +36,14 @@ extension BridgeAppModel {
         return (mode == .function && !voiceFnTapModeEnabled) || isVoiceKeyNeutralized
     }
 
-    static func canFallbackVoiceKeyMode(
+    nonisolated static func canFallbackVoiceKeyMode(
         isStreaming: Bool,
         allowVoiceKeyModeFallback: Bool
     ) -> Bool {
         !isStreaming && allowVoiceKeyModeFallback
     }
 
-    static func voiceKeyCompatibilityWarning(
+    nonisolated static func voiceKeyCompatibilityWarning(
         remoteConnected: Bool,
         usesPrivateAdapter: Bool,
         customMappingEnabled: Bool,
