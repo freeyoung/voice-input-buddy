@@ -1428,17 +1428,15 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
             central.cancelPeripheralConnection(peripheral)
             return
         }
-        // 最后一道闸：无论从哪条路径连上来的，只要名字说明它是别的产品就立刻断开。
-        // 前面几处判定可能因为「当时拿不到名字」而放行，这一层保证不会真的接管它。
-        if ForeignVoiceRemoteProduct.isRejected(name: peripheral.name) {
-            reject(peripheral, reason: "foreign_product", source: "did_connect")
-            central.cancelPeripheralConnection(peripheral)
-            return
-        }
         guard isCurrent(peripheral),
               let generation = centralGeneration,
               lifecycle.acceptsDidConnect(generation: generation)
         else { return }
+        if VoiceRemoteAdmission.rejectsConnectedProduct(name: peripheral.name, allowsG9N9N: allowsG9N9N) {
+            reject(peripheral, reason: "foreign_product", source: "did_connect")
+            central.cancelPeripheralConnection(peripheral)
+            return
+        }
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
             lifecycle = .disconnecting(generation)

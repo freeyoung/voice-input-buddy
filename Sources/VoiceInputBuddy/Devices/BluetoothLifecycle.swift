@@ -101,6 +101,13 @@ enum VoiceRemoteAdmissionDecision: Equatable {
 /// 三条发现路径——已保存标识、系统已连接设备、扫描广播——**必须共用这一份判定**，
 /// 否则「遥控器已在系统设置里配对过」这类设备会被其中一条路径漏掉或误收。
 enum VoiceRemoteAdmission {
+    /// Recheck a name learned after discovery using the same product policy.
+    /// Candidate admission still requires the model/codec handshake before ready.
+    static func rejectsConnectedProduct(name: String?, allowsG9N9N: Bool) -> Bool {
+        if allowsG9N9N, G9N9NProtocol.isCandidateName(name) { return false }
+        return ForeignVoiceRemoteProduct.isRejected(name: name)
+    }
+
     static func decide(
         identifier: UUID,
         targetIdentifier: UUID?,
