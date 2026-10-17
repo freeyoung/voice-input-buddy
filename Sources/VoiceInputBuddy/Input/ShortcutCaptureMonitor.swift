@@ -8,6 +8,7 @@ private func shortcutCaptureEventTapCallback(
     event: CGEvent,
     userInfo: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
+    dispatchPrecondition(condition: .onQueue(.main))
     guard let userInfo else { return Unmanaged.passUnretained(event) }
     let monitor = Unmanaged<ShortcutCaptureMonitor>
         .fromOpaque(userInfo)

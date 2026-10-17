@@ -8,6 +8,7 @@ private func keyboardEventSuppressorCallback(
     event: CGEvent,
     userInfo: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
+    dispatchPrecondition(condition: .onQueue(.main))
     guard let userInfo else { return Unmanaged.passUnretained(event) }
     let suppressor = Unmanaged<KeyboardEventSuppressor>
         .fromOpaque(userInfo)
