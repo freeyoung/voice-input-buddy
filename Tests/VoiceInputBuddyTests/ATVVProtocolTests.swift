@@ -4,6 +4,20 @@ import Testing
 
 @Suite("ATVV protocol")
 struct ATVVProtocolTests {
+    @Test func invalidFrameSizesCannotStartOrAccumulateAudio() {
+        for size in [513, 65_535] {
+            let bytes: [UInt8] = [0x0B, 1, 0, 2, 3, UInt8(size >> 8), UInt8(size & 255)]
+            #expect(ATVVCapabilities.parse(Data(bytes)).map { ATVVProtocol.supportsFrameSize($0.frameSize) } == false)
+            var accumulator = FrameAccumulator()
+            #expect(accumulator.append(Data(repeating: 1, count: 4_000), frameSize: size).isEmpty)
+            #expect(accumulator.pending.isEmpty)
+        }
+        for size in [0, 1, 512] {
+            let bytes: [UInt8] = [0x0B, 1, 0, 2, 3, UInt8(size >> 8), UInt8(size & 255)]
+            #expect(ATVVCapabilities.parse(Data(bytes))?.frameSize == (size == 0 ? 120 : size))
+        }
+    }
+
     @Test func parsesVersionOneCapabilities() {
         let data = Data([0x0B, 0x01, 0x00, 0x02, 0x03, 0x00, 0x78])
         let capabilities = ATVVCapabilities.parse(data)

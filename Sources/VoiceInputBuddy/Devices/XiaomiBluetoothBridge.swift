@@ -1119,7 +1119,8 @@ final class XiaomiBluetoothBridge: NSObject {
             AppLogger.shared.write(
                 "ATVV CAPS version=\(parsed.version) codec=\(parsed.selectedCodec) frame=\(parsed.frameSize)"
             )
-            if !ATVVProtocol.supportsAudio(sampleRate: parsed.sampleRate) {
+            if !ATVVProtocol.supportsAudio(sampleRate: parsed.sampleRate) ||
+                !ATVVProtocol.supportsFrameSize(parsed.frameSize) {
                 rejectUnsupportedAudio(LocalizedMessage("connection.error.unsupported_16khz_codec"))
                 return
             }
