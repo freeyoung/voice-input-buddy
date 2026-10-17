@@ -30,6 +30,35 @@ struct InstanceLockTests {
         }
     }
 
+    @Test func launchRetriesAfterAnExitingInstanceReleasesItsLock() throws {
+        try run { directory in
+            let path = directory.appendingPathComponent("instance.lock")
+            var held: ApplicationInstanceLock?
+            if case let .acquired(lock) = ApplicationInstanceLock.acquire(at: path) { held = lock }
+            var pauses = 0
+            let result = ApplicationInstanceLock.acquireForLaunch(at: path,
+                existingInstanceIsRunning: { false }, pause: { pauses += 1; held = nil })
+            guard case .acquired = result else { Issue.record("Relaunch must acquire the released lock"); return }
+            #expect(pauses == 1)
+            withExtendedLifetime(held) {}
+        }
+    }
+
+    @Test func liveInstanceDoesNotWaitAndMissingInstanceHasBoundedRetries() throws {
+        try run { directory in
+            let path = directory.appendingPathComponent("instance.lock")
+            guard case let .acquired(lock) = ApplicationInstanceLock.acquire(at: path) else { return }
+            var pauses = 0
+            for running in [true, false] {
+                let result = ApplicationInstanceLock.acquireForLaunch(at: path,
+                    existingInstanceIsRunning: { running }, pause: { pauses += 1 })
+                guard case .alreadyLocked = result else { Issue.record("Must not bypass a held lock"); return }
+            }
+            #expect(pauses == 2)
+            withExtendedLifetime(lock) {}
+        }
+    }
+
     @Test func symlinkLockIsRefusedWithoutChangingTarget() throws {
         try run { directory in
             let target = directory.appendingPathComponent("unrelated")

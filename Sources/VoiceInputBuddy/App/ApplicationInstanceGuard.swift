@@ -20,6 +20,22 @@ final class ApplicationInstanceLock {
         _ = Darwin.close(fileDescriptor)
     }
 
+    static func acquireForLaunch(at lockURL: URL,
+        existingInstanceIsRunning: () -> Bool,
+        pause: () -> Void = { Thread.sleep(forTimeInterval: 0.15) }
+    ) -> ApplicationInstanceLockAcquisition {
+        let first = acquire(at: lockURL)
+        guard case .alreadyLocked = first, !existingInstanceIsRunning() else { return first }
+        // A terminating process may have disappeared from AppKit just before releasing flock.
+        for _ in 0..<2 {
+            pause()
+            let next = acquire(at: lockURL)
+            guard case .alreadyLocked = next else { return next }
+            if existingInstanceIsRunning() { return next }
+        }
+        return .alreadyLocked
+    }
+
     static func acquire(at lockURL: URL) -> ApplicationInstanceLockAcquisition {
         do {
             try FileManager.default.createDirectory(

@@ -154,7 +154,9 @@ enum VoiceInputBuddyApp {
             ?? ApplicationInstanceGuard.fallbackBundleIdentifier
         var instanceLock: ApplicationInstanceLock?
         if let lockURL = ApplicationInstanceGuard.defaultLockURL() {
-            switch ApplicationInstanceLock.acquire(at: lockURL) {
+            switch ApplicationInstanceLock.acquireForLaunch(at: lockURL, existingInstanceIsRunning: {
+                ApplicationInstanceGuard.existingApplication(bundleIdentifier: bundleIdentifier) != nil
+            }) {
             case let .acquired(lock):
                 instanceLock = lock
             case .alreadyLocked:
