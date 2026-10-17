@@ -1300,3 +1300,5 @@
 "remote.rebind.empty" = "暂无可用的同型号已连接遥控器。";
 "remote.rebind.failed" = "无法重新绑定。请先停止语音输入，并确认替代设备仍然连接。";
 "remote.rebind.confirm" = "重新绑定并保留设置";
+
+"onboarding.action.pause" = "稍后设置";

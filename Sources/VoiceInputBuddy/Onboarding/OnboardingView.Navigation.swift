@@ -117,6 +117,15 @@ extension OnboardingView {
                     .disabled(model.isStreaming)
                     .accessibilityIdentifier("onboarding.dismiss")
                 }
+                if settings.onboardingStep == .audio && !settings.canDismissOnboarding {
+                    onboardingActionButton(id: "pause", action: pauseIncompleteSetup) {
+                        Text(localization.text("onboarding.action.pause"))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .disabled(model.isVoiceConfigurationBusy)
+                    .accessibilityIdentifier("onboarding.pause")
+                }
                 if settings.onboardingStep != .audio {
                     onboardingActionButton(id: "continue", action: continueFlow) {
                         Text(localization.text(primaryActionKey))
@@ -158,6 +167,13 @@ extension OnboardingView {
         case .complete:
             completeContent
         }
+    }
+
+    func pauseIncompleteSetup() {
+        guard !settings.isOnboardingComplete, !settings.canDismissOnboarding,
+              !model.isVoiceConfigurationBusy else { return }
+        settings.discardOnboardingVoiceTrial()
+        onPauseSetup()
     }
 
     func continueFlow() {

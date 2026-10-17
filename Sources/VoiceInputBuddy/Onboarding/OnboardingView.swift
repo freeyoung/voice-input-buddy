@@ -16,6 +16,7 @@ struct OnboardingView: View {
     let remoteInputDiagnosticOverride: FirstUseRemoteInputDiagnostic?
     let interactionProbe: OnboardingInteractionProbe?
     let permissionOverrides: SystemPermissionOverrides?
+    let onPauseSetup: () -> Void
 
     @State var bluetoothAuthorization: CBManagerAuthorization
     @State var inputMonitoringGranted: Bool
@@ -66,7 +67,8 @@ struct OnboardingView: View {
         initialInputMethodGuideStep: Int? = nil,
         remoteInputDiagnosticOverride: FirstUseRemoteInputDiagnostic? = nil,
         interactionProbe: OnboardingInteractionProbe? = nil,
-        permissionOverrides: SystemPermissionOverrides? = nil
+        permissionOverrides: SystemPermissionOverrides? = nil,
+        onPauseSetup: @escaping () -> Void = { NSApp.keyWindow?.performClose(nil) }
     ) {
         self.model = model
 
@@ -78,6 +80,7 @@ struct OnboardingView: View {
         self.remoteInputDiagnosticOverride = remoteInputDiagnosticOverride
         self.interactionProbe = interactionProbe
         self.permissionOverrides = permissionOverrides
+        self.onPauseSetup = onPauseSetup
         _voiceToolAvailability = State(
             initialValue: voiceToolAvailabilityOverride ?? Self.detectVoiceToolAvailability()
         )
