@@ -4,31 +4,6 @@ import Testing
 
 @Suite("Review input boundaries")
 struct ReviewInputBoundaryTests {
-    @Test @MainActor func backupBindingsCannotReintroduceDanglingApplications() throws {
-        let name = UUID().uuidString
-        let defaults = try #require(UserDefaults(suiteName: name))
-        defer { defaults.removePersistentDomain(forName: name) }
-        let settings = AppSettings(defaults: defaults)
-        var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
-        object["continuousRecordingPowerBindingBackup"] = ["action": "openCustomApplication", "applicationProfileID": UUID().uuidString]
-        try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
-        #expect(settings.configurationImportNotice?.rejectedEntryStorageKeys.contains("continuousRecordingPowerBindingBackup") == true)
-        #expect(settings.applicationProfileID(for: .power) == nil)
-    }
-
-    @Test @MainActor func directGainAssignmentNormalizesBeforePublishingOrPersisting() throws {
-        let name = UUID().uuidString
-        let defaults = try #require(UserDefaults(suiteName: name))
-        defer { defaults.removePersistentDomain(forName: name) }
-        let settings = AppSettings(defaults: defaults)
-        for (value, expected) in [(Double.nan, 10.0), (.infinity, 10), (-1, 0), (99, 24)] {
-            settings.gainDB = value
-            #expect(settings.gainDB == expected)
-            #expect(defaults.double(forKey: "gainDB") == expected)
-            #expect(Int(settings.gainDB) == Int(expected))
-        }
-    }
-
     @Test func inheritedOutputPipeCannotOutliveDeadline() {
         let start = ProcessInfo.processInfo.systemUptime
         let result = BoundedCommandRunner.run(executableURL: URL(fileURLWithPath: "/bin/sh"),
@@ -147,6 +122,44 @@ struct ReviewInputBoundaryTests {
             defaults.set(value, forKey: "gainDB")
             #expect(AppSettings(defaults: defaults).gainDB == expected)
         }
+    }
+
+    @Test @MainActor func directGainAssignmentNormalizesBeforePublishingOrPersisting() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        for (value, expected) in [(Double.nan, 10.0), (.infinity, 10), (-1, 0), (99, 24)] {
+            settings.gainDB = value
+            #expect(settings.gainDB == expected)
+            #expect(defaults.double(forKey: "gainDB") == expected)
+            #expect(Int(settings.gainDB) == Int(expected))
+        }
+    }
+
+    @Test @MainActor func backupBindingsCannotReintroduceDanglingApplications() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
+        object["continuousRecordingPowerBindingBackup"] = ["action": "openCustomApplication", "applicationProfileID": UUID().uuidString]
+        try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
+        #expect(settings.configurationImportNotice?.rejectedEntryStorageKeys.contains("continuousRecordingPowerBindingBackup") == true)
+        #expect(settings.applicationProfileID(for: .power) == nil)
+    }
+
+    @Test @MainActor func failedImportClearsThePreviousFilteringNotice() throws {
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        var object = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
+        object["buttonApplicationProfileIDs"] = ["left": UUID().uuidString]
+        try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: object))
+        #expect(settings.configurationImportNotice != nil)
+        #expect(throws: Error.self) { try settings.importConfiguration(from: Data("invalid".utf8)) }
+        #expect(settings.configurationImportNotice == nil)
     }
 
     #if DEBUG
