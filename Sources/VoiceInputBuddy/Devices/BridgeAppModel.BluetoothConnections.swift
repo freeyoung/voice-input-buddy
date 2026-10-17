@@ -117,6 +117,21 @@ extension BridgeAppModel {
         refreshBluetoothPresentation()
     }
 
+    var onboardingRemoteProfiles: [RemoteDeviceProfile] {
+        settings.remoteDeviceProfiles.filter {
+            connectedRemoteProfileIDs.contains($0.id) &&
+                Self.canLearnHIDIdentity(model: $0.model, source: settings.onboardingControlSource)
+        }
+    }
+
+    func selectOnboardingRemoteIfNeeded() {
+        guard settings.onboardingStep == .remote else { return }
+        let profiles = onboardingRemoteProfiles
+        guard !profiles.contains(where: { $0.id == settings.selectedRemoteProfileID }),
+              profiles.count == 1, let profile = profiles.first else { return }
+        selectRemoteProfile(profile.id)
+    }
+
     func selectDefaultMappingRemoteIfAvailable() {
         let localization = LocalizationSnapshot(language: settings.applicationLanguage)
         let connectedProfiles = RemoteDeviceNamePolicy.sortedForCards(
