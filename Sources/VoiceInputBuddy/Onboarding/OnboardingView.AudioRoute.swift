@@ -13,10 +13,10 @@ extension OnboardingView {
                 detail: localization.text(onboardingAudioReady ? "onboarding.audio.automatic_ready" : "onboarding.audio.checking"),
                 isComplete: onboardingAudioReady)
             if !microphoneDriverInstalled || !model.isAudioOutputReady {
-                Text("settings.driver.reload_help").font(.callout).foregroundStyle(.secondary)
+                Text(localization.text("settings.driver.reload_help")).font(.callout).foregroundStyle(.secondary)
                 HStack {
-                    Button("audio.action.refresh_devices") { prepareAutomaticDriverCheck() }
-                    Button("audio.compatibility.open_install_guide") { model.openDoubaoDriverInstructions(using: localization) }
+                    Button(localization.text("audio.action.refresh_devices")) { prepareAutomaticDriverCheck() }
+                    Button(localization.text("audio.compatibility.open_install_guide")) { model.openDoubaoDriverInstructions(using: localization) }
                 }.buttonStyle(.bordered)
             }
         }

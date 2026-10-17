@@ -158,6 +158,25 @@ final class PCMPostprocessor {
 
 /// A control sync arriving during a partial frame takes effect at the next boundary.
 final class ATVVAudioDecoder {
+    func configureFormat(lowNibbleFirst: Bool) {
+        decoder.lowNibbleFirst = lowNibbleFirst
+    }
+
+    func resetPeripheral() {
+        reset()
+        configureFormat(lowNibbleFirst: false)
+    }
+
+    private(set) var isStreaming = false
+
+    @discardableResult
+    func beginStream() -> Bool {
+        guard !isStreaming else { return false }
+        reset()
+        isStreaming = true
+        return true
+    }
+
     let decoder = IMAADPCMDecoder()
     private var accumulator = FrameAccumulator()
     private let postprocessor = PCMPostprocessor()
@@ -171,6 +190,7 @@ final class ATVVAudioDecoder {
     }
 
     func reset() {
+        isStreaming = false
         accumulator.reset()
         pendingSync = nil
         framesBeforeSync = 0

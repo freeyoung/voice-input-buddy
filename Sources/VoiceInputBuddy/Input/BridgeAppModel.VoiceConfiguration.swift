@@ -14,7 +14,7 @@ extension BridgeAppModel {
 
     func flushPendingVoiceToolMappingRefresh(applyMappings: (() -> Void)? = nil) {
         guard pendingVoiceToolMappingRefresh, started, !isStreaming,
-              !voiceSession.isActive,
+              !voiceSession.isActive, !hasPendingBluetoothVoiceWork,
               !voiceKeyLatch.isHeld, !voiceKeyActivationInProgress,
               !voiceFnTapSession.requiresCleanupBeforeMapping else { return }
         pendingVoiceToolMappingRefresh = false

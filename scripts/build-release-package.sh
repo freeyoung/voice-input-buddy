@@ -33,4 +33,6 @@ PY
 pkgbuild --root "$work/payload" --component-plist "$work/components.plist" \
     --identifier com.zfdang.voice-input-buddy.installer --version "$RELEASE_PACKAGE_VERSION" \
     --scripts "$work/scripts" --install-location / \
+    "$work/component.pkg"
+"$root/scripts/build-installer-product.sh" "$work/component.pkg" \
     "$root/dist/release/Voice_Input_Buddy_${RELEASE_TAG}_macOS_${RELEASE_ARCH_LABEL}.pkg"

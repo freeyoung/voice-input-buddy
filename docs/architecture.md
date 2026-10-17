@@ -29,3 +29,25 @@ Its main-queue runtime state has three explicit owners:
 Engine operations and HAL callbacks retain their dedicated queues. Their callbacks
 return to the main queue before mutating application state. The UI model does not
 own HAL registrations or perform asynchronous teardown from its destructor.
+
+BLE control and model state remain on the main queue. `BluetoothAudioPipeline`
+owns ADPCM, frame accumulation, sync and filtering on a dedicated serial queue.
+Its 4,000-byte encoded backlog includes results awaiting main-queue delivery.
+Stream start, decoded frames and normal stop are delivered in order, preserving
+the final complete frames before a key release. Connection reset invalidates old
+results immediately; overload closes the stream rather than decoding across lost
+ADPCM bytes. Decoder work uses immutable packet/configuration values and never
+reads UI settings from its worker queue. Pending start/stop events also keep
+voice configuration busy until delivery, including a short stream that ends
+before its start callback reaches the model.
+
+`BridgeAppModel`, `AppSettings` and their connection, voice and audio runtime
+owners are isolated to `MainActor`. HID monitors and BLE bridges share that
+control-plane isolation. CoreBluetooth delegates are main-queue callbacks;
+IOHID's C callbacks synchronously enter the actor only because their manager is
+scheduled on `CFRunLoopGetMain()`. HAL and engine callbacks explicitly dispatch
+back to main before touching the UI model. Device enumeration, decoding and
+engine operations keep their existing background queues; pure policies remain
+nonisolated. Isolated destruction preserves the owning executor for teardown.
+This does not switch the entire package from Swift 5 language mode to Swift 6;
+legacy concurrency diagnostics in other services require separate migration.

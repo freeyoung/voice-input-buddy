@@ -249,10 +249,10 @@ enum OnboardingScreenshotRenderer {
                 let closeObserver = NotificationCenter.default.addObserver(
                     forName: NSWindow.willCloseNotification, object: window, queue: .main
                 ) { _ in
-                    NSApp.stop(nil)
+                    MainActor.assumeIsolated { NSApp.stop(nil) }
                 }
                 let timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: false) { _ in
-                    window.performClose(nil)
+                    MainActor.assumeIsolated { window.performClose(nil) }
                 }
                 NSApp.run()
                 timer.invalidate()

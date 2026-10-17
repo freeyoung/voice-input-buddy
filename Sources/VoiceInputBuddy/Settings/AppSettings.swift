@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 
+@MainActor
 final class AppSettings: ObservableObject {
     static let continuousRecordingExperimentAvailable = false
     static let currentOnboardingVersion = 1

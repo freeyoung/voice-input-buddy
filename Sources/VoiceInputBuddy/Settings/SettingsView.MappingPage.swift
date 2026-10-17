@@ -225,9 +225,9 @@ extension SettingsView {
     }
 
     private var mappingHeaderToggle: some View {
-        Toggle("button_mapping.toggle.enabled", isOn: Binding(
+        Toggle(localization.text("button_mapping.toggle.enabled"), isOn: Binding(
             get: { settings.customMappingEnabled },
-            set: setCustomMappingEnabled
+            set: { setCustomMappingEnabled($0) }
         ))
         .font(.system(size: 14, weight: .medium))
         .toggleStyle(.switch)
@@ -310,10 +310,10 @@ extension SettingsView {
 
     private var mappingSelectionLockControl: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Toggle("button_mapping.selection_lock", isOn: $isMappingSelectionLocked)
+            Toggle(localization.text("button_mapping.selection_lock"), isOn: $isMappingSelectionLocked)
                 .font(.system(size: 12, weight: .medium))
                 .toggleStyle(.switch)
-            Text("button_mapping.selection_lock_hint_short")
+            Text(localization.text("button_mapping.selection_lock_hint_short"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
@@ -323,26 +323,26 @@ extension SettingsView {
 
     var mappingVoiceKeyModeControl: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("connection.voice_key_mode.title")
+            Text(localization.text("connection.voice_key_mode.title"))
                 .font(.system(size: 12, weight: .medium))
-            Picker("connection.voice_key_mode.title", selection: Binding(
+            Picker(localization.text("connection.voice_key_mode.title"), selection: Binding(
                 get: { settings.voiceKeyMode },
                 set: { model.setVoiceKeyMode($0) }
             )) {
                 ForEach(VoiceKeyMode.allCases) { mode in
-                    Text(LocalizedStringKey(mode.localizationKey)).tag(mode)
+                    Text(localization.text(mode.localizationKey)).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
             .controlSize(.small)
             .tint(Color.accentColor)
-            Text("connection.voice_key_mode.help")
+            Text(localization.text("connection.voice_key_mode.help"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
             if settings.voiceKeyMode != .function {
-                Text("connection.voice_key_mode.unverified_detail")
+                Text(localization.text("connection.voice_key_mode.unverified_detail"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -353,13 +353,13 @@ extension SettingsView {
 
     var mappingVoiceFnTapControl: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Toggle("connection.voice_fn_tap.enabled", isOn: Binding(
+            Toggle(localization.text("connection.voice_fn_tap.enabled"), isOn: Binding(
                 get: { settings.voiceFnTapModeEnabled },
                 set: { model.setVoiceFnTapModeEnabled($0) }
             ))
             .font(.system(size: 12, weight: .medium))
             .toggleStyle(.switch)
-            Text("connection.voice_fn_tap.hint_short")
+            Text(localization.text("connection.voice_fn_tap.hint_short"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -370,7 +370,7 @@ extension SettingsView {
     }
 
     private var mappingRestoreDefaultsButton: some View {
-        Button("common.action.restore_defaults") {
+        Button(localization.text("common.action.restore_defaults")) {
             settings.resetBindings()
             selectedRemoteButton = .ok
         }
@@ -383,12 +383,12 @@ extension SettingsView {
             modelName: remoteModelName,
             systemName: { model.systemDeviceName(for: $0) }
         )
-        return Picker("remote.device.selector", selection: Binding<UUID?>(
+        return Picker(localization.text("remote.device.selector"), selection: Binding<UUID?>(
             get: { settings.selectedRemoteProfileID },
             set: { if let id = $0 { model.selectRemoteProfile(id) } }
         )) {
             if profiles.isEmpty || settings.selectedRemoteProfileID == nil {
-                Text("remote.device.select_placeholder").tag(Optional<UUID>.none)
+                Text(localization.text("remote.device.select_placeholder")).tag(Optional<UUID>.none)
             }
             ForEach(profiles) { profile in
                 Text(remoteModelName(profile)).tag(Optional(profile.id))

@@ -14,7 +14,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
+    var titleKey: String {
         switch self {
         case .connection: return "settings.section.connection"
         case .integration: return "settings.section.integration"
@@ -131,7 +131,7 @@ enum SettingsPageBehavior {
         requestedSection ?? sidebarSectionOrder.first ?? .about
     }
 
-    static func beginDeviceSetup(settings: AppSettings) {
+    @MainActor static func beginDeviceSetup(settings: AppSettings) {
         settings.preserveCompletedOnboarding()
         settings.onboardingPurpose = settings.canDismissOnboarding ? .addDevice : .initialSetup
         settings.discardOnboardingVoiceTrial()
@@ -142,7 +142,7 @@ enum SettingsPageBehavior {
         settings.onboardingStep = .remoteAvailability
     }
 
-    static func beginIntegrationSetup(tool: OnboardingVoiceTool, settings: AppSettings) {
+    @MainActor static func beginIntegrationSetup(tool: OnboardingVoiceTool, settings: AppSettings) {
         settings.preserveCompletedOnboarding()
         settings.discardOnboardingVoiceTrial()
         settings.onboardingPurpose = settings.canDismissOnboarding ? .integration : .initialSetup

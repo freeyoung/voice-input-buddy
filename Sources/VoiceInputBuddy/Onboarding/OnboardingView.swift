@@ -16,6 +16,9 @@ struct OnboardingView: View {
     let remoteInputDiagnosticOverride: FirstUseRemoteInputDiagnostic?
     let interactionProbe: OnboardingInteractionProbe?
     let permissionOverrides: SystemPermissionOverrides?
+    let onPauseSetup: () -> Void
+
+    @AccessibilityFocusState var focusedStepTitle: OnboardingStep?
 
     @State var bluetoothAuthorization: CBManagerAuthorization
     @State var inputMonitoringGranted: Bool
@@ -56,7 +59,6 @@ struct OnboardingView: View {
     @State var secureInputWaitStartedAtUptime: TimeInterval?
     @State var lastLoggedSecureInputState: Bool?
     @State var aiPromptCopyResult: Bool?
-    @State var showUnsupportedDeviceNotice = false
 
     init(
         model: BridgeAppModel,
@@ -67,7 +69,8 @@ struct OnboardingView: View {
         initialInputMethodGuideStep: Int? = nil,
         remoteInputDiagnosticOverride: FirstUseRemoteInputDiagnostic? = nil,
         interactionProbe: OnboardingInteractionProbe? = nil,
-        permissionOverrides: SystemPermissionOverrides? = nil
+        permissionOverrides: SystemPermissionOverrides? = nil,
+        onPauseSetup: @escaping () -> Void = { NSApp.keyWindow?.performClose(nil) }
     ) {
         self.model = model
 
@@ -79,6 +82,7 @@ struct OnboardingView: View {
         self.remoteInputDiagnosticOverride = remoteInputDiagnosticOverride
         self.interactionProbe = interactionProbe
         self.permissionOverrides = permissionOverrides
+        self.onPauseSetup = onPauseSetup
         _voiceToolAvailability = State(
             initialValue: voiceToolAvailabilityOverride ?? Self.detectVoiceToolAvailability()
         )
@@ -89,7 +93,7 @@ struct OnboardingView: View {
     }
 
     private var lifecycleContent: some View {
-        AdaptiveSettingsViewport {
+        AdaptiveSettingsViewport(minimumSize: SettingsWindowLayout.onboardingMinimumCanvasSize, axes: .horizontal) {
             onboardingCanvas
         }
     }
@@ -217,6 +221,14 @@ struct OnboardingView: View {
     private var toolObservedContent: some View {
         remoteObservedContent
         .onDisappear { cancelVoiceTestTasks() }
+        .task(id: settings.onboardingStep) { @MainActor in
+            let step = settings.onboardingStep
+            // Voice testing owns the transcript editor focus instead.
+            guard step != .voiceTest else { focusedStepTitle = nil; return }
+            await Task.yield()
+            guard !Task.isCancelled, settings.onboardingStep == step else { return }
+            focusedStepTitle = step
+        }
         .onChange(of: settings.onboardingStep) { _, step in
             cancelVoiceTestTasks()
             prepareForStep(step)

@@ -63,19 +63,19 @@ extension SettingsView {
             }
 
             if button == .power && trigger == .singleClick && settings.experimentalContinuousRecordingEnabled {
-                Text("button_mapping.continuous_recording_experiment.power_managed")
+                Text(localization.text("button_mapping.continuous_recording_experiment.power_managed"))
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)
             } else if trigger == .doubleClick && configured.action != .disabled {
-                Text("button_mapping.double_click.effect")
+                Text(localization.text("button_mapping.double_click.effect"))
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)
             } else if trigger == .longPress && configured.action != .disabled {
-                Text("button_mapping.long_press.effect")
+                Text(localization.text("button_mapping.long_press.effect"))
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)
             } else if trigger == .singleClick {
-                Text("button_mapping.single_click.help")
+                Text(localization.text("button_mapping.single_click.help"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -122,13 +122,13 @@ extension SettingsView {
 
     private func mappingRapidPressControl(button: RemoteButton) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Toggle("button_mapping.rapid_press", isOn: Binding(
+            Toggle(localization.text("button_mapping.rapid_press"), isOn: Binding(
                 get: { settings.allowsRapidPress(for: button) },
                 set: { settings.setAllowsRapidPress($0, for: button) }
             ))
             .font(.system(size: 13, weight: .medium))
             .toggleStyle(.switch)
-            Text("button_mapping.rapid_press_hint_short")
+            Text(localization.text("button_mapping.rapid_press_hint_short"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -244,20 +244,20 @@ extension SettingsView {
         let target = ShortcutEditingTarget(button: button, trigger: trigger)
         let contextID = target.id
         VStack(alignment: .leading, spacing: 10) {
-            Text("shortcut.editor.click_first_help")
+            Text(localization.text("shortcut.editor.click_first_help"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
             if shortcutCaptureTarget == target {
                 HStack(spacing: 10) {
-                    Label("shortcut.editor.recording_prompt", systemImage: "keyboard.fill")
+                    Label(localization.text("shortcut.editor.recording_prompt"), systemImage: "keyboard.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Spacer(minLength: 10)
 
-                    Button("common.action.cancel") {
+                    Button(localization.text("common.action.cancel")) {
                         shortcutCaptureTarget = nil
                     }
                     .compatibilityButtonStyle(.standard)
@@ -307,14 +307,14 @@ extension SettingsView {
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
                         .help(configured.shortcut?.detailedDisplayName(using: localization) ?? "")
 
-                        Button(configured.shortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again") {
+                        Button(localization.text(configured.shortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again")) {
                             applicationShortcutCaptureProfileID = nil
                             shortcutCaptureFeedback = nil
                             shortcutCaptureTarget = target
                         }
                         .compatibilityButtonStyle(.standard)
 
-                        Button("common.action.clear") {
+                        Button(localization.text("common.action.clear")) {
                             setMappingShortcut(nil, for: button, trigger: trigger)
                             shortcutCaptureFeedback = nil
                         }
@@ -348,7 +348,7 @@ extension SettingsView {
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
 
-            Text("custom_application.target")
+            Text(localization.text("custom_application.target"))
                 .font(.system(size: 14, weight: .semibold))
 
             LazyVGrid(
@@ -368,7 +368,7 @@ extension SettingsView {
                 Button {
                     chooseCustomApplication(for: button, trigger: trigger)
                 } label: {
-                    Label("custom_application.add", systemImage: "plus")
+                    Label(localization.text("custom_application.add"), systemImage: "plus")
                         .font(.system(size: 13, weight: .semibold))
                         .frame(maxWidth: .infinity, minHeight: 36)
                 }
@@ -378,7 +378,7 @@ extension SettingsView {
             if let profile = settings.customApplicationProfile(id: configured.applicationProfileID) {
                 Divider()
 
-                Text("custom_application.focus_strategy")
+                Text(localization.text("custom_application.focus_strategy"))
                     .font(.system(size: 14, weight: .semibold))
 
                 HStack(spacing: 8) {
@@ -426,7 +426,7 @@ extension SettingsView {
 
                 HStack {
                     Spacer()
-                    Button("custom_application.test") {
+                    Button(localization.text("custom_application.test")) {
                         _ = KeyboardInjector.send(
                             .openCustomApplication,
                             applicationProfile: profile
@@ -435,7 +435,7 @@ extension SettingsView {
                     .compatibilityButtonStyle(.prominent)
                 }
             } else {
-                Text("custom_application.not_configured")
+                Text(localization.text("custom_application.not_configured"))
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)
             }
@@ -477,20 +477,20 @@ extension SettingsView {
     private func inlineApplicationShortcutEditor(_ profile: CustomApplicationProfile) -> some View {
         let contextID = "application-\(profile.id.uuidString)"
         VStack(alignment: .leading, spacing: 10) {
-            Text("custom_application.shortcut.editor_instructions")
+            Text(localization.text("custom_application.shortcut.editor_instructions"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
             if applicationShortcutCaptureProfileID == profile.id {
                 HStack(spacing: 10) {
-                    Label("shortcut.editor.recording_prompt", systemImage: "keyboard.fill")
+                    Label(localization.text("shortcut.editor.recording_prompt"), systemImage: "keyboard.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Spacer(minLength: 10)
 
-                    Button("common.action.cancel") {
+                    Button(localization.text("common.action.cancel")) {
                         applicationShortcutCaptureProfileID = nil
                     }
                     .compatibilityButtonStyle(.standard)
@@ -540,14 +540,14 @@ extension SettingsView {
                     .padding(.horizontal, 12)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
 
-                    Button(profile.focusShortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again") {
+                    Button(localization.text(profile.focusShortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again")) {
                         shortcutCaptureTarget = nil
                         shortcutCaptureFeedback = nil
                         applicationShortcutCaptureProfileID = profile.id
                     }
                     .compatibilityButtonStyle(.prominent)
 
-                    Button("common.action.clear") {
+                    Button(localization.text("common.action.clear")) {
                         var updated = profile
                         updated.focusShortcut = nil
                         settings.updateCustomApplicationProfile(updated)

@@ -27,12 +27,14 @@ struct RemoteRebindingPicker: View {
             if failed { Text(localization.text("remote.rebind.failed")).foregroundStyle(.red) }
             HStack {
                 Button(localization.text("common.action.cancel")) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button(localization.text("remote.rebind.confirm")) {
                     guard let selected else { return }
                     if model.rebindRemote(profileID: profile.id, to: selected) { dismiss() }
                     else { failed = true }
                 }.disabled(selected == nil || model.isStreaming).buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
             }
         }.padding(24).frame(width: 520)
     }

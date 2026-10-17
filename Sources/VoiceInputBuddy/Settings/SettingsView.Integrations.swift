@@ -10,17 +10,17 @@ extension SettingsView {
             PageHeader(title: localization.text("settings.integration.title"))
         } content: {
             VStack(alignment: .leading, spacing: 14) {
-                Text("settings.integration.introduction")
+                Text(localization.text("settings.integration.introduction"))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 GlassPanel {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("settings.integration.current").font(.headline)
+                        Text(localization.text("settings.integration.current")).font(.headline)
                         Text(localization.text(settings.onboardingVoiceTool.titleKey))
                             .font(.title3.weight(.medium))
                         Label(model.voiceShortcutStatus.text(using: localization), systemImage: "keyboard")
                         Label(model.audioStatus.text(using: localization), systemImage: "mic")
-                        Text("settings.integration.microphone_help")
+                        Text(localization.text("settings.integration.microphone_help"))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -32,12 +32,12 @@ extension SettingsView {
                 }
                 GlassPanel {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("settings.integration.shortcut_title").font(.headline)
+                        Text(localization.text("settings.integration.shortcut_title")).font(.headline)
                         mappingVoiceKeyModeControl
                         if VoiceFunctionKeyTapApplicability.isApplicable(capabilities: model.selectedRemoteVoiceCapabilities) {
                             mappingVoiceFnTapControl
                         }
-                        Text("settings.integration.shortcut_help")
+                        Text(localization.text("settings.integration.shortcut_help"))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -63,7 +63,7 @@ extension SettingsView {
                 Text(localization.text(tool.detailKey))
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("settings.integration.configure") {
+                Button(localization.text("settings.integration.configure")) {
                     SettingsPageBehavior.beginIntegrationSetup(tool: tool, settings: settings)
                 }
                 .compatibilityButtonStyle(.standard)

@@ -90,7 +90,7 @@ extension BridgeAppModel {
         doubaoAudioStatus = DoubaoAudioDevicePolicy.status(in: devices)
     }
 
-    private static func audioDevicesDiagnostic(_ devices: [AudioDeviceInfo]) -> String {
+    nonisolated private static func audioDevicesDiagnostic(_ devices: [AudioDeviceInfo]) -> String {
         "outputs={\(CoreAudioDeviceCatalog.outputDevicesDiagnostic(devices))} " +
             CoreAudioDeviceCatalog.routeDiagnostic()
     }
@@ -449,7 +449,7 @@ extension BridgeAppModel {
         }
     }
 
-    static func audioHardwarePropertyNames(
+    nonisolated static func audioHardwarePropertyNames(
         count: UInt32,
         addresses: UnsafePointer<AudioObjectPropertyAddress>
     ) -> String {
@@ -459,13 +459,13 @@ extension BridgeAppModel {
             .joined(separator: ",")
     }
 
-    static func audioHardwarePropertyNames(
+    nonisolated static func audioHardwarePropertyNames(
         for addresses: [AudioObjectPropertyAddress]
     ) -> String {
         addresses.map { audioHardwarePropertyName($0.mSelector) }.joined(separator: ",")
     }
 
-    private static func audioHardwarePropertyName(
+    nonisolated private static func audioHardwarePropertyName(
         _ selector: AudioObjectPropertySelector
     ) -> String {
         switch selector {

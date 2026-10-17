@@ -54,6 +54,8 @@ enum KeyboardInjector {
         private(set) var isActive = false
         private var releaseTask: ScheduledOperation?
         private var releaseGeneration: UInt64 = 0
+        private var releaseAttempts = 0
+        private var scheduleRelease: OperationScheduler = ScheduledOperation.mainQueue
 
         init(keyStatePoster: @escaping KeyStatePoster = KeyboardInjector.postKeyState) {
             self.keyStatePoster = keyStatePoster
@@ -80,17 +82,18 @@ enum KeyboardInjector {
         @discardableResult
         func trigger() -> Bool {
             if isActive {
+                guard releaseAttempts == 0 else { return false }
                 return postTab()
             }
 
             guard post(leftCommandKeyCode, isDown: true, flags: .maskCommand, role: "command") else {
                 return false
             }
+            isActive = true
             guard postTab() else {
-                _ = post(leftCommandKeyCode, isDown: false, flags: [], role: "command")
+                _ = releaseCommandKey()
                 return false
             }
-            isActive = true
             return true
         }
 
@@ -98,13 +101,14 @@ enum KeyboardInjector {
         /// repeated triggers extend the hold and cycle the same session.
         @discardableResult
         func triggerTemporarily(
-            schedule: (TimeInterval, @escaping () -> Void) -> ScheduledOperation = ScheduledOperation.mainQueue
+            schedule: OperationScheduler? = nil
         ) -> Bool {
+            if let schedule { scheduleRelease = schedule }
             guard trigger() else { return false }
             releaseGeneration &+= 1
             let generation = releaseGeneration
             releaseTask?.cancel()
-            releaseTask = schedule(1) { [weak self] in
+            releaseTask = scheduleRelease(1) { [weak self] in
                 guard let self, self.releaseGeneration == generation else { return }
                 _ = self.confirm()
             }
@@ -134,6 +138,21 @@ enum KeyboardInjector {
             guard isActive else { return true }
             let released = post(leftCommandKeyCode, isDown: false, flags: [], role: "command")
             isActive = !released
+            if released {
+                releaseAttempts = 0
+            } else {
+                releaseAttempts += 1
+                if releaseAttempts < 4 {
+                    let generation = releaseGeneration
+                    let delay = 0.05 * pow(2, Double(releaseAttempts - 1))
+                    releaseTask = scheduleRelease(delay) { [weak self] in
+                        guard let self, self.releaseGeneration == generation else { return }
+                        _ = self.releaseCommandKey()
+                    }
+                } else {
+                    diagnosticLogger?("command_release_blocked attempts=\(releaseAttempts)")
+                }
+            }
             return released
         }
 
@@ -311,6 +330,7 @@ enum KeyboardInjector {
         frontmostComposerFocuser: (@escaping (Bool) -> Void) -> Bool = focusFrontmostComposer,
         focusInputCompletion: @escaping (Bool) -> Void = { _ in },
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
+        secureInputEnabled: () -> Bool = SecureInputMonitor.isEnabled,
         keyPoster: KeyPoster = { postKey(code: $0, flags: $1) },
         keyStatePoster: KeyStatePoster = postKeyState,
         appSwitcherSession: AppSwitcherSession? = nil,
@@ -322,6 +342,10 @@ enum KeyboardInjector {
         guard action != .disabled else { return true }
         if action != .appSwitcher, transientAppSwitcher.isActive {
             guard transientAppSwitcher.confirm() else { return false }
+        }
+        guard !action.requiresNonSecureInput || !secureInputEnabled() else {
+            AppLogger.shared.write("BUTTON ACTION blocked reason=secure_input action=\(action.rawValue)")
+            return false
         }
         if action.isAppInternal {
             AppLogger.shared.write("INTERNAL ACTION ignored_by_keyboard action=\(action.rawValue)")

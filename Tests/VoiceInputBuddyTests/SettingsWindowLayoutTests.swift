@@ -16,6 +16,14 @@ struct SettingsWindowLayoutTests {
         #expect(minimum.height <= fitted.height)
     }
 
+    @Test(arguments: [CGFloat(500), 680, 732])
+    func onboardingCanvasUsesActualViewportHeight(height: CGFloat) {
+        let canvas = SettingsWindowLayout.canvasSize(viewport: CGSize(width: 720, height: height),
+            minimum: SettingsWindowLayout.onboardingMinimumCanvasSize)
+        #expect(canvas.height == height)
+        #expect(canvas.width == 980)
+    }
+
     @Test func compactViewportKeepsFullCanvasAndDesktopHasNoOverflow() {
         let compact = SettingsWindowLayout.canvasSize(viewport: CGSize(width: 720, height: 500))
         #expect(compact == CGSize(width: 980, height: 732))

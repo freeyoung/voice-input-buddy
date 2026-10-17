@@ -225,6 +225,7 @@ struct ScheduledVoiceTaskLifetimeTests {
 }
 
 @Suite("Portable device mappings")
+@MainActor
 struct PortableDeviceMappingTests {
     private func settings(_ suites: inout [String]) throws -> AppSettings {
         let suite = "mapping-review-" + UUID().uuidString

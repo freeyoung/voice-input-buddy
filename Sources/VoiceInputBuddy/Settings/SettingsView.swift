@@ -131,17 +131,17 @@ struct SettingsView: View {
             localization.text("button_mapping.permission_prompt.title"),
             isPresented: $isMappingPermissionAlertPresented
         ) {
-            Button("button_mapping.permission_prompt.open") {
+            Button(localization.text("button_mapping.permission_prompt.open")) {
                 isWaitingForMappingPermissions = true
                 selectedSection = .permissions
                 model.applyHIDSettings()
             }
-            Button("common.action.cancel", role: .cancel) {
+            Button(localization.text("common.action.cancel"), role: .cancel) {
                 settings.customMappingEnabled = false
                 model.applyHIDSettings()
             }
         } message: {
-            Text("button_mapping.permission_prompt.message")
+            Text(localization.text("button_mapping.permission_prompt.message"))
         }
     }
 }

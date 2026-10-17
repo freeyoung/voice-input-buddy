@@ -915,8 +915,9 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
         window.setContentSize(SettingsWindowLayout.preferredContentSize)
+        let restored = window.setFrameUsingName("VoiceInputBuddySettings")
         window.setFrameAutosaveName("VoiceInputBuddySettings")
-        window.center()
+        if !restored { window.center() }
         fitSettingsWindowToScreen(window)
         return NSWindowController(window: window)
     }

@@ -13,7 +13,7 @@ extension SettingsView {
                 Button {
                     SettingsPageBehavior.beginDeviceSetup(settings: settings)
                 } label: {
-                    Label("connection.action.add_device", systemImage: "plus")
+                    Label(localization.text("connection.action.add_device"), systemImage: "plus")
                         .font(.system(size: 14, weight: .semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
@@ -50,7 +50,7 @@ extension SettingsView {
         GlassPanel {
             VStack(alignment: .leading, spacing: 10) {
                 Label {
-                    Text("connection.voice_key_compatibility.title")
+                    Text(localization.text("connection.voice_key_compatibility.title"))
                         .font(.system(size: 13, weight: .semibold))
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -62,7 +62,7 @@ extension SettingsView {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Button("connection.voice_key_compatibility.recheck") {
+                Button(localization.text("connection.voice_key_compatibility.recheck")) {
                     model.recheckRemoteInput()
                 }
                 .compatibilityButtonStyle(.standard)
@@ -77,11 +77,11 @@ extension SettingsView {
                     remoteDeviceCard(profile, fillsWidth: true)
                     connectionRemotePhoto(profile)
                     if profile.bluetoothIdentifier != nil, !model.isRemoteConnected(profile.id) {
-                        Button("remote.rebind.title") { remoteRebindingProfile = profile }
+                        Button(localization.text("remote.rebind.title")) { remoteRebindingProfile = profile }
                             .compatibilityButtonStyle(.standard).disabled(model.isStreaming)
                     }
                     if profile.bluetoothIdentifier != nil {
-                        Button("connection.action.reconnect") {
+                        Button(localization.text("connection.action.reconnect")) {
                             model.selectRemoteProfile(profile.id)
                             model.reconnect()
                         }.compatibilityButtonStyle(.standard).disabled(model.isStreaming)
@@ -89,7 +89,7 @@ extension SettingsView {
                 }.frame(width: 230)
                 Divider()
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("audio.gain.title").font(.headline)
+                    Text(localization.text("audio.gain.title")).font(.headline)
                     HStack(spacing: 12) {
                         Slider(value: Binding(get: { settings.gainDB(for: profile.id) },
                             set: { settings.setGainDB($0, for: profile.id) }), in: 0...24, step: 1)
@@ -97,8 +97,8 @@ extension SettingsView {
                         Text("\(Int(settings.gainDB(for: profile.id))) dB")
                             .font(.system(.body, design: .monospaced)).frame(width: 54, alignment: .trailing)
                     }
-                    Text("audio.gain.help").font(.caption).foregroundStyle(.secondary)
-                    Text("audio.gain.per_device_help").font(.caption).foregroundStyle(.secondary)
+                    Text(localization.text("audio.gain.help")).font(.caption).foregroundStyle(.secondary)
+                    Text(localization.text("audio.gain.per_device_help")).font(.caption).foregroundStyle(.secondary)
                     if settings.selectedRemoteProfileID == profile.id {
                         connectionStatusLine(symbol: "mic.fill", text: model.voiceShortcutStatus.text(using: localization), tint: .blue)
                     }

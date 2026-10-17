@@ -6,7 +6,7 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 开发 App：运行 scripts/build-app.sh，输出 dist/Voice Input Buddy.app。首次设置会请求需要的权限，蓝牙权限描述位于 Resources/Info.plist。应用身份为 com.zfdang.voice-input-buddy，设置和系统权限与原产品独立。
 
-虚拟麦克风：scripts/build-driver.sh 固定 BlackHole v0.7.1 的 e2b22aaaba4e507a097131704bf96dabc004d9cf，应用 USB transport 补丁，使用独立工厂 UUID、Bundle ID 和 BuddyMic UID，避免替换 BlackHole 或原 MiRemoteV 驱动。输出 VoiceInputBuddyMic.driver。scripts/build-driver-package.sh 创建系统 HAL 目录安装包，安装需用户明确授权；安装后脚本重启 Core Audio 以重新枚举设备，会短暂中断播放和录音；若失败则提示重启系统。驱动编译禁用 BlackHole 的通道名称格式，确保实际 UID 为 BuddyMic2ch_UID。
+虚拟麦克风：scripts/build-driver.sh 固定 BlackHole v0.7.1 的 e2b22aaaba4e507a097131704bf96dabc004d9cf，应用 USB transport 补丁，使用独立工厂 UUID、Bundle ID 和 BuddyMic UID，避免替换 BlackHole 或原 MiRemoteV 驱动。输出 VoiceInputBuddyMic.driver。scripts/build-driver-package.sh 创建系统 HAL 目录安装包，安装需用户明确授权；安装器在安装前的说明页明确提示：新安装或内容变化的驱动需要重启 Core Audio，短暂中断系统全部播放和录音；驱动未变则不重启。安装后刷新失败时提示重启系统。驱动编译禁用 BlackHole 的通道名称格式，确保实际 UID 为 BuddyMic2ch_UID。
 
 应用不会自动修改系统默认音频设备。遥控器断开、应用停止、退出、音频配置失败及重连时，只释放或重新绑定应用自身的音频输出；系统默认输入、输出及系统提示音设备保持由用户或系统管理。App 固定使用 Voice Input Buddy Mic（`BuddyMic2ch_UID`），第三方工具的麦克风需选择该设备；没有输出选择或 BlackHole 回退。目标语音快捷键通过向导按工具实际设置配置并验证。
 
@@ -273,8 +273,10 @@ injection and audio hardware scheduling; real remote reconnect, HAL routing and
 external dictation still require hardware acceptance.
 
 Compact window checks: the settings window fits the current screen's visible
-frame on opening and screen changes. Both settings and onboarding keep a readable
-980×732 canvas inside a two-axis scroll view when space is smaller. Debug preview
+frame on opening and screen changes. Settings keep a readable
+980×732 scrollable canvas. Onboarding uses the actual viewport height with
+independently scrolling content, so its navigation remains visible; only width
+may scroll when space is smaller. Debug preview
 rendering accepts `VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIZE=720x500` and
 `VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_SIZE=720x500`; set
 `VOICE_INPUT_BUDDY_SCREENSHOT_SCROLL_TO_END=1` to verify bottom/right navigation

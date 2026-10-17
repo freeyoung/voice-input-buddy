@@ -9,33 +9,33 @@ extension SettingsView {
     var updateInformationContent: some View {
         switch updateInformation.state {
         case .idle:
-            Text("about.version.information_title")
+            Text(localization.text("about.version.information_title"))
                 .font(.headline)
-            Text("about.version.information_idle")
+            Text(localization.text("about.version.information_idle"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         case .checking:
-            Text("about.version.information_title")
+            Text(localization.text("about.version.information_title"))
                 .font(.headline)
             HStack(spacing: 10) {
                 ProgressView()
                     .controlSize(.small)
-                Text("about.version.checking")
+                Text(localization.text("about.version.checking"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
         case .upToDate:
-            Label("about.version.up_to_date", systemImage: "checkmark.circle.fill")
+            Label(localization.text("about.version.up_to_date"), systemImage: "checkmark.circle.fill")
                 .font(.headline)
                 .foregroundStyle(.green)
-            Text("about.version.up_to_date_description")
+            Text(localization.text("about.version.up_to_date_description"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         case .unavailable:
-            Label("about.version.information_unavailable", systemImage: "wifi.exclamationmark")
+            Label(localization.text("about.version.information_unavailable"), systemImage: "wifi.exclamationmark")
                 .font(.headline)
                 .foregroundStyle(.orange)
-            Text("about.version.information_unavailable_description")
+            Text(localization.text("about.version.information_unavailable_description"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         case let .available(update):
@@ -47,7 +47,7 @@ extension SettingsView {
             .font(.headline)
 
             if update.releaseNotes.isEmpty {
-                Text("about.version.release_notes_unavailable")
+                Text(localization.text("about.version.release_notes_unavailable"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else {

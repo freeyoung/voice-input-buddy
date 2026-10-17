@@ -10,9 +10,12 @@ private func hidDeviceMatched(
     sender: UnsafeMutableRawPointer?,
     device: IOHIDDevice
 ) {
-    guard let context else { return }
-    let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
-    monitor.deviceDidMatch(result: result, device: device)
+    // IOHID callbacks are scheduled on CFRunLoopGetMain().
+    MainActor.assumeIsolated {
+        guard let context else { return }
+        let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
+        monitor.deviceDidMatch(result: result, device: device)
+    }
 }
 
 private func hidDeviceRemoved(
@@ -21,9 +24,12 @@ private func hidDeviceRemoved(
     sender: UnsafeMutableRawPointer?,
     device: IOHIDDevice
 ) {
-    guard let context else { return }
-    let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
-    monitor.deviceDidRemove(device: device)
+    // IOHID callbacks are scheduled on CFRunLoopGetMain().
+    MainActor.assumeIsolated {
+        guard let context else { return }
+        let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
+        monitor.deviceDidRemove(device: device)
+    }
 }
 
 private func hidInputReport(
@@ -35,23 +41,26 @@ private func hidInputReport(
     report: UnsafeMutablePointer<UInt8>,
     reportLength: CFIndex
 ) {
-    guard let context else { return }
-    let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
-    guard result == kIOReturnSuccess else {
-        monitor.reportCallbackRejected(reason: "io_error", result: result, reportLength: reportLength)
-        return
+    // IOHID callbacks are scheduled on CFRunLoopGetMain().
+    MainActor.assumeIsolated {
+        guard let context else { return }
+        let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
+        guard result == kIOReturnSuccess else {
+            monitor.reportCallbackRejected(reason: "io_error", result: result, reportLength: reportLength)
+            return
+        }
+        guard let sender else {
+            monitor.reportCallbackRejected(reason: "missing_sender", result: result, reportLength: reportLength)
+            return
+        }
+        guard reportLength > 0 else {
+            monitor.reportCallbackRejected(reason: "empty_report", result: result, reportLength: reportLength)
+            return
+        }
+        let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue()
+        let data = Data(bytes: report, count: reportLength)
+        monitor.handleReport(from: device, reportID: reportID, data: data)
     }
-    guard let sender else {
-        monitor.reportCallbackRejected(reason: "missing_sender", result: result, reportLength: reportLength)
-        return
-    }
-    guard reportLength > 0 else {
-        monitor.reportCallbackRejected(reason: "empty_report", result: result, reportLength: reportLength)
-        return
-    }
-    let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue()
-    let data = Data(bytes: report, count: reportLength)
-    monitor.handleReport(from: device, reportID: reportID, data: data)
 }
 
 enum HIDReportRoutingDecision: Equatable {
@@ -65,6 +74,7 @@ enum HIDDeviceMatchDecision: Equatable {
     case rejected(String)
 }
 
+@MainActor
 final class HIDRemoteMonitor {
     private let settings: AppSettings
     private let allowsG9N9N: Bool
@@ -180,16 +190,16 @@ final class HIDRemoteMonitor {
         self.profileID = profileID
     }
 
-    static var inputMonitoringAccess: IOHIDAccessType {
+    nonisolated static var inputMonitoringAccess: IOHIDAccessType {
         IOHIDCheckAccess(kIOHIDRequestTypeListenEvent)
     }
 
-    static var isInputMonitoringGranted: Bool {
+    nonisolated static var isInputMonitoringGranted: Bool {
         inputMonitoringAccess == kIOHIDAccessTypeGranted
     }
 
     @discardableResult
-    static func requestInputMonitoringAccess() -> Bool {
+    nonisolated static func requestInputMonitoringAccess() -> Bool {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
     }
 
@@ -268,7 +278,7 @@ final class HIDRemoteMonitor {
         AppLogger.shared.write("HID START mode=adaptive")
     }
 
-    deinit { stop() }
+    isolated deinit { stop() }
 
     func stop() {
         if ownsEventSuppressor { eventSuppressor.stop() }
@@ -857,12 +867,12 @@ final class HIDRemoteMonitor {
         )
     }
 
-    static func acceptsReport(reportingFingerprint: String?, activeFingerprint: String?) -> Bool {
+    nonisolated static func acceptsReport(reportingFingerprint: String?, activeFingerprint: String?) -> Bool {
         guard let reportingFingerprint, let activeFingerprint else { return false }
         return reportingFingerprint == activeFingerprint
     }
 
-    static func resolvedFingerprintForReport(
+    nonisolated static func resolvedFingerprintForReport(
         reportingFingerprint: String?,
         activeFingerprint: String?,
         targetFingerprint: String?,
@@ -879,7 +889,7 @@ final class HIDRemoteMonitor {
         }
     }
 
-    static func reportRoutingDecision(
+    nonisolated static func reportRoutingDecision(
         reportingFingerprint: String?,
         activeFingerprint: String?,
         targetFingerprint: String?,
@@ -902,7 +912,7 @@ final class HIDRemoteMonitor {
         return .accepted(reportingFingerprint)
     }
 
-    static func deviceMatchDecision(
+    nonisolated static func deviceMatchDecision(
         reportingFingerprint: String?,
         activeFingerprint: String?,
         targetFingerprint: String?,
@@ -925,7 +935,7 @@ final class HIDRemoteMonitor {
         return .probe
     }
 
-    static func deviceMatchingCriteria(includeXiaomi: Bool, includeGoogle: Bool,
+    nonisolated static func deviceMatchingCriteria(includeXiaomi: Bool, includeGoogle: Bool,
                                        additionalIdentities: [RemoteHIDIdentity] = []) -> [[String: Any]] {
         // IOHIDManager does not constrain matching by Product name. A name-only
         // dictionary acts as a wildcard and can open unrelated keyboards that
@@ -950,14 +960,14 @@ final class HIDRemoteMonitor {
         return matches
     }
 
-    static func monitorFamilies(targetModel: XiaomiRemoteModel?, powerKeySuppressed: Bool,
+    nonisolated static func monitorFamilies(targetModel: XiaomiRemoteModel?, powerKeySuppressed: Bool,
                                 allowsGoogle: Bool) -> (xiaomi: Bool, google: Bool) {
         let xiaomi = powerKeySuppressed && (targetModel == nil || targetModel == .unknown || targetModel == .rc001 || targetModel == .rc003)
         let google = allowsGoogle && (targetModel == nil || targetModel?.isChromecastRemote == true)
         return (xiaomi, google)
     }
 
-    static func matchesGoogleProtocol(identity: RemoteHIDIdentity, fingerprint: String,
+    nonisolated static func matchesGoogleProtocol(identity: RemoteHIDIdentity, fingerprint: String,
                                       profiles: [RemoteDeviceProfile]) -> Bool {
         let matching = profiles.filter { $0.model.isChromecastRemote && $0.hidFingerprint == fingerprint }
         if identity == .chromecast, matching.isEmpty { return true }
@@ -981,11 +991,11 @@ final class HIDRemoteMonitor {
             profiles: settings.remoteDeviceProfiles)
     }
 
-    static func shouldPromoteDiscoveryReport(usages: Set<UInt16>) -> Bool {
+    nonisolated static func shouldPromoteDiscoveryReport(usages: Set<UInt16>) -> Bool {
         !RemoteButton.buttons(for: usages).isEmpty
     }
 
-    static func deviceOpenFailureMessageKey(
+    nonisolated static func deviceOpenFailureMessageKey(
         result: IOReturn,
         karabinerElementsInstalled: Bool
     ) -> String? {
@@ -995,7 +1005,7 @@ final class HIDRemoteMonitor {
             : "button_mapping.error.exclusive_access"
     }
 
-    static func isKarabinerElementsInstalled(
+    nonisolated static func isKarabinerElementsInstalled(
         applicationURL: URL? = NSWorkspace.shared.urlForApplication(
             withBundleIdentifier: "org.pqrs.Karabiner-Elements"
         ),
@@ -1008,7 +1018,7 @@ final class HIDRemoteMonitor {
         ].contains(where: fileExists)
     }
 
-    static func isKarabinerElementsRunning(
+    nonisolated static func isKarabinerElementsRunning(
         bundleIdentifiers: [String] = NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier)
     ) -> Bool {
         bundleIdentifiers.contains { identifier in
@@ -1019,7 +1029,7 @@ final class HIDRemoteMonitor {
         }
     }
 
-    private static func deviceOpenFailureMessage(
+    private nonisolated static func deviceOpenFailureMessage(
         result: IOReturn,
         karabinerElementsInstalled: Bool
     ) -> LocalizedMessage {
@@ -1035,7 +1045,7 @@ final class HIDRemoteMonitor {
         )
     }
 
-    private static func buttonList(for usages: Set<UInt16>) -> String {
+    private nonisolated static func buttonList(for usages: Set<UInt16>) -> String {
         let buttons = usages.compactMap { RemoteButton.usageMap[$0]?.rawValue }.sorted()
         return buttons.isEmpty ? "none" : buttons.joined(separator: ",")
     }
@@ -1060,7 +1070,7 @@ final class HIDRemoteMonitor {
         return true
     }
 
-    static func shouldRepeat(
+    nonisolated static func shouldRepeat(
         action: ButtonAction,
         frontmostBundleIdentifier: String?
     ) -> Bool {
@@ -1465,7 +1475,7 @@ final class HIDRemoteMonitor {
         AppLogger.shared.write("HID RELEASED permission_revoked")
     }
 
-    static func fingerprint(for device: IOHIDDevice) -> String? {
+    nonisolated static func fingerprint(for device: IOHIDDevice) -> String? {
         let keys = ["PhysicalDeviceUniqueID", kIOHIDSerialNumberKey, "DeviceAddress"]
         for key in keys {
             guard let value = IOHIDDeviceGetProperty(device, key as CFString) as? String,
@@ -1481,11 +1491,11 @@ final class HIDRemoteMonitor {
             .joined()
     }
 
-    static func locationID(for device: IOHIDDevice) -> UInt32? {
+    nonisolated static func locationID(for device: IOHIDDevice) -> UInt32? {
         (IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? NSNumber)?.uint32Value
     }
 
-    static func isLocationAllowed(
+    nonisolated static func isLocationAllowed(
         locationID: UInt32?,
         allowedLocationIDs: Set<UInt32>?
     ) -> Bool {

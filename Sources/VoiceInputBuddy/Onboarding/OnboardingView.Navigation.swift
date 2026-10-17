@@ -57,7 +57,6 @@ extension OnboardingView {
                         .font(.system(size: 13, weight: .medium))
                 }
                 .buttonStyle(.plain)
-                .modifier(OnboardingFocusEffectDisabledModifier())
                 .accessibilityIdentifier("onboarding.back")
                 .padding(.bottom, 24)
             }
@@ -118,6 +117,15 @@ extension OnboardingView {
                     .disabled(model.isStreaming)
                     .accessibilityIdentifier("onboarding.dismiss")
                 }
+                if !settings.canDismissOnboarding {
+                    onboardingActionButton(id: "pause", action: pauseIncompleteSetup) {
+                        Text(localization.text("onboarding.action.pause"))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .disabled(model.isVoiceConfigurationBusy)
+                    .accessibilityIdentifier("onboarding.pause")
+                }
                 if settings.onboardingStep != .audio {
                     onboardingActionButton(id: "continue", action: continueFlow) {
                         Text(localization.text(primaryActionKey))
@@ -161,14 +169,15 @@ extension OnboardingView {
         }
     }
 
+    func pauseIncompleteSetup() {
+        guard !settings.isOnboardingComplete, !settings.canDismissOnboarding,
+              !model.isVoiceConfigurationBusy else { return }
+        settings.discardOnboardingVoiceTrial()
+        onPauseSetup()
+    }
+
     func continueFlow() {
         guard canContinue else { return }
-        if settings.onboardingStep == .remoteAvailability,
-           let device = settings.onboardingDevice,
-           !device.canStartSetup {
-            showUnsupportedDeviceNotice = true
-            return
-        }
         if settings.onboardingStep == .voiceTool {
             stageCurrentDocumentedPairingPlanIfPossible()
         }
@@ -212,14 +221,4 @@ extension OnboardingView {
         settings.setOnboardingStep(previous)
     }
 
-    private struct OnboardingFocusEffectDisabledModifier: ViewModifier {
-        @ViewBuilder
-        func body(content: Content) -> some View {
-            if #available(macOS 14.0, *) {
-                content.focusEffectDisabled()
-            } else {
-                content
-            }
-        }
-    }
 }

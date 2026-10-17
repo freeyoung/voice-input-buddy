@@ -1,6 +1,7 @@
 import Foundation
 
 /// Main-queue voice state. Ending an owner also discards audio waiting for it.
+@MainActor
 final class VoiceSessionRuntime {
     var commandAudio = CommandVoiceActivationAudioBuffer()
     var voiceSessionID: UUID?

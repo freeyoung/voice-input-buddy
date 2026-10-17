@@ -101,6 +101,13 @@ enum VoiceRemoteAdmissionDecision: Equatable {
 /// 三条发现路径——已保存标识、系统已连接设备、扫描广播——**必须共用这一份判定**，
 /// 否则「遥控器已在系统设置里配对过」这类设备会被其中一条路径漏掉或误收。
 enum VoiceRemoteAdmission {
+    /// Recheck a name learned after discovery using the same product policy.
+    /// Candidate admission still requires the model/codec handshake before ready.
+    static func rejectsConnectedProduct(name: String?, allowsG9N9N: Bool) -> Bool {
+        if allowsG9N9N, G9N9NProtocol.isCandidateName(name) { return false }
+        return ForeignVoiceRemoteProduct.isRejected(name: name)
+    }
+
     static func decide(
         identifier: UUID,
         targetIdentifier: UUID?,
@@ -419,5 +426,18 @@ enum ATVVSessionGate {
     ) -> Bool {
         guard let cancelledAt else { return false }
         return now < cancelledAt.addingTimeInterval(cancelledOpenSuppressionInterval)
+    }
+}
+
+/// Audio may implicitly start before its control notification. Only two distinct,
+/// explicit session identifiers prove a new stream when the stop was lost.
+enum ATVVStreamStartPolicy {
+    static func shouldReplaceStream(
+        isStreaming: Bool,
+        activeSessionID: UInt8?,
+        incomingSessionID: UInt8?
+    ) -> Bool {
+        guard isStreaming, let activeSessionID, let incomingSessionID else { return false }
+        return activeSessionID != incomingSessionID
     }
 }

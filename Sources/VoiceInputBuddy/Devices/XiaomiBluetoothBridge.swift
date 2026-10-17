@@ -25,6 +25,7 @@ enum BluetoothBridgeState: Equatable {
     }
 }
 
+@MainActor
 protocol XiaomiBluetoothBridgeDelegate: AnyObject {
     func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didChange state: BluetoothBridgeState)
     func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge)
@@ -36,7 +37,8 @@ protocol XiaomiBluetoothBridgeDelegate: AnyObject {
     func bluetoothBridgeDeviceNameDidChange(_ bridge: XiaomiBluetoothBridge)
 }
 
-private final class XiaomiPeripheralDelegateProxy: NSObject, CBPeripheralDelegate {
+@MainActor
+private final class XiaomiPeripheralDelegateProxy: NSObject, @preconcurrency CBPeripheralDelegate {
     let generation: UInt64
     weak var owner: XiaomiBluetoothBridge?
 
@@ -117,6 +119,7 @@ enum BluetoothBatteryPollingPolicy {
     }
 }
 
+@MainActor
 final class XiaomiBluetoothBridge: NSObject {
     private static let defaultCapabilities = ATVVCapabilities(
         version: 0x0100,
@@ -182,8 +185,10 @@ final class XiaomiBluetoothBridge: NSObject {
     private var shouldRun = false
     private var systemSuspension = BluetoothSystemSuspensionState()
     private var capabilities = XiaomiBluetoothBridge.defaultCapabilities
-    private let audioDecoder = ATVVAudioDecoder()
-    private var streaming = false
+    private let audioDecoder: BluetoothAudioPipeline
+    private var voiceStartNotified = false
+    private var streaming: Bool { audioDecoder.isStreaming }
+    var hasPendingVoiceWork: Bool { audioDecoder.hasPendingVoiceWork || voiceStartNotified }
     private lazy var acknowledgedWrites = AcknowledgedBluetoothWriteQueue(
         send: { [weak self] data in
             guard let self, let peripheral = self.peripheral,
@@ -217,6 +222,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var microphoneOpened = false
     private var cancelledMicrophoneOpenAt: Date?
     private var sessionID: UInt8 = 0
+    private var activeStreamSessionID: UInt8?
     private var lastStopAt: Date?
 
     private let serviceUUID = CBUUID(string: ATVVProtocol.serviceUUID)
@@ -291,9 +297,11 @@ final class XiaomiBluetoothBridge: NSObject {
         delegate: XiaomiBluetoothBridgeDelegate,
         targetIdentifier: UUID? = nil,
         allowsG9N9N: Bool = false,
+        audioPipeline: BluetoothAudioPipeline = BluetoothAudioPipeline(),
         excludedIdentifiers: @escaping () -> Set<UUID> = { [] }
     ) {
         self.settings = settings
+        self.audioDecoder = audioPipeline
         self.allowsG9N9N = allowsG9N9N
         self.delegate = delegate
         self.targetIdentifier = targetIdentifier
@@ -301,7 +309,7 @@ final class XiaomiBluetoothBridge: NSObject {
         super.init()
     }
 
-    deinit {
+    isolated deinit {
         // stop() publishes state and requires a live owner. Destruction releases
         // resources directly and never queues work capturing this dying bridge.
         reconnectWorkItem?.cancel()
@@ -470,36 +478,32 @@ final class XiaomiBluetoothBridge: NSObject {
 
     /// Called only for activity routed to this saved remote's HID profile.
     func recoverAfterRemoteActivity(reason: String) {
-        guard canRecoverRemoteWake, let central, central.state == .poweredOn,
-              let generation = lifecycle.generation else { return }
+        guard canRecoverRemoteWake, central?.state == .poweredOn else { return }
         AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(lifecycle) result=retry_now")
         remoteWakeStartedAt = ProcessInfo.processInfo.systemUptime
-        reconnectWorkItem?.cancel()
-        reconnectWorkItem = nil
         reconnectPolicy.reset()
-        lifecycle = .scanning(generation)
-        discoverOrScan(using: central, generation: generation)
+        startFreshConnectionCycle()
     }
 
-    /// HID matching can precede profile association; only the exact Bluetooth identity can wake this bridge.
+    /// Recreate the central and proxy generation even when the system already
+    /// owns the connection: the same CBPeripheral object can survive a retry.
     func recoverSystemConnectedRemote(reason: String) {
         guard canRecoverRemoteWake, let central, central.state == .poweredOn,
-              let generation = lifecycle.generation, let targetIdentifier,
+              let targetIdentifier,
               let candidate = central.retrieveConnectedPeripherals(withServices: [serviceUUID])
                 .first(where: { $0.identifier == targetIdentifier }),
               acceptsCandidateIdentifier(candidate.identifier) else { return }
-        let previousPhase = lifecycle
-        lifecycle = .scanning(generation)
-        guard adopt(candidate, using: central, generation: generation, source: "wake_system_connected",
-                    advertisesVoiceService: true, advertisedName: nil) else {
-            lifecycle = previousPhase
+        let decision = VoiceRemoteAdmission.decide(identifier: candidate.identifier,
+            targetIdentifier: targetIdentifier, advertisesVoiceService: true,
+            name: candidate.name, advertisedName: nil, allowsG9N9N: allowsG9N9N)
+        guard decision.isAdopted else {
+            reject(candidate, reason: decision.logReason, source: "wake_system_connected")
             return
         }
-        AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(previousPhase) result=system_connected")
+        AppLogger.shared.write("BLE WAKE RECOVERY trigger=\(reason) phase=\(lifecycle) result=system_connected")
         remoteWakeStartedAt = ProcessInfo.processInfo.systemUptime
-        reconnectWorkItem?.cancel()
-        reconnectWorkItem = nil
         reconnectPolicy.reset()
+        startFreshConnectionCycle()
     }
 
     private func monitorRemoteWake() {
@@ -797,6 +801,7 @@ final class XiaomiBluetoothBridge: NSObject {
         capabilities = Self.defaultCapabilities
         currentAttemptUsesCachedTarget = false
         resetSession()
+        audioDecoder.reset(peripheral: true)
     }
 
     private func isCurrent(_ candidate: CBPeripheral) -> Bool {
@@ -856,14 +861,15 @@ final class XiaomiBluetoothBridge: NSObject {
     private func resetSession() {
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
-        if streaming {
-            streaming = false
+        audioDecoder.reset()
+        if voiceStartNotified {
+            voiceStartNotified = false
             delegate?.bluetoothBridgeDidStopVoice(self)
         }
         microphoneOpened = false
         cancelledMicrophoneOpenAt = nil
         sessionID = 0
-        audioDecoder.reset()
+        activeStreamSessionID = nil
     }
 
     private func publishReconnectingState() {
@@ -1156,7 +1162,8 @@ final class XiaomiBluetoothBridge: NSObject {
                 return
             }
             deviceInformation.capabilities = capabilities
-            let receivedSessionID = bytes.count >= 4 ? bytes[3] : 0
+            let explicitSessionID: UInt8? = bytes.count >= 4 ? bytes[3] : nil
+            let receivedSessionID = explicitSessionID ?? sessionID
             if ATVVSessionGate.shouldIgnoreStreamAfterCancelledOpen(
                 cancelledAt: cancelledMicrophoneOpenAt
             ) {
@@ -1170,7 +1177,15 @@ final class XiaomiBluetoothBridge: NSObject {
                 return
             }
             cancelledMicrophoneOpenAt = nil
+            if ATVVStreamStartPolicy.shouldReplaceStream(
+                isStreaming: streaming,
+                activeSessionID: activeStreamSessionID,
+                incomingSessionID: explicitSessionID
+            ) {
+                stopStreaming()
+            }
             sessionID = receivedSessionID
+            if let explicitSessionID { activeStreamSessionID = explicitSessionID }
             startStreaming()
         case 0x00:
             guard lifecycle.acceptsProtocolData(generation: generation) else { return }
@@ -1220,6 +1235,7 @@ final class XiaomiBluetoothBridge: NSObject {
             _ = requestMicrophoneClose()
             return
         }
+        guard !streaming else { return }
         let partialFrameBytes = audioDecoder.pendingByteCount
         if partialFrameBytes > 0 {
             AppLogger.shared.write(
@@ -1227,29 +1243,33 @@ final class XiaomiBluetoothBridge: NSObject {
                     "streaming_before=\(streaming) partial_frame_bytes=\(partialFrameBytes)"
             )
         }
-        audioDecoder.reset()
+        guard audioDecoder.beginStream(onStart: { [weak self] in
+            guard let self else { return }
+            self.voiceStartNotified = true
+            self.delegate?.bluetoothBridgeDidStartVoice(self)
+        }) else { return }
         lastStopAt = nil
         microphoneOpened = true
-        guard !streaming else { return }
-        streaming = true
         scheduleMicrophoneKeepalive()
-        delegate?.bluetoothBridgeDidStartVoice(self)
         AppLogger.shared.write("ATVV STREAM START session=\(sessionID)")
     }
 
     private func stopStreaming() {
+        activeStreamSessionID = nil
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
         guard streaming else { return }
-        streaming = false
         microphoneOpened = false
         let partialFrameBytes = audioDecoder.pendingByteCount
-        audioDecoder.reset()
+        audioDecoder.endStream { [weak self] in
+            guard let self else { return }
+            self.voiceStartNotified = false
+            self.delegate?.bluetoothBridgeDidStopVoice(self)
+        }
         lastStopAt = Date()
         AppLogger.shared.write(
             "ATVV STREAM STOP session=\(sessionID) partial_frame_bytes=\(partialFrameBytes)"
         )
-        delegate?.bluetoothBridgeDidStopVoice(self)
     }
 
     private func handleAudio(_ data: Data) {
@@ -1288,10 +1308,15 @@ final class XiaomiBluetoothBridge: NSObject {
             AppLogger.shared.write("ATVV STREAM implicit_audio_race")
         }
 
-        let batches = audioDecoder.append(data, frameSize: capabilities.frameSize,
-            gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier))
-        for samples in batches {
-            delegate?.bluetoothBridge(self, didDecode: samples)
+        let accepted = audioDecoder.append(data, frameSize: capabilities.frameSize,
+            gainDB: settings.gainDB(forBluetoothIdentifier: deviceIdentifier)) { [weak self] samples in
+            guard let self else { return }
+            self.delegate?.bluetoothBridge(self, didDecode: samples)
+        }
+        if !accepted {
+            AppLogger.shared.write("ATVV AUDIO rejected reason=decode_backlog")
+            _ = requestMicrophoneClose()
+            stopStreaming()
         }
     }
 
@@ -1313,7 +1338,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 }
 
-extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
+extension XiaomiBluetoothBridge: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard self.central === central, let generation = centralGeneration else { return }
         AppLogger.shared.write(
@@ -1408,6 +1433,8 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
     }
 
     private func startFreshConnectionCycle() {
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
             stopScan()
@@ -1428,17 +1455,15 @@ extension XiaomiBluetoothBridge: CBCentralManagerDelegate {
             central.cancelPeripheralConnection(peripheral)
             return
         }
-        // 最后一道闸：无论从哪条路径连上来的，只要名字说明它是别的产品就立刻断开。
-        // 前面几处判定可能因为「当时拿不到名字」而放行，这一层保证不会真的接管它。
-        if ForeignVoiceRemoteProduct.isRejected(name: peripheral.name) {
-            reject(peripheral, reason: "foreign_product", source: "did_connect")
-            central.cancelPeripheralConnection(peripheral)
-            return
-        }
         guard isCurrent(peripheral),
               let generation = centralGeneration,
               lifecycle.acceptsDidConnect(generation: generation)
         else { return }
+        if VoiceRemoteAdmission.rejectsConnectedProduct(name: peripheral.name, allowsG9N9N: allowsG9N9N) {
+            reject(peripheral, reason: "foreign_product", source: "did_connect")
+            central.cancelPeripheralConnection(peripheral)
+            return
+        }
         guard !systemSuspension.isSuspended else {
             systemSuspension.markConnectionCycleNeeded()
             lifecycle = .disconnecting(generation)
@@ -1844,10 +1869,10 @@ extension XiaomiBluetoothBridge {
                 return
             }
 
+            audioDecoder.configureFormat(lowNibbleFirst: normalizedModelNumber.contains("ARN9"))
             if normalizedModelNumber.contains("ARN9") {
                 // ARN9 firmware encodes ADPCM low-nibble-first; flipping the
                 // default high-first order is required for intelligible audio.
-                audioDecoder.decoder.lowNibbleFirst = true
                 AppLogger.shared.write("BLE MODEL ARN9 adpcm=low-nibble-first")
             }
             guard let model = XiaomiRemoteModel.identified(by: modelNumber) else {

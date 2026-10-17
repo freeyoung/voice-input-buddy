@@ -3,6 +3,7 @@ import Foundation
 
 /// Owns audio resources and asynchronous recovery lifetimes. State is main-queue
 /// confined; engine work and HAL notifications keep their dedicated queues.
+@MainActor
 final class AudioRuntime {
     typealias AudioHardwareListenerRemover = (
         inout AudioObjectPropertyAddress, DispatchQueue, @escaping AudioObjectPropertyListenerBlock
@@ -53,7 +54,7 @@ final class AudioRuntime {
         pendingVirtualAudioRelease = nil
     }
 
-    deinit {
+    isolated deinit {
         invalidatePendingWork()
         stopObservingHardware()
     }

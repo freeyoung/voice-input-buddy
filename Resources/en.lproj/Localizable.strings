@@ -1299,3 +1299,5 @@
 "remote.rebind.empty" = "No compatible connected replacement is available.";
 "remote.rebind.failed" = "Could not rebind. Stop voice input and check that the replacement is still connected.";
 "remote.rebind.confirm" = "Rebind and keep settings";
+
+"onboarding.action.pause" = "Set Up Later";

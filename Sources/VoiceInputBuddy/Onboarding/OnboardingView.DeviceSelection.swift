@@ -20,7 +20,6 @@ extension OnboardingView {
     }
 
     func selectDevice(_ device: PlannedRemoteDevice) {
-        showUnsupportedDeviceNotice = false
         if let source = device.onboardingSource {
             selectControlSource(source)
         }
@@ -40,10 +39,15 @@ extension OnboardingView {
                         .frame(width: 34, height: 76)
                         .accessibilityLabel(localization.text("remote.catalog.illustration"))
                 }
-                Text(localization.text(device.titleKey))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localization.text(device.titleKey))
+                        .font(.system(size: 13, weight: .semibold))
+                    if !device.canStartSetup {
+                        Text(localization.text("remote.catalog.unsupported_notice"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
                     .foregroundStyle(selected ? Color.accentColor : Color.secondary)

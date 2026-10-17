@@ -307,10 +307,10 @@ struct RemoteMappingCanvas: View {
                 HStack(spacing: 6) {
                     Image(systemName: "mic.fill")
                         .frame(width: 14)
-                    Text("button_mapping.voice_button.title")
+                    Text(localization.text("button_mapping.voice_button.title"))
                         .font(.system(size: 13, weight: .semibold))
                     Spacer(minLength: 0)
-                    Text("button_mapping.voice_button.fixed")
+                    Text(localization.text("button_mapping.voice_button.fixed"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(voiceActive ? Color.orange : Color.secondary)
                         .padding(.horizontal, 6)
@@ -320,7 +320,7 @@ struct RemoteMappingCanvas: View {
                             in: Capsule()
                         )
                 }
-                Text("button_mapping.voice_button.detail")
+                Text(localization.text("button_mapping.voice_button.detail"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

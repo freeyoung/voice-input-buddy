@@ -69,7 +69,7 @@ extension OnboardingView {
                     .scaledToFit()
                     .frame(maxWidth: 190, maxHeight: 480)
                     .accessibilityLabel(localization.text("remote.catalog.illustration"))
-                if showUnsupportedDeviceNotice && !device.canStartSetup {
+                if !device.canStartSetup {
                     Text(localization.text("remote.catalog.unsupported_notice"))
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)

@@ -47,7 +47,7 @@ extension SettingsView {
                 .fixedSize(horizontal: false, vertical: true)
 
             if !vertical {
-                Button("connection.action.reconnect") {
+                Button(localization.text("connection.action.reconnect")) {
                     model.reconnect()
                 }
                 .compatibilityButtonStyle(.standard)
@@ -85,7 +85,7 @@ extension SettingsView {
             Button {
                 model.selectRemoteProfile(profile.id)
             } label: {
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .center, spacing: 5) {
                     Text(modelName)
                         .help(modelName)
                         .font(.system(size: 13, weight: .semibold))
@@ -104,7 +104,7 @@ extension SettingsView {
                     .font(.system(size: 12))
                     .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -113,8 +113,8 @@ extension SettingsView {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .frame(width: fillsWidth ? nil : 232, alignment: .leading)
-        .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
+        .frame(width: fillsWidth ? nil : 232, alignment: .center)
+        .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .center)
         .background {
             // The background handles padding; foreground buttons keep their own actions.
             RoundedRectangle(cornerRadius: 10, style: .continuous)
