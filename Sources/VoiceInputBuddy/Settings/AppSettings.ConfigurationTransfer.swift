@@ -99,6 +99,21 @@ extension AppSettings {
             fnTapModeEnabled: importedFnTapModeEnabled
         )
 
+        let importedApplicationProfiles = (configuration.customApplicationProfiles ?? [])
+            .compactMap { profile -> CustomApplicationProfile? in
+                switch Self.validatedApplicationProfile(profile) {
+                case let .usable(profile):
+                    return profile
+                case let .notInstalledOnThisMac(profile):
+                    missingApplications.append(profile.displayName)
+                    return profile
+                case .rejected:
+                    rejected.insert(Keys.customApplicationProfiles)
+                    return nil
+                }
+            }
+        let availableApplicationIDs = Set((configuration.customApplicationProfiles == nil
+            ? customApplicationProfiles : importedApplicationProfiles).map(\.id))
         let importedBindings = Dictionary(
             uniqueKeysWithValues: configuration.buttonBindings
                 .compactMap { key, value -> (RemoteButton, ButtonAction)? in
@@ -124,7 +139,7 @@ extension AppSettings {
         let importedApplicationProfileIDs = Dictionary(
             uniqueKeysWithValues: (configuration.buttonApplicationProfileIDs ?? [:])
                 .compactMap { key, value -> (RemoteButton, UUID)? in
-                    guard let button = RemoteButton(rawValue: key) else {
+                    guard let button = RemoteButton(rawValue: key), availableApplicationIDs.contains(value) else {
                         rejected.insert(Keys.buttonApplicationProfileIDs)
                         return nil
                     }
@@ -153,7 +168,8 @@ extension AppSettings {
                         uniqueKeysWithValues: bindings.compactMap {
                             triggerKey, binding -> (ButtonTrigger, ConfiguredButtonAction)? in
                             guard let trigger = ButtonTrigger(rawValue: triggerKey),
-                                  let validated = Self.validatedConfiguredAction(binding)
+                                  let validated = Self.validatedConfiguredAction(binding),
+                                  binding.applicationProfileID.map(availableApplicationIDs.contains) ?? true
                             else {
                                 rejected.insert(Keys.secondaryButtonBindings)
                                 return nil
@@ -165,19 +181,6 @@ extension AppSettings {
                 }
             )
 
-        let importedApplicationProfiles = (configuration.customApplicationProfiles ?? [])
-            .compactMap { profile -> CustomApplicationProfile? in
-                switch Self.validatedApplicationProfile(profile) {
-                case let .usable(profile):
-                    return profile
-                case let .notInstalledOnThisMac(profile):
-                    missingApplications.append(profile.displayName)
-                    return profile
-                case .rejected:
-                    rejected.insert(Keys.customApplicationProfiles)
-                    return nil
-                }
-            }
         let importedRecordingBackup: ConfiguredButtonAction?
         if let backup = configuration.continuousRecordingPowerBindingBackup {
             importedRecordingBackup = Self.validatedConfiguredAction(backup)
@@ -202,7 +205,13 @@ extension AppSettings {
         customMappingEnabled = configuration.customMappingEnabled
         buttonBindings = Self.defaultBindings.merging(importedBindings) { _, imported in imported }
         buttonShortcuts = importedShortcuts
-        unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected)
+        unifiedBaseBindings = importedUnifiedBindings(from: configuration, rejected: &rejected).map { binding in
+            guard let id = binding.configured.applicationProfileID, !availableApplicationIDs.contains(id) else { return binding }
+            rejected.insert("unifiedBaseBindings")
+            var filtered = binding
+            filtered.configured = .disabled
+            return filtered
+        }
         buttonApplicationProfileIDs = importedApplicationProfileIDs
         secondaryButtonBindings = importedSecondaryBindings
         buttonRapidPressEnabled = importedRapidPressEnabled
