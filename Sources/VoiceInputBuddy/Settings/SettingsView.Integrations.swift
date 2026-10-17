@@ -19,7 +19,12 @@ extension SettingsView {
                         Text(localization.text(settings.onboardingVoiceTool.titleKey))
                             .font(.title3.weight(.medium))
                         Label(model.voiceShortcutStatus.text(using: localization), systemImage: "keyboard")
-                        Label(model.audioStatus.text(using: localization), systemImage: "mic")
+                        Label(model.integrationAudioDeviceStatus.text(using: localization), systemImage: "mic")
+                        if model.audioStatus.key != "audio.output.none_selected",
+                           model.audioStatus.key != "audio.output.current_format" {
+                            Text(model.audioStatus.text(using: localization))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         Text(localization.text("settings.integration.microphone_help"))
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -46,7 +51,10 @@ extension SettingsView {
                 }
             }
         }
-        .onAppear { model.refreshVoiceKeyCompatibilityWarning() }
+        .onAppear {
+            model.refreshVoiceKeyCompatibilityWarning()
+            model.refreshAudioDevices()
+        }
     }
 
     private func integrationToolCard(_ tool: OnboardingVoiceTool) -> some View {
