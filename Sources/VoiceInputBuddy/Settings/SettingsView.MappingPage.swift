@@ -330,7 +330,7 @@ extension SettingsView {
                 set: { model.setVoiceKeyMode($0) }
             )) {
                 ForEach(VoiceKeyMode.allCases) { mode in
-                    Text(LocalizedStringKey(mode.localizationKey)).tag(mode)
+                    Text(localization.text(mode.localizationKey)).tag(mode)
                 }
             }
             .pickerStyle(.segmented)

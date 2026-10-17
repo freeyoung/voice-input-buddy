@@ -307,7 +307,7 @@ extension SettingsView {
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
                         .help(configured.shortcut?.detailedDisplayName(using: localization) ?? "")
 
-                        Button(configured.shortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again") {
+                        Button(localization.text(configured.shortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again")) {
                             applicationShortcutCaptureProfileID = nil
                             shortcutCaptureFeedback = nil
                             shortcutCaptureTarget = target
@@ -540,7 +540,7 @@ extension SettingsView {
                     .padding(.horizontal, 12)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
 
-                    Button(profile.focusShortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again") {
+                    Button(localization.text(profile.focusShortcut == nil ? "shortcut.action.record" : "shortcut.action.record_again")) {
                         shortcutCaptureTarget = nil
                         shortcutCaptureFeedback = nil
                         applicationShortcutCaptureProfileID = profile.id

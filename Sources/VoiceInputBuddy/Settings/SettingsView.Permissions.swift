@@ -48,7 +48,7 @@ extension SettingsView {
                         .compatibilityButtonStyle(.standard)
                 }
                 HStack {
-                    Label(installed ? "settings.driver.installed" : "settings.driver.missing",
+                    Label(localization.text(installed ? "settings.driver.installed" : "settings.driver.missing"),
                           systemImage: installed ? "checkmark.circle.fill" : "exclamationmark.triangle")
                         .foregroundStyle(installed ? Color.green : Color.orange)
                     Spacer()

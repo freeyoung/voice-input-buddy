@@ -162,7 +162,7 @@ extension SettingsView {
                         }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(Text(LocalizedStringKey(option.titleKey)))
+                    .accessibilityLabel(Text(localization.text(option.titleKey)))
                     .accessibilityAddTraits(
                         selectedIdentifier == option.id ? .isSelected : []
                     )
