@@ -69,6 +69,21 @@ extension OnboardingView {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
+            if proposedPairingPlan?.fnTapModeEnabled == true {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.accentColor)
+                    Text(verbatim: localization.text("onboarding.voice_tool.fn_tap_banner"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+            }
+
             if settings.onboardingVoiceTool == .other || settings.onboardingVoiceTool == .voicecursor {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "mic.badge.xmark")

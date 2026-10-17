@@ -288,8 +288,8 @@
 "common.status.ready" = "Ready";
 "connection.status.voice_trigger" = "Voice trigger";
 "connection.voice_fn_tap.enabled" = "Use Fn Taps for Voice Typing";
-"connection.voice_fn_tap.hint" = "For apps that use one key press to start voice typing and another to stop, such as Typeless or Doubao Hands-Free mode. Voice Input Buddy sends an Fn tap at the start and end of each session. Leave this off for apps that require you to hold the key, such as Doubao Hold mode. Requires Accessibility permission.";
-"connection.voice_fn_tap.hint_short" = "Use with hold-to-talk remotes when your voice typing app requires a press to start and another to stop.";
+"connection.voice_fn_tap.hint" = "Supported remotes only record audio while the voice button is held, stopping upon release. Tools like NetEase Bageshuo and Typeless require taps to toggle dictation. Tap conversion coordinates with recording: pressing sends an Fn tap to start recognition; releasing waits for buffered audio to drain, then sends a second Fn tap to finish recognition. Keep disabled for hold-to-talk tools (WeChat Input, Doubao Hold mode). Requires Accessibility permission.";
+"connection.voice_fn_tap.hint_short" = "For NetEase Bageshuo and Typeless: sends an Fn tap on hold to start, and another tap after audio drains on release.";
 "connection.voice_key_mode.title" = "Voice Trigger Key";
 "connection.voice_key.mode.fn" = "Fn/Globe";
 "connection.voice_key.mode.left_command" = "Left Command";
@@ -697,11 +697,11 @@
 "onboarding.voice_tool.guide.open_bageshuo" = "Open NetEase Bageshuo Settings";
 "onboarding.voice_tool.guide.open_bageshuo.detail" = "Click the NetEase Bageshuo menu bar icon, then select Settings.";
 "onboarding.voice_tool.guide.configure_bageshuo" = "Set Voice Shortcut to Fn";
-"onboarding.voice_tool.guide.configure_bageshuo.detail" = "In Settings → Shortcuts, set Dictation shortcut to Fn (press once to start, press again to stop). Voice Input Buddy has enabled tap conversion: simply hold the remote voice button while speaking and release when done.";
+"onboarding.voice_tool.guide.configure_bageshuo.detail" = "In Settings → Shortcuts, set Dictation shortcut to Fn (press once to start, press again to stop). Because remotes only record while held, Voice Input Buddy automatically converts gestures: pressing sends an Fn tap to start dictation, and releasing drains remaining audio then sends an Fn tap to finish. Simply hold to talk and release when done.";
 "onboarding.voice_tool.guide.open_typeless" = "Open Typeless";
 "onboarding.voice_tool.guide.open_typeless.detail" = "Start Typeless and leave it running in the background.";
 "onboarding.voice_tool.guide.configure_typeless" = "Press to start and stop";
-"onboarding.voice_tool.guide.configure_typeless.detail" = "Set Typeless to start voice typing with one Fn press and stop with another. Follow the voice-button instructions on the next page.";
+"onboarding.voice_tool.guide.configure_typeless.detail" = "Set Typeless shortcut to Fn (press to start, press to stop). Because remotes only record while held, Voice Input Buddy automatically converts gestures: pressing sends an Fn tap to start dictation, and releasing drains audio then sends an Fn tap to finish. Simply hold to talk and release when done.";
 "onboarding.voice_tool.guide.open_other" = "Open your voice app";
 "onboarding.voice_tool.guide.open_other.detail" = "Start the app you want to use and confirm that it supports voice typing.";
 "onboarding.voice_tool.guide.configure_other" = "Set its voice shortcut to Fn";
@@ -725,6 +725,7 @@
 "onboarding.voice_tool.bageshuo.detail" = "NetEase AI voice dictation with real-time transcription and smart text polish.";
 "onboarding.voice_tool.bageshuo.install" = "Visit NetEase Bageshuo website";
 "onboarding.voice_tool.bageshuo.install_detail" = "NetEase Bageshuo is not detected on your Mac:";
+"onboarding.voice_tool.fn_tap_banner" = "Physical remotes only record audio while held. Because this tool uses tap-to-toggle, Fn Tap conversion is automatically enabled: pressing sends an Fn tap to start dictation, and releasing waits for audio to drain then sends an Fn tap to finish. Simply hold to talk and release when done.";
 "onboarding.voice_tool.status.unknown" = "Open the tool to continue";
 "onboarding.voice_tool.binding.title" = "Shortcut configuration";
 "onboarding.voice_tool.binding.recommended" = "Use Recommended";
@@ -887,7 +888,7 @@
 "onboarding.voice_test.microphone_confirmation.checkbox" = "I confirmed %@ uses “%@” as its microphone";
 "onboarding.voice_test.placeholder" = "Try saying: Voice Input Buddy is connected";
 "onboarding.voice_test.waiting_voice" = "Waiting for you to use the voice button as described above…";
-"onboarding.voice_test.fn_tap_explanation" = "Note: The selected tool uses tap mode, but the remote mic only records while held. Voice Input Buddy has enabled Fn Tap mode: hold the remote button while speaking and release when done; the app handles tap conversion and audio sync automatically.";
+"onboarding.voice_test.fn_tap_explanation" = "Remote Recording & Fn Tap Conversion: Supported remotes only record audio while held, stopping upon release. Tap conversion coordinates with recording: pressing sends an Fn tap to start recognition; releasing waits for audio to drain, then sends a second Fn tap to finish. Simply hold to talk and release when done.";
 "onboarding.voice_test.receiving" = "Receiving voice audio…";
 "onboarding.voice_test.waiting_text" = "Audio received. Waiting for text to appear…";
 "onboarding.voice_test.tool_not_running" = "Open the selected voice app before starting the test…";
