@@ -13,14 +13,19 @@ extension BridgeAppModel {
     var shouldKeepVirtualAudioActive: Bool {
         VirtualAudioConnectionLifecyclePolicy.shouldBeActive(
             readyBluetoothBridgeCount: readyBluetoothBridgeCount,
-            bluetoothVoiceActive: voiceSession.isActive,
+            bluetoothVoiceActive: voiceSession.isActive || hasPendingBluetoothVoiceWork,
             testToneActive: isPlayingTestTone,
             systemSuspended: audio.suspensionState.isSuspended
         )
     }
 
+    var hasPendingBluetoothVoiceWork: Bool {
+        connections.bridges.values.contains { $0.hasPendingVoiceWork } ||
+            connections.discoveryBridge?.hasPendingVoiceWork == true
+    }
+
     var hasActiveVirtualAudioSource: Bool {
-        voiceSession.isActive || isPlayingTestTone
+        voiceSession.isActive || isPlayingTestTone || hasPendingBluetoothVoiceWork
     }
 
     func resumeVirtualAudioOutputIfNeeded(reason: String) {

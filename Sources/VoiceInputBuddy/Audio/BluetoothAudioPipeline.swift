@@ -14,6 +14,7 @@ final class BluetoothAudioPipeline: @unchecked Sendable {
     private var generation: UInt64 = 0
     private var active = false
     private var pendingBytes = 0
+    private var pendingStreamEvents = 0
     private var fragmentBytes = 0
 
     init(queue: DispatchQueue = DispatchQueue(label: "VoiceInputBuddy.bluetoothAudio", qos: .userInitiated),
@@ -25,6 +26,9 @@ final class BluetoothAudioPipeline: @unchecked Sendable {
     }
 
     var isStreaming: Bool { lock.withLock { active } }
+    var hasPendingVoiceWork: Bool {
+        lock.withLock { active || pendingBytes > 0 || pendingStreamEvents > 0 }
+    }
     var pendingByteCount: Int { lock.withLock { fragmentBytes } }
     private func isCurrent(_ token: UInt64) -> Bool { lock.withLock { generation == token } }
 
@@ -33,12 +37,16 @@ final class BluetoothAudioPipeline: @unchecked Sendable {
         lock.lock()
         guard !active else { lock.unlock(); return false }
         active = true
+        pendingStreamEvents += 1
         let token = generation
         lock.unlock()
         queue.async { [self] in
             guard isCurrent(token) else { return }
             decoder.beginStream()
-            deliver { [self] in if isCurrent(token) { onStart() } }
+            deliver { [self] in
+                guard finishStreamEvent(token) else { return }
+                onStart()
+            }
         }
         return true
     }
@@ -47,13 +55,25 @@ final class BluetoothAudioPipeline: @unchecked Sendable {
         lock.lock()
         guard active else { lock.unlock(); return }
         active = false
+        pendingStreamEvents += 1
         let token = generation
         lock.unlock()
         queue.async { [self] in
             guard isCurrent(token) else { return }
             decoder.reset()
             lock.withLock { if generation == token { fragmentBytes = 0 } }
-            deliver { [self] in if isCurrent(token) { onStop() } }
+            deliver { [self] in
+                guard finishStreamEvent(token) else { return }
+                onStop()
+            }
+        }
+    }
+
+    private func finishStreamEvent(_ token: UInt64) -> Bool {
+        lock.withLock {
+            guard generation == token else { return false }
+            pendingStreamEvents -= 1
+            return true
         }
     }
 
@@ -63,6 +83,7 @@ final class BluetoothAudioPipeline: @unchecked Sendable {
             generation &+= 1
             active = false
             pendingBytes = 0
+            pendingStreamEvents = 0
             fragmentBytes = 0
         }
         queue.async { [self] in

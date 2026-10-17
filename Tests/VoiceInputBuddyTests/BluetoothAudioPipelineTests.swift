@@ -14,6 +14,39 @@ private final class AudioDeliveries: @unchecked Sendable {
 
 @Suite("Background Bluetooth audio ordering") @MainActor
 struct BluetoothAudioPipelineTests {
+    @Test func queuedStartAndStopKeepConfigurationBusyUntilDelivery() throws {
+        let queue = DispatchQueue(label: "test.audio.busy")
+        let deliveries = AudioDeliveries()
+        let pipeline = BluetoothAudioPipeline(queue: queue, deliver: { deliveries.enqueue($0) })
+        let name = "pending-audio-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let model = BridgeAppModel(settings: AppSettings(defaults: defaults))
+        let bridge = XiaomiBluetoothBridge(settings: model.settings, delegate: model, audioPipeline: pipeline)
+        model.connections.bridges[UUID()] = bridge
+        #expect(!model.isVoiceConfigurationBusy)
+        #expect(pipeline.beginStream {})
+        pipeline.endStream {}
+        queue.sync {}
+        #expect(!pipeline.isStreaming)
+        #expect(model.isVoiceConfigurationBusy)
+        #expect(model.hasActiveVirtualAudioSource)
+        #expect(!model.canAcceptNewVoiceSession(from: .chromecast))
+        #expect(model.canAcceptNewVoiceSession(from: .bluetooth))
+        #expect(model.shouldKeepVirtualAudioActive)
+        #expect(throws: AppConfigurationError.self) { try model.importConfiguration(from: Data()) }
+        deliveries.run()
+        #expect(!pipeline.hasPendingVoiceWork)
+        #expect(!model.isVoiceConfigurationBusy)
+        #expect(pipeline.beginStream { Issue.record("Cancelled start delivered") })
+        pipeline.endStream { Issue.record("Cancelled stop delivered") }
+        queue.sync {}
+        pipeline.reset()
+        #expect(!model.isVoiceConfigurationBusy)
+        deliveries.run()
+        #expect(!pipeline.hasPendingVoiceWork)
+    }
+
     @Test func normalStopDrainsPriorFramesBeforeNextStart() {
         let queue = DispatchQueue(label: "test.audio.order")
         let deliveries = AudioDeliveries()

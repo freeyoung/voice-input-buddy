@@ -37,7 +37,9 @@ Stream start, decoded frames and normal stop are delivered in order, preserving
 the final complete frames before a key release. Connection reset invalidates old
 results immediately; overload closes the stream rather than decoding across lost
 ADPCM bytes. Decoder work uses immutable packet/configuration values and never
-reads UI settings from its worker queue.
+reads UI settings from its worker queue. Pending start/stop events also keep
+voice configuration busy until delivery, including a short stream that ends
+before its start callback reaches the model.
 
 `BridgeAppModel`, `AppSettings` and their connection, voice and audio runtime
 owners are isolated to `MainActor`. HID monitors and BLE bridges share that

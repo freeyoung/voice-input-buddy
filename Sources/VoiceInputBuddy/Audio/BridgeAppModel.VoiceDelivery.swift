@@ -13,7 +13,7 @@ extension BridgeAppModel {
               voiceKeyReleaseRetry == nil else { return false }
         if let pending = pendingVoiceKeyActivationOwner, pending != owner { return false }
         if owner != .bluetooth,
-           voiceSession.isActive || voiceSession.pendingStart.identifier != nil ||
+           voiceSession.isActive || hasPendingBluetoothVoiceWork || voiceSession.pendingStart.identifier != nil ||
             voiceFnTapSession.requiresCleanupBeforeMapping { return false }
         return true
     }

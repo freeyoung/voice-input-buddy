@@ -185,9 +185,10 @@ final class XiaomiBluetoothBridge: NSObject {
     private var shouldRun = false
     private var systemSuspension = BluetoothSystemSuspensionState()
     private var capabilities = XiaomiBluetoothBridge.defaultCapabilities
-    private let audioDecoder = BluetoothAudioPipeline()
+    private let audioDecoder: BluetoothAudioPipeline
     private var voiceStartNotified = false
     private var streaming: Bool { audioDecoder.isStreaming }
+    var hasPendingVoiceWork: Bool { audioDecoder.hasPendingVoiceWork || voiceStartNotified }
     private lazy var acknowledgedWrites = AcknowledgedBluetoothWriteQueue(
         send: { [weak self] data in
             guard let self, let peripheral = self.peripheral,
@@ -296,9 +297,11 @@ final class XiaomiBluetoothBridge: NSObject {
         delegate: XiaomiBluetoothBridgeDelegate,
         targetIdentifier: UUID? = nil,
         allowsG9N9N: Bool = false,
+        audioPipeline: BluetoothAudioPipeline = BluetoothAudioPipeline(),
         excludedIdentifiers: @escaping () -> Set<UUID> = { [] }
     ) {
         self.settings = settings
+        self.audioDecoder = audioPipeline
         self.allowsG9N9N = allowsG9N9N
         self.delegate = delegate
         self.targetIdentifier = targetIdentifier
