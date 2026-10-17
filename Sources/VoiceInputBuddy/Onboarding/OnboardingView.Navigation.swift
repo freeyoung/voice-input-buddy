@@ -117,7 +117,7 @@ extension OnboardingView {
                     .disabled(model.isStreaming)
                     .accessibilityIdentifier("onboarding.dismiss")
                 }
-                if settings.onboardingStep == .audio && !settings.canDismissOnboarding {
+                if !settings.canDismissOnboarding {
                     onboardingActionButton(id: "pause", action: pauseIncompleteSetup) {
                         Text(localization.text("onboarding.action.pause"))
                     }
