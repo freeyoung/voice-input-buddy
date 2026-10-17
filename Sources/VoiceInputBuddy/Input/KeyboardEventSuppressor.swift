@@ -181,6 +181,7 @@ final class KeyboardEventSuppressor {
     func handle(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             tapReady = false
+            onSystemDisabled?()
             tapRecoveryGeneration += 1
             let generation = tapRecoveryGeneration
             if let port = eventTap {
@@ -195,7 +196,6 @@ final class KeyboardEventSuppressor {
                     },
                     stop: { [weak self] in
                         self?.stop()
-                        self?.onSystemDisabled?()
                         AppLogger.shared.write("HID FILTER stopped reason=system_disabled_or_permission_revoked")
                     })
             }

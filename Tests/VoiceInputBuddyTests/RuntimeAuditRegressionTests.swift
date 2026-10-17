@@ -8,6 +8,16 @@ import Testing
 @Suite("Runtime audit regressions")
 @MainActor
 struct RuntimeAuditRegressionTests {
+    @Test func disabledNativeFilterNotifiesItsOwnerImmediately() throws {
+        let filter = KeyboardEventSuppressor()
+        var notifications = 0
+        filter.onSystemDisabled = { notifications += 1 }
+        let event = try #require(CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true))
+        #expect(!filter.handle(type: .tapDisabledByTimeout, event: event))
+        #expect(notifications == 1)
+        #expect(!filter.isRunning)
+    }
+
     @Test func unavailableInputSourceServicesReturnNil() {
         #expect(OnboardingInputSourceSwitcher.currentInputSourceID(copyCurrent: { nil }) == nil)
         #expect(OnboardingInputSourceSwitcher.inputSource(withID: "test", createList: { nil }) == nil)
