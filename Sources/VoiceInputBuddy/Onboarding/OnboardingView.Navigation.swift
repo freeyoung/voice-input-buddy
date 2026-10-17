@@ -57,7 +57,6 @@ extension OnboardingView {
                         .font(.system(size: 13, weight: .medium))
                 }
                 .buttonStyle(.plain)
-                .modifier(OnboardingFocusEffectDisabledModifier())
                 .accessibilityIdentifier("onboarding.back")
                 .padding(.bottom, 24)
             }
@@ -212,14 +211,4 @@ extension OnboardingView {
         settings.setOnboardingStep(previous)
     }
 
-    private struct OnboardingFocusEffectDisabledModifier: ViewModifier {
-        @ViewBuilder
-        func body(content: Content) -> some View {
-            if #available(macOS 14.0, *) {
-                content.focusEffectDisabled()
-            } else {
-                content
-            }
-        }
-    }
 }
