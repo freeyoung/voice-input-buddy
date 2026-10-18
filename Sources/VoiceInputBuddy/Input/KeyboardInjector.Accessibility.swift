@@ -624,7 +624,7 @@ extension KeyboardInjector {
             guard let score = composerCandidateScore(candidates[index], windowFrame: windowFrame) else {
                 continue
             }
-            if best == nil || score > best!.score {
+            if best.map({ score > $0.score }) ?? true {
                 best = (index, score)
             }
         }
@@ -788,7 +788,7 @@ extension KeyboardInjector {
             guard let score = cmuxTerminalCandidateScore(candidates[index], windowFrame: windowFrame) else {
                 continue
             }
-            if best == nil || score > best!.score {
+            if best.map({ score > $0.score }) ?? true {
                 best = (index, score)
             }
         }
@@ -921,6 +921,7 @@ extension KeyboardInjector {
         guard let value = axAttribute(element, attribute: attribute),
               CFGetTypeID(value) == AXUIElementGetTypeID()
         else { return nil }
+        // Core Foundation downcasts require as!; the type ID is checked above.
         return (value as! AXUIElement)
     }
 

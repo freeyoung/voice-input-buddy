@@ -47,6 +47,12 @@ enum SettingsScreenshotRenderer {
             "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_OPEN_ACTION_EDITOR"
         ] == "1"
         let opensMappingEditor = opensShortcutEditor || opensActionEditor
+        let editingButton = ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_EDITING_BUTTON"
+        ].flatMap(RemoteButton.init(rawValue:)) ?? .ok
+        let editingTrigger = ProcessInfo.processInfo.environment[
+            "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_EDITING_TRIGGER"
+        ].flatMap(ButtonTrigger.init(rawValue:)) ?? .singleClick
         let showsStandardKeyboard = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SHORTCUT_MODE"
         ] == "keyboard"
@@ -107,6 +113,7 @@ enum SettingsScreenshotRenderer {
             initialAudioDevices: screenshotAudioDevices
         )
         if showsRemoteCards {
+            settings.customMappingEnabled = true
             let xiaomiID = settings.registerBluetoothRemote(
                 identifier: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!
             )
@@ -181,7 +188,8 @@ enum SettingsScreenshotRenderer {
                 model: model,
                 updateInformation: updateInformation,
                 initialSection: section,
-                initialMappingEditingButton: section == .mapping && opensMappingEditor ? .ok : nil,
+                initialMappingEditingButton: section == .mapping && opensMappingEditor ? editingButton : nil,
+                initialMappingEditingTrigger: editingTrigger,
                 initialShortcutPickerShowsKeyboard: showsStandardKeyboard,
                 permissionOverrides: permissionsOverride
             ).environmentObject(localization))
@@ -213,8 +221,9 @@ enum SettingsScreenshotRenderer {
                 updateInformation: updateInformation,
                 initialSection: section,
                 initialMappingEditingButton: section == .mapping && opensMappingEditor
-                    ? .ok
+                    ? editingButton
                     : nil,
+                initialMappingEditingTrigger: editingTrigger,
                 initialShortcutPickerShowsKeyboard: showsStandardKeyboard,
                 minimumContentSize: SettingsWindowLayout.minimumCanvasSize,
                 permissionOverrides: permissionsOverride

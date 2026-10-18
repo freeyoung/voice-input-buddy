@@ -40,6 +40,18 @@ extension AppSettings {
         return profile.mappings.parsedButtonApplicationProfileIDs[button]
     }
 
+    func allowsHoldRepeat(for button: RemoteButton, profileID: UUID? = nil) -> Bool {
+        configuredBaseAction(for: button, trigger: .longPress,
+            profileID: profileID ?? selectedRemoteProfileID).action == .repeatSingleClick
+    }
+
+    private func defaultSecondaryAction(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction {
+        guard trigger == .longPress,
+              [.up, .down, .left, .right, .power, .volumeUp, .volumeDown].contains(button)
+        else { return .disabled }
+        return ConfiguredButtonAction(action: .repeatSingleClick, shortcut: nil)
+    }
+
     func allowsRapidPress(for button: RemoteButton) -> Bool {
         buttonRapidPressEnabled[button] ?? false
     }
@@ -98,7 +110,8 @@ extension AppSettings {
                 applicationProfileID: applicationProfileID(for: button)
             )
         }
-        return secondaryButtonBindings[button]?[trigger] ?? .disabled
+        return secondaryButtonBindings[button]?[trigger] ??
+            defaultSecondaryAction(for: button, trigger: trigger)
     }
 
     func configuredBaseAction(
@@ -124,7 +137,8 @@ extension AppSettings {
                 applicationProfileID: profile.mappings.parsedButtonApplicationProfileIDs[button]
             )
         }
-        return profile.mappings.parsedSecondaryButtonBindings[button]?[trigger] ?? .disabled
+        return profile.mappings.parsedSecondaryButtonBindings[button]?[trigger] ??
+            defaultSecondaryAction(for: button, trigger: trigger)
     }
 
     func configuredAction(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction {
@@ -133,7 +147,9 @@ extension AppSettings {
 
     func configuredAction(for button: RemoteButton, trigger: ButtonTrigger,
                           profileID: UUID?) -> ConfiguredButtonAction {
-        configuredBaseAction(for: button, trigger: trigger, profileID: profileID)
+        let configured = configuredBaseAction(for: button, trigger: trigger, profileID: profileID)
+        guard configured.action != .repeatSingleClick || trigger == .longPress else { return .disabled }
+        return configured
     }
 
     var selectedRemoteProfile: RemoteDeviceProfile? {
@@ -421,18 +437,6 @@ extension AppSettings {
         secondaryButtonBindings[button] = bindings
     }
 
-    func hasSecondaryAction(for button: RemoteButton) -> Bool {
-        [.doubleClick, .longPress].contains { trigger in
-            configuredAction(for: button, trigger: trigger).action != .disabled
-        }
-    }
-
-    func hasSecondaryAction(for button: RemoteButton, profileID: UUID?) -> Bool {
-        [.doubleClick, .longPress].contains { trigger in
-            configuredAction(for: button, trigger: trigger, profileID: profileID).action != .disabled
-        }
-    }
-
     func setExperimentalContinuousRecordingEnabled(_ enabled: Bool) {
         let backup = enabled
             ? continuousRecordingPowerBindingBackup ?? configuredAction(for: .power, trigger: .singleClick)
@@ -456,7 +460,8 @@ extension AppSettings {
         if let device = selectedRemoteProfileID {
             for inherited in unifiedBaseBindings.filter({ $0.remoteProfileID == nil }) {
                 setBaseBinding(ConfiguredButtonAction(
-                    action: inherited.trigger == .singleClick ? Self.defaultBindings[inherited.button] ?? .disabled : .disabled,
+                    action: inherited.trigger == .singleClick ? Self.defaultBindings[inherited.button] ?? .disabled :
+                        defaultSecondaryAction(for: inherited.button, trigger: inherited.trigger).action,
                     shortcut: nil), for: inherited.button, trigger: inherited.trigger, profileID: device)
             }
         }
