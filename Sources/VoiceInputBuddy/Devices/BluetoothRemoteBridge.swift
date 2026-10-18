@@ -198,6 +198,9 @@ final class BluetoothRemoteBridge: NSObject {
         },
         onFailure: { [weak self] in
             guard let self else { return }
+            self.cancelMicrophoneCloseWatchdog()
+            self.microphoneClosePending = false
+            self.microphoneCloseSessionID = nil
             self.microphoneOpened = false
             self.stopStreaming()
             AppLogger.shared.write("BLE WRITE failed reason=response_or_timeout")
@@ -213,6 +216,9 @@ final class BluetoothRemoteBridge: NSObject {
         },
         onFailure: { [weak self] in
             guard let self else { return }
+            self.cancelMicrophoneCloseWatchdog()
+            self.microphoneClosePending = false
+            self.microphoneCloseSessionID = nil
             self.microphoneOpened = false
             self.stopStreaming()
             AppLogger.shared.write("BLE WRITE failed reason=flow_control_timeout")
@@ -237,6 +243,10 @@ final class BluetoothRemoteBridge: NSObject {
     }
 
     func simulateStreamStopForTesting() {
+        handleRemoteStreamStop()
+    }
+
+    func simulateLocalStopStreamingForTesting() {
         stopStreaming()
     }
 
@@ -1254,11 +1264,10 @@ final class BluetoothRemoteBridge: NSObject {
             startStreaming()
         case 0x00:
             guard lifecycle.acceptsProtocolData(generation: generation) else { return }
-            stopStreaming()
+            handleRemoteStreamStop()
         case 0x0C:
             guard googleCandidate, lifecycle.acceptsProtocolData(generation: generation) else { return }
-            microphoneOpened = false
-            stopStreaming()
+            handleRemoteStreamStop()
             state = .failed(LocalizedMessage("google.remote.microphone_refused"))
         case 0x0A:
             guard lifecycle.acceptsProtocolData(generation: generation) else { return }
@@ -1328,10 +1337,6 @@ final class BluetoothRemoteBridge: NSObject {
         activeStreamSessionID = nil
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
-        microphoneOpened = false
-        microphoneClosePending = false
-        microphoneCloseSessionID = nil
-        cancelMicrophoneCloseWatchdog()
         guard streaming else { return }
         let partialFrameBytes = audioDecoder.pendingByteCount
         audioDecoder.endStream { [weak self] in
@@ -1343,6 +1348,14 @@ final class BluetoothRemoteBridge: NSObject {
         AppLogger.shared.write(
             "ATVV STREAM STOP session=\(sessionID) partial_frame_bytes=\(partialFrameBytes)"
         )
+    }
+
+    private func handleRemoteStreamStop() {
+        microphoneOpened = false
+        microphoneClosePending = false
+        microphoneCloseSessionID = nil
+        cancelMicrophoneCloseWatchdog()
+        stopStreaming()
     }
 
     private func handleAudio(_ data: Data) {
