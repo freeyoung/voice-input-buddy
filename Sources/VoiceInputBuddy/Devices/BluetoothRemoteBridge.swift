@@ -1463,7 +1463,6 @@ extension BluetoothRemoteBridge: @preconcurrency CBCentralManagerDelegate {
                 central: central,
                 generation: generation
             )
-            resetSession()
             state = .bluetoothUnavailable(LocalizedMessage("bluetooth.status.permission_denied"))
         case .unsupported:
             applyCentralRecovery(
