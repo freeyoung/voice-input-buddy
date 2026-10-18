@@ -220,10 +220,19 @@ final class BluetoothRemoteBridge: NSObject {
     )
     // This is a requested-open flag; ATVV stream notifications establish actual streaming.
     private var microphoneOpened = false
+    private var microphoneClosePending = false
+    private var microphoneCloseWatchdog: DispatchWorkItem?
     private var cancelledMicrophoneOpenAt: TimeInterval?
     private var sessionID: UInt8 = 0
     private var activeStreamSessionID: UInt8?
     private var lastStopAt: TimeInterval?
+
+    var isMicrophoneClosePending: Bool { microphoneClosePending }
+    var isMicrophoneOpen: Bool { microphoneOpened }
+
+    func simulateMicrophoneOpenedForTesting(_ opened: Bool) {
+        microphoneOpened = opened
+    }
 
     private let serviceUUID = CBUUID(string: ATVVProtocol.serviceUUID)
     private let transmitUUID = CBUUID(string: ATVVProtocol.transmitUUID)
@@ -553,7 +562,8 @@ final class BluetoothRemoteBridge: NSObject {
                   sampleRate: capabilities.sampleRate
               ),
               !microphoneOpened,
-              !streaming
+              !streaming,
+              !microphoneClosePending
         else {
             AppLogger.shared.write("ATVV MIC_OPEN host_request_rejected")
             return false
@@ -575,6 +585,7 @@ final class BluetoothRemoteBridge: NSObject {
     func requestMicrophoneExtend() -> Bool {
         guard microphoneOpened,
               streaming,
+              !microphoneClosePending,
               let command = ATVVProtocol.microphoneExtend(
                   version: capabilities.version,
                   sessionID: sessionID
@@ -590,7 +601,7 @@ final class BluetoothRemoteBridge: NSObject {
 
     @discardableResult
     func requestMicrophoneClose() -> Bool {
-        guard microphoneOpened || streaming else { return true }
+        guard microphoneOpened || streaming || microphoneClosePending else { return true }
         let cancelledOpenAt = ATVVSessionGate.cancelledOpenUptime(
             microphoneOpened: microphoneOpened,
             streaming: streaming
@@ -599,12 +610,44 @@ final class BluetoothRemoteBridge: NSObject {
             version: capabilities.version,
             sessionID: sessionID
         ))
-        microphoneOpened = false
-        cancelledMicrophoneOpenAt = cancelledOpenAt
+        if didWrite {
+            microphoneOpened = false
+            microphoneClosePending = false
+            cancelMicrophoneCloseWatchdog()
+            cancelledMicrophoneOpenAt = cancelledOpenAt
+        } else {
+            microphoneClosePending = true
+            if cancelledMicrophoneOpenAt == nil {
+                cancelledMicrophoneOpenAt = cancelledOpenAt
+            }
+            scheduleMicrophoneCloseWatchdog()
+            AppLogger.shared.write(
+                "ATVV MIC_CLOSE write_failed session=\(sessionID) pending=true"
+            )
+        }
         AppLogger.shared.write(
             "ATVV MIC_CLOSE request session=\(sessionID) written=\(didWrite)"
         )
         return didWrite
+    }
+
+    private func scheduleMicrophoneCloseWatchdog() {
+        guard microphoneCloseWatchdog == nil else { return }
+        let generation = currentGeneration()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.microphoneClosePending, self.currentGeneration() == generation else { return }
+            AppLogger.shared.write("ATVV MIC_CLOSE timeout reason=close_retry_exhausted")
+            self.microphoneClosePending = false
+            self.stopStreaming()
+            self.scheduleReconnect()
+        }
+        microphoneCloseWatchdog = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: work)
+    }
+
+    private func cancelMicrophoneCloseWatchdog() {
+        microphoneCloseWatchdog?.cancel()
+        microphoneCloseWatchdog = nil
     }
 
     private func discoverOrScan(using central: CBCentralManager, generation: UInt64) {
@@ -855,6 +898,8 @@ final class BluetoothRemoteBridge: NSObject {
     }
 
     private func resetSession() {
+        cancelMicrophoneCloseWatchdog()
+        microphoneClosePending = false
         microphoneKeepalive?.cancel()
         microphoneKeepalive = nil
         audioDecoder.reset()
@@ -985,6 +1030,9 @@ final class BluetoothRemoteBridge: NSObject {
     fileprivate func handleWriteReady(peripheral: CBPeripheral, generation: UInt64) {
         guard shouldRun, isCurrent(peripheral), currentGeneration() == generation else { return }
         unacknowledgedWrites.pump()
+        if microphoneClosePending {
+            _ = requestMicrophoneClose()
+        }
     }
 
     fileprivate func handleWriteResponse(peripheral: CBPeripheral, generation: UInt64,
@@ -992,6 +1040,9 @@ final class BluetoothRemoteBridge: NSObject {
         guard shouldRun, isCurrent(peripheral), currentGeneration() == generation,
               characteristic === transmitCharacteristic else { return }
         acknowledgedWrites.acknowledge(success: error == nil)
+        if microphoneClosePending {
+            _ = requestMicrophoneClose()
+        }
     }
 
     private func closeMicrophoneIfNeeded() {

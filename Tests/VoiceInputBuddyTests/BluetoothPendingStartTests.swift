@@ -62,4 +62,31 @@ struct BluetoothPendingStartTests {
         #expect(!model.voiceSession.stopRequested)
         #expect(model.voiceSession.pendingStart.drain().isEmpty)
     }
+
+    @Test func microphoneCloseFailureRetainsClosePendingAndDoesNotPretendClosed() throws {
+        let suite = "bluetooth-close-pending-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let model = BridgeAppModel(settings: settings)
+        let owner = UUID()
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model, targetIdentifier: owner)
+
+        bridge.simulateMicrophoneOpenedForTesting(true)
+        #expect(bridge.isMicrophoneOpen)
+        #expect(!bridge.isMicrophoneClosePending)
+
+        let didWrite = bridge.requestMicrophoneClose()
+        #expect(!didWrite)
+        #expect(bridge.isMicrophoneOpen)
+        #expect(bridge.isMicrophoneClosePending)
+
+        let secondAttempt = bridge.requestMicrophoneClose()
+        #expect(!secondAttempt)
+        #expect(bridge.isMicrophoneClosePending)
+
+        bridge.stop()
+        #expect(!bridge.isMicrophoneOpen)
+        #expect(!bridge.isMicrophoneClosePending)
+    }
 }
