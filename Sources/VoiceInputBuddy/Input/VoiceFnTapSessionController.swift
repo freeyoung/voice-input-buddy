@@ -418,7 +418,7 @@ final class VoiceFnTapSessionController {
             }
             result.finish(self.releaseFunctionKeyIfNeeded())
         }
-        scheduledTasks.append(ScheduledOperation {
+        scheduledTasks.append(ScheduledOperation.mainQueueCancellation {
             task.cancel()
             result.finish(false)
         })

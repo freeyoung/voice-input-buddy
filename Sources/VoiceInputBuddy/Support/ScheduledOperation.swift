@@ -1,14 +1,24 @@
 import Foundation
 
-struct ScheduledOperation {
-    private let cancellation: () -> Void
+struct ScheduledOperation: Sendable {
+    private let cancellation: @Sendable () -> Void
 
-    init(cancellation: @escaping () -> Void) {
+    init(cancellation: @escaping @Sendable () -> Void) {
         self.cancellation = cancellation
     }
 
     func cancel() {
         cancellation()
+    }
+
+    /// Cancellation that mutates main-queue state runs there even during off-main teardown.
+    /// PendingOperation makes repeated cancellation deliver the cleanup at most once.
+    static func mainQueueCancellation(_ cancellation: @escaping () -> Void) -> ScheduledOperation {
+        let pending = PendingOperation(cancellation)
+        return ScheduledOperation {
+            if Thread.isMainThread { pending.perform() }
+            else { DispatchQueue.main.async { pending.perform() } }
+        }
     }
 
     static func mainQueue(
@@ -28,14 +38,15 @@ struct ScheduledOperation {
         enqueue(delay, item)
         return ScheduledOperation {
             pending.cancel()
-            item.cancel()
         }
     }
 }
 
 /// Owns the callback without capturing its DispatchWorkItem. Clearing it on both
 /// terminal paths also releases captured objects when the task handle is retained.
-private final class PendingOperation {
+// Only the locked callback slot crosses queues. Execution stays on the enqueueing
+// scheduler's queue; cancelling clears the slot without invoking its callback.
+private final class PendingOperation: @unchecked Sendable {
     private let lock = NSLock()
     private var operation: (() -> Void)?
 
