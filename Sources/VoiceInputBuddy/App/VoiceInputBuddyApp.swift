@@ -94,6 +94,15 @@ enum AppEntryPointVisibilityPolicy {
     }
 }
 
+enum StatusItemActionResolver {
+    static func shouldShowMenu(
+        eventType: NSEvent.EventType?,
+        modifierFlags: NSEvent.ModifierFlags?
+    ) -> Bool {
+        eventType == .rightMouseUp || (modifierFlags?.contains(.control) == true)
+    }
+}
+
 @main
 enum VoiceInputBuddyApp {
     @MainActor
@@ -836,6 +845,13 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
             arguments: [localization.text("app.name")]
         ).text(using: localization)
         statusItemPresentation.apply(to: button, description: description)
+        button.setAccessibilityCustomActions([
+            NSAccessibilityCustomAction(
+                name: localization.text("status_item.accessibility.show_menu"),
+                target: self,
+                selector: #selector(showStatusMenuAction)
+            )
+        ])
         guard appliedStatusItemPresentation != statusItemPresentation else { return }
         statusItemOperationID &+= 1
         AppLogger.shared.write(
@@ -848,11 +864,21 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     @objc private func handleStatusItemClick(_ sender: NSStatusBarButton) {
-        if NSApp.currentEvent?.type == .rightMouseUp {
+        let event = NSApp.currentEvent
+        if StatusItemActionResolver.shouldShowMenu(
+            eventType: event?.type,
+            modifierFlags: event?.modifierFlags
+        ) {
             showStatusMenu()
         } else {
             showSettings()
         }
+    }
+
+    @objc @discardableResult
+    private func showStatusMenuAction() -> Bool {
+        showStatusMenu()
+        return true
     }
 
     private func showStatusMenu() {
