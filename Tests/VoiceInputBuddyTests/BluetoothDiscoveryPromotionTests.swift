@@ -12,7 +12,7 @@ struct BluetoothDiscoveryPromotionTests {
         let settings = AppSettings(defaults: defaults)
         let model = BridgeAppModel(settings: settings)
         let identifier = UUID()
-        let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model,
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model,
             excludedIdentifiers: { Set(model.connections.bridges.keys) })
         // Exercise registration's known-bridge identity fallback without a CBPeripheral.
         model.connections.bridges[identifier] = bridge
@@ -35,7 +35,7 @@ struct BluetoothDiscoveryPromotionTests {
         let model = BridgeAppModel(settings: settings)
         let identifier = UUID()
         let other = UUID()
-        let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model,
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model,
             excludedIdentifiers: { Set(model.connections.bridges.keys) })
         model.connections.discoveryBridge = bridge
         #expect(bridge.deviceIdentifier == nil)
@@ -69,12 +69,12 @@ struct BluetoothDiscoveryPromotionTests {
         let model = BridgeAppModel(settings: settings)
         let identifier = UUID()
         let other = UUID()
-        let discovery = XiaomiBluetoothBridge(settings: settings, delegate: model,
+        let discovery = BluetoothRemoteBridge(settings: settings, delegate: model,
             excludedIdentifiers: { [identifier] })
         #expect(!discovery.acceptsCandidateIdentifier(identifier))
         #expect(discovery.acceptsCandidateIdentifier(other))
 
-        let registered = XiaomiBluetoothBridge(settings: settings, delegate: model,
+        let registered = BluetoothRemoteBridge(settings: settings, delegate: model,
             targetIdentifier: identifier, excludedIdentifiers: { [identifier, other] })
         #expect(registered.acceptsCandidateIdentifier(identifier))
         #expect(!registered.acceptsCandidateIdentifier(other))

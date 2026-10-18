@@ -1,7 +1,7 @@
 import Foundation
 
 extension BridgeAppModel {
-    func observeRemoteHIDIdentity(_ bridge: XiaomiBluetoothBridge) {
+    func observeRemoteHIDIdentity(_ bridge: BluetoothRemoteBridge) {
         bridge.onDeviceInformationUpdate = { [weak self, weak bridge] in
             guard let self, let bridge, let identifier = bridge.deviceIdentifier else { return }
             self.remoteDeviceInformation[identifier] = bridge.deviceInformation
@@ -12,7 +12,7 @@ extension BridgeAppModel {
         }
     }
 
-    func learnSelectedRemoteHIDIdentity(_ bridge: XiaomiBluetoothBridge) {
+    func learnSelectedRemoteHIDIdentity(_ bridge: BluetoothRemoteBridge) {
         // BLE readiness includes the adapter's model and capability validation.
         guard case .ready = bridge.state,
               let profileID = remoteProfileID(for: bridge),

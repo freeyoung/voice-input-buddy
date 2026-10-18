@@ -22,7 +22,7 @@ struct BluetoothAudioPipelineTests {
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let model = BridgeAppModel(settings: AppSettings(defaults: defaults))
-        let bridge = XiaomiBluetoothBridge(settings: model.settings, delegate: model, audioPipeline: pipeline)
+        let bridge = BluetoothRemoteBridge(settings: model.settings, delegate: model, audioPipeline: pipeline)
         model.connections.bridges[UUID()] = bridge
         #expect(!model.isVoiceConfigurationBusy)
         #expect(pipeline.beginStream {})

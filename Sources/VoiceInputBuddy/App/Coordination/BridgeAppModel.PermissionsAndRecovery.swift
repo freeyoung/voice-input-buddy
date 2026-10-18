@@ -176,7 +176,7 @@ extension BridgeAppModel {
     }
 
     func recoverBluetoothVoiceLink(reason: String) {
-        let targets: [XiaomiBluetoothBridge]
+        let targets: [BluetoothRemoteBridge]
         if let selectedBluetoothBridge {
             targets = [selectedBluetoothBridge]
         } else {

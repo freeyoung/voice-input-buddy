@@ -6,7 +6,7 @@ import CoreBluetooth
 import Foundation
 
 @MainActor
-final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
+final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     static let longRecordingOpenTimeout: TimeInterval = 5
     static let longRecordingCloseTimeout: TimeInterval = 2
     static let rc003VoiceExtensionOpenTimeout: TimeInterval = 5
@@ -142,7 +142,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var longRecordingOpenTimer: DispatchSourceTimer?
     var longRecordingCloseTimer: DispatchSourceTimer?
     let rc003VoiceExtensionTestEnabled: Bool
-    weak var rc003VoiceExtensionBridge: XiaomiBluetoothBridge?
+    weak var rc003VoiceExtensionBridge: BluetoothRemoteBridge?
     var rc003VoiceExtensionActive = false
     var rc003VoiceExtensionAwaitingReopen = false
     var rc003VoiceExtensionGeneration: UInt64 = 0

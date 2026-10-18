@@ -26,23 +26,23 @@ enum BluetoothBridgeState: Equatable {
 }
 
 @MainActor
-protocol XiaomiBluetoothBridgeDelegate: AnyObject {
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didChange state: BluetoothBridgeState)
-    func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge)
-    func bluetoothBridgeDidStopVoice(_ bridge: XiaomiBluetoothBridge)
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didDecode samples: [Int16])
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didUpdateBatteryLevel level: Int?)
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didIdentifyRemoteModel model: XiaomiRemoteModel)
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didUpdatePowerState state: RemotePowerState?)
-    func bluetoothBridgeDeviceNameDidChange(_ bridge: XiaomiBluetoothBridge)
+protocol BluetoothRemoteBridgeDelegate: AnyObject {
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didChange state: BluetoothBridgeState)
+    func bluetoothBridgeDidStartVoice(_ bridge: BluetoothRemoteBridge)
+    func bluetoothBridgeDidStopVoice(_ bridge: BluetoothRemoteBridge)
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didDecode samples: [Int16])
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didUpdateBatteryLevel level: Int?)
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didIdentifyRemoteModel model: XiaomiRemoteModel)
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didUpdatePowerState state: RemotePowerState?)
+    func bluetoothBridgeDeviceNameDidChange(_ bridge: BluetoothRemoteBridge)
 }
 
 @MainActor
-private final class XiaomiPeripheralDelegateProxy: NSObject, @preconcurrency CBPeripheralDelegate {
+private final class BluetoothRemotePeripheralDelegateProxy: NSObject, @preconcurrency CBPeripheralDelegate {
     let generation: UInt64
-    weak var owner: XiaomiBluetoothBridge?
+    weak var owner: BluetoothRemoteBridge?
 
-    init(generation: UInt64, owner: XiaomiBluetoothBridge) {
+    init(generation: UInt64, owner: BluetoothRemoteBridge) {
         self.generation = generation
         self.owner = owner
     }
@@ -120,7 +120,7 @@ enum BluetoothBatteryPollingPolicy {
 }
 
 @MainActor
-final class XiaomiBluetoothBridge: NSObject {
+final class BluetoothRemoteBridge: NSObject {
     private static let defaultCapabilities = ATVVCapabilities(
         version: 0x0100,
         codecs: 0x02,
@@ -144,7 +144,7 @@ final class XiaomiBluetoothBridge: NSObject {
         }
     }
     var onDeviceInformationUpdate: (() -> Void)?
-    private weak var delegate: XiaomiBluetoothBridgeDelegate?
+    private weak var delegate: BluetoothRemoteBridgeDelegate?
     private(set) var targetIdentifier: UUID?
     private let excludedIdentifiers: () -> Set<UUID>
     /// 已被判定为「别的产品」的标识；本桥此后一律不再连接，也不再走扫描回退。
@@ -152,7 +152,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var central: CBCentralManager?
     private var centralGeneration: UInt64?
     private var peripheral: CBPeripheral?
-    private var peripheralDelegateProxy: XiaomiPeripheralDelegateProxy?
+    private var peripheralDelegateProxy: BluetoothRemotePeripheralDelegateProxy?
     private var transmitCharacteristic: CBCharacteristic?
     private var audioCharacteristic: CBCharacteristic?
     private var controlCharacteristic: CBCharacteristic?
@@ -184,7 +184,7 @@ final class XiaomiBluetoothBridge: NSObject {
     private var lifecycle: BluetoothLifecyclePhase = .stopped
     private var shouldRun = false
     private var systemSuspension = BluetoothSystemSuspensionState()
-    private var capabilities = XiaomiBluetoothBridge.defaultCapabilities
+    private var capabilities = BluetoothRemoteBridge.defaultCapabilities
     private let audioDecoder: BluetoothAudioPipeline
     private var voiceStartNotified = false
     private var streaming: Bool { audioDecoder.isStreaming }
@@ -294,7 +294,7 @@ final class XiaomiBluetoothBridge: NSObject {
 
     init(
         settings: AppSettings,
-        delegate: XiaomiBluetoothBridgeDelegate,
+        delegate: BluetoothRemoteBridgeDelegate,
         targetIdentifier: UUID? = nil,
         allowsG9N9N: Bool = false,
         audioPipeline: BluetoothAudioPipeline = BluetoothAudioPipeline(),
@@ -753,7 +753,7 @@ final class XiaomiBluetoothBridge: NSObject {
         stopScan()
         peripheral = candidate
         currentAttemptUsesCachedTarget = usesCachedTarget
-        let proxy = XiaomiPeripheralDelegateProxy(generation: generation, owner: self)
+        let proxy = BluetoothRemotePeripheralDelegateProxy(generation: generation, owner: self)
         peripheralDelegateProxy = proxy
         candidate.delegate = proxy
         lifecycle = .connecting(generation)
@@ -1335,7 +1335,7 @@ final class XiaomiBluetoothBridge: NSObject {
     }
 }
 
-extension XiaomiBluetoothBridge: @preconcurrency CBCentralManagerDelegate {
+extension BluetoothRemoteBridge: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard self.central === central, let generation = centralGeneration else { return }
         AppLogger.shared.write(
@@ -1548,7 +1548,7 @@ extension XiaomiBluetoothBridge: @preconcurrency CBCentralManagerDelegate {
     }
 }
 
-extension XiaomiBluetoothBridge {
+extension BluetoothRemoteBridge {
     fileprivate func handleDiscoveredServices(
         peripheral: CBPeripheral,
         generation: UInt64,

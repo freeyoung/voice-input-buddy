@@ -6,7 +6,7 @@ import CoreBluetooth
 import Foundation
 
 extension BridgeAppModel {
-    func bluetoothBridgeDeviceNameDidChange(_ bridge: XiaomiBluetoothBridge) {
+    func bluetoothBridgeDeviceNameDidChange(_ bridge: BluetoothRemoteBridge) {
         guard connections.bridges.values.contains(where: { $0 === bridge }) else { return }
         refreshRemoteDeviceNames(reason: .peripheralEvent)
     }
@@ -16,7 +16,7 @@ extension BridgeAppModel {
         voiceSession.stopRequested = false
     }
 
-    func bluetoothBridgeDidStartVoice(_ bridge: XiaomiBluetoothBridge) {
+    func bluetoothBridgeDidStartVoice(_ bridge: BluetoothRemoteBridge) {
         guard let identifier = bridge.deviceIdentifier else { return }
         guard canAcceptNewVoiceSession(from: .bluetooth) else {
             _ = bridge.requestMicrophoneClose()
@@ -218,7 +218,7 @@ extension BridgeAppModel {
         })
     }
 
-    func bluetoothBridgeDidStopVoice(_ bridge: XiaomiBluetoothBridge) {
+    func bluetoothBridgeDidStopVoice(_ bridge: BluetoothRemoteBridge) {
         guard let identifier = bridge.deviceIdentifier else { return }
         if identifier == voiceSession.activeDeviceIdentifier, pendingVoiceKeyActivationOwner == .bluetooth {
             _ = releaseVoiceKeyIfNeeded(owner: .bluetooth, forceSoftware: true)
@@ -322,7 +322,7 @@ extension BridgeAppModel {
         }
     }
 
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didDecode samples: [Int16]) {
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didDecode samples: [Int16]) {
         guard let identifier = bridge.deviceIdentifier else { return }
         if identifier == voiceSession.pendingStart.identifier,
            voiceSession.pendingStart.audio.appendIfWaiting(samples) {
@@ -343,7 +343,7 @@ extension BridgeAppModel {
         routeBluetoothVoiceSamples(samples, from: bridge, identifier: identifier)
     }
 
-    private func flushPendingCommandVoiceAudio(for bridge: XiaomiBluetoothBridge) {
+    private func flushPendingCommandVoiceAudio(for bridge: BluetoothRemoteBridge) {
         let samples = voiceSession.commandAudio.drain()
         guard !samples.isEmpty, let identifier = bridge.deviceIdentifier else { return }
         AppLogger.shared.write("ATVV AUDIO flush_before_command samples=\(samples.count)")
@@ -352,7 +352,7 @@ extension BridgeAppModel {
 
     private func routeBluetoothVoiceSamples(
         _ samples: [Int16],
-        from bridge: XiaomiBluetoothBridge,
+        from bridge: BluetoothRemoteBridge,
         identifier: UUID,
         isPreRoll: Bool = false
     ) {
@@ -411,7 +411,7 @@ extension BridgeAppModel {
         }
     }
 
-    func bluetoothBridge(_ bridge: XiaomiBluetoothBridge, didUpdateBatteryLevel level: Int?) {
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didUpdateBatteryLevel level: Int?) {
         guard let profileID = remoteProfileID(for: bridge) else {
             if let identifier = bluetoothIdentifier(for: bridge) {
                 pendingRemoteBatteryLevels[identifier] = level
@@ -431,7 +431,7 @@ extension BridgeAppModel {
     }
 
     func bluetoothBridge(
-        _ bridge: XiaomiBluetoothBridge,
+        _ bridge: BluetoothRemoteBridge,
         didIdentifyRemoteModel model: XiaomiRemoteModel
     ) {
         guard let profileID = remoteProfileID(for: bridge) else {
@@ -450,7 +450,7 @@ extension BridgeAppModel {
     }
 
     func bluetoothBridge(
-        _ bridge: XiaomiBluetoothBridge,
+        _ bridge: BluetoothRemoteBridge,
         didUpdatePowerState state: RemotePowerState?
     ) {
         guard let profileID = remoteProfileID(for: bridge) else {
@@ -507,7 +507,7 @@ extension BridgeAppModel {
     }
 
     func bluetoothBridge(
-        _ bridge: XiaomiBluetoothBridge,
+        _ bridge: BluetoothRemoteBridge,
         didChange state: BluetoothBridgeState
     ) {
         let bridgeObjectID = ObjectIdentifier(bridge)
