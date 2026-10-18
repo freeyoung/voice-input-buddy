@@ -125,7 +125,7 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     )
     private var voiceToolCancellable: AnyCancellable?
     var testToneGeneration = 0
-    var voiceKeyLatch = VoiceFunctionKeyLatch()
+    var voiceKeyLatch = VoiceKeyLatch()
     var voiceKeyReleaseRetry: ScheduledOperation?
     var voiceKeyReleaseRetryGeneration: UInt64 = 0
     var scheduleVoiceKeyReleaseRetry: OperationScheduler = ScheduledOperation.mainQueue
@@ -134,7 +134,7 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     // Main-queue state; only input-source waits can pump/reenter that queue.
     var voiceKeyActivationInProgress = false
     var voiceKeyActivationGeneration: UInt64 = 0
-    var pendingVoiceKeyActivationOwner: VoiceFunctionKeyLatch.Owner?
+    var pendingVoiceKeyActivationOwner: VoiceKeyLatch.Owner?
     var pendingVoiceKeyActivationCompletion: ((Bool) -> Void)?
     var pendingVoiceToolMappingRefresh = false
     var longRecordingRequested = false
