@@ -131,8 +131,8 @@ enum RemoteButton: String, CaseIterable, Codable, Identifiable {
         case .back: return nil
         case .playPause: return .systemKey(type: Int32(NX_KEYTYPE_PLAY))
         case .mute: return .systemKey(type: Int32(NX_KEYTYPE_MUTE))
-        // Chromecast 的三颗专有键由私有包的 HID 通道独占读取：映射开启时设备被整个独占，
-        // 系统侧不会同时收到事件，因此不存在需要抑制的原生事件。
+        // Chromecast 的三颗专有键在专属 HID 报告中读取，
+        // 系统侧不会产生需要抑制的默认全局快捷键，因此无需拦截原生事件。
         case .youtube, .netflix, .input: return nil
         }
     }

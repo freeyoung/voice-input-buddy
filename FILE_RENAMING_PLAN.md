@@ -99,7 +99,7 @@ N-01、N-02、N-03 是首批优先项。其余直接整理可随后进行，避�
 | `MobileRemoteButtonObservation` | 本次检索只找到声明，没有找到消费者；不把无人使用的类型改名后继续保留。后续代码清理时核对后删除，单独提交。 |
 | `scripts/build-driver.sh`、`build-release-sources.sh`、`generate-website-screenshots.py` | 名称与行为相符，保留。是否启用脚本、使用正式应用截图还是 fixture，是运行方式和产品流程问题，不靠改文件名解决。 |
 
-与上述文件相关的旧注释也需同步核对：`BluetoothLifecycle.swift` 仍出现“私有 Chromecast 适配包/宿主 Xiaomi 桥”的解释；`ChromecastTypes.swift` 还有旧映射画布名；`VoiceFunctionKeyLatch` 对 owner 的描述涉及已经退役的链路。更新为当前事实，不把历史文档中的旧路径和引用全部机械重写。
+与上述文件相关的旧注释已同步核对并更新：`BluetoothLifecycle.swift` 移除“私有 Chromecast 适配包/宿主 Xiaomi 桥”及不存在的类型引用；`AppSettings.swift` 移除已删除设置的孤立注释；`RemoteButtons.swift` 澄清 Chromecast 专属按键在专属 HID 报告中读取；`ChromecastRemoteControl.swift` 移除未定义的画布类型引用；`VoiceKeyLatch` 明确蓝牙与 Chromecast 语音键通道。不再指向不存在的外部包或类型。
 
 ## 5. 实施顺序、依赖和验证
 

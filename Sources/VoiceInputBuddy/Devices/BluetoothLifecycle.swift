@@ -17,12 +17,12 @@ enum XiaomiVoiceRemoteNameMatcher {
     }
 }
 
-/// 别的产品也会用同一个通用 ATVV 服务。它们是私有 Chromecast 适配包的目标，
-/// **宿主的 Xiaomi 桥必须一律拒绝**——否则会出现「连上了 Chromecast Remote、界面显示
-/// Xiaomi 遥控器已连接、按键与语音键全无反应」，而且两条链路会互相抢同一台设备。
+/// 别的产品（例如第三方 Chromecast 或 Remote G10 样机变体）也会广播通用的 ATVV 服务。
+/// `BluetoothRemoteBridge` 必须一律拒绝未适配的外来型号——否则会出现「连上了非适配遥控器、
+/// 界面显示已连接、按键与语音键全无反应」的问题。
 ///
-/// 名单与私有包 `ChromecastRemoteModel.advertisedNameHints`（含 RemoteG10 样机）保持一致；
-/// 归一化规则也与 `ChromecastRemoteModelMatcher` 一致（大小写、下划线、连字符、连续空格）。
+/// 排除名单覆盖常见未适配变体（如 Chromecast、Remote G10 等），并按归一化规则
+/// （大小写、下划线、连字符、连续空格）进行匹配。
 enum ForeignVoiceRemoteProduct {
     /// 真机日志里出现过裸 `name=Chromecast`（Bluetooth 系统名不带 Remote），所以裸名也必须算；
     /// 只写 `chromecast remote` 会漏掉这类变体。

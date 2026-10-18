@@ -184,8 +184,6 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// Only an explicit user action enables Apple Remote runtime services.
-    /// Chromecast 遥控器总开关。私有包缺失时该设置无副作用，设置页也不会展示。
     /// Chromecast 语音手势模式。默认 `toggle`（按一下开始、再按一下结束）。
     @Published var chromecastVoiceMode: ChromecastVoiceMode {
         didSet {

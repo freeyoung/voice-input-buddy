@@ -39,7 +39,7 @@ enum ChromecastRemoteControl: String, CaseIterable, Equatable {
         }
     }
 
-    /// 画布用的控制 ID。与 `ChromecastMappingCanvas.configurableControlIDs` 同值。
+    /// 用于按键映射 UI 的控制标识符（与 rawValue 相同）。
     var canvasControlID: String { rawValue }
 
     /// 当前产品允许全部普通键配置，包含左、确定、右。
