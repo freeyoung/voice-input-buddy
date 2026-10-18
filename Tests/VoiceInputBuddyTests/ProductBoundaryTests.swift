@@ -210,8 +210,8 @@ struct ProductBoundaryTests {
         #expect(PlannedRemoteDevice.googleStreamerGY3LE.googleHardwareModelNumber == "GY3LE")
         #expect(PlannedRemoteDevice.allCases.filter(\.canStartSetup) == [.xiaomi, .chromecastG9N9N, .googleStreamerGY3LE])
         // Listing a planned device must not admit it through the Xiaomi hardware bridge.
-        #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "G9N9N") == nil)
-        #expect(VoiceRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
+        #expect(XiaomiRemoteCatalog.entry(matchingDISModelNumber: "G9N9N") == nil)
+        #expect(XiaomiRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
     }
 
     @Test @MainActor func g9n9nSelectionPersistsWithoutClaimingAConnection() throws {

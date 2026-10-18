@@ -432,7 +432,7 @@ enum OnboardingAppleRemoteGeneration: String, Codable, CaseIterable, Identifiabl
 
     var titleKey: String { "onboarding.control_source.apple_remote.\(rawValue).title" }
 
-    var model: XiaomiRemoteModel {
+    var model: RemoteModel {
         switch self {
         case .generation6: return .appleSiriRemoteA2540
         case .generation7: return .appleSiriRemoteA2854
@@ -583,7 +583,7 @@ enum OnboardingRemotePhotoKind: Equatable {
 
     static func resolve(
         source: OnboardingControlSource,
-        selectedModel: XiaomiRemoteModel?,
+        selectedModel: RemoteModel?,
         selectedDevice: PlannedRemoteDevice? = nil
     ) -> Self {
         switch source {
@@ -592,12 +592,12 @@ enum OnboardingRemotePhotoKind: Equatable {
             // Apple/Chromecast profile must never replace the Xiaomi card artwork.
             if let selectedModel,
                selectedModel == .rc001 || selectedModel == .rc003 {
-                guard let resource = VoiceRemoteCatalog.photoResource(for: selectedModel) else {
+                guard let resource = XiaomiRemoteCatalog.photoResource(for: selectedModel) else {
                     return .placeholder
                 }
                 return .bundled(resourceName: resource)
             }
-            return .bundled(resourceName: VoiceRemoteCatalog.photoResource(for: .rc003)
+            return .bundled(resourceName: XiaomiRemoteCatalog.photoResource(for: .rc003)
                 ?? "RC003-remote-photo")
         case .siriRemote:
             return .siriRemote

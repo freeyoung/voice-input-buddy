@@ -1,8 +1,8 @@
 import Foundation
 
 enum XiaomiVoiceRemoteNameMatcher {
-    /// 白名单集中在 `VoiceRemoteCatalog.adoptedAdvertisedNames`，这里不再单独维护一份。
-    private static let approvedNames: Set<String> = VoiceRemoteCatalog.adoptedAdvertisedNames
+    /// 白名单集中在 `XiaomiRemoteCatalog.adoptedAdvertisedNames`，这里不再单独维护一份。
+    private static let approvedNames: Set<String> = XiaomiRemoteCatalog.adoptedAdvertisedNames
 
     static func matches(_ rawName: String?) -> Bool {
         recognizedName(rawName) != nil

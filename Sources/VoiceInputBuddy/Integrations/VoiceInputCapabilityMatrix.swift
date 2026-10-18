@@ -5,7 +5,7 @@ import Foundation
 // Tools requiring start/stop taps can use the existing software Fn conversion.
 // Siri capabilities remain separate and do not imply current hardware support.
 
-extension XiaomiRemoteModel {
+extension RemoteModel {
     /// **型号默认值**：是否支持「按一次收音」（按一下开始、再按一下结束）。
     ///
     /// 只在「链路还没自报能力」时回退使用：运行中的判定一律走 `RemoteVoiceCapabilities.resolve`，
@@ -40,7 +40,7 @@ struct RemoteVoiceCapabilities: Equatable {
     ///   - model: 当前选中的遥控器型号（未知时传 nil）。
     ///   - declared: 链路自报的能力位；未连接、型号不支持或设备未自报时为空集合。
     static func resolve(
-        model: XiaomiRemoteModel?,
+        model: RemoteModel?,
         declared: ChromecastDeclaredCapabilities = []
     ) -> RemoteVoiceCapabilities {
         guard let model else {

@@ -32,7 +32,7 @@ protocol BluetoothRemoteBridgeDelegate: AnyObject {
     func bluetoothBridgeDidStopVoice(_ bridge: BluetoothRemoteBridge)
     func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didDecode samples: [Int16])
     func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didUpdateBatteryLevel level: Int?)
-    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didIdentifyRemoteModel model: XiaomiRemoteModel)
+    func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didIdentifyRemoteModel model: RemoteModel)
     func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didUpdatePowerState state: RemotePowerState?)
     func bluetoothBridgeDeviceNameDidChange(_ bridge: BluetoothRemoteBridge)
 }
@@ -135,7 +135,7 @@ final class BluetoothRemoteBridge: NSObject {
     private var googleCandidate = false
     private var googleReadiness = G9N9NReadiness()
     private var microphoneKeepalive: DispatchWorkItem?
-    private(set) var identifiedModel: XiaomiRemoteModel?
+    private(set) var identifiedModel: RemoteModel?
     private(set) var reportedHIDIdentity: RemoteHIDIdentity?
     var onHIDIdentityUpdate: (() -> Void)?
     private(set) var deviceInformation = RemoteDeviceInformation() {
@@ -1872,7 +1872,7 @@ extension BluetoothRemoteBridge {
                 // default high-first order is required for intelligible audio.
                 AppLogger.shared.write("BLE MODEL ARN9 adpcm=low-nibble-first")
             }
-            guard let model = XiaomiRemoteModel.identified(by: modelNumber) else {
+            guard let model = RemoteModel.identified(by: modelNumber) else {
                 AppLogger.shared.write("BLE MODEL unrecognized modelNumber=\(normalizedModelNumber)")
                 return
             }

@@ -38,7 +38,7 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     @Published var remotePowerStates: [UUID: RemotePowerState] = [:]
     var pendingRemoteBatteryLevels: [UUID: Int] = [:]
     var pendingRemotePowerStates: [UUID: RemotePowerState] = [:]
-    var pendingRemoteModels: [UUID: XiaomiRemoteModel] = [:]
+    var pendingRemoteModels: [UUID: RemoteModel] = [:]
     @Published var remoteSystemDeviceNames: [UUID: String] = [:]
     @Published var remoteDeviceInformation: [UUID: RemoteDeviceInformation] = [:]
     @Published var audioDevices: [AudioDeviceInfo] = []

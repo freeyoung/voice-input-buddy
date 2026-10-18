@@ -149,7 +149,7 @@ extension SettingsView {
 
     @ViewBuilder
     private func connectionRemotePhoto(_ profile: RemoteDeviceProfile) -> some View {
-        if let resource = VoiceRemoteCatalog.photoResource(for: profile.model) {
+        if let resource = XiaomiRemoteCatalog.photoResource(for: profile.model) {
             RemoteCatalogPhoto(resourceName: resource).frame(width: 82, height: 166)
         } else {
             UnrecognizedRemotePhoto().frame(width: 82, height: 166)

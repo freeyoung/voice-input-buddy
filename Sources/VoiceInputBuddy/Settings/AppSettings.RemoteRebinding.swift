@@ -8,7 +8,7 @@ extension AppSettings {
               let original = remoteDeviceProfiles.first(where: { $0.id == profileID }),
               let replacement = remoteDeviceProfiles.first(where: { $0.id == replacementProfileID }),
               original.model == replacement.model,
-              [XiaomiRemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(original.model),
+              [RemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(original.model),
               let identifier = replacement.bluetoothIdentifier,
               identifier != original.bluetoothIdentifier,
               replacement.hidFingerprint == nil || original.hidFingerprint == nil ||

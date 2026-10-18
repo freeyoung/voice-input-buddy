@@ -79,7 +79,7 @@ final class HIDRemoteMonitor {
     private let settings: AppSettings
     private let allowsG9N9N: Bool
     private var currentReportIsGoogle = false
-    var reportedModel: XiaomiRemoteModel { currentReportIsGoogle ? .chromecastVoiceRemote : .unknown }
+    var reportedModel: RemoteModel { currentReportIsGoogle ? .chromecastVoiceRemote : .unknown }
     private let eventSuppressor: KeyboardEventSuppressor
     private let ownsEventSuppressor: Bool
     private let scheduler: HIDRemoteScheduling
@@ -957,7 +957,7 @@ final class HIDRemoteMonitor {
         return matches
     }
 
-    nonisolated static func monitorFamilies(targetModel: XiaomiRemoteModel?, powerKeySuppressed: Bool,
+    nonisolated static func monitorFamilies(targetModel: RemoteModel?, powerKeySuppressed: Bool,
                                 allowsGoogle: Bool) -> (xiaomi: Bool, google: Bool) {
         let xiaomi = powerKeySuppressed && (targetModel == nil || targetModel == .unknown || targetModel == .rc001 || targetModel == .rc003)
         let google = allowsGoogle && (targetModel == nil || targetModel?.isChromecastRemote == true)

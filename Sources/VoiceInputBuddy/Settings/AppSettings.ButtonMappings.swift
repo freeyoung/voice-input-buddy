@@ -228,7 +228,7 @@ extension AppSettings {
     @discardableResult
     func bindCompatibleHID(_ binding: RemoteHIDBinding, to profileID: UUID) -> Bool {
         guard let index = remoteDeviceProfiles.firstIndex(where: { $0.id == profileID }),
-              [XiaomiRemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(remoteDeviceProfiles[index].model),
+              [RemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(remoteDeviceProfiles[index].model),
               binding.identity != .xiaomi || !remoteDeviceProfiles[index].model.isChromecastRemote,
               binding.identity != .chromecast || remoteDeviceProfiles[index].model.isChromecastRemote,
               binding.identity.vendorID != 0, !binding.fingerprint.isEmpty,
@@ -245,7 +245,7 @@ extension AppSettings {
     }
 
     @discardableResult
-    func registerBluetoothRemote(identifier: UUID, model: XiaomiRemoteModel = .unknown) -> UUID {
+    func registerBluetoothRemote(identifier: UUID, model: RemoteModel = .unknown) -> UUID {
         if let existing = remoteDeviceProfiles.first(where: { $0.bluetoothIdentifier == identifier }) {
             return existing.id
         }
@@ -273,7 +273,7 @@ extension AppSettings {
     }
 
     @discardableResult
-    func registerHIDRemote(fingerprint: String, model: XiaomiRemoteModel = .unknown) -> UUID? {
+    func registerHIDRemote(fingerprint: String, model: RemoteModel = .unknown) -> UUID? {
         if let existing = remoteDeviceProfiles.first(where: { $0.hidFingerprint == fingerprint }) {
             return existing.id
         }
@@ -295,7 +295,7 @@ extension AppSettings {
             let profile = remoteDeviceProfiles[$0]
             return profile.hidFingerprint == nil &&
                 (profile.model == model || model == .unknown &&
-                    [XiaomiRemoteModel.rc001, .rc003, .unknown].contains(profile.model))
+                    [RemoteModel.rc001, .rc003, .unknown].contains(profile.model))
         }
         guard candidates.count <= 1 else {
             AppLogger.shared.write("REMOTE HID binding_deferred reason=ambiguous_bluetooth_profiles")
@@ -353,7 +353,7 @@ extension AppSettings {
 
     func updateRemoteProfile(
         _ profileID: UUID,
-        model: XiaomiRemoteModel,
+        model: RemoteModel,
         customName: String
     ) {
         guard let index = remoteDeviceProfiles.firstIndex(where: { $0.id == profileID }) else { return }
@@ -378,7 +378,7 @@ extension AppSettings {
         return true
     }
 
-    func updateRemoteProfileModel(_ profileID: UUID, model: XiaomiRemoteModel) {
+    func updateRemoteProfileModel(_ profileID: UUID, model: RemoteModel) {
         guard model != .unknown,
               let index = remoteDeviceProfiles.firstIndex(where: { $0.id == profileID }),
               remoteDeviceProfiles[index].model != model

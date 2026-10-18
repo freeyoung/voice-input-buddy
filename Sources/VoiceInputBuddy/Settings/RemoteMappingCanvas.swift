@@ -125,7 +125,7 @@ struct RemoteMappingCanvas: View {
     let actionSummary: (RemoteButton, ButtonTrigger) -> String
     let onEdit: (RemoteButton, ButtonTrigger) -> Void
     var onVoiceSettings: () -> Void = {}
-    var remoteModel: XiaomiRemoteModel = .rc003
+    var remoteModel: RemoteModel = .rc003
     private var isGoogle: Bool { remoteModel.isChromecastRemote }
     private var placements: [RemoteMappingPlacement] {
         isGoogle ? G9N9NMappingLayout.placements : RemoteMappingLayout.buttonPlacements

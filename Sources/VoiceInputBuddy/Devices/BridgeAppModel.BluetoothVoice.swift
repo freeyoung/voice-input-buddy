@@ -432,7 +432,7 @@ extension BridgeAppModel {
 
     func bluetoothBridge(
         _ bridge: BluetoothRemoteBridge,
-        didIdentifyRemoteModel model: XiaomiRemoteModel
+        didIdentifyRemoteModel model: RemoteModel
     ) {
         guard let profileID = remoteProfileID(for: bridge) else {
             if let identifier = bluetoothIdentifier(for: bridge) {
