@@ -47,7 +47,7 @@ extension AppSettings {
 
     private func defaultSecondaryAction(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction {
         guard trigger == .longPress,
-              [.up, .down, .left, .right, .back, .volumeUp, .volumeDown].contains(button)
+              [.up, .down, .left, .right, .power, .volumeUp, .volumeDown].contains(button)
         else { return .disabled }
         return ConfiguredButtonAction(action: .repeatSingleClick, shortcut: nil)
     }

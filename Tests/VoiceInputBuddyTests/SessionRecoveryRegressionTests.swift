@@ -228,7 +228,9 @@ struct SessionRecoveryRegressionTests {
     @Test func missingButtonReleaseDoesNotLatchForever() {
         let clock = ControlledTestScheduler()
         let prefs = defaults()
-        let monitor = HIDRemoteMonitor(settings: AppSettings(defaults: prefs), scheduler: clock,
+        let settings = AppSettings(defaults: prefs)
+        settings.setAction(.disabled, for: .power, trigger: .longPress)
+        let monitor = HIDRemoteMonitor(settings: settings, scheduler: clock,
             runtimePermissions: { true }, diagnosticLogger: { _ in })
         #expect(monitor.shouldAcceptRawPress(button: .power, action: .commandCopy))
         #expect(!monitor.shouldAcceptRawPress(button: .power, action: .commandCopy))

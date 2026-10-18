@@ -40,12 +40,31 @@ struct HoldRepeatConfigurationTests {
         monitor.handleSimulatedReport(reportID: 1, data: Data([0, 0]))
     }
 
-    @Test func navigationAndVolumeShowRepeatAsTheirDefaultLongPressValue() throws {
+    @Test func navigationVolumeAndPowerShowRepeatAsTheirDefaultLongPressValue() throws {
         try withSettings { settings in
-            for button in [RemoteButton.up, .down, .left, .right, .volumeUp, .volumeDown] {
+            for button in [RemoteButton.up, .down, .left, .right, .volumeUp, .volumeDown, .power] {
                 #expect(settings.configuredBaseAction(for: button, trigger: .longPress).action == .repeatSingleClick)
             }
-            #expect(settings.configuredAction(for: .power, trigger: .longPress).action == .disabled)
+            #expect(settings.configuredAction(for: .back, trigger: .longPress).action == .disabled)
+        }
+    }
+
+    @Test func defaultPowerRepeatsDeletionWhileBackSendsEscapeOnce() throws {
+        try withSettings { settings in
+            let clock = ControlledTestScheduler(), events = Events()
+            let monitor = monitor(settings, clock: clock, events: events)
+            defer { monitor.disconnectSimulatedDevice() }
+            press(.power, on: monitor)
+            clock.advance(to: 450)
+            #expect(events.actions == Array(repeating: .deleteBackward, count: 4))
+            release(monitor)
+            clock.advance(to: 1_000)
+            #expect(events.actions.count == 4)
+            press(.back, on: monitor)
+            clock.advance(to: 2_000)
+            #expect(events.actions == Array(repeating: .deleteBackward, count: 4) + [.escape])
+            release(monitor)
+            #expect(events.actions.count == 5)
         }
     }
 
@@ -217,11 +236,12 @@ struct HoldRepeatConfigurationTests {
                 try imported.importConfiguration(from: data)
                 #expect(imported.allowsHoldRepeat(for: .power))
                 imported.resetBindings()
-                #expect(!imported.allowsHoldRepeat(for: .power))
+                #expect(imported.allowsHoldRepeat(for: .power))
+                #expect(!imported.allowsHoldRepeat(for: .back))
                 #expect(imported.allowsHoldRepeat(for: .volumeUp))
             }
             settings.resetBindings()
-            #expect(!settings.allowsHoldRepeat(for: .power, profileID: first))
+            #expect(settings.allowsHoldRepeat(for: .power, profileID: first))
             #expect(settings.configuredAction(for: .power, trigger: .longPress, profileID: second).action == .escape)
         }
     }
