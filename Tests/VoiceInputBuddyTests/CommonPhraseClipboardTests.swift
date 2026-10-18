@@ -157,8 +157,54 @@ struct CommonPhraseClipboardTests {
         #expect(submitted)
     }
 
+    @Test func staleHIDFnAfterSuppressedNavigationDoesNotBlockOrModifyPaste() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        let clock = ControlledTestScheduler()
+        // Runtime failure: HID flags=0xA00100 and Fn=true, session flags=0x100.
+        let effective = KeyboardHardwareModifierPolicy.normalized(CGEventFlags(rawValue: 0xA00100),
+            fnKeyDown: true, combinedFlags: CGEventFlags(rawValue: 0x100), combinedFnKeyDown: false)
+        var types: [CGEventType] = []
+        var results: [String?] = []
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { effective },
+            uptime: { Double(clock.now) / 1_000 }, readClipboard: { $0() }, schedule: clock.voiceSchedule,
+            accessibilityTrusted: { true }, secureInputEnabled: { false }, pasteEventPoster: { event in
+                #expect(!event.flags.contains(.maskSecondaryFn))
+                types.append(event.type)
+                return true
+            })
+        writer.paste("phrase", validate: { $0(nil) }, canSubmit: { true }) { results.append($0) }
+        clock.runAll()
+        #expect(results.count == 1 && results[0] == nil)
+        #expect(types == [.flagsChanged, .keyDown, .keyUp, .flagsChanged])
+        #expect(board.string(forType: .string) == "phrase")
+    }
+
+    @Test(arguments: [CGEventFlags.maskControl, .maskAlternate, .maskShift])
+    func removingStaleNavigationFnNeverRemovesOtherHeldModifiers(modifier: CGEventFlags) {
+        let effective = KeyboardHardwareModifierPolicy.normalized(
+            CGEventFlags(rawValue: 0xA00100).union(modifier), fnKeyDown: true,
+            combinedFlags: modifier, combinedFnKeyDown: false)
+        #expect(effective.contains(modifier))
+        #expect(!effective.contains(.maskSecondaryFn))
+        #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: effective))
+    }
+
+    @Test(arguments: [false, true], [false, true])
+    func sessionEvidenceOfRealFnStillBlocksPasteDespiteNavigationDecoration(hidDown: Bool, keyState: Bool) {
+        let effective = KeyboardHardwareModifierPolicy.normalized(CGEventFlags(rawValue: 0xA00100),
+            fnKeyDown: hidDown, combinedFlags: keyState ? [] : .maskSecondaryFn,
+            combinedFnKeyDown: keyState)
+        #expect(effective.contains(.maskSecondaryFn))
+        #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: effective))
+    }
+
     @Test func externalKeyboardFnWithoutNavigationDecorationIsNeverRemoved() {
-        let flags = KeyboardHardwareModifierPolicy.normalized(.maskSecondaryFn, fnKeyDown: false)
+        let flags = KeyboardHardwareModifierPolicy.normalized(.maskSecondaryFn,
+            fnKeyDown: false, combinedFlags: [], combinedFnKeyDown: false)
+        #expect(KeyboardHardwareModifierPolicy.normalized([], fnKeyDown: true,
+            combinedFlags: [], combinedFnKeyDown: false).contains(.maskSecondaryFn))
         #expect(flags.contains(.maskSecondaryFn))
         #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
     }
@@ -260,17 +306,20 @@ struct CommonPhraseClipboardTests {
     }
 
     @Test func navigationFnFlagDoesNotBlockOrModifyPaste() {
-        let flags = KeyboardHardwareModifierPolicy.normalized([.maskSecondaryFn, .maskNumericPad], fnKeyDown: false)
+        let flags = KeyboardHardwareModifierPolicy.normalized([.maskSecondaryFn, .maskNumericPad],
+            fnKeyDown: false, combinedFlags: [], combinedFnKeyDown: false)
         #expect(!flags.contains(.maskSecondaryFn))
         #expect(flags.contains(.maskNumericPad))
         #expect(CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
     }
 
     @Test func physicallyHeldModifiersStillBlockPaste() {
-        let fn = KeyboardHardwareModifierPolicy.normalized([], fnKeyDown: true)
+        let fn = KeyboardHardwareModifierPolicy.normalized([], fnKeyDown: true,
+            combinedFlags: .maskSecondaryFn, combinedFnKeyDown: true)
         #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: fn))
         for modifier: CGEventFlags in [.maskControl, .maskAlternate, .maskShift] {
-            let flags = KeyboardHardwareModifierPolicy.normalized([modifier, .maskSecondaryFn], fnKeyDown: false)
+            let flags = KeyboardHardwareModifierPolicy.normalized([modifier, .maskSecondaryFn],
+                fnKeyDown: false, combinedFlags: [], combinedFnKeyDown: false)
             #expect(!CommonPhraseClipboardPaste.permitsPasteShortcut(flags: flags))
         }
         #expect(CommonPhraseClipboardPaste.permitsPasteShortcut(flags: .maskCommand))
