@@ -575,7 +575,8 @@ final class BluetoothRemoteBridge: NSObject {
                   phase: lifecycle,
                   generation: generation,
                   capabilitiesConfirmed: capabilitiesConfirmed,
-                  sampleRate: capabilities.sampleRate
+                  sampleRate: capabilities.sampleRate,
+                microphoneClosePending: microphoneClosePending
               ),
               !microphoneOpened,
               !streaming,
@@ -1216,7 +1217,8 @@ final class BluetoothRemoteBridge: NSObject {
                 phase: lifecycle,
                 generation: generation,
                 capabilitiesConfirmed: capabilitiesConfirmed,
-                sampleRate: capabilities.sampleRate
+                sampleRate: capabilities.sampleRate,
+                microphoneClosePending: microphoneClosePending
             ) else {
                 AppLogger.shared.write("ATVV STREAM_START ignored_not_ready")
                 return
@@ -1364,7 +1366,8 @@ final class BluetoothRemoteBridge: NSObject {
                 phase: lifecycle,
                 generation: generation,
                 capabilitiesConfirmed: capabilitiesConfirmed,
-                sampleRate: capabilities.sampleRate
+                sampleRate: capabilities.sampleRate,
+                microphoneClosePending: microphoneClosePending
               )
         else {
             AppLogger.shared.write("ATVV AUDIO ignored_not_ready")

@@ -4,6 +4,13 @@ import Testing
 
 @Suite("Bluetooth lifecycle")
 struct BluetoothLifecycleTests {
+    @Test func pendingCloseRejectsBothExplicitAndImplicitMicrophoneStarts() {
+        #expect(ATVVSessionGate.canOpenMicrophone(phase: .ready(1), generation: 1,
+            capabilitiesConfirmed: true, sampleRate: 16_000, microphoneClosePending: false))
+        #expect(!ATVVSessionGate.canOpenMicrophone(phase: .ready(1), generation: 1,
+            capabilitiesConfirmed: true, sampleRate: 16_000, microphoneClosePending: true))
+    }
+
     @Test func systemSuspensionOnlyRestartsAnInterruptedConnectionCycle() {
         var readyState = BluetoothSystemSuspensionState()
         let didSuspendReady = readyState.suspend(phase: .ready(1))
