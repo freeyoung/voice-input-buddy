@@ -132,7 +132,7 @@ private struct DeviceStatusStep: View {
     }
 }
 
-/// 按型号目录给出的资源名加载真机图。资源名来自 `VoiceRemoteCatalog`，不在这里硬编码。
+/// 按型号目录给出的资源名加载真机图。资源名来自 `XiaomiRemoteCatalog`，不在这里硬编码。
 struct RemoteCatalogPhoto: View {
     @EnvironmentObject var localization: LocalizationStore
     let resourceName: String

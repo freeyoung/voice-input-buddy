@@ -1,7 +1,7 @@
 import Foundation
 
 extension BridgeAppModel {
-    func transferRemoteTelemetry(from replacementID: UUID, to retainedID: UUID) {
+    func transferRemoteDeviceStatus(from replacementID: UUID, to retainedID: UUID) {
         remoteBatteryLevels[retainedID] = remoteBatteryLevels.removeValue(forKey: replacementID)
         remotePowerStates[retainedID] = remotePowerStates.removeValue(forKey: replacementID)
     }
@@ -26,7 +26,7 @@ extension BridgeAppModel {
             pendingRemotePowerStates.removeValue(forKey: oldIdentifier)
             pendingRemoteModels.removeValue(forKey: oldIdentifier)
         }
-        transferRemoteTelemetry(from: replacementProfileID, to: profileID)
+        transferRemoteDeviceStatus(from: replacementProfileID, to: profileID)
         remoteSystemDeviceNames.removeValue(forKey: replacementProfileID)
         refreshBluetoothPresentation()
         learnSelectedRemoteHIDIdentity(bridge)

@@ -96,7 +96,7 @@ struct SettingsDiagnosticSnapshot: Equatable {
 
 enum RemoteBatteryPresentationPolicy {
     static func shouldShowBattery(
-        model: XiaomiRemoteModel,
+        model: RemoteModel,
         level: Int?,
         powerState: RemotePowerState?
     ) -> Bool {

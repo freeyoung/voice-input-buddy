@@ -165,7 +165,7 @@ enum OnboardingScreenshotRenderer {
         }
         if let requestedDevice = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_DEVICE"
-        ].flatMap(PlannedRemoteDevice.init(rawValue:)) {
+        ].flatMap(RemoteSetupDevice.init(rawValue:)) {
             settings.selectOnboardingDevice(requestedDevice)
         }
         let requestedPurpose = ProcessInfo.processInfo.environment[
@@ -180,7 +180,7 @@ enum OnboardingScreenshotRenderer {
             }
         }
         let screenshotAudioDevices = [
-            AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
+            AudioDeviceInfo(id: 1, uid: BuddyMicrophoneDevicePolicy.deviceUID, name: BuddyMicrophoneDevicePolicy.deviceName),
             AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
         ]
         let model = BridgeAppModel(

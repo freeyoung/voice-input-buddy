@@ -96,7 +96,7 @@ enum SettingsScreenshotRenderer {
             []
         default:
             [
-                AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID, name: DoubaoAudioDevicePolicy.deviceName),
+                AudioDeviceInfo(id: 1, uid: BuddyMicrophoneDevicePolicy.deviceUID, name: BuddyMicrophoneDevicePolicy.deviceName),
                 AudioDeviceInfo(id: 2, uid: "BlackHole2ch_UID", name: "BlackHole 2ch"),
             ]
         }

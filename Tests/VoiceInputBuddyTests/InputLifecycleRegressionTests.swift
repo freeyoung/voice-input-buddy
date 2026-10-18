@@ -405,42 +405,42 @@ struct InputLifecycleRegressionTests {
     @Test func mappingJournalSurvivesRestartAndOfflineRestore() {
         let (values, name) = defaults()
         defer { values.removePersistentDomain(forName: name) }
-        let original = HIDUsageMapping(source: RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source, destination: 99)
+        let original = HIDUsageMapping(source: RemoteHIDKeyMappingPolicy.remoteVoiceKey.source, destination: 99)
         var mappings = [original]
         var online = true
-        let provider = { () -> [RemoteVoiceMappingService] in
+        let provider = { () -> [RemoteHIDMappingService] in
             guard online else { return [] }
             return [.init(registryID: 123, readMappings: { mappings }, setMappings: { mappings = $0; return true })]
         }
-        let first = RemoteVoiceFunctionMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "boot-test")
+        let first = RemoteHIDKeyMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "boot-test")
         #expect(first.apply())
-        let restarted = RemoteVoiceFunctionMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "boot-test")
+        let restarted = RemoteHIDKeyMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "boot-test")
         online = false
         restarted.restore()
         online = true
-        let reconnected = RemoteVoiceFunctionMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "boot-test")
+        let reconnected = RemoteHIDKeyMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "boot-test")
         reconnected.restore()
         #expect(mappings == [original])
     }
 
     @Test func restorationPreservesLaterUserMappings() {
-        let foreignVoice = HIDUsageMapping(source: RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source, destination: 101)
-        let foreignPower = HIDUsageMapping(source: RemoteVoiceFunctionMappingPolicy.suppressedRemotePowerKey.source, destination: 102)
-        #expect(RemoteVoiceFunctionMappingPolicy.restoring(originalVoiceMapping: nil,
+        let foreignVoice = HIDUsageMapping(source: RemoteHIDKeyMappingPolicy.remoteVoiceKey.source, destination: 101)
+        let foreignPower = HIDUsageMapping(source: RemoteHIDKeyMappingPolicy.suppressedRemotePowerKey.source, destination: 102)
+        #expect(RemoteHIDKeyMappingPolicy.restoring(originalVoiceMapping: nil,
             originalPowerMapping: nil, in: [foreignVoice, foreignPower]) == [foreignVoice, foreignPower])
     }
 
     @Test func mappingJournalDoesNotCrossSystemBoots() {
         let (values, name) = defaults()
         defer { values.removePersistentDomain(forName: name) }
-        let source = RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source
+        let source = RemoteHIDKeyMappingPolicy.remoteVoiceKey.source
         var mappings = [HIDUsageMapping(source: source, destination: 99)]
-        let provider = { [RemoteVoiceMappingService(registryID: 123,
+        let provider = { [RemoteHIDMappingService(registryID: 123,
             readMappings: { mappings }, setMappings: { mappings = $0; return true })] }
-        let previous = RemoteVoiceFunctionMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "old")
+        let previous = RemoteHIDKeyMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "old")
         #expect(previous.apply())
         mappings = [HIDUsageMapping(source: source, destination: 42)]
-        let nextBoot = RemoteVoiceFunctionMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "new")
+        let nextBoot = RemoteHIDKeyMapper(serviceProvider: provider, recoveryDefaults: values, bootID: "new")
         #expect(nextBoot.apply())
         nextBoot.restore()
         #expect(mappings == [HIDUsageMapping(source: source, destination: 42)])

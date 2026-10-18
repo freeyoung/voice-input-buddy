@@ -80,13 +80,13 @@ struct RemoteGainAndDriverTests {
         defaults.set("speaker", forKey: "selectedAudioDeviceUID")
         defaults.set("BlackHole2ch_UID", forKey: "lastKnownAudioDeviceUID")
         let settings = AppSettings(defaults: defaults)
-        #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
+        #expect(settings.selectedAudioDeviceUID == BuddyMicrophoneDevicePolicy.deviceUID)
         var payload = try #require(JSONSerialization.jsonObject(with: settings.exportedConfigurationData()) as? [String: Any])
         #expect(payload["selectedAudioDeviceUID"] == nil)
         payload["selectedAudioDeviceUID"] = "speaker"
         try settings.importConfiguration(from: JSONSerialization.data(withJSONObject: payload))
-        #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
-        #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "speaker", name: DoubaoAudioDevicePolicy.deviceName))
+        #expect(settings.selectedAudioDeviceUID == BuddyMicrophoneDevicePolicy.deviceUID)
+        #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "speaker", name: BuddyMicrophoneDevicePolicy.deviceName))
         #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(uid: "BlackHole2ch_UID", name: "BlackHole 2ch"))
     }
 
@@ -108,8 +108,8 @@ struct RemoteGainAndDriverTests {
         let settings = AppSettings(defaults: defaults)
         settings.setOnboardingControlSource(.xiaomiRemote)
         settings.setOnboardingStep(.audio)
-        let device = AudioDeviceInfo(id: 1, uid: DoubaoAudioDevicePolicy.deviceUID,
-            name: DoubaoAudioDevicePolicy.deviceName)
+        let device = AudioDeviceInfo(id: 1, uid: BuddyMicrophoneDevicePolicy.deviceUID,
+            name: BuddyMicrophoneDevicePolicy.deviceName)
         let model = BridgeAppModel(settings: settings, initialAudioDevices: [device])
         let view = OnboardingView(model: model, permissionOverrides: .allGranted)
         #expect(!view.canContinue)

@@ -132,7 +132,7 @@ HID 设备发现仅用受支持的 VendorID／ProductID 组合。IOHIDManager �
 
 The product device list is limited to Xiaomi Bluetooth Remote 2 / 2 Pro, Google
 Chromecast Voice Remote (G9N9N), Google TV Streamer Voice Remote (GY3LE), and
-Apple Siri Remote. `PlannedRemoteDevice` defines this scope; it does not grant
+Apple Siri Remote. `RemoteSetupDevice` defines this scope; it does not grant
 connection support. All four entries can be selected. Continue advances Xiaomi and G9N9N to
 connection setup. For GY3LE and Siri, Continue keeps the device page open and
 shows an inline notice below the right-hand illustration. G9N9N connection

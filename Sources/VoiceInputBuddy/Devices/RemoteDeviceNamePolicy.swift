@@ -4,7 +4,7 @@ enum RemoteDeviceNamePolicy {
     /// nil 表示本次没有读到有效名称；空字符串表示出厂名称，调用方应清除旧缓存。
     static func customName(
         from rawName: String?,
-        model: XiaomiRemoteModel,
+        model: RemoteModel,
         serialNumber: String? = nil
     ) -> String? {
         guard let name = observedSystemName(from: rawName) else { return nil }
@@ -72,7 +72,7 @@ enum RemoteDeviceNamePolicy {
         profiles.first { $0.model == .rc001 || $0.model == .rc003 }
     }
 
-    private static func cardFamilyOrder(_ model: XiaomiRemoteModel) -> Int {
+    private static func cardFamilyOrder(_ model: RemoteModel) -> Int {
         switch model {
         case .rc001, .rc003: 0
         case .appleSiriRemoteA2854, .appleSiriRemoteA2540: 1
@@ -117,7 +117,7 @@ enum RemoteDeviceNamePolicy {
             .joined(separator: " ")
     }
 
-    private static func isFactoryName(_ name: String, model: XiaomiRemoteModel) -> Bool {
+    private static func isFactoryName(_ name: String, model: RemoteModel) -> Bool {
         let lowercased = name.lowercased()
         switch model {
         case .rc001, .rc003:

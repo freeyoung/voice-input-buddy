@@ -1,7 +1,7 @@
 import Foundation
 
 extension BridgeAppModel {
-    func observeRemoteHIDIdentity(_ bridge: XiaomiBluetoothBridge) {
+    func observeRemoteHIDIdentity(_ bridge: BluetoothRemoteBridge) {
         bridge.onDeviceInformationUpdate = { [weak self, weak bridge] in
             guard let self, let bridge, let identifier = bridge.deviceIdentifier else { return }
             self.remoteDeviceInformation[identifier] = bridge.deviceInformation
@@ -12,12 +12,12 @@ extension BridgeAppModel {
         }
     }
 
-    func learnSelectedRemoteHIDIdentity(_ bridge: XiaomiBluetoothBridge) {
+    func learnSelectedRemoteHIDIdentity(_ bridge: BluetoothRemoteBridge) {
         // BLE readiness includes the adapter's model and capability validation.
         guard case .ready = bridge.state,
               let profileID = remoteProfileID(for: bridge),
               let profile = settings.remoteDeviceProfiles.first(where: { $0.id == profileID }),
-              [XiaomiRemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(profile.model)
+              [RemoteModel.rc001, .rc003, .chromecastVoiceRemote].contains(profile.model)
         else { return }
         let identity = bridge.reportedHIDIdentity ?? (profile.model.isChromecastRemote ? .chromecast : .xiaomi)
         if !identity.isStandard {
@@ -32,7 +32,7 @@ extension BridgeAppModel {
         bindCompatibleRemote(candidate, profileID: profileID, select: false)
     }
 
-    static func canLearnHIDIdentity(model: XiaomiRemoteModel, source: OnboardingControlSource) -> Bool {
+    static func canLearnHIDIdentity(model: RemoteModel, source: OnboardingControlSource) -> Bool {
         switch source {
         case .chromecastRemote: return model.isChromecastRemote
         case .xiaomiRemote: return model == .rc001 || model == .rc003

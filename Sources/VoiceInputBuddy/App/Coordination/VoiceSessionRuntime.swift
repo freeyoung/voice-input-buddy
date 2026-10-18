@@ -15,7 +15,7 @@ final class VoiceSessionRuntime {
     var bluetoothVoiceTraceCounter: UInt64 = 0
     var activeBluetoothVoiceTraceID: UInt64?
     var bluetoothVoiceTraceStartedAt: Date?
-    var bluetoothVoiceTraceModel: XiaomiRemoteModel = .unknown
+    var bluetoothVoiceTraceModel: RemoteModel = .unknown
     var bluetoothVoiceDecodedBatchCount = 0
     var bluetoothVoiceDecodedSampleCount = 0
     var bluetoothVoiceEnqueueFailureCount = 0

@@ -10,7 +10,7 @@ struct TestToneRaceTests {
         let name = "test-tone-race-" + UUID().uuidString
         let values = try #require(UserDefaults(suiteName: name))
         defer { values.removePersistentDomain(forName: name) }
-        let device = AudioDeviceInfo(id: 123, uid: DoubaoAudioDevicePolicy.deviceUID, name: "Test")
+        let device = AudioDeviceInfo(id: 123, uid: BuddyMicrophoneDevicePolicy.deviceUID, name: "Test")
         let model = BridgeAppModel(settings: AppSettings(defaults: values), initialAudioDevices: [device])
         model.isStreaming = streaming
         model.voiceSession.isActive = !streaming

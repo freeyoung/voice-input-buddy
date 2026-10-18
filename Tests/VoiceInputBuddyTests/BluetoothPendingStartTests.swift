@@ -16,7 +16,7 @@ struct BluetoothPendingStartTests {
         settings.selectRemoteProfile(selected)
         model.voiceSession.activeDeviceIdentifier = owner
         model.voiceSession.isActive = true
-        let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: rejected)
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model, targetIdentifier: rejected)
         model.bluetoothBridgeDidStartVoice(bridge)
         #expect(settings.selectedRemoteProfileID == selected)
         #expect(settings.profileID(forBluetoothIdentifier: rejected) == nil)
@@ -48,8 +48,8 @@ struct BluetoothPendingStartTests {
         let settings = AppSettings(defaults: defaults)
         let model = BridgeAppModel(settings: settings)
         let owner = UUID()
-        let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: owner)
-        let other = XiaomiBluetoothBridge(settings: settings, delegate: model, targetIdentifier: UUID())
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model, targetIdentifier: owner)
+        let other = BluetoothRemoteBridge(settings: settings, delegate: model, targetIdentifier: UUID())
         model.voiceSession.pendingStart.begin(for: owner)
         model.voiceSession.stopRequested = true
         let accepted = model.voiceSession.pendingStart.audio.appendIfWaiting([1, 2])

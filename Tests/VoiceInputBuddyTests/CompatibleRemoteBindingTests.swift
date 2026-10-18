@@ -148,11 +148,11 @@ struct CompatibleRemoteBindingTests {
 
     @Test func replacingWhitelistRestoresMappingsWhileOldServicesAreStillReachable() throws {
         let defaults = try #require(UserDefaults(suiteName: "compatible-mapper-" + UUID().uuidString))
-        let original = HIDUsageMapping(source: RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source, destination: 99)
+        let original = HIDUsageMapping(source: RemoteHIDKeyMappingPolicy.remoteVoiceKey.source, destination: 99)
         var mappings = [original]
-        var mapper: RemoteVoiceFunctionMapper!
+        var mapper: RemoteHIDKeyMapper!
         defer { mapper = nil }
-        mapper = RemoteVoiceFunctionMapper(serviceProvider: {
+        mapper = RemoteHIDKeyMapper(serviceProvider: {
             guard mapper.additionalIdentities.contains(alternate) else { return [] }
             return [.init(registryID: 123, locationID: 9, readMappings: { mappings },
                 setMappings: { mappings = $0; return true })]

@@ -3,9 +3,9 @@ import Foundation
 /// Main-queue owner of configured and discovery connections.
 @MainActor
 final class BluetoothConnectionRegistry {
-    var bridges: [UUID: XiaomiBluetoothBridge] = [:]
+    var bridges: [UUID: BluetoothRemoteBridge] = [:]
     var states: [ObjectIdentifier: BluetoothBridgeState] = [:]
-    var discoveryBridge: XiaomiBluetoothBridge?
+    var discoveryBridge: BluetoothRemoteBridge?
 
     var readyCount: Int {
         states.values.reduce(into: 0) { count, state in

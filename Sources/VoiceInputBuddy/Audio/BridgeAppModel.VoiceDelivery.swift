@@ -8,7 +8,7 @@ import Foundation
 extension BridgeAppModel {
     /// Includes pending activation and draining tails, before their async callbacks
     /// publish isStreaming. Transport-specific identity checks remain at each entry.
-    func canAcceptNewVoiceSession(from owner: VoiceFunctionKeyLatch.Owner) -> Bool {
+    func canAcceptNewVoiceSession(from owner: VoiceKeyLatch.Owner) -> Bool {
         guard !isTerminating, !audio.suspensionState.isSuspended,
               voiceKeyReleaseRetry == nil else { return false }
         if let pending = pendingVoiceKeyActivationOwner, pending != owner { return false }
@@ -151,7 +151,7 @@ extension BridgeAppModel {
     func updateVoiceKeyState(
         streaming: Bool,
         forceSoftware: Bool,
-        owner: VoiceFunctionKeyLatch.Owner,
+        owner: VoiceKeyLatch.Owner,
         keySetter: @escaping (VoiceKeyMode, Bool) -> Bool = { KeyboardInjector.setVoiceKeyPressed($0, isPressed: $1) },
         completion: @escaping (Bool) -> Void = { _ in }
     ) -> Bool {
@@ -248,7 +248,7 @@ extension BridgeAppModel {
 
     private func submitVoiceKeyState(
         mode: VoiceKeyMode, shouldHold: Bool,
-        transition: VoiceFunctionKeyTransition, owner: VoiceFunctionKeyLatch.Owner,
+        transition: VoiceKeyTransition, owner: VoiceKeyLatch.Owner,
         keySetter: (VoiceKeyMode, Bool) -> Bool
     ) -> Bool {
         guard keySetter(mode, shouldHold) else {
@@ -294,7 +294,7 @@ extension BridgeAppModel {
 
     @discardableResult
     func releaseVoiceKeyIfNeeded(
-        owner: VoiceFunctionKeyLatch.Owner,
+        owner: VoiceKeyLatch.Owner,
         forceSoftware: Bool
     ) -> Bool {
         guard !updateVoiceKeyState(

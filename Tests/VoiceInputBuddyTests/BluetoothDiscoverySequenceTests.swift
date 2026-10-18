@@ -12,7 +12,7 @@ struct BluetoothDiscoverySequenceTests {
         let settings = AppSettings(defaults: defaults)
         let model = BridgeAppModel(settings: settings)
         let target = UUID(), other = UUID()
-        let bridge = XiaomiBluetoothBridge(settings: settings, delegate: model,
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model,
             targetIdentifier: target, excludedIdentifiers: { [target, other] })
         var policy = BluetoothReconnectPolicy()
         _ = policy.nextAutomaticDelay(bypassCachedTarget: true, jitterUnit: 0.5)

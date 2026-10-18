@@ -36,10 +36,10 @@ struct RuntimeAuditRegressionTests {
     }
 
     @Test func controlWritesPreferAcknowledgmentsAndRejectNonWritableCharacteristics() {
-        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.write, .writeWithoutResponse]) == .withResponse)
-        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.write]) == .withResponse)
-        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.writeWithoutResponse]) == .withoutResponse)
-        #expect(XiaomiBluetoothBridge.controlWriteType(for: [.notify]) == nil)
+        #expect(BluetoothRemoteBridge.controlWriteType(for: [.write, .writeWithoutResponse]) == .withResponse)
+        #expect(BluetoothRemoteBridge.controlWriteType(for: [.write]) == .withResponse)
+        #expect(BluetoothRemoteBridge.controlWriteType(for: [.writeWithoutResponse]) == .withoutResponse)
+        #expect(BluetoothRemoteBridge.controlWriteType(for: [.notify]) == nil)
     }
 
     @Test func streamedFramesStayOrderedAndRebasedAcrossLongSessions() {

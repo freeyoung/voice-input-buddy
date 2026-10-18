@@ -6,7 +6,7 @@ import CoreBluetooth
 import Foundation
 
 @MainActor
-final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
+final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     static let longRecordingOpenTimeout: TimeInterval = 5
     static let longRecordingCloseTimeout: TimeInterval = 2
     static let rc003VoiceExtensionOpenTimeout: TimeInterval = 5
@@ -25,7 +25,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var connectionStatus = LocalizedMessage("bluetooth.status.initializing")
     @Published var hidStatus = LocalizedMessage("button_mapping.status.disabled")
     @Published var audioStatus = LocalizedMessage("audio.output.none_selected")
-    @Published var doubaoAudioStatus = LocalizedMessage("audio.compatibility.checking")
+    @Published var buddyMicrophoneStatus = LocalizedMessage("audio.compatibility.checking")
     @Published var isStreaming = false
     @Published var isConnected = false
     @Published var isVoiceTriggerEnabled = false
@@ -38,7 +38,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     @Published var remotePowerStates: [UUID: RemotePowerState] = [:]
     var pendingRemoteBatteryLevels: [UUID: Int] = [:]
     var pendingRemotePowerStates: [UUID: RemotePowerState] = [:]
-    var pendingRemoteModels: [UUID: XiaomiRemoteModel] = [:]
+    var pendingRemoteModels: [UUID: RemoteModel] = [:]
     @Published var remoteSystemDeviceNames: [UUID: String] = [:]
     @Published var remoteDeviceInformation: [UUID: RemoteDeviceInformation] = [:]
     @Published var audioDevices: [AudioDeviceInfo] = []
@@ -79,7 +79,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         return nil
     }
 
-    let voiceFunctionMapper = RemoteVoiceFunctionMapper()
+    let voiceFunctionMapper = RemoteHIDKeyMapper()
     lazy var preferredInputSourceMonitor = PreferredInputSourceMonitor(
         voiceTool: { [weak self] in
             self?.settings.onboardingVoiceTool ?? .unselected
@@ -125,7 +125,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     )
     private var voiceToolCancellable: AnyCancellable?
     var testToneGeneration = 0
-    var voiceKeyLatch = VoiceFunctionKeyLatch()
+    var voiceKeyLatch = VoiceKeyLatch()
     var voiceKeyReleaseRetry: ScheduledOperation?
     var voiceKeyReleaseRetryGeneration: UInt64 = 0
     var scheduleVoiceKeyReleaseRetry: OperationScheduler = ScheduledOperation.mainQueue
@@ -134,7 +134,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     // Main-queue state; only input-source waits can pump/reenter that queue.
     var voiceKeyActivationInProgress = false
     var voiceKeyActivationGeneration: UInt64 = 0
-    var pendingVoiceKeyActivationOwner: VoiceFunctionKeyLatch.Owner?
+    var pendingVoiceKeyActivationOwner: VoiceKeyLatch.Owner?
     var pendingVoiceKeyActivationCompletion: ((Bool) -> Void)?
     var pendingVoiceToolMappingRefresh = false
     var longRecordingRequested = false
@@ -142,7 +142,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     var longRecordingOpenTimer: DispatchSourceTimer?
     var longRecordingCloseTimer: DispatchSourceTimer?
     let rc003VoiceExtensionTestEnabled: Bool
-    weak var rc003VoiceExtensionBridge: XiaomiBluetoothBridge?
+    weak var rc003VoiceExtensionBridge: BluetoothRemoteBridge?
     var rc003VoiceExtensionActive = false
     var rc003VoiceExtensionAwaitingReopen = false
     var rc003VoiceExtensionGeneration: UInt64 = 0

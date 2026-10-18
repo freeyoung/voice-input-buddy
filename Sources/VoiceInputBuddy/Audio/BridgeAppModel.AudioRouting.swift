@@ -88,7 +88,7 @@ extension BridgeAppModel {
 
     private func publishAudioDevices(_ devices: [AudioDeviceInfo]) {
         audioDevices = devices
-        doubaoAudioStatus = DoubaoAudioDevicePolicy.status(in: devices)
+        buddyMicrophoneStatus = BuddyMicrophoneDevicePolicy.status(in: devices)
     }
 
     nonisolated private static func audioDevicesDiagnostic(_ devices: [AudioDeviceInfo]) -> String {
