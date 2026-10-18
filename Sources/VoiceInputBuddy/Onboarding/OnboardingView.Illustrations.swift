@@ -19,30 +19,39 @@ extension OnboardingView {
                 .blur(radius: 10)
                 .offset(x: 110, y: -110)
 
-            ScrollView(.vertical, showsIndicators: false) {
-                Group {
-                    if settings.onboardingStep == .voiceTool,
-                       settings.onboardingVoiceTool != .unselected {
-                        inputMethodGuide(for: settings.onboardingVoiceTool)
-                            .frame(maxWidth: 440)
-                            .padding(.horizontal, 28)
-                    } else if settings.onboardingStep == .voiceTool {
-                        welcomeIllustration
-                    } else if settings.onboardingStep == .remoteAvailability {
-                        selectedDeviceIllustration
-                    } else if settings.onboardingStep == .complete {
-                        completeIllustration
-                    } else {
-                        selectedControlIllustration
+            GeometryReader { geometry in
+                ScrollView(.vertical, showsIndicators: false) {
+                    Group {
+                        if settings.onboardingStep == .voiceTool,
+                           settings.onboardingVoiceTool != .unselected {
+                            inputMethodGuide(for: settings.onboardingVoiceTool)
+                                .frame(maxWidth: 440)
+                                .padding(.horizontal, 28)
+                        } else if settings.onboardingStep == .voiceTool {
+                            welcomeIllustration
+                        } else if settings.onboardingStep == .remoteAvailability {
+                            selectedDeviceIllustration
+                        } else if settings.onboardingStep == .complete {
+                            completeIllustration
+                        } else {
+                            selectedControlIllustration
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .padding(.top, 12)
+                    .padding(.bottom, centerRightPaneContent ? 12 : 16)
+                    .frame(
+                        minHeight: centerRightPaneContent ? geometry.size.height : 0,
+                        alignment: centerRightPaneContent ? .center : .top
+                    )
                 }
-                .frame(maxWidth: .infinity, alignment: .top)
-                .frame(minHeight: 0)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var centerRightPaneContent: Bool {
+        [.remoteAvailability, .voiceTest, .complete].contains(settings.onboardingStep)
     }
 
     private var welcomeIllustration: some View {
