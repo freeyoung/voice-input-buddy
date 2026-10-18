@@ -34,24 +34,10 @@ final class CommonPhraseClipboardPaste: ObservableObject {
          snapshotExecutableURL: URL? = Bundle.main.executableURL,
          readClipboard: ((@escaping () -> Void) -> Void)? = nil,
          schedule: @escaping OperationScheduler = ScheduledOperation.mainQueue,
-         postPaste: @escaping () -> Bool = {
-             guard KeyboardInjector.isAccessibilityTrusted else {
-                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=accessibility_required")
-                 return false
-             }
-             guard !SecureInputMonitor.isEnabled() else {
-                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=secure_input")
-                 return false
-             }
-             let hardware = pasteHardwareFlags()
-             guard permitsPasteShortcut(flags: hardware) else {
-                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held flags=\(hardware.rawValue) " +
-                     KeyboardHardwareModifierPolicy.diagnosticSnapshot())
-                 return false
-             }
-             return submitPasteShortcut(hardwareFlags: { pasteHardwareFlags() },
-                 eventPoster: ShortcutEventSequence.post)
-         }) {
+         postPaste: (() -> Bool)? = nil,
+         accessibilityTrusted: @escaping () -> Bool = { KeyboardInjector.isAccessibilityTrusted },
+         secureInputEnabled: @escaping () -> Bool = SecureInputMonitor.isEnabled,
+         pasteEventPoster: @escaping (CGEvent) -> Bool = ShortcutEventSequence.post) {
         self.modifierFlags = modifierFlags
         self.modifierDiagnostics = modifierDiagnostics
         self.logger = logger
@@ -61,7 +47,23 @@ final class CommonPhraseClipboardPaste: ObservableObject {
         self.readClipboard = readClipboard ?? { work in Self.snapshotQueue.async { work() } }
         self.usesSnapshotHelper = readClipboard == nil
         self.schedule = schedule
-        self.postPaste = postPaste
+        self.postPaste = postPaste ?? {
+            guard accessibilityTrusted() else {
+                logger("COMMON_PHRASES PASTE rejected reason=accessibility_required")
+                return false
+            }
+            guard !secureInputEnabled() else {
+                logger("COMMON_PHRASES PASTE rejected reason=secure_input")
+                return false
+            }
+            let hardware = modifierFlags()
+            guard Self.permitsPasteShortcut(flags: hardware) else {
+                logger("COMMON_PHRASES PASTE rejected reason=modifiers_held flags=\(hardware.rawValue) " + modifierDiagnostics())
+                return false
+            }
+            return Self.submitPasteShortcut(hardwareFlags: modifierFlags,
+                eventPoster: pasteEventPoster, logger: logger)
+        }
     }
 
     private static func pasteHardwareFlags() -> CGEventFlags {
@@ -73,7 +75,8 @@ final class CommonPhraseClipboardPaste: ObservableObject {
     }
 
     static func submitPasteShortcut(hardwareFlags: @escaping () -> CGEventFlags,
-        eventPoster: @escaping (CGEvent) -> Bool) -> Bool {
+        eventPoster: @escaping (CGEvent) -> Bool,
+        logger: @escaping (String) -> Void = AppLogger.shared.write) -> Bool {
         var pasteKeyDownSubmitted = false
         _ = ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
             hardwareFlags: hardwareFlags, eventPoster: { event in
@@ -83,7 +86,7 @@ final class CommonPhraseClipboardPaste: ObservableObject {
                     pasteKeyDownSubmitted = true
                 }
                 return submitted
-            })
+            }, logger: logger)
         // A failed key-up must not roll the clipboard back under a queued Cmd-V.
         return pasteKeyDownSubmitted
     }

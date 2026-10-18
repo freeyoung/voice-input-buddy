@@ -5,6 +5,37 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func defaultPasteRoutesShortcutDiagnosticsThroughInjectedLogger() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        var logs: [String] = []
+        var posted = 0
+        let writer = CommonPhraseClipboardPaste(board: board, modifierFlags: { [] },
+            logger: { logs.append($0) }, readClipboard: { $0() },
+            accessibilityTrusted: { true }, secureInputEnabled: { false },
+            pasteEventPoster: { _ in posted += 1; return true })
+        writer.paste("private phrase", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == nil) }
+        #expect(posted == 4)
+        #expect(logs.contains { $0.contains("SHORTCUT SEQUENCE") && $0.contains("phase=completed") })
+        #expect(logs.allSatisfy { !$0.contains("private phrase") })
+    }
+
+    @Test func defaultPasteUsesInjectedModifierDiagnosticsAtFinalSubmission() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original", forType: .string)
+        var observations = 0
+        var logs: [String] = []
+        let writer = CommonPhraseClipboardPaste(board: board,
+            modifierFlags: { observations += 1; return observations == 1 ? [] : .maskShift },
+            modifierDiagnostics: { "fixture_modifier=true" }, logger: { logs.append($0) },
+            readClipboard: { $0() }, accessibilityTrusted: { true }, secureInputEnabled: { false },
+            pasteEventPoster: { _ in Issue.record("Held modifier must prevent paste"); return false })
+        writer.paste("private phrase", validate: { $0(nil) }, canSubmit: { true }) { #expect($0 == "paste_failed") }
+        #expect(logs.contains { $0.contains("fixture_modifier=true") })
+        #expect(board.string(forType: .string) == "original")
+    }
+
     @Test func persistentModifierFailureRecordsStateWithoutReadingClipboardOrPhraseText() {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
