@@ -410,7 +410,7 @@ struct KeyboardShortcutPicker: View {
 
     private var presetGrid: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("shortcut.picker.presets.help")
+            Text(localization.text("shortcut.picker.presets.help"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
@@ -439,9 +439,9 @@ struct KeyboardShortcutPicker: View {
     private var standardKeyboard: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("shortcut.picker.modifiers.title")
+                Text(localization.text("shortcut.picker.modifiers.title"))
                     .font(.system(size: 13, weight: .semibold))
-                Text("shortcut.picker.modifiers.help")
+                Text(localization.text("shortcut.picker.modifiers.help"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
@@ -562,9 +562,9 @@ struct KeyboardShortcutPicker: View {
 
     private var standaloneModifierSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("shortcut.picker.standalone_modifiers.title")
+            Text(localization.text("shortcut.picker.standalone_modifiers.title"))
                 .font(.system(size: 13, weight: .semibold))
-            Text("shortcut.picker.standalone_modifiers.help")
+            Text(localization.text("shortcut.picker.standalone_modifiers.help"))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
