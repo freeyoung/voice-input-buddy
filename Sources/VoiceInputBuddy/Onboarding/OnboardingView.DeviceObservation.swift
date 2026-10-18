@@ -96,6 +96,7 @@ extension OnboardingView {
         suppressConnectedPhysicalRemoteAutoRouteOnce = false
         guard !suppressForUserBack,
               settings.onboardingStep == .remoteAvailability,
+              settings.onboardingDevice == nil,
               settings.onboardingControlSource == .unselected,
               model.isOnboardingControlSourceConnected(.xiaomiRemote) else { return }
         // Keep the control-device page visible so the user can see and confirm the

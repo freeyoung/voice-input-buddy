@@ -15,3 +15,5 @@
 本项目新图标由 scripts/generate-icon.swift 绘制，菜单栏图标由 scripts/generate-status-icons.swift 绘制，表达麦克风与硬件按钮，未使用原品牌图形。
 
 设置向导截图位于 `Resources/Onboarding`，包括从上游继承的图片以及本项目重新截取的微信、豆包和 VoiceCursor 浅色图片；保留上游图片的来源归属，不把全部现有截图都归为上游素材。未使用其受限 App Logo 或遥控器产品照片。小米遥控器图是基于本项目按键布局参考生成的无品牌写实渲染；Google 与 Siri Remote 使用原创 SVG 示意图及 PNG 缩略图，均未使用厂商产品照片。`scripts/generate-remote-layout-reference.swift` 仅生成小米布局参考，不覆盖成品；按键位置与映射连线共用归一化坐标。提示词及维护说明见 [artwork.md](artwork.md) 与 [示意图说明](../Resources/RemoteIllustrations/README.md)。构建及安装包检查会验证截图与示意图完整性。
+
+网页 `pages/assets/screenshots` 的 26 张中英文界面与向导截图于 2026-10-18 从本机正式安装的 Voice Input Buddy v26-10-18.385 截取，分辨率为 2040×1544，替换原隔离预览截图。遥控器连接及普通按键检查使用真实小米 RC003；语音测试截图展示等待试说状态，不代表本次已完成语音验收。常用语页使用搜索筛选普通示例，未公开私人地址或完整号码。截图只做无损 PNG 编码优化，未改写界面内容。

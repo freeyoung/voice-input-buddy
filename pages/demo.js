@@ -39,8 +39,8 @@ button.addEventListener('blur', stop);
         badge: '多设备管理',
         windowTitle: '设备连接 · Voice Input Buddy',
         src: 'assets/screenshots/connection-zh.png',
-        alt: 'Voice Input Buddy 设备连接界面：小米与 Google G9N9N 遥控器卡片、连接状态、电量显示与麦克风独立增益滑块',
-        desc: '管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。'
+        alt: 'Voice Input Buddy 正式版设备连接界面：已连接的小米遥控器、电量、麦克风增益与设备信息',
+        desc: '管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 24 dB）。'
       },
       {
         title: '按键映射',
@@ -75,12 +75,12 @@ button.addEventListener('blur', stop);
         desc: '集中核对蓝牙、输入监控与辅助功能三项系统授权，自动监控 Voice Input Buddy Mic 虚拟麦克风驱动的加载状态，并附带直观的驱动安装与重启引导。'
       },
       {
-        title: '关于与更新',
+        title: '设置与更新',
         badge: '版本与更新',
-        windowTitle: '关于与设置 · Voice Input Buddy',
+        windowTitle: '设置与更新 · Voice Input Buddy',
         src: 'assets/screenshots/about-zh.png',
-        alt: 'Voice Input Buddy 关于与设置界面：应用版本信息、自动检查更新、发布说明与通用卸载器',
-        desc: '查看当前 App 版本与架构（Apple 芯片 / Intel），支持通过 Sparkle 自动或手动检查更新并查看更新日志；提供开源许可证信息与通用卸载工具入口。'
+        alt: 'Voice Input Buddy 正式版设置界面：应用版本、更新检查、配置导入导出与图标和语言偏好',
+        desc: '查看当前版本和更新状态，导入或导出配置，设置 Dock 与菜单栏图标、启动行为和应用语言。'
       }
     ],
     wizard: [
@@ -97,8 +97,8 @@ button.addEventListener('blur', stop);
         badge: '向导 · 设备准备',
         windowTitle: '设备类型 · 首次使用向导',
         src: 'assets/screenshots/wizard-source-zh.png',
-        alt: '首次使用向导：选择控制设备类型，支持实体遥控器（小米、Google G9N9N 等）或手机输入伴侣',
-        desc: '选择你使用的硬件设备：支持小米蓝牙遥控器、Google G9N9N、Apple Siri Remote 等实体遥控器，或通过扫码使用手机作为控制与语音输入伴侣。'
+        alt: '首次使用向导：选择小米、Chromecast G9N9N、Google Streamer GY3LE 或 Apple Siri Remote',
+        desc: '选择要配置的遥控器：小米蓝牙遥控器 2 / 2 Pro、Chromecast G9N9N、Google TV Streamer GY3LE 或 Apple Siri Remote。右侧显示所选设备外观。'
       },
       {
         title: '第 3 步 · 连接遥控器',
@@ -106,15 +106,15 @@ button.addEventListener('blur', stop);
         windowTitle: '连接遥控器 · 首次使用向导',
         src: 'assets/screenshots/wizard-remote-zh.png',
         alt: '首次使用向导：连接遥控器步骤，图解配对按键与实时连接检测',
-        desc: '图文图解小米及兼容遥控器的蓝牙配对按键组合（长按 TV 键或 Home+Menu 键），靠近电脑自动发现并建立蓝牙通道。'
+        desc: '按所选遥控器的提示完成蓝牙配对。检测到匹配设备后自动选中，再按一个普通按键确认 Mac 能收到输入。'
       },
       {
         title: '第 4 步 · 按键测试',
         badge: '向导 · 按键反馈',
         windowTitle: '按键测试 · 首次使用向导',
         src: 'assets/screenshots/wizard-controls-zh.png',
-        alt: '首次使用向导：按键测试步骤，实时亮起圆盘方向键与功能键',
-        desc: '在遥控器上按下方向键或确定键，屏幕对应按键实时高亮响应，快速确认 Mac 已成功接收实体按键，避免按键占用冲突。'
+        alt: '首次使用向导：普通按键测试清单与实时检测状态',
+        desc: '依次按下三个不同的普通按键，例如方向键和确定键。检查清单实时标记收到的按键，通过后再继续。'
       },
       {
         title: '第 5 步 · 驱动检测',
@@ -122,7 +122,7 @@ button.addEventListener('blur', stop);
         windowTitle: '驱动检查 · 首次使用向导',
         src: 'assets/screenshots/wizard-driver-zh.png',
         alt: '首次使用向导：虚拟麦克风驱动检测，自动配置 Voice Input Buddy Mic',
-        desc: '自动检测并配置随安装包安装的 Voice Input Buddy Mic 虚拟声卡驱动，固定音频输出路径，无需手动调整系统声音设备。'
+        desc: '自动检测驱动并配置 Voice Input Buddy Mic；检查通过后，手动点击“继续”进入下一步。'
       },
       {
         title: '第 6 步 · 输入工具',
@@ -138,7 +138,7 @@ button.addEventListener('blur', stop);
         windowTitle: '语音测试 · 首次使用向导',
         src: 'assets/screenshots/wizard-test-zh.png',
         alt: '首次使用向导：语音测试与麦克风增益，按住说话实时显示识别文字与音量增益',
-        desc: '按住遥控器语音键说出第一句话，实时查看语音接收与文本输入效果；若音量偏小可当场微调遥控器麦克风增益，确认无误后完成向导。'
+        desc: '按住遥控器语音键说一句话，松开后核对声音和文字是否收到；可在此调整麦克风增益。截图展示等待试说状态。'
       }
     ]
   };
@@ -150,8 +150,8 @@ button.addEventListener('blur', stop);
         badge: 'Multi-device',
         windowTitle: 'Devices · Voice Input Buddy',
         src: 'assets/screenshots/connection-en.png',
-        alt: 'Voice Input Buddy Devices interface: Xiaomi and Google G9N9N remote cards, connection status, battery levels, and independent microphone gain sliders',
-        desc: 'Manage connected Bluetooth remotes (Xiaomi, Google G9N9N), check live battery percentages and charging states, and adjust individual microphone gain (0 dB to 20 dB).'
+        alt: 'Voice Input Buddy installed release: connected Xiaomi remote, battery level, microphone gain, and device information',
+        desc: 'Manage connected Bluetooth remotes (Xiaomi, Google G9N9N), check live battery percentages and charging states, and adjust individual microphone gain (0 dB to 24 dB).'
       },
       {
         title: 'Button Mapping',
@@ -186,12 +186,12 @@ button.addEventListener('blur', stop);
         desc: 'Centralized overview of Bluetooth, Input Monitoring, and Accessibility permissions, along with the status and instructions for the Voice Input Buddy Mic driver.'
       },
       {
-        title: 'About & Updates',
+        title: 'Settings & Updates',
         badge: 'Version & Updates',
-        windowTitle: 'About & Settings · Voice Input Buddy',
+        windowTitle: 'Settings & Updates · Voice Input Buddy',
         src: 'assets/screenshots/about-en.png',
-        alt: 'Voice Input Buddy About interface: application version, Sparkle automatic updates, release notes, and universal uninstaller',
-        desc: 'Check app version and architecture (Apple silicon / Intel), manage automatic Sparkle updates, inspect release notes, and access the uninstaller.'
+        alt: 'Voice Input Buddy installed release settings: version, update checks, configuration import/export, icon and language preferences',
+        desc: 'Check the current version and update status, import or export configuration, and manage Dock and menu bar icons, launch behavior, and app language.'
       }
     ],
     wizard: [
@@ -208,8 +208,8 @@ button.addEventListener('blur', stop);
         badge: 'Wizard · Device Choice',
         windowTitle: 'Control Source · Setup Wizard',
         src: 'assets/screenshots/wizard-source-en.png',
-        alt: 'Setup Wizard: Select control hardware, supporting physical remotes (Xiaomi, Google G9N9N) or phone companion',
-        desc: 'Select your preferred control hardware: physical remotes such as Xiaomi, Google G9N9N, Apple Siri Remote, or a mobile phone companion via QR code.'
+        alt: 'Setup Wizard: select Xiaomi, Chromecast G9N9N, Google Streamer GY3LE, or Apple Siri Remote',
+        desc: 'Choose Xiaomi Bluetooth Remote 2 / 2 Pro, Chromecast G9N9N, Google TV Streamer GY3LE, or Apple Siri Remote. The selected remote’s illustration appears on the right.'
       },
       {
         title: 'Step 3 · Connect Remote',
@@ -217,15 +217,15 @@ button.addEventListener('blur', stop);
         windowTitle: 'Connect Remote · Setup Wizard',
         src: 'assets/screenshots/wizard-remote-en.png',
         alt: 'Setup Wizard: Remote pairing illustration and live connection status check',
-        desc: 'Illustrated instructions for Bluetooth pairing key combinations on Xiaomi and compatible remotes, discovering and pairing automatically.'
+        desc: 'Follow the pairing instructions for your remote. A single matching connected device is selected automatically; press an ordinary button to confirm that your Mac receives its input.'
       },
       {
         title: 'Step 4 · Button Test',
         badge: 'Wizard · Button Check',
         windowTitle: 'Button Test · Setup Wizard',
         src: 'assets/screenshots/wizard-controls-en.png',
-        alt: 'Setup Wizard: Control button test step showing live feedback on directional buttons',
-        desc: 'Press directional or OK buttons on the remote to see corresponding highlights on screen, confirming physical button delivery without key remapper conflicts.'
+        alt: 'Setup Wizard: ordinary button checklist with live detection status',
+        desc: 'Press three different ordinary buttons, such as arrows and OK. The checklist marks each received button so you can confirm input before continuing.'
       },
       {
         title: 'Step 5 · Driver Check',
@@ -233,7 +233,7 @@ button.addEventListener('blur', stop);
         windowTitle: 'Driver Check · Setup Wizard',
         src: 'assets/screenshots/wizard-driver-en.png',
         alt: 'Setup Wizard: Virtual microphone driver detection for Voice Input Buddy Mic',
-        desc: 'Automatically checks and routes audio through the bundled Voice Input Buddy Mic driver, locking in dedicated virtual microphone output.'
+        desc: 'Automatically checks the driver and configures Voice Input Buddy Mic. Click Continue after both driver and audio output checks pass.'
       },
       {
         title: 'Step 6 · Voice Tool',
@@ -249,7 +249,7 @@ button.addEventListener('blur', stop);
         windowTitle: 'Voice Test · Setup Wizard',
         src: 'assets/screenshots/wizard-test-en.png',
         alt: 'Setup Wizard: First-phrase voice test with live transcription and microphone gain adjustment',
-        desc: 'Hold the voice button and speak your first test sentence. Adjust remote microphone gain in real time if needed before completing setup.'
+        desc: 'Hold the remote voice button, speak, then release and check that audio and text were received. Adjust microphone gain here if needed. The screenshot shows the waiting state.'
       }
     ]
   };

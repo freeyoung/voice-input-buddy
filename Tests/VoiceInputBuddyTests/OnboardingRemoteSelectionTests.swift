@@ -47,6 +47,30 @@ struct OnboardingRemoteSelectionTests {
         #expect(settings.selectedRemoteProfileID == first)
     }
 
+    @Test func explicitUnsupportedDeviceSelectionSurvivesConnectedRemotePreselection() throws {
+        let name = "onboarding-unsupported-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        let xiaomi = settings.registerBluetoothRemote(identifier: UUID(), model: .rc003)
+        settings.setOnboardingStep(.remoteAvailability)
+        let model = BridgeAppModel(settings: settings, initialAudioDevices: [])
+        model.connectedRemoteProfileIDs = [xiaomi]
+        let view = OnboardingView(model: model, permissionOverrides: .allGranted)
+        view.routeConnectedPhysicalRemoteIfNeeded()
+        #expect(settings.onboardingDevice == .xiaomi)
+        view.selectDevice(.siriRemote)
+        view.routeConnectedPhysicalRemoteIfNeeded()
+        #expect(settings.onboardingDevice == .siriRemote)
+        #expect(settings.onboardingControlSource == .unselected)
+        #expect(!view.canContinue)
+        view.continueFlow()
+        #expect(settings.onboardingStep == .remoteAvailability)
+        #expect(settings.onboardingDevice == .siriRemote)
+        view.selectDevice(.xiaomi)
+        #expect(view.canContinue)
+    }
+
     @Test func otherStepsKeepTheCurrentDeviceSelection() throws {
         let name = "onboarding-selection-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
