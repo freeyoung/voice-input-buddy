@@ -19,7 +19,7 @@ struct RemoteHIDBindingPicker: View {
                     Text(String(format: "%04X:%04X", candidate.binding.identity.vendorID, candidate.binding.identity.productID))
                         .font(.caption.monospaced()).foregroundStyle(.secondary)
                 }.tag(candidate.id)
-            }.frame(minHeight: 180)
+            }.frame(minHeight: 180, maxHeight: 320)
             if candidates.isEmpty { Text(verbatim: localization.text("remote.hid_binding.empty")).foregroundStyle(.secondary) }
             if failed { Text(verbatim: localization.text("remote.hid_binding.failed")).foregroundStyle(.red) }
             HStack {
@@ -34,7 +34,7 @@ struct RemoteHIDBindingPicker: View {
                 }.buttonStyle(.borderedProminent).disabled(selected == nil || model.isStreaming)
                     .keyboardShortcut(.defaultAction)
             }
-        }.padding(24).frame(width: 560)
+        }.padding(24).frame(width: 560).frame(minHeight: 320, maxHeight: 520)
         .onAppear { refresh() }
     }
 
