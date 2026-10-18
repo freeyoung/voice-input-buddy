@@ -65,6 +65,14 @@ final class VoiceFnTapSessionController {
     private var drainOperationID: UInt64?
     private var drainStartedAtUptime: TimeInterval?
 
+    /// Allow drain fallback, both taps, and the full bounded key-release retry budget.
+    var terminationTimeout: TimeInterval {
+        let retries = (0..<(maximumKeyReleaseAttempts - 1)).reduce(0.0) {
+            $0 + min(30, pow(2, Double($1)))
+        }
+        return max(10, drainTimeout + 2 * tapDuration + startDelay + retries + 1)
+    }
+
     var requiresCleanupBeforeMapping: Bool {
         phase != .idle || functionKeyIsPressed
     }
