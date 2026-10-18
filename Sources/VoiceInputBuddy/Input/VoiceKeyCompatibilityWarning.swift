@@ -1,8 +1,3 @@
-import AppKit
-import AVFoundation
-import Combine
-import CoreAudio
-import CoreBluetooth
 import Foundation
 
 enum VoiceKeyCompatibilityWarning: Equatable {
