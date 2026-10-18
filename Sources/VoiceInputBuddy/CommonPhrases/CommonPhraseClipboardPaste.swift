@@ -72,8 +72,8 @@ final class CommonPhraseClipboardPaste: ObservableObject {
         flags.intersection([.maskControl, .maskAlternate, .maskShift, .maskSecondaryFn]).isEmpty
     }
 
-    static func submitPasteShortcut(hardwareFlags: () -> CGEventFlags,
-        eventPoster: (CGEvent) -> Bool) -> Bool {
+    static func submitPasteShortcut(hardwareFlags: @escaping () -> CGEventFlags,
+        eventPoster: @escaping (CGEvent) -> Bool) -> Bool {
         var pasteKeyDownSubmitted = false
         _ = ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
             hardwareFlags: hardwareFlags, eventPoster: { event in

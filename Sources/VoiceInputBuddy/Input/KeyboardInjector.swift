@@ -343,8 +343,8 @@ enum KeyboardInjector {
         appSwitcherSession: AppSwitcherSession? = nil,
         scrollPoster: ScrollPoster = { postScrollWheel(lines: $0) },
         systemKeyPoster: SystemKeyPoster = postSystemKey,
-        shortcutEventPoster: (CGEvent) -> Bool = ShortcutEventSequence.post,
-        shortcutHardwareFlags: () -> CGEventFlags = { CGEventSource.flagsState(.hidSystemState) }
+        shortcutEventPoster: @escaping (CGEvent) -> Bool = ShortcutEventSequence.post,
+        shortcutHardwareFlags: @escaping () -> CGEventFlags = { CGEventSource.flagsState(.hidSystemState) }
     ) -> Bool {
         guard action != .disabled else { return true }
         if action != .appSwitcher, transientAppSwitcher.isActive {
