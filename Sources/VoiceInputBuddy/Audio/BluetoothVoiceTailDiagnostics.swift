@@ -1,49 +1,4 @@
-import AppKit
-import AVFoundation
-import Combine
-import CoreAudio
-import CoreBluetooth
 import Foundation
-
-struct CommandVoiceActivationAudioBuffer {
-    let maximumSampleCount: Int
-    var samples: [Int16] = []
-    private(set) var isWaiting = false
-
-    init(maximumSampleCount: Int = 8_000) {
-        self.maximumSampleCount = maximumSampleCount
-    }
-
-    var bufferedSampleCount: Int {
-        samples.count
-    }
-
-    mutating func begin() {
-        samples.removeAll(keepingCapacity: true)
-        isWaiting = true
-    }
-
-    mutating func appendIfWaiting(_ newSamples: [Int16]) -> Bool {
-        guard isWaiting else { return false }
-        samples.append(contentsOf: newSamples)
-        if samples.count > maximumSampleCount {
-            samples.removeFirst(samples.count - maximumSampleCount)
-        }
-        return true
-    }
-
-    mutating func drain() -> [Int16] {
-        guard isWaiting else { return [] }
-        isWaiting = false
-        defer { samples.removeAll(keepingCapacity: true) }
-        return samples
-    }
-
-    mutating func cancel() {
-        isWaiting = false
-        samples.removeAll(keepingCapacity: true)
-    }
-}
 
 enum VoiceSamplePresentationPolicy {
     static func shouldPublishReceipt(
@@ -54,29 +9,6 @@ enum VoiceSamplePresentationPolicy {
     }
 }
 
-struct AudioRecoveryCoalescingState {
-    private(set) var pendingEventCount = 0
-    private(set) var includesHardwareChange = false
-
-    mutating func recordEvent(reason: String) {
-        pendingEventCount += 1
-        if reason == "hardware_change" {
-            includesHardwareChange = true
-        }
-    }
-
-    mutating func consumePendingEvents() -> (count: Int, includesHardwareChange: Bool) {
-        let result = (pendingEventCount, includesHardwareChange)
-        pendingEventCount = 0
-        includesHardwareChange = false
-        return result
-    }
-
-    mutating func reset() {
-        pendingEventCount = 0
-        includesHardwareChange = false
-    }
-}
 
 struct BluetoothVoiceTailSnapshot: Equatable {
     let sampleCount: Int
