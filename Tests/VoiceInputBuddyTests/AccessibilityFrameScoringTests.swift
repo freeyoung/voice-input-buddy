@@ -55,4 +55,41 @@ struct AccessibilityFrameScoringTests {
         #expect(KeyboardInjector.recordedAccessibilityCandidateScore(candidate,
             target: distant, windowTitle: "", windowFrame: window) == 500)
     }
+
+    @Test func weChatFocusPointRequiresMinimumWindowDimensions() {
+        // Window too small -> nil
+        #expect(KeyboardInjector.weChatComposerFocusPoint(windowFrame: CGRect(x: 0, y: 0, width: 699, height: 500)) == nil)
+        #expect(KeyboardInjector.weChatComposerFocusPoint(windowFrame: CGRect(x: 0, y: 0, width: 700, height: 499)) == nil)
+
+        // Valid window dimensions -> calculated point based on ratios
+        let frame = CGRect(x: 100, y: 200, width: 1000, height: 800)
+        let point = KeyboardInjector.weChatComposerFocusPoint(windowFrame: frame)
+        #expect(point != nil)
+        #expect(point?.x == 100 + 1000 * 0.68)
+        #expect(point?.y == 200 + 800 * 0.85)
+    }
+
+    @Test func weChatWindowFrameSelectionFiltersAndPrefersLargestWindow() {
+        let windows: [(title: String, frame: CGRect)] = [
+            ("Finder", CGRect(x: 0, y: 0, width: 1200, height: 800)),
+            ("微信", CGRect(x: 0, y: 0, width: 500, height: 400)), // Too small
+            ("微信", CGRect(x: 0, y: 0, width: 800, height: 600)),
+            ("微信", CGRect(x: 0, y: 0, width: 1000, height: 800)), // Largest valid
+            ("Other", CGRect(x: 0, y: 0, width: 2000, height: 1000))
+        ]
+        let selected = KeyboardInjector.weChatComposerWindowFrame(windows)
+        #expect(selected == CGRect(x: 0, y: 0, width: 1000, height: 800))
+
+        // English title WeChat also accepted
+        let englishWindows: [(title: String, frame: CGRect)] = [
+            ("WeChat", CGRect(x: 50, y: 50, width: 900, height: 700))
+        ]
+        #expect(KeyboardInjector.weChatComposerWindowFrame(englishWindows) == CGRect(x: 50, y: 50, width: 900, height: 700))
+    }
+
+    @Test func weChatComposerFallbackIsRestrictedToWeChatBundleID() {
+        #expect(KeyboardInjector.usesWeChatComposerFallback(bundleIdentifier: "com.tencent.xinWeChat"))
+        #expect(!KeyboardInjector.usesWeChatComposerFallback(bundleIdentifier: "com.apple.Safari"))
+        #expect(!KeyboardInjector.usesWeChatComposerFallback(bundleIdentifier: nil))
+    }
 }

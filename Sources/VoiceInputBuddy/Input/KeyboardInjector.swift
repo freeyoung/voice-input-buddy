@@ -881,21 +881,6 @@ enum KeyboardInjector {
                 )
                 return
             }
-            if attempt == 0,
-               usesWeChatComposerFallback(bundleIdentifier: bundleIdentifier),
-               applicationIsFrontmost(processIdentifier),
-               focusWeChatComposer(processIdentifier: processIdentifier) {
-                AppLogger.shared.write(
-                    "APP FOCUS succeeded bundle=\(bundleIdentifier) method=wechat_window_click"
-                )
-                completeComposerFocus(
-                    true,
-                    requestID: requestID,
-                    requestGate: requestGate,
-                    completion: completion
-                )
-                return
-            }
             if isAccessibilityTrusted {
                 announceManualAccessibility(
                     processIdentifier: processIdentifier,
@@ -919,6 +904,21 @@ enum KeyboardInjector {
                     )
                     return
                 }
+            }
+            if attempt == 0,
+               usesWeChatComposerFallback(bundleIdentifier: bundleIdentifier),
+               applicationIsFrontmost(processIdentifier),
+               focusWeChatComposer(processIdentifier: processIdentifier) {
+                AppLogger.shared.write(
+                    "APP FOCUS succeeded bundle=\(bundleIdentifier) method=wechat_window_click"
+                )
+                completeComposerFocus(
+                    true,
+                    requestID: requestID,
+                    requestGate: requestGate,
+                    completion: completion
+                )
+                return
             }
 
             let nextAttempt = attempt + 1
