@@ -30,7 +30,7 @@ struct HIDUsageMapping: Codable, Equatable {
     }
 }
 
-enum RemoteVoiceFunctionMappingPolicy {
+enum RemoteHIDKeyMappingPolicy {
     // RC003 exposes its microphone button as keyboard F5 (usage page 7,
     // usage 0x3e). macOS represents the laptop Fn/Globe key as the Apple
     // vendor top-case usage (usage page 0xff, usage 3).
@@ -86,7 +86,7 @@ enum RemoteVoiceFunctionMappingPolicy {
     }
 }
 
-struct RemoteVoiceMappingService {
+struct RemoteHIDMappingService {
     let registryID: UInt64?
     let locationID: UInt32?
     private let retainedOwner: AnyObject?
@@ -108,8 +108,8 @@ struct RemoteVoiceMappingService {
     }
 }
 
-final class RemoteVoiceFunctionMapper {
-    typealias ServiceProvider = () -> [RemoteVoiceMappingService]
+final class RemoteHIDKeyMapper {
+    typealias ServiceProvider = () -> [RemoteHIDMappingService]
 
     private static let mappingProperty = "UserKeyMapping" as CFString
 
@@ -147,7 +147,7 @@ final class RemoteVoiceFunctionMapper {
     init(
         serviceProvider: ServiceProvider? = nil,
         recoveryDefaults: UserDefaults = .standard,
-        bootID: String? = RemoteVoiceFunctionMapper.currentBootID(),
+        bootID: String? = RemoteHIDKeyMapper.currentBootID(),
         recoveryJournalURL: URL? = nil
     ) {
         self.serviceProvider = serviceProvider
@@ -251,17 +251,17 @@ final class RemoteVoiceFunctionMapper {
             snapshots[index] = current
             if originalMappings[registryID] == nil {
                 let currentPower = current.first {
-                    $0.source == RemoteVoiceFunctionMappingPolicy.suppressedRemotePowerKey.source
+                    $0.source == RemoteHIDKeyMappingPolicy.suppressedRemotePowerKey.source
                 }
                 let currentVoice = current.first {
-                    $0.source == RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source
+                    $0.source == RemoteHIDKeyMappingPolicy.remoteVoiceKey.source
                 }
                 // Recover older unjournaled sessions without saving our own output as input.
                 originalMappings[registryID] = OriginalMappings(
-                    voice: [RemoteVoiceFunctionMappingPolicy.remoteVoiceKey,
-                            RemoteVoiceFunctionMappingPolicy.neutralRemoteVoiceKey].contains(currentVoice)
+                    voice: [RemoteHIDKeyMappingPolicy.remoteVoiceKey,
+                            RemoteHIDKeyMappingPolicy.neutralRemoteVoiceKey].contains(currentVoice)
                         ? nil : currentVoice,
-                    power: currentPower == RemoteVoiceFunctionMappingPolicy.suppressedRemotePowerKey
+                    power: currentPower == RemoteHIDKeyMappingPolicy.suppressedRemotePowerKey
                         ? nil
                         : currentPower
                 )
@@ -289,13 +289,13 @@ final class RemoteVoiceFunctionMapper {
                 continue
             }
             let current = snapshots[index] ?? service.readMappings()
-            let desired = RemoteVoiceFunctionMappingPolicy.applying(
+            let desired = RemoteHIDKeyMappingPolicy.applying(
                 to: current,
                 voiceMapping: neutralizeVoiceKey
-                    ? RemoteVoiceFunctionMappingPolicy.neutralRemoteVoiceKey
-                    : RemoteVoiceFunctionMappingPolicy.remoteVoiceKey,
+                    ? RemoteHIDKeyMappingPolicy.neutralRemoteVoiceKey
+                    : RemoteHIDKeyMappingPolicy.remoteVoiceKey,
                 powerMapping: suppressPowerKey
-                    ? RemoteVoiceFunctionMappingPolicy.suppressedRemotePowerKey
+                    ? RemoteHIDKeyMappingPolicy.suppressedRemotePowerKey
                     : originalMappings[registryID]?.power
             )
             guard service.setMappings(desired) else {
@@ -354,7 +354,7 @@ final class RemoteVoiceFunctionMapper {
             guard let registryID = service.registryID,
                   let original = originalMappings[registryID]
             else { continue }
-            let restored = RemoteVoiceFunctionMappingPolicy.restoring(
+            let restored = RemoteHIDKeyMappingPolicy.restoring(
                 originalVoiceMapping: original.voice,
                 originalPowerMapping: original.power,
                 in: service.readMappings()
@@ -372,7 +372,7 @@ final class RemoteVoiceFunctionMapper {
     }
 
     private func rollback(
-        services: [RemoteVoiceMappingService],
+        services: [RemoteHIDMappingService],
         snapshots: [Int: [HIDUsageMapping]],
         appliedIndices: [Int],
         newlyStoredRegistryIDs: Set<UInt64>,
@@ -406,11 +406,11 @@ final class RemoteVoiceFunctionMapper {
         isVoiceKeyNeutralized = false
     }
 
-    private static func systemServices(additionalIdentities: Set<RemoteHIDIdentity>) -> [RemoteVoiceMappingService] {
+    private static func systemServices(additionalIdentities: Set<RemoteHIDIdentity>) -> [RemoteHIDMappingService] {
         let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
         let services = IOHIDEventSystemClientCopyServices(client) as? [IOHIDServiceClient] ?? []
         return services.filter { isTarget($0, additionalIdentities: additionalIdentities) }.map { service in
-            RemoteVoiceMappingService(
+            RemoteHIDMappingService(
                 registryID: registryID(service),
                 locationID: locationID(service),
                 retainedOwner: client,

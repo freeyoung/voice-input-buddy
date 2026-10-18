@@ -79,7 +79,7 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
         return nil
     }
 
-    let voiceFunctionMapper = RemoteVoiceFunctionMapper()
+    let voiceFunctionMapper = RemoteHIDKeyMapper()
     lazy var preferredInputSourceMonitor = PreferredInputSourceMonitor(
         voiceTool: { [weak self] in
             self?.settings.onboardingVoiceTool ?? .unselected

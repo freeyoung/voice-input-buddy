@@ -140,11 +140,11 @@ struct SessionRecoveryTests {
     }
 
     @Test func bootFallbackIsStableAndNeverUsesOneCrossBootSentinel() {
-        #expect(RemoteVoiceFunctionMapper.bootIdentity(uuid: "uuid", bootTime: nil) == "uuid")
-        let first = RemoteVoiceFunctionMapper.bootIdentity(uuid: nil, bootTime: (100, 12))
-        #expect(first == RemoteVoiceFunctionMapper.bootIdentity(uuid: nil, bootTime: (100, 12)))
-        #expect(first != RemoteVoiceFunctionMapper.bootIdentity(uuid: nil, bootTime: (200, 12)))
-        #expect(RemoteVoiceFunctionMapper.bootIdentity(uuid: nil, bootTime: nil) == nil)
+        #expect(RemoteHIDKeyMapper.bootIdentity(uuid: "uuid", bootTime: nil) == "uuid")
+        let first = RemoteHIDKeyMapper.bootIdentity(uuid: nil, bootTime: (100, 12))
+        #expect(first == RemoteHIDKeyMapper.bootIdentity(uuid: nil, bootTime: (100, 12)))
+        #expect(first != RemoteHIDKeyMapper.bootIdentity(uuid: nil, bootTime: (200, 12)))
+        #expect(RemoteHIDKeyMapper.bootIdentity(uuid: nil, bootTime: nil) == nil)
     }
 
     @Test func recoveryJournalIsAtomicAndFailurePreventsSystemWrite() throws {
@@ -153,25 +153,25 @@ struct SessionRecoveryTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("journal.json")
-        let original = HIDUsageMapping(source: RemoteVoiceFunctionMappingPolicy.remoteVoiceKey.source, destination: 99)
+        let original = HIDUsageMapping(source: RemoteHIDKeyMappingPolicy.remoteVoiceKey.source, destination: 99)
         var mappings = [original]
         var writes = 0
-        let services = { [RemoteVoiceMappingService(registryID: 1, readMappings: { mappings }, setMappings: { mappings = $0; writes += 1; return true })] }
-        let first = RemoteVoiceFunctionMapper(serviceProvider: services, recoveryDefaults: values, bootID: "boot", recoveryJournalURL: url)
+        let services = { [RemoteHIDMappingService(registryID: 1, readMappings: { mappings }, setMappings: { mappings = $0; writes += 1; return true })] }
+        let first = RemoteHIDKeyMapper(serviceProvider: services, recoveryDefaults: values, bootID: "boot", recoveryJournalURL: url)
         #expect(first.apply())
         #expect(FileManager.default.fileExists(atPath: url.path))
         values.removePersistentDomain(forName: name)
-        let restarted = RemoteVoiceFunctionMapper(serviceProvider: services, recoveryDefaults: values, bootID: "boot", recoveryJournalURL: url)
+        let restarted = RemoteHIDKeyMapper(serviceProvider: services, recoveryDefaults: values, bootID: "boot", recoveryJournalURL: url)
         restarted.restore()
         #expect(mappings == [original])
         #expect(!FileManager.default.fileExists(atPath: url.path))
         try Data([0]).write(to: directory.appendingPathComponent("file"))
         let invalid = directory.appendingPathComponent("file/journal.json")
-        let failing = RemoteVoiceFunctionMapper(serviceProvider: services, recoveryDefaults: values, bootID: "boot", recoveryJournalURL: invalid)
+        let failing = RemoteHIDKeyMapper(serviceProvider: services, recoveryDefaults: values, bootID: "boot", recoveryJournalURL: invalid)
         let before = writes
         #expect(!failing.apply())
         #expect(writes == before)
-        let unknownBoot = RemoteVoiceFunctionMapper(serviceProvider: services, recoveryDefaults: values, bootID: nil, recoveryJournalURL: url)
+        let unknownBoot = RemoteHIDKeyMapper(serviceProvider: services, recoveryDefaults: values, bootID: nil, recoveryJournalURL: url)
         #expect(!unknownBoot.apply())
         #expect(writes == before)
     }
