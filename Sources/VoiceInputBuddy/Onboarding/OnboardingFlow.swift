@@ -662,7 +662,7 @@ struct OnboardingCapabilities: Equatable {
 }
 
 enum OnboardingAudioSelectionPolicy {
-    private static let supportedUIDs = [DoubaoAudioDevicePolicy.deviceUID]
+    private static let supportedUIDs = [BuddyMicrophoneDevicePolicy.deviceUID]
 
     static func isSupportedDevice(uid: String, name: String) -> Bool {
         supportedUIDs.contains(uid)
@@ -672,7 +672,7 @@ enum OnboardingAudioSelectionPolicy {
         selectedUID: String,
         availableSupportedUIDs: some Sequence<String>
     ) -> Bool {
-        selectedUID == DoubaoAudioDevicePolicy.deviceUID && availableSupportedUIDs.contains(selectedUID)
+        selectedUID == BuddyMicrophoneDevicePolicy.deviceUID && availableSupportedUIDs.contains(selectedUID)
     }
 }
 

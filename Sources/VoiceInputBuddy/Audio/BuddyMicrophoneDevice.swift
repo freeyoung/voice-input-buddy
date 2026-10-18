@@ -1,6 +1,6 @@
 import Foundation
 
-enum DoubaoAudioDevicePolicy {
+enum BuddyMicrophoneDevicePolicy {
     static let deviceUID = "BuddyMic2ch_UID"
     static let deviceName = "Voice Input Buddy Mic"
 

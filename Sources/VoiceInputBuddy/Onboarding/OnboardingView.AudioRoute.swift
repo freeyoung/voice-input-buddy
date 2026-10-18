@@ -9,7 +9,7 @@ extension OnboardingView {
             statusCard(icon: "mic.fill", title: localization.text("settings.driver.title"),
                 detail: localization.text(microphoneDriverInstalled ? "settings.driver.installed" : "settings.driver.missing"),
                 isComplete: microphoneDriverInstalled)
-            statusCard(icon: "waveform", title: DoubaoAudioDevicePolicy.deviceName,
+            statusCard(icon: "waveform", title: BuddyMicrophoneDevicePolicy.deviceName,
                 detail: localization.text(onboardingAudioReady ? "onboarding.audio.automatic_ready" : "onboarding.audio.checking"),
                 isComplete: onboardingAudioReady)
             if !microphoneDriverInstalled || !model.isAudioOutputReady {

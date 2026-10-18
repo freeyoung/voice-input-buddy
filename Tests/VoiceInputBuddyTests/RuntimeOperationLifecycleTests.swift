@@ -107,8 +107,8 @@ struct RuntimeOperationLifecycleTests {
         model.prepareAudioStartup(generation: 1, devices: [], configureOutput: { uid, _ in requests.append(uid) })
         #expect(requests.isEmpty)
         model.prepareAudioStartup(generation: 2, devices: [], configureOutput: { uid, _ in requests.append(uid) })
-        #expect(requests == [DoubaoAudioDevicePolicy.deviceUID])
-        #expect(settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
+        #expect(requests == [BuddyMicrophoneDevicePolicy.deviceUID])
+        #expect(settings.selectedAudioDeviceUID == BuddyMicrophoneDevicePolicy.deviceUID)
         #expect(model.audio.output.pendingVoiceBufferCountForDiagnostics == 0)
     }
 

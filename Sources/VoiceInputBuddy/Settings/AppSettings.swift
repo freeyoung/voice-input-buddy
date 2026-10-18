@@ -61,7 +61,7 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    var selectedAudioDeviceUID: String { DoubaoAudioDevicePolicy.deviceUID }
+    var selectedAudioDeviceUID: String { BuddyMicrophoneDevicePolicy.deviceUID }
 
     @Published var customMappingEnabled: Bool {
         didSet { defaults.set(customMappingEnabled, forKey: Keys.customMappingEnabled) }

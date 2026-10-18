@@ -57,7 +57,7 @@ extension SettingsView {
                     }
                     .compatibilityButtonStyle(.standard)
                 }
-                Label(DoubaoAudioDevicePolicy.deviceName, systemImage: "waveform")
+                Label(BuddyMicrophoneDevicePolicy.deviceName, systemImage: "waveform")
                     .font(.subheadline)
                 Text(localization.text("settings.driver.fixed_output_help"))
                     .font(.caption).foregroundStyle(.secondary)

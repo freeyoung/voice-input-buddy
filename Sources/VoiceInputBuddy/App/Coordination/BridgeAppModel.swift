@@ -25,7 +25,7 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     @Published var connectionStatus = LocalizedMessage("bluetooth.status.initializing")
     @Published var hidStatus = LocalizedMessage("button_mapping.status.disabled")
     @Published var audioStatus = LocalizedMessage("audio.output.none_selected")
-    @Published var doubaoAudioStatus = LocalizedMessage("audio.compatibility.checking")
+    @Published var buddyMicrophoneStatus = LocalizedMessage("audio.compatibility.checking")
     @Published var isStreaming = false
     @Published var isConnected = false
     @Published var isVoiceTriggerEnabled = false

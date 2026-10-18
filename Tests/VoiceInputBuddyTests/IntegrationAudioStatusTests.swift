@@ -10,8 +10,8 @@ struct IntegrationAudioStatusTests {
         let values = try #require(UserDefaults(suiteName: name))
         defer { values.removePersistentDomain(forName: name) }
         let model = BridgeAppModel(settings: AppSettings(defaults: values))
-        model.audioDevices = [AudioDeviceInfo(id: 111, uid: DoubaoAudioDevicePolicy.deviceUID,
-            name: DoubaoAudioDevicePolicy.deviceName)]
+        model.audioDevices = [AudioDeviceInfo(id: 111, uid: BuddyMicrophoneDevicePolicy.deviceUID,
+            name: BuddyMicrophoneDevicePolicy.deviceName)]
         #expect(model.audioStatus.key == "audio.output.none_selected")
         #expect(!model.isAudioOutputReady)
         #expect(model.integrationAudioDeviceStatus.key == "audio.compatibility.device_detected")
@@ -20,6 +20,6 @@ struct IntegrationAudioStatusTests {
         model.audio.startupPending = false
         model.audioDevices = []
         #expect(model.integrationAudioDeviceStatus.key == "audio.compatibility.device_not_detected")
-        #expect(model.settings.selectedAudioDeviceUID == DoubaoAudioDevicePolicy.deviceUID)
+        #expect(model.settings.selectedAudioDeviceUID == BuddyMicrophoneDevicePolicy.deviceUID)
     }
 }

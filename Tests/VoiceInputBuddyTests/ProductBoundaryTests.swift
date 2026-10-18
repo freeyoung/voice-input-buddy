@@ -391,8 +391,8 @@ struct ProductBoundaryTests {
 
     @Test func independentMicrophoneIsAcceptedByWizard() {
         #expect(OnboardingAudioSelectionPolicy.isSupportedDevice(
-            uid: DoubaoAudioDevicePolicy.deviceUID,
-            name: DoubaoAudioDevicePolicy.deviceName
+            uid: BuddyMicrophoneDevicePolicy.deviceUID,
+            name: BuddyMicrophoneDevicePolicy.deviceName
         ))
         #expect(!OnboardingAudioSelectionPolicy.isSupportedDevice(
             uid: "speaker", name: "MacBook Speakers"
