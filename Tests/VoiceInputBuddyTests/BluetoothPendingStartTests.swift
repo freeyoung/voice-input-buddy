@@ -90,6 +90,35 @@ struct BluetoothPendingStartTests {
         #expect(!bridge.isMicrophoneClosePending)
     }
 
+    @Test func closeTimeoutClearsOpenStateAndCancelledTimeoutCannotCloseANewRequest() throws {
+        let suite = "bluetooth-close-timeout-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let clock = ControlledTestScheduler()
+        let settings = AppSettings(defaults: defaults)
+        let model = BridgeAppModel(settings: settings)
+        let bridge = BluetoothRemoteBridge(settings: settings, delegate: model,
+            scheduleMicrophoneClose: clock.voiceSchedule)
+        bridge.simulateMicrophoneOpenedForTesting(true)
+        #expect(!bridge.requestMicrophoneClose())
+        clock.advance(to: 5_000)
+        #expect(!bridge.isMicrophoneOpen)
+        #expect(!bridge.isMicrophoneClosePending)
+
+        bridge.simulateMicrophoneOpenedForTesting(true)
+        #expect(!bridge.requestMicrophoneClose())
+        let stale = try #require(clock.tasks.last)
+        bridge.simulateStreamStopForTesting()
+        bridge.simulateMicrophoneOpenedForTesting(true)
+        #expect(!bridge.requestMicrophoneClose())
+        stale.fire(includingCancelled: true)
+        #expect(bridge.isMicrophoneOpen)
+        #expect(bridge.isMicrophoneClosePending)
+        clock.advance(to: 10_000)
+        #expect(!bridge.isMicrophoneOpen)
+        #expect(!bridge.isMicrophoneClosePending)
+    }
+
     @Test func remoteStreamStopClearsMicrophoneClosePendingAndPreventsWatchdogReconnect() throws {
         let suite = "bluetooth-close-stop-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: suite))
