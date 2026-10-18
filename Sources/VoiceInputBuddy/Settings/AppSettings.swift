@@ -227,7 +227,7 @@ final class AppSettings: ObservableObject {
         onboardingControlSource.controlMethod
     }
 
-    @Published var onboardingDevice: PlannedRemoteDevice? {
+    @Published var onboardingDevice: RemoteSetupDevice? {
         didSet { defaults.set(onboardingDevice?.rawValue, forKey: Keys.onboardingDevice) }
     }
 
@@ -477,8 +477,8 @@ final class AppSettings: ObservableObject {
             ?? .unselected
         onboardingControlSource = persistedControlSource
         onboardingDevice = defaults.string(forKey: Keys.onboardingDevice)
-            .flatMap(PlannedRemoteDevice.init(rawValue:))
-            ?? PlannedRemoteDevice.device(for: persistedControlSource)
+            .flatMap(RemoteSetupDevice.init(rawValue:))
+            ?? RemoteSetupDevice.device(for: persistedControlSource)
         onboardingAppleRemoteGeneration = defaults.string(
             forKey: Keys.onboardingAppleRemoteGeneration
         ).flatMap(OnboardingAppleRemoteGeneration.init(rawValue:))

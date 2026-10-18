@@ -62,7 +62,7 @@ extension AppSettings {
         discardOnboardingVoiceTrial()
         onboardingVoiceTool = configuration.voiceTool
         onboardingControlSource = configuration.controlSource
-        onboardingDevice = configuration.device.flatMap(PlannedRemoteDevice.init(rawValue:))
+        onboardingDevice = configuration.device.flatMap(RemoteSetupDevice.init(rawValue:))
         onboardingRemoteAvailability = configuration.remoteAvailability
         onboardingAppleRemoteGeneration = configuration.appleRemoteGeneration
         onboardingVoiceBindingPreference = configuration.bindingPreference
@@ -168,13 +168,13 @@ extension AppSettings {
         stagedVoiceToolBinding = nil
     }
 
-    func selectOnboardingDevice(_ device: PlannedRemoteDevice) {
+    func selectOnboardingDevice(_ device: RemoteSetupDevice) {
         setOnboardingControlSource(device.onboardingSource ?? .unselected)
         onboardingDevice = device
     }
 
     func setOnboardingControlSource(_ source: OnboardingControlSource) {
-        onboardingDevice = PlannedRemoteDevice.device(for: source)
+        onboardingDevice = RemoteSetupDevice.device(for: source)
         guard onboardingControlSource != source else { return }
         onboardingControlSource = source
         switch source {

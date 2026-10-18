@@ -13,20 +13,20 @@ extension OnboardingView {
                 .fixedSize(horizontal: false, vertical: true)
             Text(localization.text("onboarding.control_source.hardware"))
                 .font(.system(size: 13, weight: .semibold))
-            ForEach(PlannedRemoteDevice.allCases) { device in
+            ForEach(RemoteSetupDevice.allCases) { device in
                 deviceSelectionCard(device)
             }
         }
     }
 
-    func selectDevice(_ device: PlannedRemoteDevice) {
+    func selectDevice(_ device: RemoteSetupDevice) {
         if let source = device.onboardingSource {
             selectControlSource(source)
         }
         settings.selectOnboardingDevice(device)
     }
 
-    private func deviceSelectionCard(_ device: PlannedRemoteDevice) -> some View {
+    private func deviceSelectionCard(_ device: RemoteSetupDevice) -> some View {
         let selected = settings.onboardingDevice == device
         return onboardingActionButton(id: "control-device.\(device.rawValue)") {
             selectDevice(device)

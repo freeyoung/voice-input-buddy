@@ -165,7 +165,7 @@ enum OnboardingScreenshotRenderer {
         }
         if let requestedDevice = ProcessInfo.processInfo.environment[
             "VOICE_INPUT_BUDDY_ONBOARDING_SCREENSHOT_DEVICE"
-        ].flatMap(PlannedRemoteDevice.init(rawValue:)) {
+        ].flatMap(RemoteSetupDevice.init(rawValue:)) {
             settings.selectOnboardingDevice(requestedDevice)
         }
         let requestedPurpose = ProcessInfo.processInfo.environment[

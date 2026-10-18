@@ -192,10 +192,10 @@ struct ProductBoundaryTests {
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
         let bundle = try #require(Bundle(path: resources.path))
-        let planned = PlannedRemoteDevice.allCases.filter { $0 != .xiaomi }
+        let planned = RemoteSetupDevice.allCases.filter { $0 != .xiaomi }
         #expect(Set(planned.map(\.illustrationResource)).count == 3)
         for device in planned {
-            #expect(device.illustrationResource != PlannedRemoteDevice.xiaomi.illustrationResource)
+            #expect(device.illustrationResource != RemoteSetupDevice.xiaomi.illustrationResource)
             let url = try #require(bundle.url(forResource: device.illustrationResource, withExtension: "png"))
             let image = try #require(NSImage(contentsOf: url))
             #expect(image.size.width > 0 && image.size.height > image.size.width)
@@ -203,12 +203,12 @@ struct ProductBoundaryTests {
     }
 
     @Test func deviceScopeKeepsGoogleModelsDistinctAndSelectable() {
-        #expect(PlannedRemoteDevice.allCases == [
+        #expect(RemoteSetupDevice.allCases == [
             .xiaomi, .chromecastG9N9N, .googleStreamerGY3LE, .siriRemote,
         ])
-        #expect(PlannedRemoteDevice.chromecastG9N9N.googleHardwareModelNumber == "G9N9N")
-        #expect(PlannedRemoteDevice.googleStreamerGY3LE.googleHardwareModelNumber == "GY3LE")
-        #expect(PlannedRemoteDevice.allCases.filter(\.canStartSetup) == [.xiaomi, .chromecastG9N9N, .googleStreamerGY3LE])
+        #expect(RemoteSetupDevice.chromecastG9N9N.googleHardwareModelNumber == "G9N9N")
+        #expect(RemoteSetupDevice.googleStreamerGY3LE.googleHardwareModelNumber == "GY3LE")
+        #expect(RemoteSetupDevice.allCases.filter(\.canStartSetup) == [.xiaomi, .chromecastG9N9N, .googleStreamerGY3LE])
         // Listing a planned device must not admit it through the Xiaomi hardware bridge.
         #expect(XiaomiRemoteCatalog.entry(matchingDISModelNumber: "G9N9N") == nil)
         #expect(XiaomiRemoteCatalog.entry(matchingDISModelNumber: "GY3LE") == nil)
@@ -228,11 +228,11 @@ struct ProductBoundaryTests {
         #expect(!model.isOnboardingControlSourceConnected(.chromecastRemote))
         #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote, selectedModel: .rc003)
             == .bundled(resourceName: "ChromecastG9N9NIllustration"))
-        #expect(PlannedRemoteDevice.chromecastG9N9N.canStartSetup)
+        #expect(RemoteSetupDevice.chromecastG9N9N.canStartSetup)
     }
 
     @Test @MainActor func deviceChoicePersistsAndContinueBlocksOnlyUpcomingAdapters() throws {
-        for device in PlannedRemoteDevice.allCases {
+        for device in RemoteSetupDevice.allCases {
             let suite = "voice-input-buddy.tests.\(UUID().uuidString)"
             let defaults = try #require(UserDefaults(suiteName: suite))
             defer { defaults.removePersistentDomain(forName: suite) }
@@ -261,7 +261,7 @@ struct ProductBoundaryTests {
     }
 
     @Test @MainActor func googleSelectionKeepsItsOwnIllustrationAndConnectionValidation() throws {
-        for device in [PlannedRemoteDevice.chromecastG9N9N, .googleStreamerGY3LE] {
+        for device in [RemoteSetupDevice.chromecastG9N9N, .googleStreamerGY3LE] {
             let suite = "google-selection-" + UUID().uuidString
             let defaults = try #require(UserDefaults(suiteName: suite))
             defer { defaults.removePersistentDomain(forName: suite) }
@@ -282,10 +282,10 @@ struct ProductBoundaryTests {
                     inputMonitoringGranted: true, accessibilityGranted: true)))
             #expect(view.physicalRemotePairingKeys.thirdStep == "onboarding.remote.chromecast_pairing.third")
         }
-        #expect(PlannedRemoteDevice.googleStreamerGY3LE.canStartSetup)
+        #expect(RemoteSetupDevice.googleStreamerGY3LE.canStartSetup)
         #expect(OnboardingRemotePhotoKind.resolve(source: .chromecastRemote,
             selectedModel: .rc003, selectedDevice: .xiaomi)
-            == .bundled(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource))
+            == .bundled(resourceName: RemoteSetupDevice.chromecastG9N9N.illustrationResource))
     }
 
     @Test func wizardRequiresEachPermissionAndKeepsRemoteControl() {

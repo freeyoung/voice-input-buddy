@@ -71,7 +71,7 @@ enum XiaomiRemoteCatalog {
     /// 该型号应该用的真机图资源名；目录里没有这个型号（包括 `.unknown`）返回 nil，
     /// 调用方必须显示「未识别」占位，不允许套用任何真机图。
     static func photoResource(for model: RemoteModel) -> String? {
-        if model.isChromecastRemote { return PlannedRemoteDevice.chromecastG9N9N.illustrationResource }
+        if model.isChromecastRemote { return RemoteSetupDevice.chromecastG9N9N.illustrationResource }
         return entries.first(where: { $0.model == model })?.photoResource
     }
 }

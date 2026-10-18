@@ -15,7 +15,7 @@ struct ReviewReliabilityTests {
         settings.setOnboardingStep(.remoteAvailability)
         let view = OnboardingView(model: BridgeAppModel(settings: settings, initialAudioDevices: []))
         #expect(!view.canContinue)
-        for device in PlannedRemoteDevice.allCases {
+        for device in RemoteSetupDevice.allCases {
             view.selectDevice(device)
             #expect(OnboardingFlowPolicy.canContinue(from: .remoteAvailability, voiceTool: .unselected,
                 remoteAvailability: settings.onboardingRemoteAvailability,

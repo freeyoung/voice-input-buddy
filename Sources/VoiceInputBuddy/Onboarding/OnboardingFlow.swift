@@ -442,7 +442,7 @@ enum OnboardingAppleRemoteGeneration: String, Codable, CaseIterable, Identifiabl
 
 enum OnboardingBuildCapabilities {
     static var availableControlSources: [OnboardingControlSource] {
-        let sources = PlannedRemoteDevice.allCases.compactMap(\.onboardingSource)
+        let sources = RemoteSetupDevice.allCases.compactMap(\.onboardingSource)
         return sources.reduce(into: []) { unique, source in
             if !unique.contains(source) { unique.append(source) }
         }
@@ -584,7 +584,7 @@ enum OnboardingRemotePhotoKind: Equatable {
     static func resolve(
         source: OnboardingControlSource,
         selectedModel: RemoteModel?,
-        selectedDevice: PlannedRemoteDevice? = nil
+        selectedDevice: RemoteSetupDevice? = nil
     ) -> Self {
         switch source {
         case .xiaomiRemote:
@@ -605,7 +605,7 @@ enum OnboardingRemotePhotoKind: Equatable {
             if let selectedDevice, selectedDevice.onboardingSource == .chromecastRemote {
                 return .bundled(resourceName: selectedDevice.illustrationResource)
             }
-            return .bundled(resourceName: PlannedRemoteDevice.chromecastG9N9N.illustrationResource)
+            return .bundled(resourceName: RemoteSetupDevice.chromecastG9N9N.illustrationResource)
         case .unselected:
             return .placeholder
         }
@@ -750,7 +750,7 @@ enum OnboardingFlowPolicy {
         controlMethod: OnboardingControlMethod = .physicalRemote,
         voiceKeyMode: VoiceKeyMode = .function,
         voiceToolGuideStepsCompleted: Bool = false,
-        selectedDevice: PlannedRemoteDevice? = nil,
+        selectedDevice: RemoteSetupDevice? = nil,
         capabilities: OnboardingCapabilities
     ) -> Bool {
         if [.remote, .controls, .audio, .voiceTest].contains(step),

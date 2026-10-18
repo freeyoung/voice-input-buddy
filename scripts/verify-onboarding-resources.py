@@ -75,7 +75,7 @@ for name in sorted(names):
         assert dark is not None, f'Missing dark screenshot: {name}'
         files.append(dark)
 # Product catalog resources are required even while adapters remain planned.
-catalog = (app_sources / 'Devices/PlannedRemoteDevice.swift').read_text()
+catalog = (app_sources / 'Devices/RemoteSetupDevice.swift').read_text()
 illustrations = set(re.findall(r'return "(\w+Illustration)"', catalog))
 assert illustrations, 'No product catalog illustrations found'
 files.extend(resources / f'{name}.png' for name in sorted(illustrations))
