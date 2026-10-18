@@ -17,6 +17,8 @@ struct InstanceLockTests {
             var held: ApplicationInstanceLock?
             if case let .acquired(lock) = ApplicationInstanceLock.acquire(at: path) { held = lock }
             #expect(held != nil)
+            let heldContent = try String(contentsOf: path, encoding: .utf8)
+            #expect(heldContent.trimmingCharacters(in: .whitespacesAndNewlines) == "\(getpid())")
             if case .alreadyLocked = ApplicationInstanceLock.acquire(at: path) {} else {
                 Issue.record("A second descriptor must not acquire the held lock")
             }
@@ -24,6 +26,8 @@ struct InstanceLockTests {
             guard case let .acquired(next) = ApplicationInstanceLock.acquire(at: path) else {
                 Issue.record("A released lock must be available"); return
             }
+            let nextContent = try String(contentsOf: path, encoding: .utf8)
+            #expect(nextContent.trimmingCharacters(in: .whitespacesAndNewlines) == "\(getpid())")
             let attributes = try FileManager.default.attributesOfItem(atPath: path.path)
             #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
             withExtendedLifetime(next) {}

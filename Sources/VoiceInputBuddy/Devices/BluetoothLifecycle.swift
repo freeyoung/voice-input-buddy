@@ -401,6 +401,16 @@ enum BluetoothCentralRecoveryPolicy {
 enum ATVVSessionGate {
     static let cancelledOpenSuppressionInterval: TimeInterval = 2
 
+    static func canTransitionToReady(
+        capabilitiesConfirmed: Bool,
+        isGoogleCandidate: Bool,
+        googleReady: Bool,
+        modelFormatResolved: Bool
+    ) -> Bool {
+        guard capabilitiesConfirmed else { return false }
+        return isGoogleCandidate ? googleReady : modelFormatResolved
+    }
+
     static func canOpenMicrophone(
         phase: BluetoothLifecyclePhase,
         generation: UInt64,

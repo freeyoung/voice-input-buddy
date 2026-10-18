@@ -217,9 +217,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 - Project: `ExistentialAudio/BlackHole`
 - Source: <https://github.com/ExistentialAudio/BlackHole>
 - Pinned source revision: `v0.7.1` / `e2b22aaaba4e507a097131704bf96dabc004d9cf`
+- Copyright: Copyright (C) 2019 Existential Audio Inc.
 - License: GNU General Public License v3.0 (`GPL-3.0`)
+- Bundled driver license: `Contents/Resources/BlackHole-LICENSE` inside `VoiceInputBuddyMic.driver`
 
-`scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `VoiceInputBuddyMic.driver` from pinned BlackHole source. The app routes audio only to this driver, not to an optional BlackHole device. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and VoiceInputBuddyMic; matching driver source is available at the pinned upstream revision together with this repository’s patch and build script.
+`scripts/build-driver.sh` and `third_party/blackhole/device-usb.patch` build the independent `VoiceInputBuddyMic.driver` from pinned BlackHole source. The app routes audio only to this driver, not to an optional BlackHole device. The driver uses USB transport, its own CFPlugIn factory UUID, bundle identifier and BuddyMic UID. It does not replace an installed BlackHole or MiRemoteV driver. The release PKG installs both the app and VoiceInputBuddyMic; matching driver source is available at the pinned upstream revision together with this repository’s patch and build script. The complete upstream license text is bundled within the driver at `Contents/Resources/BlackHole-LICENSE`.
 
 ## MiRemoteVoice
 

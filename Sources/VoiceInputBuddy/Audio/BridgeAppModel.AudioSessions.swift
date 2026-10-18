@@ -41,7 +41,11 @@ extension BridgeAppModel {
             AppLogger.shared.write("SYSTEM AUDIO resume_skipped reason=\(reason) selected=false")
             return
         }
-        isAudioOutputReady = audio.output.isReadyForTestTone
+        let deviceForAudibility = audio.output.actualDevice
+            ?? audio.output.selectedDevice
+            ?? audioDevices.first(where: { $0.uid == settings.selectedAudioDeviceUID })
+        let audibilityHealthy = !CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: deviceForAudibility).requiresAudibilityRepair
+        isAudioOutputReady = audio.output.isReadyForTestTone && audibilityHealthy
         guard !isAudioOutputReady else {
             AppLogger.shared.write(
                 "SYSTEM AUDIO resume_skipped reason=\(reason) already_ready=true " +

@@ -241,6 +241,34 @@ struct SessionRecoveryRegressionTests {
         monitor.stop()
     }
 
+    @Test func rawPressAfterExplicitReleaseIsAcceptedPromptly() {
+        let clock = ControlledTestScheduler()
+        let prefs = defaults()
+        let settings = AppSettings(defaults: prefs)
+        settings.setAction(.disabled, for: .back, trigger: .longPress)
+        settings.setAction(.disabled, for: .back, trigger: .doubleClick)
+        let monitor = HIDRemoteMonitor(settings: settings, scheduler: clock,
+            runtimePermissions: { true }, diagnosticLogger: { _ in })
+
+        // First press: accepted
+        #expect(monitor.shouldAcceptRawPress(button: .back, action: .escape))
+
+        // Duplicate press without explicit release: rejected
+        #expect(!monitor.shouldAcceptRawPress(button: .back, action: .escape))
+
+        // Explicit release occurs, scheduling stable release window
+        monitor.scheduleNonRepeatableRelease(for: .back)
+
+        // Rapid second press within 600 ms window: accepted promptly
+        clock.advance(to: 150)
+        #expect(monitor.shouldAcceptRawPress(button: .back, action: .escape))
+
+        // Unreleased repeat after second press: rejected
+        #expect(!monitor.shouldAcceptRawPress(button: .back, action: .escape))
+
+        monitor.stop()
+    }
+
     @Test func foregroundRefreshPreservesLoginFailureUntilRetry() {
         let controller = LifecycleLoginController()
         let service = LoginItemService(controller: controller)

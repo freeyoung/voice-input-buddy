@@ -214,7 +214,19 @@ extension KeyboardInjector {
             restore.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
             restore.post(tap: .cghidEventTap)
         }
-        return true
+        usleep(30_000)
+        return isWeChatComposerFocused(applicationElement: applicationElement)
+    }
+
+    static func isWeChatComposerFocused(applicationElement: AXUIElement) -> Bool {
+        guard let focusedElement = axElement(applicationElement, attribute: kAXFocusedUIElementAttribute) else {
+            return false
+        }
+        let role = axString(focusedElement, attribute: kAXRoleAttribute)
+        guard role == "AXTextArea" || role == "AXTextField" else {
+            return false
+        }
+        return axBool(focusedElement, attribute: kAXFocusedAttribute) ?? true
     }
 
     static func captureFocusedAccessibilityTargetAsync(

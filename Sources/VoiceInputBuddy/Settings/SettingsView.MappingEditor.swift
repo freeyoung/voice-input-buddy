@@ -21,17 +21,19 @@ extension SettingsView {
             settings.experimentalContinuousRecordingEnabled
         return VStack(alignment: .leading, spacing: 16) {
             if trigger == .longPress {
+                let isHoldRepeatSelected = configured.action == .repeatSingleClick
                 Button {
                     setMappingAction(.repeatSingleClick, for: button, trigger: .longPress)
                     shortcutCaptureTarget = nil
                     applicationShortcutCaptureProfileID = nil
                 } label: {
                     Label(localization.text("action.repeat_single_click"), systemImage:
-                        configured.action == .repeatSingleClick ? "checkmark.circle.fill" : "circle")
+                        isHoldRepeatSelected ? "checkmark.circle.fill" : "circle")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("button-mapping.hold-repeat")
+                .accessibilityAddTraits(isHoldRepeatSelected ? .isSelected : [])
                 Text(localization.text("button_mapping.hold_repeat.help"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
@@ -212,6 +214,7 @@ extension SettingsView {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(selectedAction == action ? .isSelected : [])
                     .disabled(isManagedPowerAction || unavailableApplication || unavailableExperiment)
                 }
                 if actions.contains(.openCommonPhrases) {

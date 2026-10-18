@@ -1062,7 +1062,9 @@ final class HIDRemoteMonitor {
             finishNonRepeatablePress(button)
             return true
         }
-        nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
+        if nonRepeatableReleaseTimers[button] != nil {
+            finishNonRepeatablePress(button)
+        }
         guard nonRepeatablePressedButtons.insert(button).inserted else { return false }
         refreshUsageExpiry(button.hidUsage)
         return true
@@ -1097,7 +1099,7 @@ final class HIDRemoteMonitor {
             (button == .right && action == .arrowRight)
     }
 
-    private func scheduleNonRepeatableRelease(for button: RemoteButton) {
+    func scheduleNonRepeatableRelease(for button: RemoteButton) {
         guard nonRepeatablePressedButtons.contains(button) else { return }
         nonRepeatableReleaseTimers.removeValue(forKey: button)?.cancel()
         let timer = scheduler.schedule(

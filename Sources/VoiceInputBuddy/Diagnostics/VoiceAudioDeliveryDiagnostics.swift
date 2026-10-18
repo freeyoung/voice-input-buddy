@@ -23,6 +23,7 @@ struct VirtualAudioOutputDiagnosticSnapshot: Equatable {
     var engineRunning = false
     var playerPlaying = false
     var boundToSelectedDevice: Bool?
+    var audibilityHealthy = true
     var pendingBuffers = 0
     var pendingSamples = 0
     var counters = VirtualAudioPlaybackCounters()

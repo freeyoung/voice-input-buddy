@@ -430,6 +430,56 @@ struct BluetoothLifecycleTests {
         #expect(!freshPhase.acceptsDisconnect(generation: finishedGeneration))
     }
 
+    @Test func readyTransitionGatesOnGoogleOrDisModelResolution() {
+        // Capabilities not confirmed -> never ready
+        #expect(!ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: false,
+            isGoogleCandidate: false,
+            googleReady: false,
+            modelFormatResolved: false
+        ))
+        #expect(!ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: false,
+            isGoogleCandidate: false,
+            googleReady: true,
+            modelFormatResolved: true
+        ))
+
+        // Non-Google candidate requires modelFormatResolved before ready
+        #expect(!ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: true,
+            isGoogleCandidate: false,
+            googleReady: false,
+            modelFormatResolved: false
+        ))
+        #expect(!ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: true,
+            isGoogleCandidate: false,
+            googleReady: true,
+            modelFormatResolved: false
+        ))
+        #expect(ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: true,
+            isGoogleCandidate: false,
+            googleReady: false,
+            modelFormatResolved: true
+        ))
+
+        // Google candidate requires googleReady, regardless of modelFormatResolved
+        #expect(!ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: true,
+            isGoogleCandidate: true,
+            googleReady: false,
+            modelFormatResolved: true
+        ))
+        #expect(ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: true,
+            isGoogleCandidate: true,
+            googleReady: true,
+            modelFormatResolved: false
+        ))
+    }
+
     @Test func microphoneRequiresConfirmed16kReadySession() {
         #expect(!ATVVSessionGate.canOpenMicrophone(
             phase: .awaitingCapabilities(1),

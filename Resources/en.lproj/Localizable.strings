@@ -533,6 +533,7 @@
 "status_item.state.disconnected" = "%@: No devices connected";
 "status_item.state.connected" = "%@: Device connected";
 "status_item.state.streaming" = "%@: Voice active";
+"status_item.accessibility.show_menu" = "Show Menu";
 "about.alert.description_with_version" = "Version %1$@\nTurn your remote into a voice typing buddy. Speak instead of typing, and keep everyday actions a button away.";
 "common.action.ok" = "OK";
 "common.action.copy_link" = "Copy Link";
@@ -562,6 +563,7 @@
 "about.preferences.app_icon_standard" = "Voice Input Buddy";
 "about.preferences.app_icon_faceted_duck" = "Faceted Duck";
 "about.preferences.language" = "App Language";
+"about.preferences.rc003_voice_extension_test" = "Test extended voice feature";
 "about.page.hero_subtitle" = "Version, preferences, and support for your wireless voice workspace";
 "about.page.hero_description" = "Turn your remote into an always-ready voice and shortcut controller for your Mac.";
 "about.privacy.local_only" = "Data stays on this Mac";

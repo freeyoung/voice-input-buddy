@@ -312,7 +312,7 @@ extension SettingsView {
                     inlineDiagnosticsSection
 
                     if model.isRC003VoiceExtensionTestEnabled {
-                        Text("测试长时间语音功能")
+                        Text(localization.text("about.preferences.rc003_voice_extension_test"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)

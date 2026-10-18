@@ -16,6 +16,7 @@ final class ApplicationInstanceLock {
     }
 
     deinit {
+        _ = ftruncate(fileDescriptor, 0)
         _ = flock(fileDescriptor, LOCK_UN)
         _ = Darwin.close(fileDescriptor)
     }
@@ -65,6 +66,10 @@ final class ApplicationInstanceLock {
             }
             return .failed("flock errno=\(lockError)")
         }
+        _ = ftruncate(descriptor, 0)
+        _ = lseek(descriptor, 0, SEEK_SET)
+        let pidString = "\(getpid())\n"
+        _ = pidString.withCString { Darwin.write(descriptor, $0, strlen($0)) }
         return .acquired(ApplicationInstanceLock(fileDescriptor: descriptor))
     }
 }

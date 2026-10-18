@@ -364,6 +364,10 @@ final class VirtualAudioOutput {
         cachedOutputState.ready
     }
 
+    var actualDevice: AudioDeviceInfo? {
+        cachedOutputState.actualDevice
+    }
+
     /// Schedules the test tone and reports actual playback completion via `scheduleBuffer`'s
     /// `.dataPlayedBack` callback rather than a fixed timer. `completion` receives `true` only
     /// when the tone finished sounding; `false` if it was cut short (device torn down, real
@@ -975,12 +979,14 @@ final class VirtualAudioOutput {
             counters = playbackCounters
         }
         playbackLock.unlock()
+        let audibility = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: state.selectedDevice)
         return VirtualAudioOutputDiagnosticSnapshot(
             selectedDeviceKind: .classify(state.selectedDevice),
             actualDeviceKind: .classify(state.actualDevice),
             engineRunning: state.engineRunning,
             playerPlaying: state.playerPlaying,
             boundToSelectedDevice: boundToSelected,
+            audibilityHealthy: !audibility.requiresAudibilityRepair,
             pendingBuffers: pendingBuffers,
             pendingSamples: pendingSamples,
             counters: counters

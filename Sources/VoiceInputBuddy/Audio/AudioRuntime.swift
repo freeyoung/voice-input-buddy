@@ -17,8 +17,12 @@ final class AudioRuntime {
     var hardwareListenerRemover: AudioHardwareListenerRemover = { address, queue, listener in
         AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
     }
+    var devicePropertyListenerRemover: (AudioObjectID, inout AudioObjectPropertyAddress, DispatchQueue, @escaping AudioObjectPropertyListenerBlock) -> OSStatus = { objectID, address, queue, listener in
+        AudioObjectRemovePropertyListenerBlock(objectID, &address, queue, listener)
+    }
     let hardwareListenerQueue = DispatchQueue(label: "VoiceInputBuddy.audioHardware")
     var observedHardwareAddresses: [AudioObjectPropertyAddress] = []
+    var observedDeviceProperties: [(objectID: AudioObjectID, address: AudioObjectPropertyAddress)] = []
     var recoveryWorkItem: DispatchWorkItem?
     var recoveryGeneration: UInt64 = 0
     var recoveryCoalescingState = AudioRecoveryCoalescingState()
@@ -26,7 +30,7 @@ final class AudioRuntime {
     var pendingVirtualAudioRelease: (generation: UInt64, reason: String)?
     var suspensionState = SystemAudioSuspensionState()
 
-    private var registeredListener: AudioObjectPropertyListenerBlock?
+    private(set) var registeredListener: AudioObjectPropertyListenerBlock?
 
     func retainHardwareListener(_ listener: @escaping AudioObjectPropertyListenerBlock) {
         registeredListener = listener
@@ -38,7 +42,19 @@ final class AudioRuntime {
             _ = hardwareListenerRemover(&address, hardwareListenerQueue, listener)
         }
         observedHardwareAddresses.removeAll()
+        stopObservingVirtualDevice()
         registeredListener = nil
+    }
+
+    func stopObservingVirtualDevice() {
+        guard let listener = registeredListener else {
+            observedDeviceProperties.removeAll()
+            return
+        }
+        for (objectID, var address) in observedDeviceProperties {
+            _ = devicePropertyListenerRemover(objectID, &address, hardwareListenerQueue, listener)
+        }
+        observedDeviceProperties.removeAll()
     }
 
     func invalidatePendingWork() {

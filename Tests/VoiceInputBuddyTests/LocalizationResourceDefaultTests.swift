@@ -21,4 +21,44 @@ struct LocalizationResourceDefaultTests {
         #expect(snapshot.text(key) == english)
         #expect(LocalizationSnapshot(language: .english).text(key) == english)
     }
+
+    @Test func rc003VoiceExtensionTestResolvesInBothLanguages() throws {
+        let name = "locale-rc003-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let store = LocalizationStore(settings: AppSettings(defaults: defaults))
+        let key = "about.preferences.rc003_voice_extension_test"
+        store.select(.english)
+        let english = store.text(key)
+        store.select(.simplifiedChinese)
+        let chinese = store.text(key)
+        #expect(english == "Test extended voice feature")
+        #expect(chinese == "测试长时间语音功能")
+    }
+
+    @Test func statusItemShowMenuResolvesInBothLanguages() throws {
+        let name = "locale-status-menu-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let store = LocalizationStore(settings: AppSettings(defaults: defaults))
+        let key = "status_item.accessibility.show_menu"
+        store.select(.english)
+        let english = store.text(key)
+        store.select(.simplifiedChinese)
+        let chinese = store.text(key)
+        #expect(english == "Show Menu")
+        #expect(chinese == "显示菜单")
+    }
+
+    @Test func statusItemActionResolverDecisionRules() {
+        #expect(StatusItemActionResolver.shouldShowMenu(eventType: .rightMouseUp, modifierFlags: []))
+        #expect(StatusItemActionResolver.shouldShowMenu(eventType: .rightMouseUp, modifierFlags: .control))
+        #expect(StatusItemActionResolver.shouldShowMenu(eventType: .leftMouseUp, modifierFlags: .control))
+        #expect(StatusItemActionResolver.shouldShowMenu(eventType: .leftMouseUp, modifierFlags: [.control, .shift]))
+        #expect(!StatusItemActionResolver.shouldShowMenu(eventType: .leftMouseUp, modifierFlags: []))
+        #expect(!StatusItemActionResolver.shouldShowMenu(eventType: .leftMouseUp, modifierFlags: .shift))
+        #expect(!StatusItemActionResolver.shouldShowMenu(eventType: .leftMouseUp, modifierFlags: .command))
+        #expect(!StatusItemActionResolver.shouldShowMenu(eventType: .leftMouseUp, modifierFlags: .option))
+        #expect(!StatusItemActionResolver.shouldShowMenu(eventType: nil, modifierFlags: nil))
+    }
 }
