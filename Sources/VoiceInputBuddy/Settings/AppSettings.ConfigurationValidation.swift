@@ -24,7 +24,8 @@ extension AppSettings {
                 }
                 result.remoteProfileID = selectedRemoteProfileID
             }
-            let configured = Self.validatedConfiguredAction(binding.configured)
+            let configured = binding.configured.action == .repeatSingleClick && binding.trigger != .longPress
+                ? nil : Self.validatedConfiguredAction(binding.configured)
             if configured == nil { rejected.insert("unifiedBaseBindings") }
             result.configured = configured ?? .disabled
             // A selected-device override beats a global default when imported

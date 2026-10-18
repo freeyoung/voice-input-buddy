@@ -731,6 +731,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
     case previousCommandLeft
     case nextCommandRight
     case customShortcut
+    case repeatSingleClick
     case focusInput
     case openCustomApplication
     case toggleLongRecording
@@ -755,6 +756,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
     func displayName(using localization: LocalizationStore) -> String {
         switch self {
         case .disabled: return localization.text("action.disabled")
+        case .repeatSingleClick: return localization.text("action.repeat_single_click")
         case .escape: return "Escape"
         case .returnKey: return "Return"
         case .commandReturn: return "Command-Return"
@@ -838,7 +840,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         case .showDesktop, .contextMenu, .appSwitcher, .volumeUp, .volumeDown, .volumeMute,
              .playPause, .previousCommandLeft, .nextCommandRight, .toggleLongRecording:
             return .systemAndMedia
-        case .customShortcut, .focusInput:
+        case .customShortcut, .focusInput, .repeatSingleClick:
             return .custom
         case .openCommonPhrases:
             return .commonPhrases
@@ -849,29 +851,6 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
              .openZed:
             return .applications
         }
-    }
-
-    var allowsRepeat: Bool {
-        ![
-            .customShortcut,
-            .focusInput,
-            .openCustomApplication,
-            .commandReturn,
-            .shiftReturn,
-            .commandCopy,
-            .commandPaste,
-            .commandClose,
-            .commandQuit,
-            .commandCut,
-            .commandSelectAll,
-            .commandUndo,
-            .commandRedo,
-            .commandFind,
-            .commandSave,
-            .commandDelete,
-            .previousCommandLeft,
-            .nextCommandRight,
-        ].contains(self) && presetApplication == nil && !isAppInternal
     }
 
     var isAppInternal: Bool {

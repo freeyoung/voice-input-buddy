@@ -106,6 +106,7 @@ final class HIDRemoteMonitor {
     private var nativePassthroughUsages = Set<UInt16>()
     private var usageExpiryTimers: [UInt16: HIDRemoteScheduledTask] = [:]
     private var repeatTimers: [UInt16: HIDRemoteScheduledTask] = [:]
+    private var repeatTokens: [UInt16: UUID] = [:]
     private var nonRepeatablePressedButtons = Set<RemoteButton>()
     private var nonRepeatableReleaseTimers: [RemoteButton: HIDRemoteScheduledTask] = [:]
     private var gestureRecognizer = RemoteButtonGestureRecognizer()
@@ -682,7 +683,7 @@ final class HIDRemoteMonitor {
                 for: button,
                 trigger: .longPress,
                 profileID: preflightProfileID
-            ).action != .disabled
+            ).action != .disabled && !settings.allowsHoldRepeat(for: button, profileID: preflightProfileID)
             let preflightAction = settings.action(for: button, profileID: preflightProfileID)
             let usesNativePassthrough = preflightProfileID != nil &&
                 claimsRuntimeButton?(preflightProfileID, button) != true && shouldUseNativePassthrough(
@@ -729,7 +730,7 @@ final class HIDRemoteMonitor {
                 for: button,
                 trigger: .longPress,
                 profileID: profileID
-            ).action != .disabled
+            ).action != .disabled && !settings.allowsHoldRepeat(for: button, profileID: profileID)
             let action = settings.action(for: button, profileID: profileID)
             if appSwitcherSession.isActive,
                handleAppSwitcherControlPress(button) {
@@ -796,12 +797,8 @@ final class HIDRemoteMonitor {
                     "HID GESTURE button=\(button.rawValue) trigger=singleClick path=raw"
                 )
                 guard performConfiguredAction(for: button, trigger: .singleClick) else { continue }
-                startRepeatIfNeeded(
-                    usage: usage,
-                    button: button,
-                    action: action
-                )
             }
+            startRepeatIfNeeded(usage: usage, button: button, action: action)
         }
 
         for usage in released {
@@ -810,7 +807,7 @@ final class HIDRemoteMonitor {
                let button = RemoteButton.usageMap[usage] {
                 eventSuppressor.arm(button: button, edge: .up)
             }
-            repeatTimers.removeValue(forKey: usage)?.cancel()
+            cancelRepeat(for: usage)
             if let button = RemoteButton.usageMap[usage] {
                 if onRuntimeButton?(profileID, button, .release) == true { continue }
                 scheduleNonRepeatableRelease(for: button)
@@ -830,7 +827,7 @@ final class HIDRemoteMonitor {
             self.usageExpiryTimers.removeValue(forKey: usage)?.cancel()
             guard self.activeUsages.contains(usage) || self.nonRepeatablePressedButtons.contains(button) else { return }
             self.diagnosticLogger("HID BUTTON recovered reason=missing_release button=\(button.rawValue)")
-            self.repeatTimers.removeValue(forKey: usage)?.cancel()
+            self.cancelRepeat(for: usage)
             self.doubleClickTimers.removeValue(forKey: button)?.cancel()
             self.longPressTimers.removeValue(forKey: button)?.cancel()
             self.gestureRecognizer.cancel(button)
@@ -1058,7 +1055,8 @@ final class HIDRemoteMonitor {
     ) -> Bool {
         guard !Self.shouldRepeat(
             action: action,
-            frontmostBundleIdentifier: frontmostBundleIdentifier
+            frontmostBundleIdentifier: frontmostBundleIdentifier,
+            enabled: settings.allowsHoldRepeat(for: button, profileID: profileID)
         ) else { return true }
         guard !allowsRapidPress else {
             finishNonRepeatablePress(button)
@@ -1072,9 +1070,10 @@ final class HIDRemoteMonitor {
 
     nonisolated static func shouldRepeat(
         action: ButtonAction,
-        frontmostBundleIdentifier: String?
+        frontmostBundleIdentifier: String?,
+        enabled: Bool
     ) -> Bool {
-        guard action.allowsRepeat else { return false }
+        guard enabled, action != .disabled else { return false }
         guard frontmostBundleIdentifier == PresetApplication.remoteMic.bundleIdentifier else {
             return true
         }
@@ -1091,6 +1090,7 @@ final class HIDRemoteMonitor {
               !appSwitcherSession.isActive,
               !recognizesDoubleClick,
               !recognizesLongPress,
+              settings.allowsHoldRepeat(for: button, profileID: profileID),
               frontmostBundleIdentifier() != PresetApplication.remoteMic.bundleIdentifier
         else { return false }
         return (button == .left && action == .arrowLeft) ||
@@ -1114,37 +1114,47 @@ final class HIDRemoteMonitor {
         nonRepeatablePressedButtons.remove(button)
     }
 
+    private func cancelRepeat(for usage: UInt16) {
+        repeatTokens.removeValue(forKey: usage)
+        repeatTimers.removeValue(forKey: usage)?.cancel()
+    }
+
     private func startRepeatIfNeeded(
         usage: UInt16,
         button: RemoteButton,
         action: ButtonAction
     ) {
-        guard let interval = HIDRemoteTiming.repeatIntervalMilliseconds(for: button) else { return }
+        let interval = HIDRemoteTiming.repeatIntervalMilliseconds(for: action)
         guard
-            !settings.hasSecondaryAction(for: button, profileID: profileID),
             action != .disabled,
-            action != .appSwitcher,
             Self.shouldRepeat(
                 action: action,
-                frontmostBundleIdentifier: frontmostBundleIdentifier()
+                frontmostBundleIdentifier: frontmostBundleIdentifier(),
+                enabled: settings.allowsHoldRepeat(for: button, profileID: profileID)
             )
         else { return }
 
+        cancelRepeat(for: usage)
+        let token = UUID()
+        repeatTokens[usage] = token
         let timer = scheduler.schedule(
             afterMilliseconds: HIDRemoteTiming.repeatStartMilliseconds,
             repeatingEveryMilliseconds: interval
         ) { [weak self] in
-            guard let self else { return }
+            guard let self, self.repeatTokens[usage] == token else { return }
             guard self.activeUsages.contains(usage) else {
-                self.repeatTimers.removeValue(forKey: usage)?.cancel()
+                self.cancelRepeat(for: usage)
                 return
             }
-            if self.settings.hasSecondaryAction(for: button, profileID: self.profileID) ||
-                !Self.shouldRepeat(
-                    action: action,
-                    frontmostBundleIdentifier: self.frontmostBundleIdentifier()
+            let configured = self.settings.configuredAction(
+                for: button, trigger: .singleClick, profileID: self.profileID
+            )
+            if !Self.shouldRepeat(
+                    action: configured.action,
+                    frontmostBundleIdentifier: self.frontmostBundleIdentifier(),
+                    enabled: self.settings.allowsHoldRepeat(for: button, profileID: self.profileID)
                 ) {
-                self.repeatTimers.removeValue(forKey: usage)?.cancel()
+                self.cancelRepeat(for: usage)
                 return
             }
             guard self.runtimePermissionsAreValid() else {
@@ -1152,15 +1162,16 @@ final class HIDRemoteMonitor {
                 return
             }
             guard self.mappingDeliveryIsSafe else {
-                self.repeatTimers.removeValue(forKey: usage)?.cancel()
+                self.cancelRepeat(for: usage)
                 self.pauseForUnavailableNativeFilter()
                 return
             }
-            let configured = self.settings.configuredAction(
-                for: button, trigger: .singleClick, profileID: self.profileID
-            )
-            if !self.actionPerformer(button, .singleClick, configured) {
-                self.releaseForRevokedPermissions()
+            // A hold has won over the deferred click; release must not emit another click.
+            self.gestureRecognizer.cancel(button)
+            self.doubleClickTimers.removeValue(forKey: button)?.cancel()
+            self.longPressTimers.removeValue(forKey: button)?.cancel()
+            if !self.performConfiguredAction(for: button, trigger: .singleClick) {
+                self.cancelRepeat(for: usage)
             }
         }
         repeatTimers[usage] = timer
@@ -1399,6 +1410,7 @@ final class HIDRemoteMonitor {
     func cancelPendingButtonActions() {
         repeatTimers.values.forEach { $0.cancel() }
         repeatTimers.removeAll()
+        repeatTokens.removeAll()
         nonRepeatableReleaseTimers.values.forEach { $0.cancel() }
         nonRepeatableReleaseTimers.removeAll()
         nonRepeatablePressedButtons.removeAll()
@@ -1428,6 +1440,7 @@ final class HIDRemoteMonitor {
         }
         repeatTimers.values.forEach { $0.cancel() }
         repeatTimers.removeAll()
+        repeatTokens.removeAll()
         nativePassthroughUsages.removeAll()
         usageExpiryTimers.values.forEach { $0.cancel() }
         usageExpiryTimers.removeAll()

@@ -417,11 +417,11 @@
 "button_mapping.voice_button.detail" = "Hold to talk. Choose Fn/Globe, Left or Right Command, or Left or Right Option as the trigger key. The voice button is separate from other button actions.";
 "button_mapping.action.not_set" = "Not Set";
 "button_mapping.single_click.help" = "Runs after one press. It waits briefly when a double-click action is set.";
-"button_mapping.double_click.effect" = "A single press waits briefly to distinguish it from a double press. Hold-to-repeat is disabled.";
+"button_mapping.double_click.effect" = "A single press waits briefly to distinguish it from a double press. Long press can still use a separate action or Hold to Repeat.";
 "button_mapping.long_press.effect" = "Setting a long-press action disables hold-to-repeat for this button.";
 "button_mapping.rapid_press" = "Allow Rapid Repeated Presses";
 "button_mapping.rapid_press_hint_short" = "Every quick press runs the action instead of only the first one.";
-"button_mapping.rapid_press_help" = "By default, actions that do not support hold-to-repeat run once until the button has been released for a moment. Enable this to run an action on every quick press. Holding the button may then repeat the action.";
+"button_mapping.rapid_press_help" = "By default, buttons not set to Hold to Repeat run once until they have been released for a moment. Enable this to run an action on every quick press. Holding the button may then repeat the action.";
 "common.suffix.not_installed" = " (Not installed)";
 "common.suffix.experimental_disabled" = " (Experiment disabled)";
 "shortcut.action.record" = "Click to Record a Shortcut";
@@ -1307,3 +1307,6 @@
 "common_phrases.restore_clipboard" = "Restore Previous Clipboard";
 "common_phrases.clipboard_restored" = "Previous clipboard restored.";
 "common_phrases.restore_clipboard_hint" = "Successful paste keeps the phrase on the clipboard. Restore the previous clipboard here; a newer copy is never overwritten.";
+
+"action.repeat_single_click" = "Hold to Repeat";
+"button_mapping.hold_repeat.help" = "Choose Hold to Repeat to repeat the single-press action after holding for about 0.35 seconds, stopping on release. Choose another action below to run it once on a long press. Double-press settings remain independent.";

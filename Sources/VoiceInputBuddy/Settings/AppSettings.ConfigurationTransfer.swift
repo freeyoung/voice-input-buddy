@@ -118,7 +118,7 @@ extension AppSettings {
         let importedBindings = Dictionary(
             uniqueKeysWithValues: configuration.buttonBindings
                 .compactMap { key, value -> (RemoteButton, ButtonAction)? in
-                    guard let button = RemoteButton(rawValue: key) else {
+                    guard let button = RemoteButton(rawValue: key), value != .repeatSingleClick else {
                         rejected.insert(Keys.buttonBindings)
                         return nil
                     }
@@ -169,6 +169,7 @@ extension AppSettings {
                         uniqueKeysWithValues: bindings.compactMap {
                             triggerKey, binding -> (ButtonTrigger, ConfiguredButtonAction)? in
                             guard let trigger = ButtonTrigger(rawValue: triggerKey),
+                                  binding.action != .repeatSingleClick || trigger == .longPress,
                                   let validated = Self.validatedConfiguredAction(binding),
                                   binding.applicationProfileID.map(availableApplicationIDs.contains) ?? true
                             else {

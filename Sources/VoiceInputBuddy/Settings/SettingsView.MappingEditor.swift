@@ -15,11 +15,28 @@ extension SettingsView {
             installedBundleIdentifiers: installedBundleIdentifiers,
             current: configured.action,
             experimentalContinuousRecordingEnabled: settings.experimentalContinuousRecordingEnabled
-        ).filter { $0 != .disabled }
+        ).filter { $0 != .disabled && $0 != .repeatSingleClick }
         let isManagedPowerAction = button == .power &&
             trigger == .singleClick &&
             settings.experimentalContinuousRecordingEnabled
         return VStack(alignment: .leading, spacing: 16) {
+            if trigger == .longPress {
+                Button {
+                    setMappingAction(.repeatSingleClick, for: button, trigger: .longPress)
+                    shortcutCaptureTarget = nil
+                    applicationShortcutCaptureProfileID = nil
+                } label: {
+                    Label(localization.text("action.repeat_single_click"), systemImage:
+                        configured.action == .repeatSingleClick ? "checkmark.circle.fill" : "circle")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("button-mapping.hold-repeat")
+                Text(localization.text("button_mapping.hold_repeat.help"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
             mappingActionFilterControl
 
             ForEach(ButtonActionCategory.allCases.filter(mappingActionFilter.includes)) { category in
@@ -58,7 +75,7 @@ extension SettingsView {
 
             if trigger == .singleClick,
                configured.action != .disabled,
-               !configured.action.allowsRepeat {
+               !settings.allowsHoldRepeat(for: button) {
                 mappingRapidPressControl(button: button)
             }
 
@@ -70,7 +87,7 @@ extension SettingsView {
                 Text(localization.text("button_mapping.double_click.effect"))
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)
-            } else if trigger == .longPress && configured.action != .disabled {
+            } else if trigger == .longPress && configured.action != .disabled && configured.action != .repeatSingleClick {
                 Text(localization.text("button_mapping.long_press.effect"))
                     .font(.system(size: 12))
                     .foregroundStyle(.orange)

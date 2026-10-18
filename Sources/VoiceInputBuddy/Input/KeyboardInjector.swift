@@ -395,7 +395,7 @@ enum KeyboardInjector {
         guard accessibilityTrusted() else { return false }
 
         switch action {
-        case .disabled:
+        case .disabled, .repeatSingleClick:
             return true
         case .escape:
             keyPoster(53, [])
