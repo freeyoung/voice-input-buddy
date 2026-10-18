@@ -364,6 +364,10 @@ final class VirtualAudioOutput {
         cachedOutputState.ready
     }
 
+    var actualDevice: AudioDeviceInfo? {
+        cachedOutputState.actualDevice
+    }
+
     /// Schedules the test tone and reports actual playback completion via `scheduleBuffer`'s
     /// `.dataPlayedBack` callback rather than a fixed timer. `completion` receives `true` only
     /// when the tone finished sounding; `false` if it was cut short (device torn down, real

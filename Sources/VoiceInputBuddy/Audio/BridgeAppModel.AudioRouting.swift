@@ -257,6 +257,7 @@ extension BridgeAppModel {
                         "ready=\(self.isAudioOutputReady) selected_available=\(self.selectedAudioDeviceIsAvailable) " +
                         "state={\(self.audio.output.diagnosticState())}"
                 )
+                self.updateVirtualAudioDeviceObservation()
                 completion(configured)
             }
         }
@@ -304,13 +305,25 @@ extension BridgeAppModel {
 
     @discardableResult
     func ensureVirtualAudioOutputReady(reason: String) -> Bool {
-        isAudioOutputReady = audio.output.isReadyForTestTone
-        guard !isAudioOutputReady else {
-            AppLogger.shared.write(
-                "AUDIO HEALTH ready reason=\(reason) state={\(audio.output.diagnosticState())}"
-            )
-            return true
+        if audio.output.isReadyForTestTone {
+            if let device = audio.output.actualDevice ?? audio.output.selectedDevice ?? audioDevices.first(where: { $0.uid == settings.selectedAudioDeviceUID }) {
+                let snapshot = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: device)
+                if !snapshot.requiresAudibilityRepair {
+                    isAudioOutputReady = true
+                    AppLogger.shared.write(
+                        "AUDIO HEALTH ready reason=\(reason) state={\(audio.output.diagnosticState())}"
+                    )
+                    return true
+                }
+            } else {
+                isAudioOutputReady = true
+                AppLogger.shared.write(
+                    "AUDIO HEALTH ready reason=\(reason) state={\(audio.output.diagnosticState())}"
+                )
+                return true
+            }
         }
+        isAudioOutputReady = false
         AppLogger.shared.write(
             "AUDIO HEALTH stale reason=\(reason) state={\(audio.output.diagnosticState())}"
         )
@@ -323,14 +336,63 @@ extension BridgeAppModel {
         completion: @escaping (Bool) -> Void
     ) {
         if audio.output.isReadyForTestTone {
-            isAudioOutputReady = true
-            completion(true)
-            return
+            if let device = audio.output.actualDevice ?? audio.output.selectedDevice ?? audioDevices.first(where: { $0.uid == settings.selectedAudioDeviceUID }) {
+                let snapshot = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: device)
+                if !snapshot.requiresAudibilityRepair {
+                    isAudioOutputReady = true
+                    completion(true)
+                    return
+                }
+            } else {
+                isAudioOutputReady = true
+                completion(true)
+                return
+            }
         }
+        isAudioOutputReady = false
         AppLogger.shared.write(
             "AUDIO HEALTH stale reason=\(reason) state={\(audio.output.diagnosticState())}"
         )
         configureVirtualAudioOutput(reason: reason, completion: completion)
+    }
+
+    func updateVirtualAudioDeviceObservation() {
+        audio.stopObservingVirtualDevice()
+        guard let listener = audio.registeredListener else { return }
+        guard let device = audio.output.actualDevice ?? audio.output.selectedDevice ?? audioDevices.first(where: { $0.uid == settings.selectedAudioDeviceUID }) else { return }
+        let deviceID = device.id
+        guard deviceID != AudioDeviceID(kAudioObjectUnknown), deviceID != 0 else { return }
+
+        let propertyConfigs: [(AudioObjectPropertySelector, AudioObjectPropertyScope)] = [
+            (kAudioDevicePropertyMute, kAudioDevicePropertyScopeInput),
+            (kAudioDevicePropertyMute, kAudioDevicePropertyScopeOutput),
+            (kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyScopeInput),
+            (kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyScopeOutput),
+            (kAudioDevicePropertyDeviceIsAlive, kAudioObjectPropertyScopeGlobal),
+        ]
+
+        for (selector, scope) in propertyConfigs {
+            var address = AudioObjectPropertyAddress(
+                mSelector: selector,
+                mScope: scope,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            guard AudioObjectHasProperty(deviceID, &address) else { continue }
+            let result = AudioObjectAddPropertyListenerBlock(
+                deviceID,
+                &address,
+                audio.hardwareListenerQueue,
+                listener
+            )
+            if result == noErr {
+                audio.observedDeviceProperties.append((objectID: deviceID, address: address))
+            } else {
+                AppLogger.shared.write(
+                    "AUDIO RECOVERY device_listener_failed selector=\(selector) scope=\(scope) " +
+                        AppLogger.errorFields(domain: "os_status", code: Int(result))
+                )
+            }
+        }
     }
 
     private func startObservingAudioHardware() {
@@ -362,6 +424,7 @@ extension BridgeAppModel {
                 )
             }
         }
+        updateVirtualAudioDeviceObservation()
         AppLogger.shared.write("AUDIO ROUTE_MONITOR started properties=\(Self.audioHardwarePropertyNames(for: audio.observedHardwareAddresses))")
     }
 
@@ -386,6 +449,9 @@ extension BridgeAppModel {
                     "AUDIO RECOVERY ignored reason=\(reason) detail=\(details) explicit_output_unchanged"
                 )
                 return
+            }
+            if details.contains("device_mute") || details.contains("device_volume") {
+                self.isAudioOutputReady = false
             }
             let configurationHealthy = self.audio.output.isConfigurationHealthyForDiagnostics
             guard !VirtualAudioRecoveryPolicy.shouldIgnoreDefaultSystemOutputChange(
@@ -557,6 +623,12 @@ extension BridgeAppModel {
             return "default_output"
         case kAudioHardwarePropertyDefaultSystemOutputDevice:
             return "default_system_output"
+        case kAudioDevicePropertyMute:
+            return "device_mute"
+        case kAudioDevicePropertyVolumeScalar:
+            return "device_volume"
+        case kAudioDevicePropertyDeviceIsAlive:
+            return "device_is_alive"
         default:
             return "selector_\(selector)"
         }
