@@ -141,7 +141,7 @@ validated Xiaomi admission catalog remains separate, so a planned Google model
 cannot accidentally connect through the Xiaomi bridge. Third-party replacement
 remotes need individual validation.
 
-素材维护见 [artwork.md](artwork.md)，官方外观参考见[示意图说明](../Resources/RemoteIllustrations/README.md)。
+型号、兼容性和配对说明见[遥控器说明](remote-device-preparation.md)，素材维护见 [artwork.md](artwork.md)，官方外观参考见[示意图说明](../Resources/RemoteIllustrations/README.md)。
 
 小米 DIS 型号 RC001 对应遥控器 2，RC003 对应遥控器 2 Pro；两款使用相同的普通按键布局，语音键单独处理。小米与 G9N9N 当前均解码为 16 kHz PCM，经固定虚拟麦克风输出；使用 ATVV 服务不代表某个新型号已经通过验证。
 
