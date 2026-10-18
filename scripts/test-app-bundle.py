@@ -68,6 +68,9 @@ class AppBundleTests(unittest.TestCase):
         self.assertFalse((self.app / 'Contents/Resources/AppIcon.iconset').exists())
         self.assertFalse((self.app / 'Contents/Resources/AppIcon.png').exists())
         self.assertTrue((self.app / 'Contents/Resources/AppIcon.icns').exists())
+        self.assertFalse((self.app / 'Contents/Resources/RemoteIllustrations').exists())
+        for name in ('ChromecastG9N9NIllustration', 'GoogleStreamerGY3LEIllustration', 'SiriRemoteA2854Illustration'):
+            self.assertTrue((self.app / f'Contents/Resources/{name}.png').exists())
         phrases = json.loads((self.app / 'Contents/Resources/CommonPhrases.json').read_text())
         self.assertEqual(len(phrases['entries']), 12)
         self.assertEqual(phrases['bindings']['ok'], 'builtin-001')
