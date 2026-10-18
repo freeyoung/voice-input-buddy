@@ -6,6 +6,11 @@ import Foundation
 
 extension KeyboardInjector {
     static func postKey(code: CGKeyCode, flags: CGEventFlags = []) {
+        if !flags.isEmpty {
+            _ = ShortcutEventSequence.send(keyCode: code, modifiers: flags,
+                hardwareFlags: KeyboardHardwareModifierPolicy.current, eventPoster: ShortcutEventSequence.post)
+            return
+        }
         guard let source = CGEventSource(stateID: .privateState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)

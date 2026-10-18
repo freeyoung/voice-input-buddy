@@ -17,6 +17,22 @@ struct ShortcutSequenceTests {
         }
     }
 
+    @Test(arguments: [ButtonAction.commandReturn, .shiftReturn, .commandCopy, .commandPaste,
+        .commandClose, .commandQuit, .commandCut, .commandSelectAll, .commandUndo,
+        .commandRedo, .commandFind, .commandSave, .commandDelete, .showDesktop])
+    func builtInShortcutsUseModifierEdgesAndPropagateSubmissionFailure(action: ButtonAction) {
+        var posted: [Posted] = []
+        #expect(KeyboardInjector.send(action, accessibilityTrusted: { true }, secureInputEnabled: { false },
+            shortcutEventPoster: { posted.append(Posted($0)); return true }, shortcutHardwareFlags: { [] }))
+        #expect(posted.first?.type == .flagsChanged)
+        #expect(posted.last?.type == .flagsChanged)
+        #expect(posted.last?.flags.isEmpty == true)
+        #expect(posted.filter { $0.type == .keyDown }.count == 1)
+        #expect(posted.filter { $0.type == .keyUp }.count == 1)
+        #expect(!KeyboardInjector.send(action, accessibilityTrusted: { true }, secureInputEnabled: { false },
+            shortcutEventPoster: { _ in false }, shortcutHardwareFlags: { [] }))
+    }
+
     @Test func standaloneModifierRetriesFailedReleaseWithoutAnotherPress() {
         var downs: [Bool] = []
         let submitted = KeyboardInjector.send(.customShortcut, shortcut: StandaloneKeyboardModifier.leftCommand.shortcut,

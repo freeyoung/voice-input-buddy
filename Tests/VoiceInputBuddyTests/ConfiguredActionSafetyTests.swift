@@ -6,14 +6,17 @@ struct ConfiguredActionSafetyTests {
     @Test(arguments: [ButtonAction.commandPaste, .commandCopy, .commandCut, .returnKey, .customShortcut])
     func sensitiveActionsAreRejectedBeforeSubmittingEvents(action: ButtonAction) {
         #expect(!KeyboardInjector.send(action, accessibilityTrusted: { true }, secureInputEnabled: { true },
-            keyPoster: { _, _ in Issue.record("Blocked action posted an event") }))
+            keyPoster: { _, _ in Issue.record("Blocked action posted an event") },
+            shortcutEventPoster: { _ in Issue.record("Blocked shortcut posted an event"); return false }))
     }
 
     @Test func ordinaryNavigationAndMediaRemainAvailableAndPolicyIsReadAtSubmission() {
         var secure = false
         var keys = 0
         let send = { KeyboardInjector.send(.commandPaste, accessibilityTrusted: { true },
-            secureInputEnabled: { secure }, keyPoster: { _, _ in keys += 1 }) }
+            secureInputEnabled: { secure }, shortcutEventPoster: { event in
+                if event.type == .keyDown { keys += 1 }; return true
+            }, shortcutHardwareFlags: { [] }) }
         #expect(send())
         secure = true
         #expect(!send())

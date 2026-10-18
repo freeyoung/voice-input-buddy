@@ -402,31 +402,44 @@ enum KeyboardInjector {
         case .returnKey:
             keyPoster(36, [])
         case .commandReturn:
-            keyPoster(36, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 36, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .shiftReturn:
-            keyPoster(36, .maskShift)
+            return ShortcutEventSequence.send(keyCode: 36, modifiers: .maskShift,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandCopy:
-            keyPoster(8, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 8, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandPaste:
-            keyPoster(9, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 9, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandClose:
-            keyPoster(13, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 13, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandQuit:
-            keyPoster(12, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 12, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandCut:
-            keyPoster(7, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 7, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandSelectAll:
-            keyPoster(0, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 0, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandUndo:
-            keyPoster(6, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 6, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandRedo:
-            keyPoster(6, [.maskCommand, .maskShift])
+            return ShortcutEventSequence.send(keyCode: 6, modifiers: [.maskCommand, .maskShift],
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandFind:
-            keyPoster(3, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 3, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandSave:
-            keyPoster(1, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 1, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .commandDelete:
-            keyPoster(51, .maskCommand)
+            return ShortcutEventSequence.send(keyCode: 51, modifiers: .maskCommand,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .arrowUp:
             keyPoster(126, [])
         case .arrowDown:
@@ -442,7 +455,8 @@ enum KeyboardInjector {
         case .deleteBackward:
             keyPoster(51, [])
         case .showDesktop:
-            keyPoster(103, .maskSecondaryFn)
+            return ShortcutEventSequence.send(keyCode: 103, modifiers: .maskSecondaryFn,
+                hardwareFlags: shortcutHardwareFlags, eventPoster: shortcutEventPoster)
         case .contextMenu:
             keyPoster(contextualMenuKeyCode, [])
         case .appSwitcher:
