@@ -177,6 +177,7 @@ final class BluetoothRemoteBridge: NSObject {
     private let disconnectWatchdog = BluetoothDisconnectWatchdog()
     private var capabilitiesRequested = false
     private var capabilitiesConfirmed = false
+    private var modelFormatResolved = false
     private var requestedReconnectDelay: TimeInterval?
     private var reconnectPolicy = BluetoothReconnectPolicy()
     private var currentAttemptUsesCachedTarget = false
@@ -834,6 +835,7 @@ final class BluetoothRemoteBridge: NSObject {
         initializationTimeoutWorkItem = nil
         capabilitiesRequested = false
         capabilitiesConfirmed = false
+        modelFormatResolved = false
         googleReadiness = G9N9NReadiness()
         identifiedModel = nil
         reportedHIDIdentity = nil
@@ -1255,8 +1257,13 @@ final class BluetoothRemoteBridge: NSObject {
     }
 
     private func finishInitializationIfReady(generation: UInt64) {
-        guard capabilitiesConfirmed, !googleCandidate || googleReadiness.isReady,
-              lifecycle == .awaitingCapabilities(generation), let peripheral else { return }
+        guard ATVVSessionGate.canTransitionToReady(
+            capabilitiesConfirmed: capabilitiesConfirmed,
+            isGoogleCandidate: googleCandidate,
+            googleReady: googleReadiness.isReady,
+            modelFormatResolved: modelFormatResolved
+        ),
+        lifecycle == .awaitingCapabilities(generation), let peripheral else { return }
         initializationTimeoutWorkItem?.cancel()
         initializationTimeoutWorkItem = nil
         reconnectPolicy.reset()
@@ -1644,6 +1651,9 @@ extension BluetoothRemoteBridge {
             $0.uuid == deviceInformationServiceUUID
         }) {
             peripheral.discoverCharacteristics([modelNumberUUID, pnpIDUUID, firmwareRevisionUUID], for: deviceInformationService)
+        } else if !googleCandidate {
+            modelFormatResolved = true
+            finishInitializationIfReady(generation: generation)
         }
     }
 
@@ -1722,9 +1732,19 @@ extension BluetoothRemoteBridge {
                     "BLE MODEL characteristic_discovery_failed " +
                         AppLogger.errorFields(error)
                 )
+                if !googleCandidate {
+                    modelFormatResolved = true
+                    finishInitializationIfReady(generation: generation)
+                }
                 return
             }
-            for characteristic in service.characteristics ?? [] where
+            let characteristics = service.characteristics ?? []
+            let hasModelNumber = characteristics.contains(where: { $0.uuid == modelNumberUUID })
+            if !hasModelNumber && !googleCandidate {
+                modelFormatResolved = true
+                finishInitializationIfReady(generation: generation)
+            }
+            for characteristic in characteristics where
                 characteristic.uuid == modelNumberUUID || characteristic.uuid == pnpIDUUID ||
                 characteristic.uuid == firmwareRevisionUUID {
                 peripheral.readValue(for: characteristic)
@@ -1865,6 +1885,10 @@ extension BluetoothRemoteBridge {
                 AppLogger.shared.write(
                     "BLE MODEL read_failed " + AppLogger.errorFields(error)
                 )
+                if !googleCandidate {
+                    modelFormatResolved = true
+                    finishInitializationIfReady(generation: generation)
+                }
             }
             return
         }
@@ -1903,6 +1927,10 @@ extension BluetoothRemoteBridge {
             deviceInformation.modelNumber = RemoteDeviceInformation.deviceString(data)
             guard let modelNumber = String(data: data, encoding: .utf8) else {
                 AppLogger.shared.write("BLE MODEL unreadable")
+                if !googleCandidate {
+                    modelFormatResolved = true
+                    finishInitializationIfReady(generation: generation)
+                }
                 return
             }
             let normalizedModelNumber = modelNumber.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
@@ -1923,17 +1951,19 @@ extension BluetoothRemoteBridge {
                 // default high-first order is required for intelligible audio.
                 AppLogger.shared.write("BLE MODEL ARN9 adpcm=low-nibble-first")
             }
-            guard let model = RemoteModel.identified(by: modelNumber) else {
+            modelFormatResolved = true
+            if let model = RemoteModel.identified(by: modelNumber) {
+                // 原始型号串必须一起记：广播名与型号**不是**一一对应（本机这台广播名是
+                // 「小米蓝牙语音遥控器」，DIS 报的却是 RC003），只有原始串能支撑型号目录。
+                AppLogger.shared.write(
+                    "BLE MODEL identified=\(model.rawValue) modelNumber=\(normalizedModelNumber)"
+                )
+                identifiedModel = model
+                delegate?.bluetoothBridge(self, didIdentifyRemoteModel: model)
+            } else {
                 AppLogger.shared.write("BLE MODEL unrecognized modelNumber=\(normalizedModelNumber)")
-                return
             }
-            // 原始型号串必须一起记：广播名与型号**不是**一一对应（本机这台广播名是
-            // 「小米蓝牙语音遥控器」，DIS 报的却是 RC003），只有原始串能支撑型号目录。
-            AppLogger.shared.write(
-                "BLE MODEL identified=\(model.rawValue) modelNumber=\(normalizedModelNumber)"
-            )
-            identifiedModel = model
-            delegate?.bluetoothBridge(self, didIdentifyRemoteModel: model)
+            finishInitializationIfReady(generation: generation)
             return
         }
         if characteristic.uuid == controlUUID {
