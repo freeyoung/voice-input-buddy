@@ -63,6 +63,7 @@ struct OnboardingTranscriptEditor: NSViewRepresentable {
         coordinator.detach()
     }
 
+    @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
         private var parent: OnboardingTranscriptEditor
         private weak var scrollView: OnboardingTranscriptScrollView?

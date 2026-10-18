@@ -229,7 +229,9 @@ final class BluetoothRemoteBridge: NSObject {
     private var microphoneOpened = false
     private var microphoneClosePending = false
     private var microphoneCloseSessionID: UInt8?
-    private var microphoneCloseWatchdog: DispatchWorkItem?
+    private var microphoneCloseWatchdog: ScheduledOperation?
+    private let scheduleMicrophoneClose: OperationScheduler
+    private var microphoneCloseWatchdogToken: UUID?
     private var cancelledMicrophoneOpenAt: TimeInterval?
     private var sessionID: UInt8 = 0
     private var activeStreamSessionID: UInt8?
@@ -323,10 +325,12 @@ final class BluetoothRemoteBridge: NSObject {
         targetIdentifier: UUID? = nil,
         allowsG9N9N: Bool = false,
         audioPipeline: BluetoothAudioPipeline = BluetoothAudioPipeline(),
+        scheduleMicrophoneClose: @escaping OperationScheduler = ScheduledOperation.mainQueue,
         excludedIdentifiers: @escaping () -> Set<UUID> = { [] }
     ) {
         self.settings = settings
         self.audioDecoder = audioPipeline
+        self.scheduleMicrophoneClose = scheduleMicrophoneClose
         self.allowsG9N9N = allowsG9N9N
         self.delegate = delegate
         self.targetIdentifier = targetIdentifier
@@ -575,7 +579,8 @@ final class BluetoothRemoteBridge: NSObject {
                   phase: lifecycle,
                   generation: generation,
                   capabilitiesConfirmed: capabilitiesConfirmed,
-                  sampleRate: capabilities.sampleRate
+                  sampleRate: capabilities.sampleRate,
+                  microphoneClosePending: microphoneClosePending
               ),
               !microphoneOpened,
               !streaming,
@@ -653,24 +658,27 @@ final class BluetoothRemoteBridge: NSObject {
     private func scheduleMicrophoneCloseWatchdog(for session: UInt8) {
         guard microphoneCloseWatchdog == nil else { return }
         let generation = currentGeneration()
-        let work = DispatchWorkItem { [weak self] in
+        let token = UUID()
+        microphoneCloseWatchdogToken = token
+        microphoneCloseWatchdog = scheduleMicrophoneClose(5) { [weak self] in
             guard let self,
                   self.microphoneClosePending,
+                  self.microphoneCloseWatchdogToken == token,
                   self.currentGeneration() == generation,
                   self.microphoneCloseSessionID == session
             else { return }
             AppLogger.shared.write("ATVV MIC_CLOSE timeout reason=close_retry_exhausted session=\(session)")
+            self.microphoneOpened = false
             self.microphoneClosePending = false
             self.microphoneCloseSessionID = nil
             self.cancelMicrophoneCloseWatchdog()
             self.stopStreaming()
             self.scheduleReconnect()
         }
-        microphoneCloseWatchdog = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: work)
     }
 
     private func cancelMicrophoneCloseWatchdog() {
+        microphoneCloseWatchdogToken = nil
         microphoneCloseWatchdog?.cancel()
         microphoneCloseWatchdog = nil
     }
@@ -1216,7 +1224,8 @@ final class BluetoothRemoteBridge: NSObject {
                 phase: lifecycle,
                 generation: generation,
                 capabilitiesConfirmed: capabilitiesConfirmed,
-                sampleRate: capabilities.sampleRate
+                sampleRate: capabilities.sampleRate,
+                microphoneClosePending: microphoneClosePending
             ) else {
                 AppLogger.shared.write("ATVV STREAM_START ignored_not_ready")
                 return
@@ -1364,7 +1373,8 @@ final class BluetoothRemoteBridge: NSObject {
                 phase: lifecycle,
                 generation: generation,
                 capabilitiesConfirmed: capabilitiesConfirmed,
-                sampleRate: capabilities.sampleRate
+                sampleRate: capabilities.sampleRate,
+                microphoneClosePending: microphoneClosePending
               )
         else {
             AppLogger.shared.write("ATVV AUDIO ignored_not_ready")
@@ -1453,7 +1463,6 @@ extension BluetoothRemoteBridge: @preconcurrency CBCentralManagerDelegate {
                 central: central,
                 generation: generation
             )
-            resetSession()
             state = .bluetoothUnavailable(LocalizedMessage("bluetooth.status.permission_denied"))
         case .unsupported:
             applyCentralRecovery(

@@ -208,6 +208,28 @@ struct ProductDeepLinkTests {
 struct ScheduledVoiceTaskLifetimeTests {
     private final class Probe {}
 
+    @Test func cancellationHandleCanCrossQueuesWithoutExecutingScheduledWork() async {
+        var queued: DispatchWorkItem?
+        var calls = 0
+        let task = ScheduledOperation.scheduled(after: 1, enqueue: { _, item in queued = item }) { calls += 1 }
+        await Task.detached { task.cancel() }.value
+        queued?.perform()
+        #expect(calls == 0)
+    }
+
+    @Test func mainQueueCleanupFromBackgroundCancellationRunsExactlyOnceOnMain() async {
+        var calls = 0
+        await withCheckedContinuation { continuation in
+            let task = ScheduledOperation.mainQueueCancellation {
+                #expect(Thread.isMainThread)
+                calls += 1
+                continuation.resume()
+            }
+            DispatchQueue.global().async { task.cancel(); task.cancel() }
+        }
+        #expect(calls == 1)
+    }
+
     @Test func completedTaskReleasesCapturedObjects() {
         var probe: Probe? = Probe()
         weak let observed = probe

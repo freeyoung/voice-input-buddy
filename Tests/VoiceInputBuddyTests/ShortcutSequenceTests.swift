@@ -3,6 +3,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Shortcut modifier ownership")
+@MainActor
 struct ShortcutSequenceTests {
     private struct Posted {
         let code: UInt16
@@ -15,6 +16,22 @@ struct ShortcutSequenceTests {
             flags = event.flags
             marker = event.getIntegerValueField(.eventSourceUserData)
         }
+    }
+
+    @Test(arguments: [ButtonAction.commandReturn, .shiftReturn, .commandCopy, .commandPaste,
+        .commandClose, .commandQuit, .commandCut, .commandSelectAll, .commandUndo,
+        .commandRedo, .commandFind, .commandSave, .commandDelete, .showDesktop])
+    func builtInShortcutsUseModifierEdgesAndPropagateSubmissionFailure(action: ButtonAction) {
+        var posted: [Posted] = []
+        #expect(KeyboardInjector.send(action, accessibilityTrusted: { true }, secureInputEnabled: { false },
+            shortcutEventPoster: { posted.append(Posted($0)); return true }, shortcutHardwareFlags: { [] }))
+        #expect(posted.first?.type == .flagsChanged)
+        #expect(posted.last?.type == .flagsChanged)
+        #expect(posted.last?.flags.isEmpty == true)
+        #expect(posted.filter { $0.type == .keyDown }.count == 1)
+        #expect(posted.filter { $0.type == .keyUp }.count == 1)
+        #expect(!KeyboardInjector.send(action, accessibilityTrusted: { true }, secureInputEnabled: { false },
+            shortcutEventPoster: { _ in false }, shortcutHardwareFlags: { [] }))
     }
 
     @Test func standaloneModifierRetriesFailedReleaseWithoutAnotherPress() {
@@ -150,6 +167,43 @@ struct ShortcutSequenceTests {
             }, logger: { logs.append($0) }))
         #expect(posted.map(\.code) == [55, 8, 8, 8, 55, 55])
         #expect(logs.last?.contains("cleanup_failed=true") == true)
+    }
+
+    @Test @MainActor func recoveryDefersForPhysicalPressAndOnlyReleasesFailedModifier() {
+        let clock = ControlledTestScheduler()
+        var physical: CGEventFlags = []
+        var posted: [Posted] = []
+        var allowRelease = false
+        #expect(!ShortcutEventSequence.send(keyCode: 8, modifiers: .maskCommand,
+            hardwareFlags: { physical }, eventPoster: { event in
+                posted.append(Posted(event))
+                return event.type != .flagsChanged || event.flags.contains(.maskCommand) || allowRelease
+            }, logger: { _ in }, recoveryScheduler: clock.voiceSchedule))
+        #expect(posted.map(\.code) == [55, 8, 8, 55, 55])
+        physical = [.maskCommand, CGEventFlags(rawValue: 0x0008)]
+        clock.runNext()
+        #expect(posted.count == 5)
+        physical = [.maskShift, CGEventFlags(rawValue: 0x0004)]
+        allowRelease = true
+        clock.runAll()
+        #expect(posted.count == 6)
+        #expect(posted.last?.type == .flagsChanged)
+        #expect(posted.last?.code == 55)
+        #expect(posted.last?.flags == physical)
+        #expect(clock.activeCount == 0)
+    }
+
+    @Test @MainActor func permanentlyFailedCleanupStopsAfterEightAsyncAttempts() {
+        let clock = ControlledTestScheduler()
+        var releases = 0
+        #expect(!ShortcutEventSequence.send(keyCode: 8, modifiers: .maskCommand,
+            hardwareFlags: { [] }, eventPoster: { event in
+                if event.type == .flagsChanged && event.flags.isEmpty { releases += 1; return false }
+                return true
+            }, logger: { _ in }, recoveryScheduler: clock.voiceSchedule))
+        clock.runAll()
+        #expect(releases == 10)
+        #expect(clock.activeCount == 0)
     }
 
 }

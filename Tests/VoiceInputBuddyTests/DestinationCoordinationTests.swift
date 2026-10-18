@@ -3,6 +3,7 @@ import Testing
 @testable import VoiceInputBuddy
 
 @Suite("Voice destination asynchronous boundaries")
+@MainActor
 struct DestinationCoordinationTests {
     private func field(_ app: String = "editor", editable: Bool = true, identity: String = "old") -> VoiceInputDestinationSnapshot {
         VoiceInputDestinationSnapshot(bundleIdentifier: app, role: editable ? "AXTextArea" : "AXButton",

@@ -92,9 +92,10 @@ enum ShortcutEventSequence {
     static func send(
         keyCode: CGKeyCode,
         modifiers requested: CGEventFlags,
-        hardwareFlags: () -> CGEventFlags,
-        eventPoster: (CGEvent) -> Bool,
-        logger: (String) -> Void = { AppLogger.shared.write($0) }
+        hardwareFlags: @escaping () -> CGEventFlags,
+        eventPoster: @escaping (CGEvent) -> Bool,
+        logger: @escaping (String) -> Void = { AppLogger.shared.write($0) },
+        recoveryScheduler: @escaping OperationScheduler = ScheduledOperation.mainQueue
     ) -> Bool {
         lock.lock()
         defer { lock.unlock() }
@@ -172,9 +173,44 @@ enum ShortcutEventSequence {
             if !emit(modifier.key, down: false, modifier: true) {
                 result = false
                 reason = "modifier_up_failed"
-                if !emit(modifier.key, down: false, modifier: true) { cleanupFailed = true }
+                if !emit(modifier.key, down: false, modifier: true) {
+                    cleanupFailed = true
+                    scheduleModifierRelease(modifier, source: source, hardwareFlags: hardwareFlags,
+                        eventPoster: eventPoster, logger: logger, schedule: recoveryScheduler)
+                }
             }
         }
         return result
     }
+    private static func scheduleModifierRelease(
+        _ modifier: SelectedModifier, source: CGEventSource,
+        hardwareFlags: @escaping () -> CGEventFlags, eventPoster: @escaping (CGEvent) -> Bool,
+        logger: @escaping (String) -> Void, schedule: @escaping OperationScheduler, attempt: Int = 0
+    ) {
+        guard attempt < 8 else {
+            logger("SHORTCUT RECOVERY result=exhausted attempts=8")
+            return
+        }
+        _ = schedule(min(1, 0.05 * pow(2, Double(attempt)))) {
+            // Serialize retries with every synchronous shortcut transaction.
+            lock.lock()
+            defer { lock.unlock() }
+            let physical = hardwareFlags()
+            guard let family = modifierFamilies.first(where: { $0.flag == modifier.flag }) else { return }
+            let sides = family.leftDeviceBit.union(family.rightDeviceBit)
+            let held = modifier.deviceBit.isEmpty ? physical.contains(modifier.flag) :
+                physical.contains(modifier.deviceBit) ||
+                    (physical.contains(modifier.flag) && physical.intersection(sides).isEmpty)
+            // A new physical press owns this key until it is released.
+            if !held, let event = CGEvent(keyboardEventSource: source, virtualKey: modifier.key, keyDown: false) {
+                event.type = .flagsChanged
+                event.flags = physical
+                event.setIntegerValueField(.eventSourceUserData, value: KeyboardInjector.syntheticEventMarker)
+                if eventPoster(event) { return }
+            }
+            scheduleModifierRelease(modifier, source: source, hardwareFlags: hardwareFlags,
+                eventPoster: eventPoster, logger: logger, schedule: schedule, attempt: attempt + 1)
+        }
+    }
+
 }

@@ -179,6 +179,7 @@ struct VoiceInputDestinationSnapshot: Equatable {
 
 }
 
+/// Runtime state and snapshot completions are confined to the main queue.
 final class VoiceInputDestinationCoordinator {
     typealias Scheduler = OperationScheduler
     typealias SnapshotProvider = () -> VoiceInputDestinationSnapshot
@@ -317,7 +318,7 @@ final class VoiceInputDestinationCoordinator {
             pendingRequest = request
             onStateChange(.waiting)
             schedulePoll(requestID: request.id)
-            return .waiting(ScheduledOperation { [weak self] in
+            return .waiting(ScheduledOperation.mainQueueCancellation { [weak self] in
                 self?.removeWaiter(requestID: request.id)
             })
         }
@@ -341,7 +342,7 @@ final class VoiceInputDestinationCoordinator {
             pendingRequest = request
             onStateChange(.waiting)
             poll(requestID: request.id)
-            return .waiting(ScheduledOperation { [weak self] in self?.removeWaiter(requestID: request.id) })
+            return .waiting(ScheduledOperation.mainQueueCancellation { [weak self] in self?.removeWaiter(requestID: request.id) })
         }
         directValidationGeneration &+= 1
         let token = directValidationGeneration
@@ -363,7 +364,7 @@ final class VoiceInputDestinationCoordinator {
             }
             completion(result)
         }
-        return .waiting(ScheduledOperation { [weak self] in
+        return .waiting(ScheduledOperation.mainQueueCancellation { [weak self] in
             deadline.cancel()
             if self?.directValidationGeneration == token { self?.directValidationGeneration &+= 1 }
         })

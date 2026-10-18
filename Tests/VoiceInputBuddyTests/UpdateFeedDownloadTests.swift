@@ -52,4 +52,20 @@ struct UpdateFeedDownloadTests {
                 from: URL(string: "https://feed.example.invalid/" + mode)!, session: session)
         }
     }
+    @Test func feedSelectionUsesFullBuildCountAcrossDisplayRollover() async {
+        let stable = URL(string: "https://feed.example.invalid/stable")!
+        let preview = URL(string: "https://feed.example.invalid/preview")!
+        let resolution = await UpdateFeedResolver.resolvePreviewFeed(stableURL: stable, previewURL: preview) { url in
+            let builds = url == stable ? [999] : [1000, 998, 1001]
+            let items = builds.map { count in
+                "<item><sparkle:version>\(count)</sparkle:version>" +
+                    "<sparkle:shortVersionString>v26-10-18.\(String(format: "%03d", count % 1000))</sparkle:shortVersionString></item>"
+            }.joined()
+            return Data("<rss xmlns:sparkle=\"http://www.andymatuschak.org/xml-namespaces/sparkle\"><channel>\(items)</channel></rss>".utf8)
+        }
+        #expect(resolution.selected?.url == preview)
+        #expect(resolution.selected?.buildVersion == 1001)
+        #expect(resolution.selected?.version == "26.10.18.001")
+    }
+
 }

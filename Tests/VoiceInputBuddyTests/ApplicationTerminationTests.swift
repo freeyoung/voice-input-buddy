@@ -32,4 +32,43 @@ struct ApplicationTerminationTests {
         releases[0]()
         #expect(replies == 1)
     }
+    @Test func missingCleanupReplyTimesOutExactlyOnceAndLateCompletionIsIgnored() {
+        let clock = ControlledTestScheduler()
+        let coordinator = ApplicationTerminationCoordinator(schedule: clock.voiceSchedule)
+        var done: (() -> Void)?
+        var replies = 0
+        coordinator.request(timeout: 12, begin: { done = $0 }, reply: { replies += 1 })
+        clock.advance(to: 11_999)
+        #expect(replies == 0)
+        clock.advance(to: 12_000)
+        #expect(replies == 1)
+        done?()
+        #expect(replies == 1)
+        #expect(clock.activeCount == 0)
+    }
+
+    @Test func quitAllowsNormalDrainFallbackBeforeItsFinalDeadline() {
+        let clock = ControlledTestScheduler()
+        let session = VoiceFnTapSessionController(schedule: clock.voiceSchedule,
+            setFunctionKeyPressed: { _ in true }, enqueueAudio: { _ in },
+            drainAudio: { _, _ in }, onFailure: { _ in Issue.record("Unexpected failure") },
+            pendingPlaybackDuration: { 5 })
+        session.setEnabled(true)
+        #expect(session.startVoice())
+        clock.advance(to: 270)
+        let coordinator = ApplicationTerminationCoordinator(schedule: clock.voiceSchedule)
+        var replies = 0
+        coordinator.request(timeout: session.terminationTimeout,
+            begin: { done in session.setEnabled(false) { _ in done() } }, reply: { replies += 1 })
+        let watchdog = clock.tasks.first { $0.delay == UInt64((session.terminationTimeout * 1_000).rounded()) }
+        clock.advance(to: 1_770)
+        #expect(replies == 0)
+        clock.runAll()
+        #expect(session.phase == .idle)
+        #expect(replies == 1)
+        #expect(watchdog?.cancelled == true)
+        watchdog?.fire(includingCancelled: true)
+        #expect(replies == 1)
+    }
+
 }

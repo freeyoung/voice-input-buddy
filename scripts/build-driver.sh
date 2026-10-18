@@ -40,6 +40,8 @@ cp "$source/BlackHole/BlackHole.plist" "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable VoiceInputBuddyMic' "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.zfdang.voice-input-buddy.mic' "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleName Voice Input Buddy Virtual Microphone' "$driver/Contents/Info.plist"
+# HAL driver versions evolve independently of the dated app release.
+# Installer refresh decisions compare driver content fingerprints, not these fields.
 /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 0.1.2' "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 3' "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIconFile BlackHole.icns' "$driver/Contents/Info.plist"

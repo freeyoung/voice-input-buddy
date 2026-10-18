@@ -18,7 +18,9 @@ prepare)
         buddy_check_bundle "$app" com.zfdang.voice-input-buddy
         if [[ "$(/usr/libexec/PlistBuddy -c 'Print :BuddySupportsUninstallPreparation' "$app/Contents/Info.plist" 2>/dev/null || true)" == true ]]; then
             if /usr/bin/codesign --verify --deep --strict "$app" 2>/dev/null; then
-                "$app/Contents/MacOS/VoiceInputBuddy" --unregister-login-item
+                if ! "$app/Contents/MacOS/VoiceInputBuddy" --unregister-login-item; then
+                    echo 'Warning: login-item removal failed; continuing uninstall. Check Login Items in System Settings.' >&2
+                fi
             else
                 echo 'Skipping login-item preparation: app signature is invalid.' >&2
             fi

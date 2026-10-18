@@ -23,6 +23,7 @@ enum UpdateFeedResolver {
     struct ResolvedFeed: Equatable {
         let url: URL
         let version: String
+        let buildVersion: Int
         let isPreRelease: Bool
     }
 
@@ -63,7 +64,7 @@ enum UpdateFeedResolver {
               let rawVersion = environment["VOICE_INPUT_BUDDY_UI_TEST_VERSION"],
               let version = UpdateVersion.normalized(rawVersion)
         else { return nil }
-        return ResolvedFeed(url: url, version: version, isPreRelease: true)
+        return ResolvedFeed(url: url, version: version, buildVersion: 0, isPreRelease: true)
     }
 
     #endif
@@ -74,7 +75,7 @@ enum UpdateFeedResolver {
     ) -> ResolvedFeed? {
         switch (stable, preview) {
         case let (stable?, preview?):
-            return UpdateVersion.isNewer(preview.version, than: stable.version)
+            return preview.buildVersion > stable.buildVersion
                 ? preview
                 : stable
         case let (stable?, nil):
@@ -133,24 +134,18 @@ enum UpdateFeedResolver {
         data: Data,
         isPreRelease: Bool
     ) -> ResolvedFeed? {
-        guard let text = String(data: data, encoding: .utf8),
-              let version = highestAppcastVersion(in: text)
-        else { return nil }
-        return ResolvedFeed(url: url, version: version, isPreRelease: isPreRelease)
-    }
-
-    private static func highestAppcastVersion(in text: String) -> String? {
-        let pattern = #"<sparkle:shortVersionString>\s*([^<]+?)\s*</sparkle:shortVersionString>"#
-        guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        let versions = expression.matches(in: text, range: range).compactMap { match -> String? in
-            guard let versionRange = Range(match.range(at: 1), in: text) else { return nil }
-            return UpdateVersion.normalized(String(text[versionRange]))
+        // Compare full build counts: display suffixes wrap at every thousand commits.
+        guard let document = try? XMLDocument(data: data, options: .nodeLoadExternalEntitiesNever),
+              let items = try? document.nodes(forXPath: "/rss/channel/item") else { return nil }
+        let versions = items.compactMap { node -> ResolvedFeed? in
+            guard let item = node as? XMLElement,
+                  let rawVersion = item.elements(forName: "sparkle:shortVersionString").first?.stringValue,
+                  let version = UpdateVersion.normalized(rawVersion),
+                  let rawBuild = item.elements(forName: "sparkle:version").first?.stringValue,
+                  let build = Int(rawBuild), build > 0 else { return nil }
+            return ResolvedFeed(url: url, version: version, buildVersion: build, isPreRelease: isPreRelease)
         }
-        return versions.reduce(nil) { current, candidate in
-            guard let current else { return candidate }
-            return UpdateVersion.isNewer(candidate, than: current) ? candidate : current
-        }
+        return versions.max { $0.buildVersion < $1.buildVersion }
     }
 
 }

@@ -76,10 +76,10 @@ enum VirtualAudioDeviceLevelPolicy {
 extension VirtualAudioDeviceDiagnosticKind {
     static func classify(_ device: AudioDeviceInfo?) -> Self {
         guard let device else { return .unavailable }
-        if device.uid == "BuddyMic2ch_UID" || device.name == "Voice Input Buddy Mic" {
+        if device.uid == BuddyMicrophoneDevicePolicy.deviceUID {
             return .buddyMic
         }
-        if device.uid == "BlackHole2ch_UID" || device.name == "BlackHole 2ch" {
+        if device.uid == "BlackHole2ch_UID" {
             return .blackHole2ch
         }
         return .other

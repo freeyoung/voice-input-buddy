@@ -73,7 +73,7 @@ struct ProductBoundaryTests {
         let preview = URL(string: "https://voice.zfdang.com/preview/appcast-arm64.xml")!
         let resolution = await UpdateFeedResolver.resolvePreviewFeed(stableURL: stable, previewURL: preview) { url in
             if url == preview { throw URLError(.fileDoesNotExist) }
-            return Data("<sparkle:shortVersionString>v26-10-11.021</sparkle:shortVersionString>".utf8)
+            return Data(#"<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item><sparkle:version>21</sparkle:version><sparkle:shortVersionString>v26-10-11.021</sparkle:shortVersionString></item></channel></rss>"#.utf8)
         }
         #expect(resolution.selected?.url == stable)
         #expect(resolution.selected?.version == "26.10.11.021")

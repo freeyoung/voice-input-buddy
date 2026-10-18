@@ -342,7 +342,7 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        termination.request(begin: { complete in
+        termination.request(timeout: model.voiceFnTapSession.terminationTimeout, begin: { complete in
             model.prepareForTermination()
             statusItem?.button?.title = localization.text("common.action.quitting")
             statusItem?.button?.toolTip = localization.text("common.action.quitting")
@@ -435,9 +435,8 @@ private final class VoiceInputBuddyAppDelegate: NSObject, NSApplicationDelegate,
         ]
         workspaceAudioLifecycleObservers = events.map { name, event in
             notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.model.handleSystemAudioLifecycle(event)
+                MainActor.assumeIsolated {
+                    self?.model.handleSystemAudioLifecycle(event)
                 }
             }
         }

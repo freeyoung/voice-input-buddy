@@ -6,7 +6,7 @@ enum RemoteHIDReportParser {
     static func usages(reportID: UInt32, data: Data) -> Set<UInt16>? {
         guard reportID == 1 else { return nil }
         var bytes = Array(data)
-        if bytes.count == 7, bytes.first == UInt8(reportID) {
+        if bytes.count > 1, !bytes.count.isMultiple(of: 2), bytes.first == UInt8(reportID) {
             bytes.removeFirst()
         }
         guard bytes.count.isMultiple(of: 2) else { return nil }
