@@ -39,7 +39,7 @@ button.addEventListener('blur', stop);
         badge: '多设备管理',
         windowTitle: '设备连接 · Voice Input Buddy',
         src: 'assets/screenshots/connection-zh.png',
-        alt: 'Voice Input Buddy 设备连接界面：小米与 Google G9N9N 遥控器卡片、连接状态、电量显示与麦克风独立增益滑块',
+        alt: 'Voice Input Buddy 正式版设备连接界面：已连接的小米遥控器、电量、麦克风增益与设备信息',
         desc: '管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。'
       },
       {
@@ -79,8 +79,8 @@ button.addEventListener('blur', stop);
         badge: '版本与更新',
         windowTitle: '关于与设置 · Voice Input Buddy',
         src: 'assets/screenshots/about-zh.png',
-        alt: 'Voice Input Buddy 关于与设置界面：应用版本信息、自动检查更新、发布说明与通用卸载器',
-        desc: '查看当前 App 版本与架构（Apple 芯片 / Intel），支持通过 Sparkle 自动或手动检查更新并查看更新日志；提供开源许可证信息与通用卸载工具入口。'
+        alt: 'Voice Input Buddy 正式版设置界面：应用版本、更新检查、配置导入导出与图标和语言偏好',
+        desc: '查看当前版本和更新状态，导入或导出配置，设置 Dock 与菜单栏图标、启动行为和应用语言。'
       }
     ],
     wizard: [
@@ -97,8 +97,8 @@ button.addEventListener('blur', stop);
         badge: '向导 · 设备准备',
         windowTitle: '设备类型 · 首次使用向导',
         src: 'assets/screenshots/wizard-source-zh.png',
-        alt: '首次使用向导：选择控制设备类型，支持实体遥控器（小米、Google G9N9N 等）或手机输入伴侣',
-        desc: '选择你使用的硬件设备：支持小米蓝牙遥控器、Google G9N9N、Apple Siri Remote 等实体遥控器，或通过扫码使用手机作为控制与语音输入伴侣。'
+        alt: '首次使用向导：选择小米、Google 或 Apple 遥控器，尚未支持的设备显示提示',
+        desc: '选择要配置的实体遥控器。可查看小米、Google 与 Apple 遥控器的外观；尚未支持的设备会显示提示，不能继续设置。'
       },
       {
         title: '第 3 步 · 连接遥控器',
@@ -150,7 +150,7 @@ button.addEventListener('blur', stop);
         badge: 'Multi-device',
         windowTitle: 'Devices · Voice Input Buddy',
         src: 'assets/screenshots/connection-en.png',
-        alt: 'Voice Input Buddy Devices interface: Xiaomi and Google G9N9N remote cards, connection status, battery levels, and independent microphone gain sliders',
+        alt: 'Voice Input Buddy installed release: connected Xiaomi remote, battery level, microphone gain, and device information',
         desc: 'Manage connected Bluetooth remotes (Xiaomi, Google G9N9N), check live battery percentages and charging states, and adjust individual microphone gain (0 dB to 20 dB).'
       },
       {
@@ -190,8 +190,8 @@ button.addEventListener('blur', stop);
         badge: 'Version & Updates',
         windowTitle: 'About & Settings · Voice Input Buddy',
         src: 'assets/screenshots/about-en.png',
-        alt: 'Voice Input Buddy About interface: application version, Sparkle automatic updates, release notes, and universal uninstaller',
-        desc: 'Check app version and architecture (Apple silicon / Intel), manage automatic Sparkle updates, inspect release notes, and access the uninstaller.'
+        alt: 'Voice Input Buddy installed release settings: version, update checks, configuration import/export, icon and language preferences',
+        desc: 'Check the current version and update status, import or export configuration, and manage Dock and menu bar icons, launch behavior, and app language.'
       }
     ],
     wizard: [
@@ -208,8 +208,8 @@ button.addEventListener('blur', stop);
         badge: 'Wizard · Device Choice',
         windowTitle: 'Control Source · Setup Wizard',
         src: 'assets/screenshots/wizard-source-en.png',
-        alt: 'Setup Wizard: Select control hardware, supporting physical remotes (Xiaomi, Google G9N9N) or phone companion',
-        desc: 'Select your preferred control hardware: physical remotes such as Xiaomi, Google G9N9N, Apple Siri Remote, or a mobile phone companion via QR code.'
+        alt: 'Setup Wizard: Xiaomi, Google, and Apple remote selection with notices for unsupported devices',
+        desc: 'Choose a physical remote and view its illustration. Xiaomi, Google, and Apple remotes are listed; unsupported devices show a notice and cannot proceed with setup.'
       },
       {
         title: 'Step 3 · Connect Remote',
