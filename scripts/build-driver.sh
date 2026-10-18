@@ -6,7 +6,9 @@ work="$root/.build/buddy-driver"
 source="$work/BlackHole"
 revision=e2b22aaaba4e507a097131704bf96dabc004d9cf
 mkdir -p "$work" "$root/dist"
-if [[ ! -d "$source/.git" ]]; then
+if [[ ! -d "$source/.git" ]] || ! git -C "$source" rev-parse --verify -q "$revision" >/dev/null 2>&1; then
+    rm -rf "$source"
+    mkdir -p "$source"
     git init --initial-branch=driver-source "$source"
     git -C "$source" remote add origin https://github.com/ExistentialAudio/BlackHole.git
     git -C "$source" fetch --depth 1 origin "$revision"
@@ -14,21 +16,26 @@ if [[ ! -d "$source/.git" ]]; then
 fi
 [[ "$(git -C "$source" rev-parse HEAD)" == "$revision" ]] || { echo 'Unexpected BlackHole revision' >&2; exit 1; }
 python3 "$root/scripts/verify-dependency-checkout.py" "$source" "$root/third_party/blackhole/device-usb.patch"
-if git -C "$source" apply --check "$root/third_party/blackhole/device-usb.patch" 2>/dev/null; then
+if ! git -C "$source" apply --reverse --check "$root/third_party/blackhole/device-usb.patch" 2>/dev/null; then
+    if ! git -C "$source" apply --check "$root/third_party/blackhole/device-usb.patch" 2>/dev/null; then
+        git -C "$source" reset --hard "$revision"
+        git -C "$source" clean -fdx
+    fi
     git -C "$source" apply "$root/third_party/blackhole/device-usb.patch"
-else
-    git -C "$source" apply --reverse --check "$root/third_party/blackhole/device-usb.patch"
 fi
-driver="$root/dist/VoiceInputBuddyMic.driver"
+destination="$root/dist/VoiceInputBuddyMic.driver"
+staging="$(mktemp -d "$root/dist/.driver-build.XXXXXX")"
+trap 'rm -rf "$staging"' EXIT
+driver="$staging/VoiceInputBuddyMic.driver"
 mkdir -p "$driver/Contents/MacOS" "$driver/Contents/Resources"
 for arch in "$BUILD_ARCH"; do
     xcrun clang -arch "$arch" -mmacosx-version-min=14.0 -bundle -O2 -Werror=format-extra-args \
         -framework CoreFoundation -framework CoreAudio -framework Accelerate \
         '-DkDriver_Name="BuddyMic2ch"' '-DkPlugIn_BundleID="com.zfdang.voice-input-buddy.mic"' \
         '-DkDevice_Name="Voice Input Buddy Mic"' -DkNumber_Of_Channels=2 -DkHas_Driver_Name_Format=0 \
-        "$source/BlackHole/BlackHole.c" -o "$work/BuddyMic2ch-$arch"
+        "$source/BlackHole/BlackHole.c" -o "$staging/BuddyMic2ch-$arch"
 done
-cp "$work/BuddyMic2ch-$BUILD_ARCH" "$driver/Contents/MacOS/VoiceInputBuddyMic"
+cp "$staging/BuddyMic2ch-$BUILD_ARCH" "$driver/Contents/MacOS/VoiceInputBuddyMic"
 cp "$source/BlackHole/BlackHole.plist" "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable VoiceInputBuddyMic' "$driver/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.zfdang.voice-input-buddy.mic' "$driver/Contents/Info.plist"
@@ -45,5 +52,9 @@ fi
 cp "$root/Resources/AppIcon.icns" "$driver/Contents/Resources/BlackHole.icns"
 cp "$source/LICENSE" "$driver/Contents/Resources/BlackHole-LICENSE"
 
-"$root/scripts/sign-bundle.sh" "$root/dist/VoiceInputBuddyMic.driver"
+"$root/scripts/sign-bundle.sh" "$driver"
+# Publish only after the fresh driver passes identity validation and signing.
+# Failed builds leave the previous usable driver untouched.
+rm -rf "$destination"
+mv "$driver" "$destination"
 printf 'Driver source: %s\nInclude this source and patch alongside driver releases.\n' "$source"
