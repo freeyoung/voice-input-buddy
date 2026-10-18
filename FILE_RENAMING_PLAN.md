@@ -2,7 +2,7 @@
 
 日期：2026-10-18（Asia/Singapore）。基线：`0e0a0e681fe53a2c3da4aa15c12694e9aefc98c5`。
 
-状态：**仅计划，未执行文件移动、类型改名或代码修改**。配套缺陷核验见 [REVIEW_FIX_PLAN.md](REVIEW_FIX_PLAN.md)。
+状态：**已完成 N-01～N-08 直接重命名与 S-01～S-05 结构职责拆分**。配套缺陷核验见 [REVIEW_FIX_PLAN.md](REVIEW_FIX_PLAN.md)。
 
 ## 1. 检查范围与命名准则
 
