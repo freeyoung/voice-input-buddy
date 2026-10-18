@@ -99,6 +99,14 @@ class InstallationActionsTests(unittest.TestCase):
         script = staging / 'uninstall-user.sh'; script.write_text(source)
         result = subprocess.run(['bash', str(script), 'prepare'], capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+        # An intact app whose service unregister fails must not block removal.
+        subprocess.run(['xcrun', 'clang', '-x', 'c', '-', '-o', str(executable)],
+                       input='int main(void) { return 37; }', text=True, check=True)
+        subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', str(app)],
+                       capture_output=True, check=True)
+        result = subprocess.run(['bash', str(script), 'prepare'], capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(b'login-item removal failed', result.stderr)
         # Tampering must skip execution (which would fail with status 37).
         executable.write_text('#!/bin/bash\nexit 37\n')
         result = subprocess.run(['bash', str(script), 'prepare'], capture_output=True)
