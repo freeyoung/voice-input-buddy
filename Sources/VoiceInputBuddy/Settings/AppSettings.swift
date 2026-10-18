@@ -177,8 +177,7 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// 历史系统占用键豁免。保留读取兼容；当前普通键不受此值限制。
-    /// 历史逐键豁免，保留旧配置的读取兼容。
+    /// 语音键触发语音输入工具时发送的按键，例如 Fn/Globe、Command 或 Option。
     @Published var voiceKeyMode: VoiceKeyMode {
         didSet {
             defaults.set(voiceKeyMode.rawValue, forKey: Keys.voiceKeyMode)

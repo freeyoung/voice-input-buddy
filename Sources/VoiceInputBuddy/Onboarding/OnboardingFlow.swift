@@ -38,14 +38,6 @@ enum OnboardingStep: String, CaseIterable, Codable {
         }
         return Self.visibleCases[index + 1]
     }
-
-    var progress: Double {
-        let step = self
-        guard let index = Self.visibleCases.firstIndex(of: step), Self.visibleCases.count > 1 else {
-            return 0
-        }
-        return Double(index) / Double(Self.visibleCases.count - 1)
-    }
 }
 
 enum OnboardingPurpose: String, Codable {
@@ -74,27 +66,6 @@ enum OnboardingPurpose: String, Codable {
     func progress(at step: OnboardingStep) -> Double {
         guard let index = steps.firstIndex(of: step), steps.count > 1 else { return 0 }
         return Double(index) / Double(steps.count - 1)
-    }
-}
-
-enum OnboardingPhase: String, CaseIterable {
-    case prepare
-    case setup
-    case tryIt = "try_it"
-
-    var localizationKey: String {
-        "onboarding.phase.\(rawValue)"
-    }
-
-    static func phase(for step: OnboardingStep) -> OnboardingPhase {
-        switch step {
-        case .remoteAvailability:
-            return .prepare
-        case .permissions, .remote, .audio, .voiceTool:
-            return .setup
-        case .voiceTest, .controls, .complete:
-            return .tryIt
-        }
     }
 }
 

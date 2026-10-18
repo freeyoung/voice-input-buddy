@@ -4,10 +4,6 @@ import CoreBluetooth
 import SwiftUI
 
 extension OnboardingView {
-    private var currentPhase: OnboardingPhase {
-        OnboardingPhase.phase(for: settings.onboardingStep)
-    }
-
     var microphoneDriverInstalled: Bool {
         model.audioDevices.contains {
             OnboardingAudioSelectionPolicy.isSupportedDevice(uid: $0.uid, name: $0.name)
