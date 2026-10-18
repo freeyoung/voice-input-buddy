@@ -5,6 +5,58 @@ import Testing
 @Suite("Common phrase clipboard fallback")
 @MainActor
 struct CommonPhraseClipboardTests {
+    @Test func persistentModifierFailureRecordsStateWithoutReadingClipboardOrPhraseText() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setString("original clipboard", forType: .string)
+        let clock = ControlledTestScheduler()
+        var logs: [String] = []
+        var observations = 0, reads = 0, posts = 0
+        var result: String?
+        let writer = CommonPhraseClipboardPaste(board: board,
+            modifierFlags: { CGEventFlags(rawValue: 0xA00100) },
+            modifierDiagnostics: {
+                observations += 1
+                return "observed_fn_key_down=true observed_navigation_keys=none"
+            }, logger: { logs.append($0) },
+            uptime: { Double(clock.now) / 1_000 }, readClipboard: { reads += 1; $0() },
+            schedule: clock.voiceSchedule, postPaste: { posts += 1; return true })
+        writer.paste("private phrase", validate: { $0(nil) }, canSubmit: { true }) { result = $0 }
+        clock.advance(to: 600)
+        #expect(result == "paste_failed")
+        #expect(reads == 0 && posts == 0)
+        #expect(board.string(forType: .string) == "original clipboard")
+        #expect(logs.count == 2 && observations == 2)
+        #expect(logs.first?.contains("waiting reason=modifiers_held flags=10486016") == true)
+        #expect(logs.last?.contains("rejected reason=modifiers_held_after_wait") == true)
+        #expect(logs.allSatisfy { $0.contains("observed_fn_key_down=true") && !$0.contains("private phrase") })
+    }
+
+    @Test func modifierRecoveryRecordsReleaseAndSuccessfulPastesDoNotSampleDiagnostics() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let clock = ControlledTestScheduler()
+        var held = true
+        var logs: [String] = []
+        var observations = 0, posts = 0, completions = 0
+        let writer = CommonPhraseClipboardPaste(board: board,
+            modifierFlags: { held ? .maskControl : [] },
+            modifierDiagnostics: { observations += 1; return "observed_fn_key_down=false" },
+            logger: { logs.append($0) }, uptime: { Double(clock.now) / 1_000 },
+            readClipboard: { $0() }, schedule: clock.voiceSchedule, postPaste: { posts += 1; return true })
+        writer.paste("first", validate: { $0(nil) }, canSubmit: { true }) {
+            #expect($0 == nil); completions += 1
+        }
+        held = false
+        clock.advance(to: 50)
+        #expect(completions == 1 && posts == 1 && observations == 2)
+        #expect(logs.last?.contains("modifiers_released flags=0") == true)
+        writer.paste("second", validate: { $0(nil) }, canSubmit: { true }) {
+            #expect($0 == nil); completions += 1
+        }
+        #expect(completions == 2 && posts == 2 && observations == 2)
+    }
+
     @Test func failedSecondPasteKeepsTheOriginalManualRestorePoint() {
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
