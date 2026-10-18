@@ -63,6 +63,8 @@ class AppBundleTests(unittest.TestCase):
         self.assertIn('EXTERNAL LICENSES', notices)
         self.assertIn('Copyright 2003-2005 Colin Percival', notices)
         self.assertIn('Copyright (c) 2011 Mark Hamlin.', notices)
+        self.assertIn('Copyright (C) 2019 Existential Audio Inc.', notices)
+        self.assertIn('BlackHole-LICENSE', notices)
         self.assertFalse((self.app / 'Contents/Resources/AppIcon.iconset').exists())
         self.assertFalse((self.app / 'Contents/Resources/AppIcon.png').exists())
         self.assertTrue((self.app / 'Contents/Resources/AppIcon.icns').exists())
