@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Voice Input Buddy 语音搭子：把小米遥控器连接到 Mac 上的语音输入法和听写工具。按下说话，松开结束。">
+  <meta name="description" content="Voice Input Buddy 语音搭子：把蓝牙语音遥控器连接到 Mac 上的语音输入法和听写工具。按住说话，松开结束。">
   <meta name="theme-color" content="#203a68">
   <link rel="canonical" href="https://voice.zfdang.com/">
   <link rel="alternate" hreflang="zh-CN" href="https://voice.zfdang.com/">
@@ -20,7 +20,7 @@
 </header>
 <main>
 <section class="hero wrap">
-  <div class="hero-copy"><p class="eyebrow">硬件 × 语音输入</p><h1>把语音输入，<br>放到手边。</h1><p class="lead">拿起遥控器，按下说话，松开结束。<br>让你喜欢的输入法，听见遥控器里的声音。</p><div class="actions"><a class="button primary" href="https://github.com/zfdang/voice-input-buddy/releases/latest">下载 macOS 安装包 <span>↓</span></a><a class="text-link" href="#interface">查看界面 →</a><a class="text-link" href="#demo">观看两分钟演示 →</a></div><p class="small">macOS 14+ · arm64 / Intel 独立安装包 · 通用卸载器 · 开源</p></div>
+  <div class="hero-copy"><p class="eyebrow">硬件 × 语音输入</p><h1>把语音输入，<br>放到手边。</h1><p class="lead">拿起遥控器，按住说话，松开结束。<br>让你喜欢的输入法，听见遥控器里的声音。</p><div class="actions"><a class="button primary" href="https://github.com/zfdang/voice-input-buddy/releases/latest">下载 macOS 安装包 <span>↓</span></a><a class="text-link" href="#interface">查看界面 →</a><a class="text-link" href="#demo">观看两分钟演示 →</a></div><p class="small">macOS 14+ · arm64 / Intel 独立安装包 · 通用卸载器 · 开源</p></div>
   <div class="hero-art" aria-label="遥控器将声音传递给电脑的示意图">
     <span class="art-label">从按键，到文字</span>
     <div class="remote"><i class="power"></i><button id="talk" aria-label="按住体验语音触发示意" aria-describedby="demo-note">🎙</button><div class="dpad"><span>＋</span></div><div class="remote-small"><i></i><i></i><i></i></div></div>
@@ -29,14 +29,14 @@
     <p class="demo-note" id="demo-note">按住麦克风按钮体验触发示意。这里不录音。</p>
   </div>
 </section>
-<section class="features wrap" aria-label="主要功能"><div><span>01</span><h2>一键说话</h2><p>按住或点按语音键，匹配输入工具的开始与结束方式。</p></div><div><span>02</span><h2>按键由你定义</h2><p>快捷键、应用操作、常用语，让遥控器成为顺手的工具。</p></div><div><span>03</span><h2>声音交给喜欢的工具</h2><p>连接语音输入法与听写工具，沿用熟悉的识别体验。</p></div></section>
+<section class="features wrap" aria-label="主要功能"><div><span>01</span><h2>一键说话</h2><p>按住遥控器语音键说话，松开结束；按住式和点按式输入工具均可配置。</p></div><div><span>02</span><h2>按键由你定义</h2><p>快捷键、应用操作、常用语，让遥控器成为顺手的工具。</p></div><div><span>03</span><h2>声音交给喜欢的工具</h2><p>连接语音输入法与听写工具，沿用熟悉的识别体验。</p></div></section>
 <section class="how section" id="how"><div class="wrap"><p class="eyebrow">工作原理</p><h2 class="section-title">搭一座桥，<br>让硬件和输入工具合作。</h2><div class="flow"><div><span>①</span><h3>遥控器</h3><p>麦克风音频 + 按键</p></div><b aria-hidden="true">→</b><div class="flow-buddy"><span>②</span><h3>Voice Input Buddy</h3><p>解码音频 · 触发快捷键</p></div><b aria-hidden="true">→</b><div><span>③</span><h3>输入法 / 听写工具</h3><p>识别声音 · 写入文本</p></div></div><p class="explanation">遥控器通过蓝牙传来声音，语音搭子解码后送入虚拟麦克风，同时发送对应的语音快捷键。识别、实时文字与文本修正由输入工具完成；语音搭子本身不运行识别模型。</p></div></section>
 <section class="section wrap interface-section" id="interface" aria-labelledby="interface-title">
   <div class="interface-heading">
-    <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">原生 SwiftUI 精心打造，从设备连接、按键动作映射、常用语编辑，到主流输入法集成与关于更新，一目了然。</p></div>
+    <div><p class="eyebrow">macOS 原生界面</p><h2 class="section-title" id="interface-title">直观清晰，每项设置都在手边。</h2><p class="lead-sub">从设备连接、按键映射、常用语编辑，到输入法集成与设置更新，都能在原生 macOS 界面中完成。</p></div>
     <div class="gallery-category-switch" role="tablist" aria-label="界面展示分类">
       <button class="category-btn is-active" type="button" role="tab" aria-selected="true" data-track="settings">主程序界面 (6)</button>
-      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">新手设置向导 (7)</button>
+      <button class="category-btn" type="button" role="tab" aria-selected="false" data-track="wizard">设置向导截图 (7)</button>
     </div>
   </div>
   <div class="cathedral-gallery">
@@ -59,7 +59,7 @@
         <span class="caption-badge" id="caption-badge">多设备管理</span>
         <h3 class="caption-title" id="caption-title">设备连接</h3>
       </div>
-      <p class="caption-desc" id="caption-desc">管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 20 dB）。</p>
+      <p class="caption-desc" id="caption-desc">管理所有已配对的蓝牙遥控器（如小米遥控器、Google G9N9N），实时查看连接状态与电池电量；支持单独调节并保存每台遥控器的麦克风输入增益（0 dB 至 24 dB）。</p>
       <div class="caption-hint">
         <span>💡 点击中央界面可全屏放大；可使用键盘方向键 ← / → 或左右拖拽滑动切换。</span>
       </div>
@@ -84,21 +84,21 @@
   </video>
   <div class="demo-links"><span>卡通示意 macOS 上的配置与输入流程。</span><a class="text-link" href="assets/video/Voice_Input_Buddy_Demo_Natural_zh-CN.mp4" download>下载视频 ↓</a></div>
 </section>
-<section class="section wrap start" id="start"><div><p class="eyebrow">开始使用</p><h2 class="section-title">一个安装包。<br>四步准备好。</h2><p>App 和虚拟麦克风驱动一起安装，<br>不用来回下载两个文件。</p><a class="text-link" href="https://github.com/zfdang/voice-input-buddy/blob/main/docs/interface.md">查看设置与常见问题 ↗</a></div><ol class="steps"><li><span>01</span><div><h3>安装并打开</h3><p>从 Release 下载 PKG，打开 Applications 中的 Voice Input Buddy。</p></div></li><li><span>02</span><div><h3>完成环境检查</h3><p>按向导授权蓝牙、输入监控和辅助功能。</p></div></li><li><span>03</span><div><h3>连接与配置</h3><p>连接遥控器并测试按键，等待驱动检查通过。App 自动使用 Voice Input Buddy Mic；在输入工具里选择同名麦克风，配置语音快捷键。</p></div></li><li><span>04</span><div><h3>打开输入框，说话</h3><p>通过向导测试，按住语音键说话、松开结束。网易叭哥说、Typeless 等点按式工具已自动配合收音过程：按住发一次 Fn 点按开始识别，松开等音频送完再发一次 Fn 点按结束。</p></div></li></ol></section>
-<section class="section compatibility" id="compatibility"><div class="wrap"><p class="eyebrow">兼容范围</p><h2 class="section-title">先选设备，再选输入工具。</h2><div class="compat-grid"><article><h3>支持的硬件</h3><div class="tools hardware"><span>小米蓝牙遥控器 2 / 2 Pro</span><span>Chromecast Voice Remote（G9N9N）</span><span>Google TV Streamer Voice Remote（GY3LE）</span><span>Apple Siri Remote</span></div></article><article><h3>输入工具</h3><div class="tools"><span>微信输入法</span><span>豆包输入法</span><span>网易叭哥说</span><span>Typeless</span><span>VoiceCursor</span><span>其他工具</span></div><p>选择对应入口，通过虚拟麦克风和语音快捷键配置。VoiceCursor 与其他工具分别提供入口，使用通用快捷键流程。</p><p class="muted">工具必须支持所选麦克风与语音快捷键。不同版本请通过向导验证；配置入口不代表所有版本已验证。</p></article></div></div></section>
+<section class="section wrap start" id="start"><div><p class="eyebrow">开始使用</p><h2 class="section-title">一个安装包。<br>四步准备好。</h2><p>App 和虚拟麦克风驱动一起安装，<br>不用来回下载两个文件。</p><a class="text-link" href="https://github.com/zfdang/voice-input-buddy/blob/main/docs/interface.md">查看设置与常见问题 ↗</a></div><ol class="steps"><li><span>01</span><div><h3>安装并打开</h3><p>从 Release 下载 PKG，打开 Applications 中的 Voice Input Buddy。</p></div></li><li><span>02</span><div><h3>完成环境检查</h3><p>按向导授权蓝牙、输入监控和辅助功能。</p></div></li><li><span>03</span><div><h3>连接与配置</h3><p>连接遥控器并测试按键；驱动检查通过后，点击“继续”。App 自动使用 Voice Input Buddy Mic；在输入工具里选择同名麦克风，并配置语音快捷键。</p></div></li><li><span>04</span><div><h3>打开输入框，说话</h3><p>完成相应工具的向导设置和语音测试后，按住遥控器语音键说话、松开结束。使用网易叭哥说、Typeless 等点按式工具时，启用“语音键模拟 Fn 点按”，由 App 配合收音过程发送开始和结束快捷键。</p></div></li></ol></section>
+<section class="section compatibility" id="compatibility"><div class="wrap"><p class="eyebrow">兼容范围</p><h2 class="section-title">先选设备，再选输入工具。</h2><div class="compat-grid"><article><h3>支持的硬件</h3><div class="tools hardware"><span>小米蓝牙遥控器 2 / 2 Pro</span><span>Chromecast Voice Remote（G9N9N）</span><span>Google TV Streamer Voice Remote（GY3LE）</span><span>Apple Siri Remote</span></div></article><article><h3>输入工具</h3><div class="tools"><span>微信输入法</span><span>豆包输入法</span><span>网易叭哥说</span><span>Typeless</span><span>VoiceCursor</span><span>其他工具</span></div><p>选择对应工具，按向导配置 Voice Input Buddy Mic 和语音快捷键，再实际试说一句。</p><p class="muted">工具必须支持所选麦克风与语音快捷键。不同版本请通过向导验证；配置入口不代表所有版本已验证。</p></article></div></div></section>
 <section class="section wrap troubleshooting" id="troubleshooting" aria-labelledby="troubleshooting-title">
   <p class="eyebrow">TROUBLESHOOTING · 常见问题</p>
   <h2 class="section-title" id="troubleshooting-title">语音正常，按键却没反应？</h2>
   <div class="troubleshooting-card"><h3>先检查 Karabiner-Elements 等按键工具的设备占用。</h3>
-    <p>这类工具可能独占遥控器，导致语音搭子收不到按键。典型表现是 TV 键不能切换应用、返回键不能退格，而蓝牙连接或语音仍然正常。</p>
-    <ol><li>在 Karabiner-Elements 中打开 <strong>Devices（设备）</strong>，找到你的遥控器，例如“小米蓝牙语音遥控器”。</li><li>关闭<strong>这只遥控器</strong>的 <strong>Modify events</strong>，把它交给语音搭子处理。其他键盘的设置可以保留。</li><li>重新连接遥控器，或重启语音搭子，再到“按键映射”检查连接状态，测试 TV 键与返回键。</li></ol>
+    <p>这类工具可能独占遥控器，导致语音搭子收不到按键。典型表现是普通按键无法执行已配置的动作，而蓝牙连接或语音仍然正常。默认映射中，TV 键切换应用、电源键退格、返回键发送 Escape。</p>
+    <ol><li>在 Karabiner-Elements 中打开 <strong>Devices（设备）</strong>，找到你的遥控器，例如“小米蓝牙语音遥控器”。</li><li>关闭<strong>这只遥控器</strong>的 <strong>Modify events</strong>，把它交给语音搭子处理。其他键盘的设置可以保留。</li><li>重新连接遥控器，或重启语音搭子，再到“按键映射”检查连接状态，测试 TV 键、电源键与返回键。</li></ol>
     <p>若仍提示“设备被其他输入工具占用”，可重启 Karabiner-Elements 后再试；同时检查语音搭子的输入监控与辅助功能权限。</p>
     <a class="text-link" href="https://karabiner-elements.pqrs.org/docs/manual/configuration/configure-devices/">Karabiner 官方设备设置说明 ↗</a>
   </div>
 </section>
-<section class="section wrap privacy"><img src="assets/app-icon.png" alt="语音搭子图标" width="90" height="90"><div><p class="eyebrow">本地桥接，清楚的边界</p><h2>不保存录音，不收集文本历史。</h2><p>语音搭子不采集使用统计，也不上传日志。输入工具是否联网识别，请查看该工具的设置。</p><p class="small">安装驱动需要管理员授权，会短暂重启音频服务。当前 PKG 未经 Apple 公证，系统可能阻止安装。</p></div></section>
+<section class="section wrap privacy"><img src="assets/app-icon.png" alt="语音搭子图标" width="90" height="90"><div><p class="eyebrow">本地桥接，清楚的边界</p><h2>不保存录音，不收集文本历史。</h2><p>语音搭子不采集使用统计，也不上传日志。输入工具是否联网识别，请查看该工具的设置。</p><p class="small">安装需要管理员授权；首次安装或驱动变化时会短暂重启音频服务。当前 PKG 未签名、未经 Apple 公证，系统可能阻止安装。</p></div></section>
 </main>
-<footer class="wrap"><div><strong>Voice Input Buddy</strong><p>让语音更强大。</p></div><div class="footer-links"><a href="https://github.com/zfdang/voice-input-buddy/releases">下载</a><a href="https://github.com/zfdang/voice-input-buddy/blob/main/README.md">文档与 References</a><a href="https://github.com/zfdang/voice-input-buddy/issues">反馈</a><a href="https://github.com/zfdang/voice-input-buddy/blob/main/LICENSE">GPL-3.0-only</a></div></footer>
+<footer class="wrap"><div><strong>Voice Input Buddy</strong><p>让语音更强大。</p></div><div class="footer-links"><a href="https://github.com/zfdang/voice-input-buddy/releases">下载</a><a href="https://github.com/zfdang/voice-input-buddy/blob/main/README.md">项目文档</a><a href="https://github.com/zfdang/voice-input-buddy/issues">反馈</a><a href="https://github.com/zfdang/voice-input-buddy/blob/main/LICENSE">GPL-3.0-only</a></div></footer>
 <script src="demo.js"></script>
 </body>
 </html>
