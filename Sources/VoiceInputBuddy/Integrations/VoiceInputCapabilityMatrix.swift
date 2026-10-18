@@ -41,7 +41,7 @@ struct RemoteVoiceCapabilities: Equatable {
     ///   - declared: 链路自报的能力位；未连接、型号不支持或设备未自报时为空集合。
     static func resolve(
         model: RemoteModel?,
-        declared: ChromecastDeclaredCapabilities = []
+        declared: RemoteDeclaredCapabilities = []
     ) -> RemoteVoiceCapabilities {
         guard let model else {
             // 型号都认不出来时，不得假装它支持任何能力。

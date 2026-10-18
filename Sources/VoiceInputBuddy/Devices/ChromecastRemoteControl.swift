@@ -1,41 +1,5 @@
 import Foundation
 
-
-/// 语音手势模式。`toggle` 为本产品默认；`hold` 保留给习惯按住说话的用户。
-enum ChromecastVoiceMode: String, CaseIterable, Codable, Identifiable {
-    case toggle
-    case hold
-
-    var id: String { rawValue }
-
-    static let productDefault: ChromecastVoiceMode = .toggle
-
-    var localizationKey: String {
-        switch self {
-        case .toggle: return "chromecast.mode.toggle"
-        case .hold: return "chromecast.mode.hold"
-        }
-    }
-
-    var detailLocalizationKey: String {
-        switch self {
-        case .toggle: return "chromecast.mode.toggle.detail"
-        case .hold: return "chromecast.mode.hold.detail"
-        }
-    }
-}
-
-/// Shared voice capability vocabulary for the public adapters and Siri UI.
-struct ChromecastDeclaredCapabilities: OptionSet, Equatable {
-    let rawValue: Int
-
-    static let controlEdges = ChromecastDeclaredCapabilities(rawValue: 1 << 0)
-    static let voiceStream = ChromecastDeclaredCapabilities(rawValue: 1 << 1)
-    static let touchSurface = ChromecastDeclaredCapabilities(rawValue: 1 << 2)
-    static let battery = ChromecastDeclaredCapabilities(rawValue: 1 << 3)
-    static let toggleVoiceGesture = ChromecastDeclaredCapabilities(rawValue: 1 << 4)
-}
-
 /// Chromecast 遥控器的普通按键。
 ///
 /// 语音键不在这里：该遥控器的语音键不产生可靠 HID 边沿，语音由 ATVV 控制流驱动。
