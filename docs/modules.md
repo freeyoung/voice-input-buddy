@@ -11,7 +11,7 @@
 | VoiceInputBuddyTests | 协议、生命周期与产品边界测试 |
 | Sparkle | 第三方 macOS 更新框架 |
 
-当前公开使用流程提供小米 RC001／RC003 和 Google G9N9N；G9N9N 的 macOS 真机验收仍待完成。GY3LE 与 Siri Remote 可在设备目录中选择，但不能继续连接。内部兼容类型不代表对应功能已启用；私有扩展包不参与构建。
+当前连接适配提供小米 RC001／RC003 和 Google G9N9N；G9N9N 的 macOS 真机验收仍待完成。GY3LE 可进入连接向导，但没有型号专用协议适配；Siri Remote 可在设备目录中选择，不能继续连接。内部兼容类型不代表对应功能已启用；私有扩展包不参与构建。
 
 ## 驱动
 
