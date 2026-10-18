@@ -12,7 +12,7 @@ ET.register_namespace('sparkle', SPARKLE)
 def generate(package, tag, version, signature, output, changes=None):
     if not re.fullmatch(r'v\d{2}-\d{2}-\d{2}\.\d{3}', tag):
         raise ValueError('Invalid release tag')
-    if not version.isdigit() or int(version) <= 0 or int(tag.rsplit('.', 1)[1]) != int(version):
+    if not version.isdigit() or int(version) <= 0 or int(tag.rsplit('.', 1)[1]) != int(version) % 1000:
         raise ValueError('Invalid bundle version')
     if len(base64.b64decode(signature, validate=True)) != 64:
         raise ValueError('Invalid Ed25519 signature')

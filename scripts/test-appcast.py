@@ -40,6 +40,21 @@ class AppcastTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     appcast.generate(package, tag, version, sig, output)
 
+    def test_display_suffix_wraps_without_wrapping_update_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            signature = base64.b64encode(bytes(64)).decode()
+            for count in (999, 1000, 1001, 12345):
+                tag = f'v26-10-18.{count % 1000:03d}'
+                package = Path(directory) / f'Voice_Input_Buddy_{tag}_macOS_arm64.pkg'
+                package.write_bytes(b'package')
+                output = Path(directory) / 'appcast.xml'
+                appcast.generate(package, tag, str(count), signature, output)
+                item = ET.parse(output).find('channel/item')
+                self.assertEqual(item.find(f'{{{appcast.SPARKLE}}}version').text, str(count))
+                self.assertEqual(item.find(f'{{{appcast.SPARKLE}}}shortVersionString').text, tag)
+                with self.assertRaises(ValueError):
+                    appcast.generate(package, tag, str(count + 1), signature, output)
+
     def test_intel_feed_and_universal_package_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
             signature = base64.b64encode(bytes(64)).decode()

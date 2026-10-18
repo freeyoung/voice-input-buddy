@@ -24,8 +24,23 @@ with tempfile.TemporaryDirectory() as directory:
             output = subprocess.check_output([str(root / 'scripts/release-metadata.sh')], text=True)
             assert f'RELEASE_TAG=v26-10-11.{count:03d}\n' in output, output
             assert f'RELEASE_COMMIT_COUNT={count}\n' in output, output
+    # Exercise large histories without creating thousands of unrelated commits.
+    toolbin = Path(directory) / 'tools'
+    toolbin.mkdir()
+    real_git = shutil.which('git')
+    stub = toolbin / 'git'
+    stub.write_text('#!/bin/bash\nif [[ "$*" == "rev-list --count HEAD" ]]; then echo "$TEST_RELEASE_COUNT"; '
+                    'else exec "$TEST_REAL_GIT" "$@"; fi\n')
+    stub.chmod(0o755)
+    for count in (999, 1000, 1001, 12345):
+        output = subprocess.check_output([str(root / 'scripts/release-metadata.sh')], text=True,
+            env={**os.environ, 'PATH': str(toolbin) + os.pathsep + os.environ['PATH'],
+                 'TEST_REAL_GIT': real_git, 'TEST_RELEASE_COUNT': str(count)})
+        assert f'RELEASE_TAG=v26-10-11.{count % 1000:03d}\n' in output, output
+        assert f'RELEASE_COMMIT_COUNT={count}\n' in output, output
+        assert f'RELEASE_PACKAGE_VERSION=26.10.11.{count}\n' in output, output
     shallow = Path(directory) / 'shallow'
     subprocess.run(['git', 'clone', '-q', '--depth', '1', root.as_uri(), str(shallow)], check=True)
     result = subprocess.run([str(shallow / 'scripts/release-metadata.sh')], capture_output=True, text=True)
     assert result.returncode != 0 and 'full Git history' in result.stderr
-print('Release version checks passed: 001 / 011 / 113, Singapore date, shallow checkout.')
+print('Release version checks passed: 001 / 011 / 113 / 999 / 000 / 001 / 345, Singapore date, shallow checkout.')
