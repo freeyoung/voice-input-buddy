@@ -450,19 +450,22 @@ extension BridgeAppModel {
                 )
                 return
             }
-            if details.contains("device_mute") || details.contains("device_volume") {
-                self.isAudioOutputReady = false
-            }
             let deviceForAudibility = self.audio.output.actualDevice
                 ?? self.audio.output.selectedDevice
                 ?? self.audioDevices.first(where: { $0.uid == self.settings.selectedAudioDeviceUID })
             let audibility = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: deviceForAudibility)
             let configurationHealthy = self.audio.output.isConfigurationHealthyForDiagnostics && !audibility.requiresAudibilityRepair
+            if details.contains("device_mute") || details.contains("device_volume") {
+                self.isAudioOutputReady = false
+            }
             guard !VirtualAudioRecoveryPolicy.shouldIgnoreDefaultSystemOutputChange(
                 details: details,
                 configurationHealthy: configurationHealthy
             ) else {
                 self.refreshAudioDevices()
+                if configurationHealthy {
+                    self.isAudioOutputReady = true
+                }
                 AppLogger.shared.write(
                     "AUDIO RECOVERY ignored reason=\(reason) detail=\(details) " +
                         "explicit_output_healthy=true state={\(self.audio.output.diagnosticState())}"
@@ -539,6 +542,9 @@ extension BridgeAppModel {
                 hasActiveAudioSource: self.hasActiveVirtualAudioSource,
                 pendingVoiceBufferCount: snapshot.pendingBuffers
             ) else {
+                if configurationHealthy {
+                    self.isAudioOutputReady = true
+                }
                 let ignoredReason = configurationHealthy
                     ? "configuration_healthy"
                     : "still_bound_idle"

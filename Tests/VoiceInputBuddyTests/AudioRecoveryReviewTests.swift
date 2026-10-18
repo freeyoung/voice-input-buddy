@@ -85,4 +85,64 @@ struct AudioRecoveryReviewTests {
         )
         #expect(reconfigurations == 1)
     }
+
+    @Test func normalVolumeAdjustmentKeepsAudioOutputReadyAndDoesNotTriggerReconfiguration() throws {
+        let name = UUID().uuidString
+        let values = try #require(UserDefaults(suiteName: name))
+        defer { values.removePersistentDomain(forName: name) }
+        let model = BridgeAppModel(settings: AppSettings(defaults: values))
+        model.started = true
+        defer { model.started = false }
+        model.isAudioOutputReady = true
+        let device = AudioDeviceInfo(id: 101, uid: model.settings.selectedAudioDeviceUID, name: "Test Mic")
+        let healthy = VirtualAudioOutputDiagnosticSnapshot(
+            engineRunning: true,
+            playerPlaying: true,
+            boundToSelectedDevice: true,
+            audibilityHealthy: true,
+            pendingBuffers: 0,
+            pendingSamples: 0
+        )
+        var reconfigurations = 0
+        model.completeAudioRecoveryDeviceRefresh(
+            generation: 0,
+            reason: "hardware_change",
+            details: "properties=device_volume",
+            devices: [device],
+            outputSnapshot: healthy,
+            configureOutput: { _ in reconfigurations += 1 }
+        )
+        #expect(reconfigurations == 0)
+        #expect(model.isAudioOutputReady)
+    }
+
+    @Test func healthyVolumeAfterPriorUnreadyRestoresAudioOutputReady() throws {
+        let name = UUID().uuidString
+        let values = try #require(UserDefaults(suiteName: name))
+        defer { values.removePersistentDomain(forName: name) }
+        let model = BridgeAppModel(settings: AppSettings(defaults: values))
+        model.started = true
+        defer { model.started = false }
+        model.isAudioOutputReady = false
+        let device = AudioDeviceInfo(id: 101, uid: model.settings.selectedAudioDeviceUID, name: "Test Mic")
+        let healthy = VirtualAudioOutputDiagnosticSnapshot(
+            engineRunning: true,
+            playerPlaying: true,
+            boundToSelectedDevice: true,
+            audibilityHealthy: true,
+            pendingBuffers: 0,
+            pendingSamples: 0
+        )
+        var reconfigurations = 0
+        model.completeAudioRecoveryDeviceRefresh(
+            generation: 0,
+            reason: "hardware_change",
+            details: "properties=device_volume",
+            devices: [device],
+            outputSnapshot: healthy,
+            configureOutput: { _ in reconfigurations += 1 }
+        )
+        #expect(reconfigurations == 0)
+        #expect(model.isAudioOutputReady)
+    }
 }
