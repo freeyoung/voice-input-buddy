@@ -10,9 +10,14 @@ claim that all Siri Remote generations share its layout. Google replacement
 units may have different layouts. These drawings are not to scale and do not
 establish connection or audio compatibility.
 
-Official visual and button-layout references are linked in
-[device preparation](../../docs/remote-device-preparation.md). Manufacturer
-images remain on their official sites and are not included in the distribution.
+Official visual and button-layout references:
+
+- [Chromecast Voice Remote G9N9N](https://support.google.com/chromecast/answer/10116742?hl=en)
+- [Google TV Streamer Voice Remote GY3LE](https://support.google.com/googletv/answer/15323195?hl=en)
+- [Siri Remote third-generation USB-C](https://support.apple.com/en-us/111844)
+  and [model identification](https://support.apple.com/en-au/103233)
+
+Manufacturer images remain on their official sites and are not included in the distribution.
 
 To regenerate a thumbnail from its editable vector source, from the repo root:
 

@@ -133,15 +133,17 @@ HID 设备发现仅用受支持的 VendorID／ProductID 组合。IOHIDManager �
 The product device list is limited to Xiaomi Bluetooth Remote 2 / 2 Pro, Google
 Chromecast Voice Remote (G9N9N), Google TV Streamer Voice Remote (GY3LE), and
 Apple Siri Remote. `RemoteSetupDevice` defines this scope; it does not grant
-connection support. All four entries can be selected. Continue advances Xiaomi and G9N9N to
-connection setup. For GY3LE and Siri, Continue keeps the device page open and
-shows an inline notice below the right-hand illustration. G9N9N connection
+connection support. All four entries can be selected. Continue advances Xiaomi and both Google choices to
+connection setup; Siri remains on the device page with an unsupported notice.
+The GY3LE setup entry does not admit it through the G9N9N adapter. G9N9N connection
 validation remains mandatory; its public adapter is implemented with hardware acceptance pending. The
 validated Xiaomi admission catalog remains separate, so a planned Google model
 cannot accidentally connect through the Xiaomi bridge. Third-party replacement
 remotes need individual validation.
 
-素材、官方外观参考与分型号适配计划见[遥控器准备说明](remote-device-preparation.md)。
+型号、兼容性和配对说明见[遥控器说明](remote-device-preparation.md)，素材维护见 [artwork.md](artwork.md)，官方外观参考见[示意图说明](../Resources/RemoteIllustrations/README.md)。
+
+小米 DIS 型号 RC001 对应遥控器 2，RC003 对应遥控器 2 Pro；两款使用相同的普通按键布局，语音键单独处理。小米与 G9N9N 当前均解码为 16 kHz PCM，经固定虚拟麦克风输出；使用 ATVV 服务不代表某个新型号已经通过验证。
 
 ### Google remote compatibility acceptance
 
@@ -171,7 +173,7 @@ connection/authentication errors. An `Insufficient Authentication` error is an
 incomplete probe: ask for normal system pairing and retry discovery after the
 link is secured. Do not classify an inaccessible service as absent, label a
 unit counterfeit, or switch to the computer microphone while claiming remote
-audio works. No driver injection or private app access is required by this plan.
+audio works. This integration uses public APIs without driver injection or private app access.
 
 [vibe-mote's hardware notes](https://github.com/Tilkmilk/vibe-mote#九遥控器怎么挑原装--兼容款--山寨)
 report different ATVV behavior across two G9N9N-labelled replacements. These are
