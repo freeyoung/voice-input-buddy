@@ -11,6 +11,8 @@ final class CommonPhraseClipboardPaste: ObservableObject {
     typealias Validation = (@escaping (String?) -> Void) -> Void
     private static let snapshotQueue = DispatchQueue(label: "voice-input-buddy.clipboard.snapshot", qos: .userInitiated)
     private let modifierFlags: () -> CGEventFlags
+    private let modifierDiagnostics: () -> String
+    private let logger: (String) -> Void
     private let uptime: () -> TimeInterval
     private let board: NSPasteboard
     private let readClipboard: (@escaping () -> Void) -> Void
@@ -26,6 +28,8 @@ final class CommonPhraseClipboardPaste: ObservableObject {
 
     init(board: NSPasteboard = .general,
          modifierFlags: @escaping () -> CGEventFlags = { pasteHardwareFlags() },
+         modifierDiagnostics: @escaping () -> String = KeyboardHardwareModifierPolicy.diagnosticSnapshot,
+         logger: @escaping (String) -> Void = AppLogger.shared.write,
          uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
          snapshotExecutableURL: URL? = Bundle.main.executableURL,
          readClipboard: ((@escaping () -> Void) -> Void)? = nil,
@@ -41,13 +45,16 @@ final class CommonPhraseClipboardPaste: ObservableObject {
              }
              let hardware = pasteHardwareFlags()
              guard permitsPasteShortcut(flags: hardware) else {
-                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held flags=\(hardware.rawValue)")
+                 AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held flags=\(hardware.rawValue) " +
+                     KeyboardHardwareModifierPolicy.diagnosticSnapshot())
                  return false
              }
              return submitPasteShortcut(hardwareFlags: { pasteHardwareFlags() },
                  eventPoster: ShortcutEventSequence.post)
          }) {
         self.modifierFlags = modifierFlags
+        self.modifierDiagnostics = modifierDiagnostics
+        self.logger = logger
         self.uptime = uptime
         self.board = board
         self.snapshotExecutableURL = snapshotExecutableURL
@@ -138,17 +145,17 @@ final class CommonPhraseClipboardPaste: ObservableObject {
         guard canSubmit() else { completion("target_changed"); return }
         let flags = modifierFlags()
         if Self.permitsPasteShortcut(flags: flags) {
-            if hasWaited { AppLogger.shared.write("COMMON_PHRASES PASTE modifiers_released") }
+            if hasWaited { logger("COMMON_PHRASES PASTE modifiers_released flags=\(flags.rawValue) \(modifierDiagnostics())") }
             completion(nil)
             return
         }
         let remaining = deadline - uptime()
         guard remaining > 0 else {
-            AppLogger.shared.write("COMMON_PHRASES PASTE rejected reason=modifiers_held_after_wait flags=\(flags.rawValue)")
+            logger("COMMON_PHRASES PASTE rejected reason=modifiers_held_after_wait flags=\(flags.rawValue) \(modifierDiagnostics())")
             completion("paste_failed")
             return
         }
-        if !hasWaited { AppLogger.shared.write("COMMON_PHRASES PASTE waiting reason=modifiers_held flags=\(flags.rawValue)") }
+        if !hasWaited { logger("COMMON_PHRASES PASTE waiting reason=modifiers_held flags=\(flags.rawValue) \(modifierDiagnostics())") }
         _ = schedule(min(0.025, max(0.001, remaining))) {
             self.waitForReleasedModifiers(token: token, deadline: deadline, canSubmit: canSubmit,
                 hasWaited: true, completion: completion)
