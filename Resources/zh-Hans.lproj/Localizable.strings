@@ -562,6 +562,7 @@
 "about.preferences.app_icon_standard" = "Voice Input Buddy";
 "about.preferences.app_icon_faceted_duck" = "几何鸭";
 "about.preferences.language" = "应用语言";
+"about.preferences.rc003_voice_extension_test" = "测试长时间语音功能";
 "about.page.hero_subtitle" = "集中查看无线语音工作台的版本、偏好与支持信息";
 "about.page.hero_description" = "让遥控器成为随手可用的 Mac 语音与快捷操作入口。";
 "about.privacy.local_only" = "数据仅存本机";

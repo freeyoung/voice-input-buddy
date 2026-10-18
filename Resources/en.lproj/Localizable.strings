@@ -562,6 +562,7 @@
 "about.preferences.app_icon_standard" = "Voice Input Buddy";
 "about.preferences.app_icon_faceted_duck" = "Faceted Duck";
 "about.preferences.language" = "App Language";
+"about.preferences.rc003_voice_extension_test" = "Test extended voice feature";
 "about.page.hero_subtitle" = "Version, preferences, and support for your wireless voice workspace";
 "about.page.hero_description" = "Turn your remote into an always-ready voice and shortcut controller for your Mac.";
 "about.privacy.local_only" = "Data stays on this Mac";
