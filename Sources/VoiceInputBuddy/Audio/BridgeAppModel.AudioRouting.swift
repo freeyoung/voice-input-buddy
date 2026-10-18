@@ -453,7 +453,11 @@ extension BridgeAppModel {
             if details.contains("device_mute") || details.contains("device_volume") {
                 self.isAudioOutputReady = false
             }
-            let configurationHealthy = self.audio.output.isConfigurationHealthyForDiagnostics
+            let deviceForAudibility = self.audio.output.actualDevice
+                ?? self.audio.output.selectedDevice
+                ?? self.audioDevices.first(where: { $0.uid == self.settings.selectedAudioDeviceUID })
+            let audibility = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: deviceForAudibility)
+            let configurationHealthy = self.audio.output.isConfigurationHealthyForDiagnostics && !audibility.requiresAudibilityRepair
             guard !VirtualAudioRecoveryPolicy.shouldIgnoreDefaultSystemOutputChange(
                 details: details,
                 configurationHealthy: configurationHealthy
@@ -519,9 +523,15 @@ extension BridgeAppModel {
         )
         if selectedDeviceAvailable {
             let snapshot = outputSnapshot ?? self.audio.output.diagnosticSnapshot()
+            let deviceForAudibility = self.audio.output.actualDevice
+                ?? self.audio.output.selectedDevice
+                ?? self.audioDevices.first(where: { $0.uid == self.settings.selectedAudioDeviceUID })
+            let audibility = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: deviceForAudibility)
+            let audibilityHealthy = snapshot.audibilityHealthy && !audibility.requiresAudibilityRepair
             let configurationHealthy = snapshot.engineRunning &&
                 snapshot.playerPlaying &&
-                snapshot.boundToSelectedDevice == true
+                snapshot.boundToSelectedDevice == true &&
+                audibilityHealthy
             guard self.audioRecoveryNeeded(
                 engineNotificationOnly: reason == "engine_configuration_change" && !coalesced.includesHardwareChange,
                 boundToSelectedDevice: snapshot.boundToSelectedDevice,
@@ -541,6 +551,7 @@ extension BridgeAppModel {
                         "pending_buffers=\(snapshot.pendingBuffers) pending_samples=\(snapshot.pendingSamples) " +
                         "engine_running=\(snapshot.engineRunning) player_playing=\(snapshot.playerPlaying) " +
                         "bound_to_selected=\(self.optionalDiagnosticBool(snapshot.boundToSelectedDevice)) " +
+                        "audibility_healthy=\(audibilityHealthy) " +
                         "elapsed_ms=\(self.elapsedMilliseconds(since: startedAtUptime)) " +
                         "state={\(self.audio.output.diagnosticState())}"
                 )
@@ -561,15 +572,21 @@ extension BridgeAppModel {
                   self.audio.recoveryGeneration == generation
             else { return }
             let completedSnapshot = self.audio.output.diagnosticSnapshot()
+            let completedAudibility = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(
+                for: self.audio.output.actualDevice ?? self.audio.output.selectedDevice
+            )
             let ready = completedSnapshot.engineRunning &&
                 completedSnapshot.playerPlaying &&
-                completedSnapshot.boundToSelectedDevice == true
+                completedSnapshot.boundToSelectedDevice == true &&
+                !completedAudibility.requiresAudibilityRepair
+            self.isAudioOutputReady = ready
             AppLogger.shared.write(
                 "AUDIO RECOVERY operation_id=\(generation) phase=completed " +
                     "result=\(ready ? "ready" : "degraded") reason=\(effectiveReason) " +
                     "engine_running=\(completedSnapshot.engineRunning) " +
                     "player_playing=\(completedSnapshot.playerPlaying) " +
                     "bound_to_selected=\(self.optionalDiagnosticBool(completedSnapshot.boundToSelectedDevice)) " +
+                    "audibility_healthy=\(!completedAudibility.requiresAudibilityRepair) " +
                     "pending_buffers=\(completedSnapshot.pendingBuffers) " +
                     "pending_samples=\(completedSnapshot.pendingSamples) " +
                     "elapsed_ms=\(self.elapsedMilliseconds(since: startedAtUptime)) " +

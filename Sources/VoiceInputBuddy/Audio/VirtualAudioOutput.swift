@@ -979,12 +979,14 @@ final class VirtualAudioOutput {
             counters = playbackCounters
         }
         playbackLock.unlock()
+        let audibility = CoreAudioDeviceCatalog.virtualAudioAudibilitySnapshot(for: state.selectedDevice)
         return VirtualAudioOutputDiagnosticSnapshot(
             selectedDeviceKind: .classify(state.selectedDevice),
             actualDeviceKind: .classify(state.actualDevice),
             engineRunning: state.engineRunning,
             playerPlaying: state.playerPlaying,
             boundToSelectedDevice: boundToSelected,
+            audibilityHealthy: !audibility.requiresAudibilityRepair,
             pendingBuffers: pendingBuffers,
             pendingSamples: pendingSamples,
             counters: counters
