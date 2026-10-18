@@ -71,6 +71,17 @@ struct RuntimeAuditRegressionTests {
         #expect(RemoteHIDReportParser.usages(reportID: 1, data: Data([1])) == nil)
     }
 
+    @Test func shortReportsWithOptionalIDsPreservePressesAndReleases() {
+        let reports: [[UInt8]] = [[0x42, 0], [0x42, 0, 0x43, 0], [0, 0]]
+        for usages in reports {
+            #expect(RemoteHIDReportParser.usages(reportID: 1, data: Data([1] + usages)) ==
+                RemoteHIDReportParser.usages(reportID: 1, data: Data(usages)))
+        }
+        #expect(RemoteHIDReportParser.usages(reportID: 1, data: Data([1])) == nil)
+        #expect(RemoteHIDReportParser.usages(reportID: 1, data: Data([2, 0x42, 0])) == nil)
+        #expect(RemoteHIDReportParser.usages(reportID: 2, data: Data([1, 0x42, 0])) == nil)
+    }
+
     @Test func objectiveCExceptionsBecomeAudioFailureResults() {
         #expect(VoiceInputBuddyTryAudioOperation {})
         let accepted = VoiceInputBuddyTryAudioOperation {
