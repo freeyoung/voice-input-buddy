@@ -153,6 +153,49 @@ struct G9N9NProtocolTests {
         #expect(Set(G9N9NMappingLayout.placements.map(\.button)) == Set(G9N9NProtocol.consumerButtons.values))
     }
 
+    @Test func capturedIndexedDescriptorDecodesButtonsAndRejectsAmbiguousReports() {
+        let descriptor = G9N9NProtocol.indexedConsumerDescriptor
+        let expected: [(UInt8, RemoteButton)] = [
+            (1, .power), (3, .up), (4, .down), (5, .left), (6, .right),
+            (7, .ok), (8, .mute), (10, .home), (11, .back),
+            (12, .volumeUp), (13, .volumeDown), (14, .youtube), (15, .netflix), (17, .input),
+        ]
+        for (index, button) in expected {
+            #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, index, 0]), descriptor: descriptor) == [button.hidUsage])
+            #expect(G9N9NProtocol.usages(reportID: 1, data: Data([index, 0]), descriptor: descriptor) == [button.hidUsage])
+        }
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 12]), descriptor: descriptor) == [RemoteButton.up.hidUsage, RemoteButton.volumeUp.hidUsage])
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 0, 0]), descriptor: descriptor) == [])
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 2]), descriptor: descriptor) == [RemoteButton.up.hidUsage])
+        for payload: [UInt8] in [[1], [1, 3, 0, 0], [2, 3, 0], [1, 3, 18]] {
+            #expect(G9N9NProtocol.usages(reportID: 1, data: Data(payload), descriptor: descriptor) == nil)
+        }
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0]), descriptor: descriptor) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 0])) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 0]), descriptor: Data([0])) == nil)
+    }
+
+    @Test @MainActor func indexedReportsDrivePressAndReleaseWithoutStuckButtons() throws {
+        let name = "google-indexed-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: UUID(),
+            runtimePermissions: { true }, actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "indexed-google", profileID: UUID())
+        var active = Set<RemoteButton>()
+        monitor.onActiveButtons = { _, buttons in active = buttons }
+        let descriptor = G9N9NProtocol.indexedConsumerDescriptor
+        monitor.handleSimulatedGoogleReport(reportID: 1, data: Data([1, 3, 0]), descriptor: descriptor)
+        #expect(active == [.up])
+        monitor.handleSimulatedGoogleReport(reportID: 1, data: Data([1, 18, 0]), descriptor: descriptor)
+        #expect(active == [.up])
+        monitor.handleSimulatedGoogleReport(reportID: 1, data: Data([1, 0, 0]), descriptor: descriptor)
+        #expect(active.isEmpty)
+        monitor.disconnectSimulatedDevice()
+    }
+
     @Test func everyDocumentedConsumerButtonMapsWithAndWithoutReportPrefix() {
         let expected: [(UInt16, RemoteButton)] = [
             (0x42, .up), (0x43, .down), (0x44, .left), (0x45, .right),

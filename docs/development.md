@@ -308,5 +308,12 @@ Public CoreBluetooth reads on the connected reference unit returned:
 The previous exact `G9N9N` DIS model check rejected this unit's `A3` before
 initialization completed. Admission now uses PnP identity and negotiated audio
 capabilities; missing or differing model strings do not reject a remote.
-This inspection does not yet establish correct button mappings, intelligible
+The HID descriptor also exposes report ID 1 with two 8-bit array indices
+(logical range 1–17), rather than report ID 2 with 16-bit usages. The adapter
+recognizes this exact descriptor before decoding indexed reports; unknown
+descriptors are not interpreted as this format. Index zero releases a slot.
+The descriptor lists input usage `0x0089`, alongside the previously documented
+variant using `0x0189`.
+
+This inspection does not yet establish correct physical button mappings, intelligible
 microphone audio, stop behavior, long sessions, or sleep/wake acceptance.
