@@ -496,6 +496,10 @@ final class HIDRemoteMonitor {
         }
         currentReportIsGoogle = allowsG9N9N && isGoogleDevice(device)
         currentReportDescriptor = IOHIDDeviceGetProperty(device, kIOHIDReportDescriptorKey as CFString) as? Data
+        if currentReportIsGoogle {
+            let payload = data.prefix(16).map { String(format: "%02X", $0) }.joined(separator: " ")
+            diagnosticLogger("HID GOOGLE report id=\(reportID) bytes=\(data.count) payload=\(payload)")
+        }
         guard !isGoogleCandidateIdentity(device) || currentReportIsGoogle else { return }
         guard currentReportIsGoogle || Self.isLocationAllowed(
             locationID: Self.locationID(for: device),
