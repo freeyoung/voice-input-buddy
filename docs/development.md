@@ -316,4 +316,6 @@ The descriptor lists input usage `0x0089`, alongside the previously documented
 variant using `0x0189`.
 
 This inspection does not yet establish correct physical button mappings, intelligible
-microphone audio, stop behavior, long sessions, or sleep/wake acceptance.
+microphone audio, end-to-end stop behavior, long sessions, or sleep/wake acceptance.
+See the [hardware debugging record](g9n9n-hardware-debugging.md) for the completed
+test attempts, evidence limits, signing checks, and next acceptance steps.
