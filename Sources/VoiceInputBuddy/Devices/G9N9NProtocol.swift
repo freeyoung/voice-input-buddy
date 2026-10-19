@@ -14,10 +14,6 @@ enum G9N9NProtocol {
         return ["chromecast", "chromecast remote", "chromecast voice remote", "chromecast 遥控器", "g9n9n"].contains(name)
     }
 
-    static func isModelNumber(_ raw: String) -> Bool {
-        raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "G9N9N"
-    }
-
     static let consumerButtons: [UInt16: RemoteButton] = [
         0x0042: .up, 0x0043: .down, 0x0044: .left, 0x0045: .right,
         0x0041: .ok, 0x0224: .back, 0x0223: .home,
@@ -61,13 +57,15 @@ enum G9N9NProtocol {
 
 /// Both asynchronous discovery results are mandatory; neither alone grants audio readiness.
 struct G9N9NReadiness {
-    private(set) var modelConfirmed = false
+    private(set) var identityConfirmed = false
     private(set) var audioConfirmed = false
-    var isReady: Bool { modelConfirmed && audioConfirmed }
+    var isReady: Bool { identityConfirmed && audioConfirmed }
 
-    @discardableResult mutating func acceptModel(_ modelNumber: String) -> Bool {
-        modelConfirmed = G9N9NProtocol.isModelNumber(modelNumber)
-        return modelConfirmed
+    // Retail model and DIS model strings differ (the tested G9N9N reports A3).
+    // Validate the same peripheral's PnP identity, never gate on its model string.
+    @discardableResult mutating func acceptIdentity(_ identity: RemoteHIDIdentity?) -> Bool {
+        identityConfirmed = identity == .chromecast
+        return identityConfirmed
     }
 
     @discardableResult mutating func acceptCapabilities(_ caps: ATVVCapabilities) -> Bool {

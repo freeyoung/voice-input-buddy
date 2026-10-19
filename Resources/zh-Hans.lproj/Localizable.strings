@@ -1249,7 +1249,7 @@
 "remote.catalog.g9n9n.adapter_pending.detail" = "可先在 macOS 蓝牙设置中配对，但此版本尚不能读取它的按键或麦克风。可返回设备页选择小米；实际连接验证通过后才能继续。";
 "remote.catalog.unsupported_notice" = "现在还不支持，敬请期待。";
 "google.remote.unsupported_protocol" = "此遥控器未提供受支持的 ATVV v1.0／16kHz 音频能力。按键和音频需分别验证。";
-"google.remote.unconfirmed_model" = "无法确认硬件型号为 G9N9N。兼容款和其他 Google 遥控器需要单独适配。";
+"google.remote.unconfirmed_identity" = "无法确认蓝牙 PnP 标识为 Chromecast Remote（18D1:9450）。";
 "google.remote.microphone_refused" = "遥控器拒绝开启麦克风。请重新配对后重试。";
 "google.remote.pairing_required" = "蓝牙认证尚未完成。请在 macOS 蓝牙设置中移除并重新配对遥控器，再重新连接。";
 "google.remote.ir_controls" = "电源和信源键收到蓝牙报文时可以映射；如果遥控器将它们配置为红外发射，应用无法收到这些按键。";
