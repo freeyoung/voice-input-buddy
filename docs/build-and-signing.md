@@ -26,6 +26,28 @@ scripts/build-driver.sh
 
 不要把直接运行 `.build` 中的可执行文件、`dist` 中的 App 和安装到 `/Applications` 的 App 混作同一份权限验收。ad-hoc 构建的代码哈希会变化，替换 App 后可能需要重新授予权限。
 
+### 本地连续真机调试：复用固定身份
+
+维护者已经保存本项目固定签名身份时，可以使用：
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  python3 scripts/build-local-signed.py
+```
+
+此入口默认读取仓库外的 `~/Library/Application Support/VoiceInputBuddySigning/`
+中的 `release-signing.p12` 和 `password.txt`，也可以用 `--identity-directory` 指定
+已有备份目录。不会生成新证书；证书必须与仓库公开证书一致。它复用现有签名
+辅助脚本导入临时 Keychain，构建并验证 App、驱动与驱动安装包，然后恢复
+Keychain 搜索列表并清理临时身份，不修改证书信任设置。
+
+默认构建调试版，`--configuration release` 可生成优化版。普通本地构建和 PR
+仍默认使用 ad-hoc；此入口必须显式执行。缺少身份或校验失败时停止，不回退。
+私钥与密码不会传入编译、打包子进程，也不会进入仓库、产物或日志。
+
+连续测试固定运行 `dist/Voice Input Buddy.app`。首次从 ad-hoc 切换到固定身份
+需要重新授权；后续仍应实际验证同一证书下的版本升级是否保留系统权限。
+
 ## 为自己的发布生成证书：只运行一次
 
 以下脚本只生成文件，不调用 Keychain 或证书信任工具。使用 macOS 自带的 `/usr/bin/openssl`，其 PKCS#12 导出格式可由 macOS Keychain 导入。输出保存在仓库外、仅当前用户可访问的目录；目录已存在时会停止，防止覆盖正在使用的身份。

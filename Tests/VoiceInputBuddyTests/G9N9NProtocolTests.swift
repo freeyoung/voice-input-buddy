@@ -80,30 +80,50 @@ struct G9N9NProtocolTests {
                 advertisesVoiceService: true, name: name, advertisedName: nil,
                 allowsG9N9N: true).isAdopted)
         }
-        #expect(!G9N9NProtocol.isModelNumber("G9N9N replacement GY3LE"))
     }
 
-    @Test func modelAndAudioDiscoveryCanFinishInEitherOrder() throws {
+    @Test func identityAndAudioDiscoveryCanFinishInEitherOrder() throws {
         let caps = try capabilities()
         var audioFirst = G9N9NReadiness()
         let accepted1 = audioFirst.acceptCapabilities(caps)
         #expect(accepted1)
         #expect(!audioFirst.isReady)
-        let accepted2 = audioFirst.acceptModel("GY3LE")
+        let accepted2 = audioFirst.acceptIdentity(.xiaomi)
         #expect(!accepted2)
         #expect(!audioFirst.isReady)
-        let accepted3 = audioFirst.acceptModel(" G9N9N ")
+        let accepted3 = audioFirst.acceptIdentity(.chromecast)
         #expect(accepted3)
         #expect(audioFirst.isReady)
-        var modelFirst = G9N9NReadiness()
-        let accepted4 = modelFirst.acceptModel("G9N9N")
+        var identityFirst = G9N9NReadiness()
+        let accepted4 = identityFirst.acceptIdentity(.chromecast)
         #expect(accepted4)
-        #expect(!modelFirst.isReady)
-        let accepted5 = modelFirst.acceptCapabilities(caps)
+        #expect(!identityFirst.isReady)
+        let accepted5 = identityFirst.acceptCapabilities(caps)
         #expect(accepted5)
-        #expect(modelFirst.isReady)
-        modelFirst = G9N9NReadiness()
-        #expect(!modelFirst.isReady)
+        #expect(identityFirst.isReady)
+        identityFirst = G9N9NReadiness()
+        #expect(!identityFirst.isReady)
+    }
+
+    @Test func capturedChromecastCapabilitiesRequireGoogleIdentityWithoutAModelString() throws {
+        let captured = try capabilities([0x0B, 1, 0, 2, 3, 0, 0xF0, 1, 0, 0x1A])
+        #expect(captured.version == 0x0100)
+        #expect(captured.frameSize == 240)
+        #expect(captured.sampleRate == 16_000)
+        #expect(captured.interaction == 3)
+        let pnp = try #require(RemoteHIDIdentity.fromPnP(Data([1, 0xD1, 0x18, 0x50, 0x94, 0x10, 1])))
+        var readiness = G9N9NReadiness()
+        let audioAccepted = readiness.acceptCapabilities(captured)
+        #expect(audioAccepted)
+        #expect(!readiness.isReady)
+        let missingIdentityAccepted = readiness.acceptIdentity(nil)
+        #expect(!missingIdentityAccepted)
+        let wrongIdentityAccepted = readiness.acceptIdentity(RemoteHIDIdentity(vendorID: 0x18D1, productID: 0x1234))
+        #expect(!wrongIdentityAccepted)
+        #expect(!readiness.isReady)
+        let identityAccepted = readiness.acceptIdentity(pnp)
+        #expect(identityAccepted)
+        #expect(readiness.isReady)
     }
 
     @Test func replacementWithNo16kCodecOrBadFrameSizeCannotBecomeReady() throws {
@@ -114,7 +134,7 @@ struct G9N9NProtocolTests {
             [0x0B, 1, 0, 2, 3, 2, 1],          // unbounded frame size
         ] {
             var readiness = G9N9NReadiness()
-            let accepted6 = readiness.acceptModel("G9N9N")
+            let accepted6 = readiness.acceptIdentity(.chromecast)
             #expect(accepted6)
             let accepted7 = readiness.acceptCapabilities(try capabilities(bytes))
             #expect(!accepted7)
@@ -131,6 +151,49 @@ struct G9N9NProtocolTests {
         #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0xff, 0xff])) == [])
         #expect(RemoteHIDReportParser.usages(reportID: 2, data: Data([2, 0x42, 0])) == nil)
         #expect(Set(G9N9NMappingLayout.placements.map(\.button)) == Set(G9N9NProtocol.consumerButtons.values))
+    }
+
+    @Test func capturedIndexedDescriptorDecodesButtonsAndRejectsAmbiguousReports() {
+        let descriptor = G9N9NProtocol.indexedConsumerDescriptor
+        let expected: [(UInt8, RemoteButton)] = [
+            (1, .power), (3, .up), (4, .down), (5, .left), (6, .right),
+            (7, .ok), (8, .mute), (10, .home), (11, .back),
+            (12, .volumeUp), (13, .volumeDown), (14, .youtube), (15, .netflix), (17, .input),
+        ]
+        for (index, button) in expected {
+            #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, index, 0]), descriptor: descriptor) == [button.hidUsage])
+            #expect(G9N9NProtocol.usages(reportID: 1, data: Data([index, 0]), descriptor: descriptor) == [button.hidUsage])
+        }
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 12]), descriptor: descriptor) == [RemoteButton.up.hidUsage, RemoteButton.volumeUp.hidUsage])
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 0, 0]), descriptor: descriptor) == [])
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 2]), descriptor: descriptor) == [RemoteButton.up.hidUsage])
+        for payload: [UInt8] in [[1], [1, 3, 0, 0], [2, 3, 0], [1, 3, 18]] {
+            #expect(G9N9NProtocol.usages(reportID: 1, data: Data(payload), descriptor: descriptor) == nil)
+        }
+        #expect(G9N9NProtocol.usages(reportID: 2, data: Data([0x42, 0]), descriptor: descriptor) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 0])) == nil)
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 0]), descriptor: Data([0])) == nil)
+    }
+
+    @Test @MainActor func indexedReportsDrivePressAndReleaseWithoutStuckButtons() throws {
+        let name = "google-indexed-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: UUID(),
+            runtimePermissions: { true }, actionPerformer: { _, _, _ in true }, diagnosticLogger: { _ in })
+        monitor.connectSimulatedDevice(fingerprint: "indexed-google", profileID: UUID())
+        var active = Set<RemoteButton>()
+        monitor.onActiveButtons = { _, buttons in active = buttons }
+        let descriptor = G9N9NProtocol.indexedConsumerDescriptor
+        monitor.handleSimulatedGoogleReport(reportID: 1, data: Data([1, 3, 0]), descriptor: descriptor)
+        #expect(active == [.up])
+        monitor.handleSimulatedGoogleReport(reportID: 1, data: Data([1, 18, 0]), descriptor: descriptor)
+        #expect(active == [.up])
+        monitor.handleSimulatedGoogleReport(reportID: 1, data: Data([1, 0, 0]), descriptor: descriptor)
+        #expect(active.isEmpty)
+        monitor.disconnectSimulatedDevice()
     }
 
     @Test func everyDocumentedConsumerButtonMapsWithAndWithoutReportPrefix() {

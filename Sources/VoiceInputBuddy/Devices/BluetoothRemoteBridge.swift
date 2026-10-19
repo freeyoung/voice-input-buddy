@@ -896,8 +896,8 @@ final class BluetoothRemoteBridge: NSObject {
                   self.lifecycle == .discovering(generation) ||
                     self.lifecycle == .awaitingCapabilities(generation)
             else { return }
-            self.failInitialization(LocalizedMessage(self.googleCandidate && !self.googleReadiness.modelConfirmed
-                ? "google.remote.unconfirmed_model" : "connection.error.voice_service_timeout"))
+            self.failInitialization(LocalizedMessage(self.googleCandidate && !self.googleReadiness.identityConfirmed
+                ? "google.remote.unconfirmed_identity" : "connection.error.voice_service_timeout"))
         }
         initializationTimeoutWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)
@@ -1428,6 +1428,7 @@ final class BluetoothRemoteBridge: NSObject {
     }
 
     private func failInitialization(_ message: LocalizedMessage) {
+        AppLogger.shared.write("BLE INITIALIZATION failed reason=\(message.key)")
         state = .failed(message)
         audioDecoder.reset()
         scheduleReconnect(bypassCachedTarget: true)
@@ -1902,8 +1903,11 @@ extension BluetoothRemoteBridge {
               currentGeneration() == generation
         else { return }
         if let error {
+            AppLogger.shared.write(
+                "BLE GATT read_failed uuid=\(characteristic.uuid.uuidString) " + AppLogger.errorFields(error)
+            )
             if googleCandidate, G9N9NProtocol.requiresPairing(error),
-               characteristic.uuid == modelNumberUUID || characteristic.uuid == audioUUID || characteristic.uuid == controlUUID {
+               characteristic.uuid == pnpIDUUID || characteristic.uuid == audioUUID || characteristic.uuid == controlUUID {
                 failInitialization(LocalizedMessage("google.remote.pairing_required"))
                 return
             }
@@ -1936,6 +1940,15 @@ extension BluetoothRemoteBridge {
         if characteristic.uuid == pnpIDUUID {
             reportedHIDIdentity = RemoteHIDIdentity.fromPnP(data)
             deviceInformation.identity = reportedHIDIdentity
+            if googleCandidate {
+                guard googleReadiness.acceptIdentity(reportedHIDIdentity) else {
+                    failInitialization(LocalizedMessage("google.remote.unconfirmed_identity"))
+                    return
+                }
+                identifiedModel = .chromecastVoiceRemote
+                delegate?.bluetoothBridge(self, didIdentifyRemoteModel: .chromecastVoiceRemote)
+                finishInitializationIfReady(generation: generation)
+            }
             onHIDIdentityUpdate?()
             return
         }
@@ -1975,13 +1988,7 @@ extension BluetoothRemoteBridge {
             }
             let normalizedModelNumber = modelNumber.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
             if googleCandidate {
-                guard googleReadiness.acceptModel(modelNumber) else {
-                    failInitialization(LocalizedMessage("google.remote.unconfirmed_model"))
-                    return
-                }
-                identifiedModel = .chromecastVoiceRemote
-                delegate?.bluetoothBridge(self, didIdentifyRemoteModel: .chromecastVoiceRemote)
-                finishInitializationIfReady(generation: generation)
+                AppLogger.shared.write("BLE MODEL observed modelNumber=\(normalizedModelNumber)")
                 return
             }
 

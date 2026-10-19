@@ -195,9 +195,10 @@ Debug interactive onboarding previews can set `VOICE_INPUT_BUDDY_ONBOARDING_SCRE
 ### G9N9N implementation boundary
 
 The public bridge opts into G9N9N candidate discovery. An advertised name is only
-an initial filter: DIS must report exactly G9N9N and the negotiated protocol must
-be v1.0 with 16 kHz ADPCM and a bounded frame size. Both discovery callbacks can
-finish in either order. Authentication failures request normal macOS pairing;
+an initial filter: the same peripheral must report DIS PnP VID/PID 18D1:9450,
+and the negotiated protocol must be v1.0 with 16 kHz ADPCM and a bounded frame
+size. The DIS model string is informational, never an admission condition. PnP
+and capability discovery can finish in either order. Authentication failures request normal macOS pairing;
 failed discovery is not treated as proof that the service is absent.
 
 Audio remains headerless v1.0 ADPCM with high-nibble-first decoding and AUDIO_SYNC
@@ -286,3 +287,35 @@ rendering accepts `VOICE_INPUT_BUDDY_SETTINGS_SCREENSHOT_SIZE=720x500` and
 remains reachable. Preview fixtures do not start remote or audio hardware.
 
 Hold-to-repeat is represented by the `repeatSingleClick` action in the long-press binding, using the existing per-device binding persistence and portable configuration format. Navigation, volume, and Power buttons default to this value; Back defaults to no long-press action. Power repeats Delete, while Back sends Escape once. The mapping cards display these values explicitly. The HID runtime uses the configured hold value instead of a repeat-capable button allowlist; repeat starts at 350 ms and executes the current single-press action until release. Independent long-press actions retain the 550 ms threshold. Double-click recognition remains available and is cancelled when a held press starts repeating, avoiding a trailing click on release. Timer tokens reject stale repeat callbacks after release or reset. The repeat marker is rejected outside a long-press binding during import.
+
+### G9N9N first hardware inspection (2026-10-19)
+
+Public CoreBluetooth reads on the connected reference unit returned:
+
+- Name: `Chromecast Remote`; manufacturer: `Google Inc.`
+- DIS model: `A3`; hardware revision: `CR PVT/MP`; firmware/software: `26.0`.
+- DIS PnP bytes: `01 D1 18 50 94 10 01` (VID/PID `18D1:9450`).
+- ATVV service: `AB5E0001-5A21-4F05-BC7D-AF01F617B664`.
+- Transmit characteristic `0002`: properties `0x04` (write without response).
+  Audio `0003` and control `0004`: properties `0x10` (notify).
+- Both notifications enabled successfully. Capability request
+  `0A 01 00 00 03 03` returned `0B 01 00 02 03 00 F0 01 00 1A`:
+  ATVV v1.0, codec mask `0x02`, interaction `0x03`, frame size 240, 16 kHz ADPCM.
+- No authentication/encryption error occurred during these reads, subscriptions,
+  or the capability exchange. Link encryption was **not independently measured**;
+  notification properties and successful access do not prove an unencrypted link.
+
+The previous exact `G9N9N` DIS model check rejected this unit's `A3` before
+initialization completed. Admission now uses PnP identity and negotiated audio
+capabilities; missing or differing model strings do not reject a remote.
+The HID descriptor also exposes report ID 1 with two 8-bit array indices
+(logical range 1–17), rather than report ID 2 with 16-bit usages. The adapter
+recognizes this exact descriptor before decoding indexed reports; unknown
+descriptors are not interpreted as this format. Index zero releases a slot.
+The descriptor lists input usage `0x0089`, alongside the previously documented
+variant using `0x0189`.
+
+This inspection does not yet establish correct physical button mappings, intelligible
+microphone audio, end-to-end stop behavior, long sessions, or sleep/wake acceptance.
+See the [hardware debugging record](g9n9n-hardware-debugging.md) for the completed
+test attempts, evidence limits, signing checks, and next acceptance steps.

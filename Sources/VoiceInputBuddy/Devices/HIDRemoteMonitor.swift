@@ -79,6 +79,7 @@ final class HIDRemoteMonitor {
     private let settings: AppSettings
     private let allowsG9N9N: Bool
     private var currentReportIsGoogle = false
+    private var currentReportDescriptor: Data?
     var reportedModel: RemoteModel { currentReportIsGoogle ? .chromecastVoiceRemote : .unknown }
     private let eventSuppressor: KeyboardEventSuppressor
     private let ownsEventSuppressor: Bool
@@ -494,6 +495,11 @@ final class HIDRemoteMonitor {
             return
         }
         currentReportIsGoogle = allowsG9N9N && isGoogleDevice(device)
+        currentReportDescriptor = IOHIDDeviceGetProperty(device, kIOHIDReportDescriptorKey as CFString) as? Data
+        if currentReportIsGoogle {
+            let payload = data.prefix(16).map { String(format: "%02X", $0) }.joined(separator: " ")
+            diagnosticLogger("HID GOOGLE report id=\(reportID) bytes=\(data.count) payload=\(payload)")
+        }
         guard !isGoogleCandidateIdentity(device) || currentReportIsGoogle else { return }
         guard currentReportIsGoogle || Self.isLocationAllowed(
             locationID: Self.locationID(for: device),
@@ -583,10 +589,15 @@ final class HIDRemoteMonitor {
         onDeviceConnected?(profileID, fingerprint)
     }
 
-    func handleSimulatedGoogleReport(reportID: UInt32, data: Data) {
+    func handleSimulatedGoogleReport(reportID: UInt32, data: Data, descriptor: Data? = nil) {
         let previous = currentReportIsGoogle
-        defer { currentReportIsGoogle = previous }
+        let previousDescriptor = currentReportDescriptor
+        defer {
+            currentReportIsGoogle = previous
+            currentReportDescriptor = previousDescriptor
+        }
         currentReportIsGoogle = true
+        currentReportDescriptor = descriptor
         handleSimulatedReport(reportID: reportID, data: data)
     }
 
@@ -619,7 +630,7 @@ final class HIDRemoteMonitor {
 
     private func parsedUsages(reportID: UInt32, data: Data, source: String) -> Set<UInt16>? {
         let decoded = currentReportIsGoogle
-            ? G9N9NProtocol.usages(reportID: reportID, data: data)
+            ? G9N9NProtocol.usages(reportID: reportID, data: data, descriptor: currentReportDescriptor)
             : RemoteHIDReportParser.usages(reportID: reportID, data: data)
         guard let usages = decoded else {
             diagnosticLogger(
