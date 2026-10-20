@@ -408,6 +408,9 @@ final class AppSettings: ObservableObject {
             buttonRapidPressEnabled = [:]
         }
 
+        let shouldSeedSecondaryBindings = defaults.object(forKey: Keys.secondaryButtonBindings) == nil &&
+            defaults.object(forKey: Keys.buttonBindings) == nil &&
+            defaults.object(forKey: Keys.remoteDeviceProfiles) == nil
         if let decoded = Self.decodeSetting(
             [String: [String: ConfiguredButtonAction]].self,
             forKey: Keys.secondaryButtonBindings,
@@ -422,7 +425,9 @@ final class AppSettings: ObservableObject {
                 return parsed.isEmpty ? nil : (button, parsed)
             })
         } else {
-            secondaryButtonBindings = [:]
+            // Seed the new long-press default only when no mappings have been saved.
+            // An absent OK binding in an existing configuration must stay disabled.
+            secondaryButtonBindings = shouldSeedSecondaryBindings ? Self.defaultSecondaryBindings : [:]
         }
 
         customApplicationProfiles = Self.decodeSetting(
@@ -541,6 +546,7 @@ final class AppSettings: ObservableObject {
             from: defaults, corrupted: &corruptedKeys
         ) ?? []
         corruptedSettingKeys = corruptedKeys
+        if shouldSeedSecondaryBindings { saveSecondaryBindings() }
     }
 
     /// What the last import in this session refused to adopt, or `nil` when it adopted
