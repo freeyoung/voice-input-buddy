@@ -461,12 +461,13 @@ extension AppSettings {
             for inherited in unifiedBaseBindings.filter({ $0.remoteProfileID == nil }) {
                 setBaseBinding(ConfiguredButtonAction(
                     action: inherited.trigger == .singleClick ? Self.defaultBindings[inherited.button] ?? .disabled :
+                        Self.defaultSecondaryBindings[inherited.button]?[inherited.trigger]?.action ??
                         defaultSecondaryAction(for: inherited.button, trigger: inherited.trigger).action,
                     shortcut: nil), for: inherited.button, trigger: inherited.trigger, profileID: device)
             }
         }
         buttonApplicationProfileIDs = [:]
-        secondaryButtonBindings = [:]
+        secondaryButtonBindings = Self.defaultSecondaryBindings
         buttonRapidPressEnabled = [:]
         if experimentalContinuousRecordingEnabled {
             continuousRecordingPowerBindingBackup = ConfiguredButtonAction(
@@ -479,6 +480,10 @@ extension AppSettings {
 }
 
 extension AppSettings {
+    static let defaultSecondaryBindings: [RemoteButton: [ButtonTrigger: ConfiguredButtonAction]] = [
+        .ok: [.longPress: ConfiguredButtonAction(action: .commandReturn, shortcut: nil)],
+    ]
+
     static let defaultBindings: [RemoteButton: ButtonAction] = [
         .power: .deleteBackward,
         .up: .arrowUp,
@@ -488,10 +493,10 @@ extension AppSettings {
         .down: .arrowDown,
         .back: .escape,
         .volumeUp: .volumeUp,
-        .home: .showDesktop,
+        .home: .appSwitcher,
         .volumeDown: .volumeDown,
         .menu: .contextMenu,
-        .tv: .appSwitcher,
+        .tv: .playPause,
         .playPause: .playPause,
         .mute: .volumeMute,
     ]
