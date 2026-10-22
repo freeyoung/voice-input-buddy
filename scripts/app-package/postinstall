@@ -2,7 +2,8 @@
 set -euo pipefail
 source "$(dirname "$0")/installation-common.sh"
 
-# Only the App belongs to the desktop user. HAL drivers remain system-owned.
+# The App belongs to the desktop user, except Sparkle's privileged update helper.
+# HAL drivers remain system-owned.
 # An offline volume or login window has no local desktop owner to use.
 if [[ "${3:-/}" == / ]]; then
     app='/Applications/Voice Input Buddy.app'
@@ -18,6 +19,18 @@ if [[ "${3:-/}" == / ]]; then
         else
             echo 'No desktop user; leaving system App ownership unchanged.'
         fi
+        # Self-signed apps have no Apple Team ID. Sparkle therefore requires the
+        # executable handling package updates to be root-owned inside the App.
+        app_directory="$(cd -- "$app" && /bin/pwd -P)"
+        helper_directory="$(cd -- "$app/Contents/Frameworks/Sparkle.framework/Versions/Current" && /bin/pwd -P)"
+        case "$helper_directory/" in
+            "$app_directory/Contents/Frameworks/Sparkle.framework/Versions/"*) ;;
+            *) echo 'Refusing Sparkle helper outside the installed App.' >&2; exit 1 ;;
+        esac
+        helper="$helper_directory/Autoupdate"
+        [[ -f "$helper" && ! -L "$helper" ]] || { echo 'Invalid Sparkle update helper.' >&2; exit 1; }
+        /usr/sbin/chown -h 0:0 "$helper"
+        echo 'Sparkle package update helper remains system-owned.'
     fi
 fi
 
