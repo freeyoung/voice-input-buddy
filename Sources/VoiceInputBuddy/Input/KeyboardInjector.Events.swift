@@ -8,18 +8,14 @@ extension KeyboardInjector {
     static func postKey(code: CGKeyCode, flags: CGEventFlags = []) {
         if !flags.isEmpty {
             _ = ShortcutEventSequence.send(keyCode: code, modifiers: flags,
-                hardwareFlags: KeyboardHardwareModifierPolicy.current, eventPoster: ShortcutEventSequence.post)
+                hardwareFlags: KeyboardHardwareModifierPolicy.currentForMappedAction, eventPoster: ShortcutEventSequence.post)
             return
         }
-        guard let source = CGEventSource(stateID: .privateState),
-              let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
+        guard let down = makeMappedKeyEvent(code: code, isDown: true, flags: flags),
+              let up = makeMappedKeyEvent(code: code, isDown: false, flags: flags)
         else { return }
-        down.flags = flags.union(KeyboardHardwareModifierPolicy.current())
-        down.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
-        up.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
         down.post(tap: .cghidEventTap)
-        up.flags = flags.union(KeyboardHardwareModifierPolicy.current())
+        up.flags = flags.union(KeyboardHardwareModifierPolicy.currentForMappedAction())
         up.post(tap: .cghidEventTap)
     }
 
@@ -28,11 +24,29 @@ extension KeyboardInjector {
         isDown: Bool,
         flags: CGEventFlags
     ) -> Bool {
-        postMarkedKeyState(code: code, isDown: isDown, flags: flags, marker: syntheticEventMarker)
+        guard let event = makeMappedKeyEvent(code: code, isDown: isDown, flags: flags)
+        else { return false }
+        AppLogger.shared.write(
+            "MAPPED KEY EVENT key_code=\(code) edge=\(isDown ? "down" : "up") " +
+                "modifier_flags=\(event.flags.rawValue) result=submitted target_response=unknown"
+        )
+        event.post(tap: .cghidEventTap)
+        return true
     }
 
     static func postVoiceKeyState(code: CGKeyCode, isDown: Bool, flags: CGEventFlags) -> Bool {
         postMarkedKeyState(code: code, isDown: isDown, flags: flags, marker: orderedVoiceEventMarker)
+    }
+
+    static func makeMappedKeyEvent(
+        code: CGKeyCode, isDown: Bool, flags: CGEventFlags,
+        hardwareFlags: () -> CGEventFlags = KeyboardHardwareModifierPolicy.current
+    ) -> CGEvent? {
+        // The remote's native Home carries Fn even without numeric-pad flags.
+        // Only the configured shortcut may add Fn to a mapped event.
+        makeMarkedKeyEvent(code: code, isDown: isDown, flags: flags,
+            marker: syntheticEventMarker,
+            hardwareFlags: { KeyboardHardwareModifierPolicy.mappedActionFlags(hardwareFlags()) })
     }
 
     static func keyEventType(code: CGKeyCode, isDown: Bool) -> CGEventType {
@@ -213,6 +227,7 @@ extension KeyboardInjector {
             windowFrame: frontmostWindowFrame(),
             mouseLocation: currentMouseLocation()
         )
+        event.flags = KeyboardHardwareModifierPolicy.currentForMappedAction()
         event.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
         event.post(tap: .cghidEventTap)
     }

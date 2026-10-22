@@ -62,6 +62,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test -c release -
 
 异步边界测试使用可控调度器，显式送达已经取消的旧回调，不依赖睡眠等待。权限轮询、快捷键发送与输入目标测试注入状态和事件接收器，不修改真实权限、发送系统按键或切换其他应用。常用语插入测试注入目标与按键接口，剪贴板事务只使用测试专用 pasteboard，不读取或修改系统通用剪贴板；持久化和文件锁测试使用独立 UserDefaults 域及临时目录，不读取或修改用户的应用设置。结构化诊断测试仅验证本地日志；没有诊断上传和待上传事件存储。
 
+所有映射键盘事件统一排除隐式导航标志：小米遥控器原生 Home 实测带有 `0x800100` 标志，其中包含 Fn，且不一定带数字键盘标志。普通按键、内置／自定义快捷键、独立修饰键、应用切换器和滚动动作不继承硬件状态中的 Fn／数字键盘导航标志，仍保留 Shift、Control、Option、Command 等实际修饰键；只有映射明确配置 Fn 时才在生成事件中加入 Fn。媒体键本身使用空修饰键，不合并原始 Home 状态；无需改写的原生方向键仍按原事件透传。语音 Fn 使用独立路径，保持其按住和松开行为。`MAPPED KEY EVENT` 与 `SHORTCUT SEQUENCE phase=event` 记录实际提交的键码、边沿和修饰键标志；`submitted` 不代表目标应用已经响应。回归测试覆盖原生 Home 状态下的完整选择／取消序列、普通映射键、内置快捷键和显式 Fn 映射，修复后的切换器显示和确认仍需实机复测。
+
 开发 App 位于 `dist/Voice Input Buddy.app`，驱动位于 `dist/VoiceInputBuddyMic.driver`。App 构建按架构使用独立的 `.build/app-arm64` 与 `.build/app-x86_64` 目录，避免 SwiftPM 缓存混用。Release 与一体安装包的复现步骤见 [发布流程](releases.md)。
 
 本地 `scripts/build-app.sh` 与发布 workflow 共用 Git 版本计算：最近提交在 Asia/Singapore 的日期与完整历史提交数生成 `vYY-MM-DD.NNN`。设置页显示该标记；macOS 的数字版本及构建号分别写入 `CFBundleShortVersionString` 与 `CFBundleVersion`。本地源码有未提交修改时，版本仍对应当前 HEAD，不能把它当作正式发布源码标识。

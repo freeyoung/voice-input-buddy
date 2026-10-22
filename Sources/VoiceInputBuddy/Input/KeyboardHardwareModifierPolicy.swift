@@ -2,6 +2,16 @@ import CoreGraphics
 
 /// Navigation-key decoration is not evidence of an independently held Fn key.
 enum KeyboardHardwareModifierPolicy {
+    /// Mapped actions inherit physical shortcut modifiers, but never implicit
+    /// navigation decoration. An explicitly configured Fn is added separately.
+    static func mappedActionFlags(_ flags: CGEventFlags) -> CGEventFlags {
+        flags.subtracting([.maskSecondaryFn, .maskNumericPad])
+    }
+
+    static func currentForMappedAction() -> CGEventFlags {
+        mappedActionFlags(current())
+    }
+
     static func normalized(_ flags: CGEventFlags, fnKeyDown: Bool,
                            combinedFlags: CGEventFlags, combinedFnKeyDown: Bool) -> CGEventFlags {
         if flags.contains(.maskNumericPad) {

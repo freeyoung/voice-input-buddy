@@ -344,7 +344,7 @@ enum KeyboardInjector {
         scrollPoster: ScrollPoster = { postScrollWheel(lines: $0) },
         systemKeyPoster: SystemKeyPoster = postSystemKey,
         shortcutEventPoster: @escaping (CGEvent) -> Bool = ShortcutEventSequence.post,
-        shortcutHardwareFlags: @escaping () -> CGEventFlags = { CGEventSource.flagsState(.hidSystemState) }
+        shortcutHardwareFlags: @escaping () -> CGEventFlags = KeyboardHardwareModifierPolicy.currentForMappedAction
     ) -> Bool {
         guard action != .disabled else { return true }
         if action != .appSwitcher, transientAppSwitcher.isActive {

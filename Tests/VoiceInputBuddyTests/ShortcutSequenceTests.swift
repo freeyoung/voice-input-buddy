@@ -34,6 +34,30 @@ struct ShortcutSequenceTests {
             shortcutEventPoster: { _ in false }, shortcutHardwareFlags: { [] }))
     }
 
+    @Test func everyBuiltInShortcutUsesItsConfiguredKeyDespiteNativeHomeFn() {
+        let shortcuts: [(ButtonAction, UInt16, CGEventFlags)] = [
+            (.commandReturn, 36, .maskCommand), (.shiftReturn, 36, .maskShift),
+            (.commandCopy, 8, .maskCommand), (.commandPaste, 9, .maskCommand),
+            (.commandClose, 13, .maskCommand), (.commandQuit, 12, .maskCommand),
+            (.commandCut, 7, .maskCommand), (.commandSelectAll, 0, .maskCommand),
+            (.commandUndo, 6, .maskCommand), (.commandRedo, 6, [.maskCommand, .maskShift]),
+            (.commandFind, 3, .maskCommand), (.commandSave, 1, .maskCommand),
+            (.commandDelete, 51, .maskCommand), (.showDesktop, 103, .maskSecondaryFn),
+        ]
+        for (action, code, flags) in shortcuts {
+            var posted: [Posted] = []
+            #expect(KeyboardInjector.send(action, accessibilityTrusted: { true }, secureInputEnabled: { false },
+                shortcutEventPoster: { posted.append(Posted($0)); return true },
+                shortcutHardwareFlags: { CGEventFlags(rawValue: 0x800100) }))
+            let keys = posted.filter { $0.type == .keyDown || $0.type == .keyUp }
+            #expect(keys.count == 2)
+            #expect(keys.allSatisfy { $0.code == code && $0.flags.intersection(
+                [.maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn, .maskNumericPad]
+            ) == flags })
+            #expect(posted.last?.flags.contains(.maskSecondaryFn) == false)
+        }
+    }
+
     @Test func standaloneModifierRetriesFailedReleaseWithoutAnotherPress() {
         var downs: [Bool] = []
         let submitted = KeyboardInjector.send(.customShortcut, shortcut: StandaloneKeyboardModifier.leftCommand.shortcut,
