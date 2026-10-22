@@ -74,6 +74,7 @@ jobs:
           python3 scripts/test-dependency-checkout.py
           python3 scripts/test-app-bundle.py
           python3 scripts/test-installation-actions.py
+          python3 scripts/test-app-ownership.py
           python3 scripts/test-appcast.py
           python3 scripts/test-pages-update-feeds.py
           python3 scripts/test-update-signature.py
