@@ -92,13 +92,14 @@ enum ShortcutEventSequence {
     static func send(
         keyCode: CGKeyCode,
         modifiers requested: CGEventFlags,
-        hardwareFlags: @escaping () -> CGEventFlags,
+        hardwareFlags rawHardwareFlags: @escaping () -> CGEventFlags,
         eventPoster: @escaping (CGEvent) -> Bool,
         logger: @escaping (String) -> Void = { AppLogger.shared.write($0) },
         recoveryScheduler: @escaping OperationScheduler = ScheduledOperation.mainQueue
     ) -> Bool {
         lock.lock()
         defer { lock.unlock() }
+        let hardwareFlags = { KeyboardHardwareModifierPolicy.mappedActionFlags(rawHardwareFlags()) }
         let operationID = UUID().uuidString
         let started = ProcessInfo.processInfo.systemUptime
         let prefix = "SHORTCUT SEQUENCE operation_id=\(operationID)"
@@ -140,6 +141,8 @@ enum ShortcutEventSequence {
             event.flags = synthetic.union(hardwareFlags())
             event.setIntegerValueField(.eventSourceUserData, value: KeyboardInjector.syntheticEventMarker)
             let accepted = eventPoster(event)
+            logger("\(prefix) phase=event key_code=\(code) edge=\(down ? "down" : "up") " +
+                "modifier_flags=\(event.flags.rawValue) submitted=\(accepted)")
             if accepted { submitted += 1 }
             return accepted
         }
