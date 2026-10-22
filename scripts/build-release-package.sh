@@ -14,7 +14,9 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/payload/Applications" "$work/payload/Library/Audio/Plug-Ins/HAL" "$work/scripts" "$root/dist/release"
 ditto "$app" "$work/payload/Applications/Voice Input Buddy.app"
 ditto "$driver" "$work/payload/Library/Audio/Plug-Ins/HAL/VoiceInputBuddyMic.driver"
-cp scripts/driver-package/{preinstall,postinstall} scripts/installation-common.sh "$work/scripts/"
+cp scripts/driver-package/preinstall scripts/installation-common.sh "$work/scripts/"
+cp scripts/app-package/postinstall "$work/scripts/postinstall"
+cp scripts/driver-package/postinstall "$work/scripts/driver-postinstall"
 chmod 755 "$work/scripts/preinstall"
 chmod 755 "$work/scripts/postinstall"
 # Disable bundle relocation: always update the canonical /Applications copy.
