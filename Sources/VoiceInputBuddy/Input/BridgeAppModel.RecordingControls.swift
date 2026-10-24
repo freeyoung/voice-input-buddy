@@ -20,24 +20,27 @@ extension BridgeAppModel {
             )
             return false
         }
-        if !audio.output.isReadyForTestTone {
-            ensureVirtualAudioOutputReady(reason: "long_recording_start") { [weak self] ready in
-                guard let self else { return }
-                if ready {
-                    _ = self.toggleLongRecording()
-                } else {
-                    AppLogger.shared.write(
-                        "LONG RECORDING rejected connected=true audio_ready=false " +
-                            "bluetooth_voice=false"
-                    )
-                }
-            }
-            return true
-        }
-
         longRecordingGeneration &+= 1
         let generation = longRecordingGeneration
         longRecordingRequested = true
+        if !audio.output.isReadyForTestTone {
+            ensureVirtualAudioOutputReady(reason: "long_recording_start") { [weak self] ready in
+                guard let self, self.longRecordingRequested,
+                      self.longRecordingGeneration == generation else { return }
+                _ = self.startLongRecordingAfterAudioReady(ready, generation: generation)
+            }
+            return true
+        }
+        return startLongRecordingAfterAudioReady(true, generation: generation)
+    }
+
+    @discardableResult
+    func startLongRecordingAfterAudioReady(_ ready: Bool, generation: UInt64) -> Bool {
+        guard longRecordingRequested, longRecordingGeneration == generation else { return false }
+        guard ready, isConnected, !voiceSession.isActive else {
+            finishLongRecording(reason: "audio_not_ready")
+            return false
+        }
         guard let selectedBluetoothBridge,
               selectedBluetoothBridge.requestMicrophoneOpen()
         else {
@@ -74,6 +77,7 @@ extension BridgeAppModel {
         if voiceSession.isActive {
             scheduleLongRecordingCloseTimeout(generation: longRecordingGeneration)
         }
+        releaseVirtualAudioOutputIfUnused(reason: "long_recording_stopped")
         AppLogger.shared.write(
             "LONG RECORDING stopping reason=\(reason) close_written=\(closeWritten)"
         )
@@ -101,6 +105,7 @@ extension BridgeAppModel {
         longRecordingRequested = false
         longRecordingGeneration &+= 1
         cancelLongRecordingTimers()
+        releaseVirtualAudioOutputIfUnused(reason: "long_recording_finished")
         AppLogger.shared.write("LONG RECORDING finished reason=\(reason)")
     }
 
