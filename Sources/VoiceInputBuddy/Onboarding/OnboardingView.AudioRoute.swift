@@ -12,7 +12,7 @@ extension OnboardingView {
             statusCard(icon: "waveform", title: BuddyMicrophoneDevicePolicy.deviceName,
                 detail: localization.text(onboardingAudioReady ? "onboarding.audio.automatic_ready" : "onboarding.audio.checking"),
                 isComplete: onboardingAudioReady)
-            if !microphoneDriverInstalled || !model.isAudioOutputReady {
+            if !microphoneDriverInstalled || !model.isAudioOutputVerified {
                 Text(localization.text("settings.driver.reload_help")).font(.callout).foregroundStyle(.secondary)
                 HStack {
                     Button(localization.text("audio.action.refresh_devices")) { prepareAutomaticDriverCheck() }
