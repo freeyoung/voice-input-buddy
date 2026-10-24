@@ -44,7 +44,12 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
     @Published var audioDevices: [AudioDeviceInfo] = []
     @Published var testToneStatus = LocalizedMessage("audio.output.none_selected")
     @Published var isPlayingTestTone = false
-    @Published var isAudioOutputReady = false
+    @Published var isAudioOutputReady = false {
+        didSet { if isAudioOutputReady { isAudioOutputVerified = true } }
+    }
+    /// The last configuration of the selected output succeeded. Idle release stops
+    /// the engine but keeps this result; a failed configuration or stop clears it.
+    @Published var isAudioOutputVerified = false
     @Published var hasReceivedCurrentVoiceSamples = false
     @Published var activeVoiceSource: RemoteInputSource?
     @Published var voiceShortcutStatus = LocalizedMessage("voice_button.status.preparing")
@@ -286,6 +291,7 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
         releaseVoiceKeyIfNeeded()
         stopHIDMonitors()
         isAudioOutputReady = false
+        isAudioOutputVerified = false
         // Stop is serialized with configurations on the engine queue. Enumeration no
         // longer allocates audio resources, so a delayed preparation-queue stop is unsafe.
         audio.output.stop()

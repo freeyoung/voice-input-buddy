@@ -19,7 +19,7 @@ extension OnboardingView {
             remoteConnected: selectedControlConnected,
             remoteButtonObserved: !observedRemoteButtons.isEmpty,
             microphoneDriverInstalled: microphoneDriverInstalled,
-            audioReady: model.isAudioOutputReady,
+            audioReady: model.isAudioOutputVerified,
             audioOutputSelected: audioOutputSelected,
             voiceSessionStarted: voiceSessionStarted,
             voiceSamplesReceived: voiceSamplesReceived,
@@ -153,7 +153,7 @@ extension OnboardingView {
     }
 
     var onboardingAudioReady: Bool {
-        audioOutputSelected && model.isAudioOutputReady
+        audioOutputSelected && model.isAudioOutputVerified
     }
 
     var transcriptionAppeared: Bool {

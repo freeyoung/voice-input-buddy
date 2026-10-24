@@ -51,6 +51,26 @@ struct IdleAudioLifecycleTests {
         }
     }
 
+    @Test func idleReleaseKeepsTheVerifiedOutputForOnboarding() async throws {
+        try await withModel { model, _ in
+            model.started = true
+            model.isAudioOutputReady = true
+            #expect(model.isAudioOutputVerified)
+            model.releaseVirtualAudioOutputIfUnused(reason: "test_idle")
+            #expect(!model.isAudioOutputReady)
+            #expect(model.isAudioOutputVerified)
+            model.finishAudioStartup(generation: 0, configurationGeneration: model.audio.configurationGeneration,
+                configured: false, devices: [])
+            #expect(!model.isAudioOutputVerified)
+            // An earlier idle release can stop the engine before a successful result arrives.
+            model.finishAudioStartup(generation: 0, configurationGeneration: model.audio.configurationGeneration,
+                configured: true, devices: [])
+            #expect(!model.isAudioOutputReady)
+            #expect(model.isAudioOutputVerified)
+            model.cancelVirtualAudioReleaseIfPending(trigger: "test_cleanup")
+        }
+    }
+
     @Test(arguments: [false, true])
     func remoteStopDrainsTailAndNewVoicePreventsTeardown(restart: Bool) async throws {
         try await withModel { model, bridge in

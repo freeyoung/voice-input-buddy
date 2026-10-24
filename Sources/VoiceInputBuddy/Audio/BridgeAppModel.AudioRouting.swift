@@ -69,6 +69,7 @@ extension BridgeAppModel {
         if audio.configurationGeneration == configurationGeneration {
             audioStatus = audio.output.status
             isAudioOutputReady = audio.output.isReadyForTestTone
+            isAudioOutputVerified = configured
             testToneStatus = isAudioOutputReady
                 ? LocalizedMessage("audio.test_tone.ready")
                 : LocalizedMessage("audio.output.none_or_unavailable")
@@ -249,6 +250,7 @@ extension BridgeAppModel {
                 }
                 self.audioStatus = self.audio.output.status
                 self.isAudioOutputReady = self.audio.output.isReadyForTestTone
+                self.isAudioOutputVerified = configured
                 self.testToneStatus = self.isAudioOutputReady
                     ? LocalizedMessage("audio.test_tone.ready")
                     : LocalizedMessage("audio.output.none_or_unavailable")
