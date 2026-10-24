@@ -14,6 +14,7 @@ final class AudioRuntime {
     var startupGeneration: UInt64 = 0
     var deviceRefreshGeneration: UInt64 = 0
     var startupPending = false
+    var testToneStartupPending = false
     var hardwareListenerRemover: AudioHardwareListenerRemover = { address, queue, listener in
         AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
     }
@@ -62,6 +63,7 @@ final class AudioRuntime {
         deviceRefreshGeneration &+= 1
         configurationGeneration &+= 1
         startupPending = false
+        testToneStartupPending = false
         recoveryGeneration &+= 1
         recoveryWorkItem?.cancel()
         recoveryWorkItem = nil

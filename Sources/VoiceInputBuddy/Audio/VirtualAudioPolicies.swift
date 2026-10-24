@@ -22,18 +22,6 @@ struct SystemAudioSuspensionState {
 }
 
 enum VirtualAudioConnectionLifecyclePolicy {
-    static func shouldBeActive(
-        readyBluetoothBridgeCount: Int,
-        bluetoothVoiceActive: Bool,
-        testToneActive: Bool,
-        systemSuspended: Bool
-    ) -> Bool {
-        if bluetoothVoiceActive || testToneActive {
-            return true
-        }
-        return readyBluetoothBridgeCount > 0 && !systemSuspended
-    }
-
     static func shouldScheduleRelease(
         hasPendingRelease: Bool,
         hasAllocatedOutputResources: Bool,

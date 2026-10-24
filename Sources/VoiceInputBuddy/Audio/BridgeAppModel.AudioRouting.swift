@@ -76,9 +76,7 @@ extension BridgeAppModel {
         audio.startupPending = false
         publishAudioDevices(devices)
         startObservingAudioHardware()
-        if audio.suspensionState.isSuspended {
-            releaseVirtualAudioOutputIfUnused(reason: "startup_system_suspended")
-        }
+        releaseVirtualAudioOutputIfUnused(reason: "startup_complete")
         startBluetoothConnections()
         AppLogger.shared.write(
             "AUDIO REBIND finished reason=startup success=\(configured) status=\(audioStatus.key) " +
@@ -234,10 +232,12 @@ extension BridgeAppModel {
         let generation = audio.configurationGeneration
         let deviceUID = settings.selectedAudioDeviceUID
         AppLogger.shared.write("AUDIO REBIND begin reason=\(reason) state={\(audio.output.diagnosticState())}")
-        cancelTestToneIfNeeded(
-            statusMessage: LocalizedMessage("audio.test_tone.cancelled_device_changed"),
-            logReason: "device_reconfigure"
-        )
+        if reason != "test_tone" {
+            cancelTestToneIfNeeded(
+                statusMessage: LocalizedMessage("audio.test_tone.cancelled_device_changed"),
+                logReason: "device_reconfigure"
+            )
+        }
         configureAudioOutputWithRetry(deviceUID: deviceUID, generation: generation) { [weak self] configured in
             DispatchQueue.main.async {
                 guard let self,
@@ -259,6 +259,8 @@ extension BridgeAppModel {
                 )
                 self.updateVirtualAudioDeviceObservation()
                 completion(configured)
+                // Demand may have ended while HAL configuration was in flight.
+                self.releaseVirtualAudioOutputIfUnused(reason: "rebind_complete_\(reason)")
             }
         }
     }
@@ -661,7 +663,7 @@ extension BridgeAppModel {
         TestToneGate.canPlay(
             hasSelectedDevice: selectedAudioDeviceIsAvailable,
             isStreaming: isStreaming,
-            isPlaying: isPlayingTestTone
+            isPlaying: isPlayingTestTone || audio.testToneStartupPending
         )
     }
 
@@ -669,12 +671,12 @@ extension BridgeAppModel {
         guard TestToneGate.canPlay(
             hasSelectedDevice: selectedAudioDeviceIsAvailable,
             isStreaming: isStreaming,
-            isPlaying: isPlayingTestTone
+            isPlaying: isPlayingTestTone || audio.testToneStartupPending
         ) else {
             if isStreaming {
                 testToneStatus = LocalizedMessage("audio.test_tone.blocked_voice_active")
                 AppLogger.shared.write("AUDIO TEST_TONE rejected_streaming")
-            } else if isPlayingTestTone {
+            } else if isPlayingTestTone || audio.testToneStartupPending {
                 testToneStatus = LocalizedMessage("audio.test_tone.already_playing")
             } else {
                 testToneStatus = LocalizedMessage("audio.output.none_or_unavailable")
@@ -684,8 +686,13 @@ extension BridgeAppModel {
 
         cancelVirtualAudioReleaseIfPending(trigger: "test_tone_start")
         if !audio.output.isReadyForTestTone {
+            audio.testToneStartupPending = true
+            let generation = testToneGeneration
             ensureVirtualAudioOutputReady(reason: "test_tone") { [weak self] ready in
-                self?.startTestToneAfterAudioReady(ready)
+                guard let self, self.testToneGeneration == generation else { return }
+                self.audio.testToneStartupPending = false
+                self.startTestToneAfterAudioReady(ready)
+                self.releaseVirtualAudioOutputIfUnused(reason: "test_tone_prepared")
             }
             return
         }
@@ -734,7 +741,8 @@ extension BridgeAppModel {
     }
 
     func cancelTestToneIfNeeded(statusMessage: LocalizedMessage, logReason: String) {
-        guard isPlayingTestTone else { return }
+        guard isPlayingTestTone || audio.testToneStartupPending else { return }
+        audio.testToneStartupPending = false
         testToneGeneration &+= 1
         isPlayingTestTone = false
         audio.output.cancelTestTone()
