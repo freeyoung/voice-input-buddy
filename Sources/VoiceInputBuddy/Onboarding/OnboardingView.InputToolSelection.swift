@@ -43,7 +43,7 @@ extension OnboardingView {
                 }
             }
 
-            if voiceToolAvailability[.doubao] == .notInstalled {
+            if settings.onboardingVoiceTool == .doubao && voiceToolAvailability[.doubao] == .notInstalled {
                 HStack(spacing: 8) {
                     Text(verbatim: localization.text("onboarding.voice_tool.doubao.install_detail"))
                         .font(.system(size: 12))
