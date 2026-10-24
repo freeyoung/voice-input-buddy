@@ -41,11 +41,17 @@ enum G9N9NProtocol {
         0x00ea, 0x0077, 0x0078, 0x0079, 0x0089,
     ]
 
+    // Compatible units (firmware 0x0110) append a vendor collection with other
+    // report IDs after this complete report 1 collection. Report 1 is unchanged.
+    static func usesIndexedConsumerLayout(_ descriptor: Data?) -> Bool {
+        descriptor?.starts(with: indexedConsumerDescriptor) ?? false
+    }
+
     /// Known Consumer Control layouts, with or without their report-ID byte.
     /// Malformed or unrelated reports are ignored; unknown usages in a valid
     /// Consumer Control snapshot do not discard known key edges.
     static func usages(reportID: UInt32, data: Data, descriptor: Data? = nil) -> Set<UInt16>? {
-        if descriptor == indexedConsumerDescriptor {
+        if usesIndexedConsumerLayout(descriptor) {
             guard reportID == 1 else { return nil }
             var bytes = Array(data)
             if bytes.count == 3, bytes.first == 1 { bytes.removeFirst() }
