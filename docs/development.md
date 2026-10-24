@@ -8,11 +8,13 @@ SwiftPM 主执行目标为 VoiceInputBuddy。采用公开源码的默认构建�
 
 虚拟麦克风：scripts/build-driver.sh 固定 BlackHole v0.7.1 的 e2b22aaaba4e507a097131704bf96dabc004d9cf，应用 USB transport 补丁，使用独立工厂 UUID、Bundle ID 和 BuddyMic UID，避免替换 BlackHole 或原 MiRemoteV 驱动。输出 VoiceInputBuddyMic.driver。scripts/build-driver-package.sh 创建系统 HAL 目录安装包，安装需用户明确授权；安装器在安装前的说明页明确提示：新安装或内容变化的驱动需要重启 Core Audio，短暂中断系统全部播放和录音；驱动未变则不重启。安装后刷新失败时提示重启系统。驱动编译禁用 BlackHole 的通道名称格式，确保实际 UID 为 BuddyMic2ch_UID。
 
-应用不会自动修改系统默认音频设备。遥控器断开、应用停止、退出、音频配置失败及重连时，只释放或重新绑定应用自身的音频输出；系统默认输入、输出及系统提示音设备保持由用户或系统管理。App 固定使用 Voice Input Buddy Mic（`BuddyMic2ch_UID`），第三方工具的麦克风需选择该设备；没有输出选择或 BlackHole 回退。目标语音快捷键通过向导按工具实际设置配置并验证。
+应用不会自动修改系统默认音频设备。遥控器连接空闲时不保持音频引擎活动，避免 Core Audio 长期阻止系统自动休眠；语音开始时按需启动，启动期间缓冲语音，语音结束后等待尾音和 Fn 轻点会话处理完成再释放。启动验证及测试音完成后也释放空闲音频。遥控器断开、应用停止、退出、音频配置失败及重连时，只释放或重新绑定应用自身的音频输出；系统默认输入、输出及系统提示音设备保持由用户或系统管理。App 固定使用 Voice Input Buddy Mic（`BuddyMic2ch_UID`），第三方工具的麦克风需选择该设备；没有输出选择或 BlackHole 回退。目标语音快捷键通过向导按工具实际设置配置并验证。
 
 当前发行使用固定自签名证书为 App 和驱动签名，PKG 未签名，不具备 Apple Developer ID，也未公证。证书只生成一次，私钥由 GitHub Secrets 保存；构建时导入 runner 的临时 Keychain，不添加证书信任设置。普通本地开发和 PR 构建仍默认 ad-hoc 签名。更新包另由本项目的 Sparkle Ed25519 密钥签名；push main 自动发布。配置和验收要求见 [releases.md](releases.md)。若以后取得 Developer ID，应加入 Application / Installer 签名和公证。驱动安装卸载仍需真机回归。不会沿用原作者更新密钥、会员后端或发布服务。
 
 手机、Watch、Web Remote 和 Siri Remote 的退休运行逻辑、占位模块与开关已移除，仅保留计划设备的目录展示；Apple 音频捕获、PacketLogger、HCI 辅助进程、上游私有扩展接入分支、历史采集、录音归档与 MCP 已移除。构建成功不代表未支持设备可用。
+
+长录音在请求音频启动时即记录操作代次；启动期间取消后，迟到的音频回调不得重新开麦。启动失败、取消或开麦超时后释放空闲音频。
 
 ## 运行时权限变化
 

@@ -11,12 +11,10 @@ extension BridgeAppModel {
     }
 
     var shouldKeepVirtualAudioActive: Bool {
-        VirtualAudioConnectionLifecyclePolicy.shouldBeActive(
-            readyBluetoothBridgeCount: readyBluetoothBridgeCount,
-            bluetoothVoiceActive: voiceSession.isActive || hasPendingBluetoothVoiceWork,
-            testToneActive: isPlayingTestTone,
-            systemSuspended: audio.suspensionState.isSuspended
-        )
+        // A connected remote is not an audio source. Keep the engine only while
+        // delivering voice, preparing a tone, or finishing buffered Fn-tap audio.
+        hasActiveVirtualAudioSource || voiceSession.pendingStart.identifier != nil ||
+            voiceFnTapSession.hasPendingAudioSession || audio.testToneStartupPending || longRecordingRequested
     }
 
     var hasPendingBluetoothVoiceWork: Bool {

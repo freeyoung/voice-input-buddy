@@ -317,9 +317,7 @@ extension BridgeAppModel {
         voiceSession.bluetoothVoiceTraceStartedAt = nil
         voiceSession.bluetoothVoiceTailDiagnostics.reset()
         endVoiceSessionIfNeeded(flushAudio: shouldFlushAudio)
-        if audio.suspensionState.isSuspended {
-            releaseVirtualAudioOutputIfUnused(reason: "system_suspended_after_bluetooth_voice")
-        }
+        releaseVirtualAudioOutputIfUnused(reason: "bluetooth_voice_finished")
     }
 
     func bluetoothBridge(_ bridge: BluetoothRemoteBridge, didDecode samples: [Int16]) {

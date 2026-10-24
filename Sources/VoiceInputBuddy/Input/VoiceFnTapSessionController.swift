@@ -73,6 +73,11 @@ final class VoiceFnTapSessionController {
         return max(10, drainTimeout + 2 * tapDuration + startDelay + retries + 1)
     }
 
+    /// Key-release recovery alone must not keep the audio device running.
+    var hasPendingAudioSession: Bool {
+        phase != .idle || pendingVoice != nil
+    }
+
     var requiresCleanupBeforeMapping: Bool {
         phase != .idle || functionKeyIsPressed
     }

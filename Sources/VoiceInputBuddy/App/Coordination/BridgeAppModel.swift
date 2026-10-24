@@ -121,7 +121,10 @@ final class BridgeAppModel: ObservableObject, BluetoothRemoteBridgeDelegate {
         enqueuePreRollAudio: { [weak self] in self?.enqueueVoiceFnTapAudio($0, isPreRoll: true) },
         pendingPlaybackDuration: { [weak self] in self?.audio.output.pendingPlaybackDuration ?? 0 },
         logger: { AppLogger.shared.write($0) },
-        onIdle: { [weak self] in self?.flushPendingVoiceToolMappingRefresh() }
+        onIdle: { [weak self] in
+            self?.flushPendingVoiceToolMappingRefresh()
+            self?.releaseVirtualAudioOutputIfUnused(reason: "voice_fn_tap_idle")
+        }
     )
     private var voiceToolCancellable: AnyCancellable?
     var testToneGeneration = 0

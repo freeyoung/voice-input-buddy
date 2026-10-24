@@ -161,6 +161,7 @@ extension BridgeAppModel {
     }
 
     func handleVoiceFnTapFailure(_ failure: VoiceFnTapFailure) {
+        releaseVirtualAudioOutputIfUnused(reason: "voice_fn_tap_failed")
         if voiceFnTapSession.releaseRecoveryBlocked {
             voiceShortcutStatus = LocalizedMessage("voice_button.status.cleanup_failed")
             AppLogger.shared.write("VOICE FN TAP cleanup blocked reason=accessibility_unavailable")
