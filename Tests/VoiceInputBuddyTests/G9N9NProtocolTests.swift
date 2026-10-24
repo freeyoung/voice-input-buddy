@@ -175,6 +175,21 @@ struct G9N9NProtocolTests {
         #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 3, 0]), descriptor: Data([0])) == nil)
     }
 
+    @Test func compatibleDescriptorWithVendorCollectionDecodesIndexedReports() {
+        // Captured from a compatible unit (VID 18D1, PID 9450, version 0x0110).
+        let vendorCollection = Data([
+            0x06, 0x01, 0xff, 0x09, 0x01, 0xa1, 0x02, 0x85, 0x08, 0x09, 0x14,
+            0x75, 0x08, 0x95, 0x14, 0x15, 0x80, 0x25, 0x7f, 0x81, 0x22,
+            0x85, 0x04, 0x09, 0x04, 0x75, 0x08, 0x95, 0x01, 0x91, 0x02, 0xc0,
+        ])
+        let descriptor = G9N9NProtocol.indexedConsumerDescriptor + vendorCollection
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 7, 0]), descriptor: descriptor) == [RemoteButton.ok.hidUsage])
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 11, 0]), descriptor: descriptor) == [RemoteButton.back.hidUsage])
+        #expect(G9N9NProtocol.usages(reportID: 1, data: Data([1, 0, 0]), descriptor: descriptor) == [])
+        #expect(G9N9NProtocol.usages(reportID: 8, data: Data(repeating: 0, count: 20), descriptor: descriptor) == nil)
+        #expect(!G9N9NProtocol.usesIndexedConsumerLayout(G9N9NProtocol.indexedConsumerDescriptor.dropLast()))
+    }
+
     @Test @MainActor func indexedReportsDrivePressAndReleaseWithoutStuckButtons() throws {
         let name = "google-indexed-" + UUID().uuidString
         let defaults = try #require(UserDefaults(suiteName: name))
