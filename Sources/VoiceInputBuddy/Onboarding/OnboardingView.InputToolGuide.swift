@@ -408,18 +408,12 @@ extension OnboardingView {
                 OnboardingInputMethodGuideStep(
                     id: 1,
                     titleKey: "onboarding.voice_tool.guide.enable_dictation",
-                    content: .instruction(
-                        systemImage: "mic.fill",
-                        detailKey: "onboarding.voice_tool.guide.enable_dictation.detail"
-                    )
+                    content: .screenshot("macos-dictation-enable")
                 ),
                 OnboardingInputMethodGuideStep(
                     id: 2,
                     titleKey: "onboarding.voice_tool.guide.configure_dictation",
-                    content: .instruction(
-                        systemImage: "globe",
-                        detailKey: "onboarding.voice_tool.guide.configure_dictation.detail"
-                    )
+                    content: .screenshot("macos-dictation-shortcut")
                 ),
                 OnboardingInputMethodGuideStep(
                     id: 3,

@@ -203,10 +203,7 @@ extension OnboardingView {
             } else if settings.onboardingVoiceTool == .voicecursor {
                 onboardingGuideScreenshot(resourceName: "voicecursor-setting-mic")
             } else if settings.onboardingVoiceTool == .macosDictation {
-                Text(verbatim: localization.text("onboarding.voice_tool.guide.dictation_microphone"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                onboardingGuideScreenshot(resourceName: "macos-dictation-microphone")
             }
 
         }

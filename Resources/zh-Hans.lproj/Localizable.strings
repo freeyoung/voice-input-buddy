@@ -1150,10 +1150,10 @@
 "onboarding.voice_tool.macos_dictation.title" = "macOS 听写";
 "onboarding.voice_tool.macos_dictation.detail" = "使用系统自带的听写，无需安装第三方工具。";
 "onboarding.voice_tool.guide.enable_dictation" = "打开 macOS 听写";
-"onboarding.voice_tool.guide.enable_dictation.detail" = "打开“系统设置 → 键盘 → 听写”，打开听写，并在“语言”中加入你要说的语言。";
+"onboarding.voice_tool.guide.screenshot.macos_dictation_enable" = "打开“系统设置 → 键盘 → 听写”，打开听写，并确认系统隐私提示。在“语言”中加入你要说的语言；如果系统需要下载语言支持，请等待下载完成。";
 "onboarding.voice_tool.guide.configure_dictation" = "把听写快捷键设为按两下 🌐 键";
-"onboarding.voice_tool.guide.configure_dictation.detail" = "在“听写”的“快捷键”中选择“按两下 🌐 键”。按住遥控器时，语音搭子连按两次 Fn 开始听写；松开遥控器并送完音频后，再按一次 Fn 结束听写。";
-"onboarding.voice_tool.guide.dictation_microphone" = "macOS 听写的麦克风在“系统设置 → 键盘 → 听写 → 麦克风来源”中选择。";
+"onboarding.voice_tool.guide.screenshot.macos_dictation_shortcut" = "在“听写 → 快捷键”中选择“按两下 🌐 键”。按住遥控器时连按两次 Fn 开始听写，松开并送完音频后按一次 Fn 结束。请保留系统 🌐 键的听写功能。";
+"onboarding.voice_tool.guide.screenshot.macos_dictation_microphone" = "在“系统设置 → 键盘 → 听写 → 麦克风来源”中明确选择 Voice Input Buddy Mic，不要选择“自动”。红框标出的是听写的麦克风设置，无需更改系统默认麦克风。";
 
 "onboarding.step.welcome" = "欢迎";
 "onboarding.step.remoteAvailability" = "准备设备";
