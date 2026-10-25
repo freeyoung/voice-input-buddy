@@ -177,6 +177,14 @@ final class VoiceFnTapSessionController {
             logger("VOICE FN TAP start rejected reason=suspended")
             return false
         }
+        if case .starting = phase, remoteEnded {
+            // The released session still owns its remaining start pulses. Keep
+            // a new physical press separate, even while one of those pulses is down.
+            if pendingVoice == nil {
+                pendingVoice = PendingVoice()
+            }
+            return true
+        }
         guard !functionKeyIsPressed else {
             logger("VOICE FN TAP start rejected reason=key_held")
             return false

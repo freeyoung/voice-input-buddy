@@ -62,4 +62,50 @@ struct MacOSDictationToolTests {
         #expect(plan.binding.gestureMode == .toggle)
         #expect(plan.fnTapModeEnabled)
     }
+
+    @Test(arguments: [300, 410, 430, 539])
+    func anotherPressDuringTheReleasedStartSequenceKeepsItsOwnSession(pressedAt: UInt64) {
+        let clock = ControlledTestScheduler()
+        var edges: [Bool] = []
+        var samples: [[Int16]] = []
+        let session = session(clock: clock, edges: { edges.append($0) }, samples: { samples.append($0) })
+        #expect(session.startVoice())
+        #expect(session.receive([1, 2]))
+        clock.advance(to: 280)
+        #expect(session.stopVoice())
+        clock.advance(to: pressedAt)
+        #expect(session.startVoice())
+        #expect(session.receive([3, 4]))
+        clock.runAll()
+        guard case .active = session.phase else {
+            Issue.record("The second physical press must remain active until its release")
+            return
+        }
+        #expect(samples == [[1, 2], [3, 4]])
+        #expect(session.receive([5, 6]))
+        #expect(samples == [[1, 2], [3, 4], [5, 6]])
+        #expect(session.stopVoice())
+        clock.runAll()
+        #expect(session.phase == .idle)
+        #expect(edges == Array(repeating: [true, false], count: 6).flatMap { $0 })
+    }
+
+    @Test func aQueuedPressReleasedBeforeItsTurnStillDeliversItsAudioAndStops() {
+        let clock = ControlledTestScheduler()
+        var edges: [Bool] = []
+        var samples: [[Int16]] = []
+        let session = session(clock: clock, edges: { edges.append($0) }, samples: { samples.append($0) })
+        #expect(session.startVoice())
+        #expect(session.receive([1, 2]))
+        clock.advance(to: 280)
+        #expect(session.stopVoice())
+        clock.advance(to: 410)
+        #expect(session.startVoice())
+        #expect(session.receive([3, 4]))
+        #expect(session.stopVoice())
+        clock.runAll()
+        #expect(samples == [[1, 2], [3, 4]])
+        #expect(session.phase == .idle)
+        #expect(edges == Array(repeating: [true, false], count: 6).flatMap { $0 })
+    }
 }
