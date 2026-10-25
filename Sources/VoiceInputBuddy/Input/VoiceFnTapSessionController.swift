@@ -34,7 +34,9 @@ final class VoiceFnTapSessionController {
     private var drainTimeout: TimeInterval { max(2, pendingPlaybackDuration() + 1.5) }
     private let startDelay: TimeInterval
     private let tapDuration: TimeInterval
+    /// Time between the key-down edges of consecutive start taps.
     private let startTapInterval: TimeInterval
+    private var startTapGap: TimeInterval { max(0, startTapInterval - tapDuration) }
     private let startTapCount: () -> Int
     private let maximumPreRollSampleCount: Int
     private let schedule: Scheduler
@@ -75,7 +77,7 @@ final class VoiceFnTapSessionController {
             $0 + min(30, pow(2, Double($1)))
         }
         let startTaps = Double(max(1, startTapCount()))
-        let startPulses = startTaps * tapDuration + (startTaps - 1) * startTapInterval
+        let startPulses = startTaps * tapDuration + (startTaps - 1) * startTapGap
         return max(10, drainTimeout + startPulses + tapDuration + startDelay + retries + 1)
     }
 
@@ -358,7 +360,7 @@ final class VoiceFnTapSessionController {
                 return
             }
             if remaining > 1 {
-                self.scheduledTasks.append(self.schedule(self.startTapInterval) { [weak self] in
+                self.scheduledTasks.append(self.schedule(self.startTapGap) { [weak self] in
                     self?.performStartTaps(remaining: remaining - 1, generation: sessionGeneration)
                 })
                 return

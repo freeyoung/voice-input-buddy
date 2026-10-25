@@ -40,7 +40,7 @@ struct MacOSDictationToolTests {
         var edges: [Bool] = []
         let session = session(clock: clock, edges: { edges.append($0) })
         #expect(session.startVoice())
-        clock.advance(to: 300)
+        clock.advance(to: 280)
         #expect(edges == [true, false])
         // A lone press would pair with the next session's first press.
         #expect(session.stopVoice())
@@ -63,7 +63,7 @@ struct MacOSDictationToolTests {
         #expect(plan.fnTapModeEnabled)
     }
 
-    @Test(arguments: [300, 410, 430, 539])
+    @Test(arguments: [280, 290, 310, 419])
     func anotherPressDuringTheReleasedStartSequenceKeepsItsOwnSession(pressedAt: UInt64) {
         let clock = ControlledTestScheduler()
         var edges: [Bool] = []
@@ -107,5 +107,18 @@ struct MacOSDictationToolTests {
         #expect(samples == [[1, 2], [3, 4]])
         #expect(session.phase == .idle)
         #expect(edges == Array(repeating: [true, false], count: 6).flatMap { $0 })
+    }
+
+    @Test func startTapIntervalIsMeasuredBetweenKeyDownEdges() {
+        let clock = ControlledTestScheduler()
+        var presses: [UInt64] = []
+        let session = session(clock: clock, edges: { down in
+            if down { presses.append(clock.now) }
+        })
+        #expect(session.startVoice())
+        clock.runAll()
+        #expect(presses == [150, 300])
+        #expect(session.stopVoice())
+        clock.runAll()
     }
 }

@@ -73,6 +73,10 @@ extension KeyboardInjector {
                                           flags: CGEventFlags, marker: Int64) -> Bool {
         guard let event = makeMarkedKeyEvent(code: code, isDown: isDown, flags: flags, marker: marker)
         else { return false }
+        AppLogger.shared.write(
+            "VOICE KEY EVENT key_code=\(code) edge=\(isDown ? "down" : "up") " +
+                "modifier_flags=\(event.flags.rawValue) result=submitted target_response=unknown"
+        )
         event.post(tap: .cghidEventTap)
         return true
     }
